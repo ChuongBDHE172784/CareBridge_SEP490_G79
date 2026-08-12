@@ -73,6 +73,53 @@ void main() {
     expect(queries.last, containsPair('targetSubject', 'BABY'));
   });
 
+  testWidgets(
+    'renders targetless V2 history with neutral recommendation copy',
+    (tester) async {
+      final service = ChecklistHistoryService(
+        getRequest: (path, {queryParams}) async => {
+          'success': true,
+          'data': {
+            'items': [
+              {
+                'checklistInstanceId': 'v2-history-1',
+                'templateName': 'Duy trì thói quen',
+                'stage': 'PREGNANCY',
+                'targetSubject': null,
+                'careContextType': 'JOURNEY',
+                'careContextId': 'journey-1',
+                'historicalAt': '2026-09-01T00:00:00Z',
+                'tasks': [
+                  {
+                    'taskId': 'v2-history-task',
+                    'title': 'Uống đủ nước',
+                    'status': 'COMPLETED',
+                    'displayOrder': 1,
+                    'required': false,
+                  },
+                ],
+              },
+            ],
+            'page': 0,
+            'size': 20,
+            'totalElements': 1,
+            'totalPages': 1,
+          },
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: ChecklistHistoryScreen(service: service)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Duy trì thói quen'), findsOneWidget);
+      expect(find.textContaining('Khuyến nghị'), findsOneWidget);
+      expect(find.text('Mẹ & bé'), findsNothing);
+      expect(find.byIcon(Icons.checklist_rounded), findsOneWidget);
+    },
+  );
+
   testWidgets('ignores stale history response after filter changes', (
     tester,
   ) async {

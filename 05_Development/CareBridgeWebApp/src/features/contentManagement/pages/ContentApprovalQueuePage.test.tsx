@@ -1,4 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+// @vitest-environment jsdom
+
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const harness = vi.hoisted(() => ({
@@ -163,6 +165,65 @@ describe('ContentApprovalQueuePage sequence context', () => {
       expect(harness.decideContent).toHaveBeenCalledTimes(1);
       expect(harness.decideContent).toHaveBeenCalledWith('article-1', 'APPROVE');
     });
+  });
+
+  it('blocks the generic publish action while Pregnancy V2 provenance is pending', async () => {
+    harness.fetchAdminChecklists.mockResolvedValue({
+      content: [
+        {
+          id: 'pregnancy-v2', name: 'WHO Plan 1', stage: 'PREGNANCY', status: 'PENDING_REVIEW',
+          description: '', templateType: 'MANDATORY', checklistContractVersion: 2,
+          provenanceStatus: 'PENDING_CLINICAL_COPY_SIGN_OFF', versionNo: 1,
+          updatedAt: null, itemCount: 5, displayOrder: null, recipientRoles: ['MOTHER'],
+        },
+      ],
+      number: 0, size: 50, totalElements: 1, totalPages: 1,
+    });
+
+    render(<ContentApprovalQueuePage />);
+
+    const title = await screen.findByText('WHO Plan 1');
+    const row = title.closest('tr');
+    expect(row).not.toBeNull();
+    expect(within(row!).getByTitle('Chưa thể xuất bản: cần sign-off clinical/content')).toHaveProperty('disabled', true);
+    expect(within(row!).getByRole('status').textContent).toMatch(/sign-off/);
+    expect(harness.decideChecklistTemplate).not.toHaveBeenCalled();
+  });
+
+  it('excludes unsigned Pregnancy V2 checklists from batch publish', async () => {
+    harness.fetchStaffContentList.mockResolvedValue({
+      content: [
+        {
+          id: 'article-eligible', title: 'Bài viết hợp lệ', type: 'ARTICLE', stage: 'PREGNANCY',
+          version: 1, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
+        },
+      ],
+      number: 0, size: 50, totalElements: 1, totalPages: 1,
+    });
+    harness.fetchAdminChecklists.mockResolvedValue({
+      content: [
+        {
+          id: 'pregnancy-v2', name: 'WHO Plan chưa sign-off', stage: 'PREGNANCY', status: 'PENDING_REVIEW',
+          description: '', templateType: 'MANDATORY', checklistContractVersion: 2,
+          provenanceStatus: 'PENDING_CLINICAL_COPY_SIGN_OFF', versionNo: 1,
+          updatedAt: null, itemCount: 5, displayOrder: null, recipientRoles: ['MOTHER'],
+        },
+      ],
+      number: 0, size: 50, totalElements: 1, totalPages: 1,
+    });
+    harness.decideContent.mockResolvedValue({ id: 'article-eligible', previousStatus: 'PENDING_REVIEW', newStatus: 'APPROVED' });
+
+    render(<ContentApprovalQueuePage />);
+
+    expect(await screen.findByText('Bài viết hợp lệ')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: /Xuất bản tất cả/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Xuất bản tất cả/i })[1]);
+    fireEvent.click(screen.getByRole('button', { name: /Xuất bản \(1 mục\)/i }));
+
+    await waitFor(() => {
+      expect(harness.decideContent).toHaveBeenCalledWith('article-eligible', 'APPROVE');
+    });
+    expect(harness.decideChecklistTemplate).not.toHaveBeenCalled();
   });
 });
 

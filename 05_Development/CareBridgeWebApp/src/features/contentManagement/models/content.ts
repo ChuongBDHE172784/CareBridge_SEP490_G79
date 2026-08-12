@@ -17,6 +17,16 @@ export type ChecklistSupportFunction =
   | 'AI_TRIAGE';
 export type ChecklistAnchorType = 'NONE' | 'LMP' | 'EDD' | 'DELIVERY_DATE' | 'BIRTH_DATE';
 export type ChecklistRangeUnit = 'DAY' | 'WEEK' | 'MONTH';
+export type ChecklistScheduleType = 'LEGACY' | 'SET' | 'WEEKLY' | 'DAILY';
+export type ChecklistMaterializationPolicy =
+  | 'LEGACY_WINDOW'
+  | 'SEQUENCE_STEP'
+  | 'ONCE_PER_WINDOW'
+  | 'EACH_WEEK'
+  | 'EACH_DAY';
+export type ChecklistCareContextType = 'JOURNEY' | 'BABY';
+export type ChecklistScheduleEndMode = 'NONE' | 'FIXED_OFFSET' | 'STAGE_EXIT';
+export type ChecklistWeekBoundaryRule = 'NONE' | 'ANCHOR_RELATIVE_7D';
 
 export const CHECKLIST_SUPPORT_FUNCTION_OPTIONS: ReadonlyArray<{
   value: ChecklistSupportFunction;
@@ -108,6 +118,18 @@ export interface ChecklistTemplate {
   status: ChecklistTemplateStatus;
   description: string;
   templateType: ChecklistTemplateType;
+  /** 1 = legacy target-bearing; 2 = recommendation-only targetless. */
+  checklistContractVersion?: number | null;
+  planNumber?: number | null;
+  section?: 'COMMON' | 'WEEKLY' | null;
+  scheduleType?: ChecklistScheduleType | null;
+  materializationPolicy?: ChecklistMaterializationPolicy | null;
+  scheduleGroupKey?: string | null;
+  scheduleContextType?: ChecklistCareContextType | null;
+  scheduleEndMode?: ChecklistScheduleEndMode | null;
+  weekBoundaryRule?: ChecklistWeekBoundaryRule | null;
+  eligibilityStartInclusive?: number | null;
+  eligibilityEndInclusive?: number | null;
   displayOrder?: number | null;
   items: ChecklistItem[];
   latestReviewFeedback?: ReviewFeedback | null;
@@ -149,14 +171,54 @@ export interface AdminChecklistTemplateDetail extends ChecklistTemplate {
   approvedBy: string | null;
   migrationReviewedAt?: string | null;
   migrationReviewedBy?: string | null;
+  checklistQuarantineReasonCode?: string | null;
+  provenance?: ChecklistProvenance | null;
+}
+
+export interface ChecklistProvenance {
+  schema?: string | null;
+  sourceArtifactPath?: string | null;
+  sourceArtifactSha256?: string | null;
+  importBatchId?: string | null;
+  importCorrelationId?: string | null;
+  normalizerId?: string | null;
+  copyReviewPolicy?: string | null;
+  provenanceStatus?: string | null;
+  cadenceReviewStatus?: string | null;
+  cadenceReviewerUserId?: string | null;
+  cadenceReviewedAt?: string | null;
+  reviewAuthorityId?: string | null;
+  copyReviewerUserId?: string | null;
+  qualificationEvidenceRef?: string | null;
+  credentialVerifiedAt?: string | null;
+  contentOwnerUserId?: string | null;
+  contentOwnerApprovedAt?: string | null;
+  copyReviewedAt?: string | null;
+  sourceTitle?: string | null;
+  sourceRelationship?: string | null;
+  sourceOrganization?: string | null;
+  sourceVersionOrPublicationDate?: string | null;
+  sourceUrl?: string | null;
+  sourceLanguage?: string | null;
+  renderedLanguage?: string | null;
+  translationProvenance?: string | null;
+  priorityNarrative?: string | null;
+  priorityNarrativeMode?: string | null;
+  sourceLocator?: string | null;
+  renderedManifestSchema?: string | null;
+  renderedManifestCanonicalization?: string | null;
+  renderedManifestHash?: string | null;
+  validityMode?: string | null;
+  validUntil?: string | null;
+  revokedAt?: string | null;
 }
 
 export interface ChecklistItem {
   id: string;
   itemText: string;
   order: number;
-  isRequired: boolean;
-  targetSubject: ChecklistTargetSubject;
+  isRequired: boolean | null;
+  targetSubject: ChecklistTargetSubject | null;
   description?: string | null;
   supportFunction?: ChecklistSupportFunction | null;
 }
@@ -165,8 +227,8 @@ export interface ChecklistItemInput {
   id?: string;
   itemText: string;
   order: number;
-  isRequired: boolean;
-  targetSubject: ChecklistTargetSubject;
+  isRequired?: boolean | null;
+  targetSubject?: ChecklistTargetSubject | null;
   description?: string | null;
   supportFunction?: ChecklistSupportFunction | null;
 }
@@ -175,6 +237,7 @@ export interface CreateChecklistTemplatePayload {
   name: string;
   description?: string;
   templateType: ChecklistTemplateType;
+  checklistContractVersion?: number | null;
   recipientRoles: ChecklistRecipientRole[];
   stage: ContentStage | null;
   substage: ChecklistSubstage | null;
@@ -186,6 +249,7 @@ export interface UpdateChecklistTemplatePayload {
   name: string;
   description?: string;
   templateType: ChecklistTemplateType;
+  checklistContractVersion?: number | null;
   recipientRoles: ChecklistRecipientRole[];
   stage: ContentStage | null;
   substage: ChecklistSubstage | null;
@@ -228,11 +292,25 @@ export interface AdminChecklistTemplate {
   status: ChecklistTemplateStatus;
   description: string;
   templateType?: ChecklistTemplateType;
+  checklistContractVersion?: number | null;
+  planNumber?: number | null;
+  section?: 'COMMON' | 'WEEKLY' | null;
+  scheduleType?: ChecklistScheduleType | null;
+  materializationPolicy?: ChecklistMaterializationPolicy | null;
+  scheduleGroupKey?: string | null;
+  scheduleContextType?: ChecklistCareContextType | null;
+  scheduleEndMode?: ChecklistScheduleEndMode | null;
+  weekBoundaryRule?: ChecklistWeekBoundaryRule | null;
+  eligibilityStartInclusive?: number | null;
+  eligibilityEndInclusive?: number | null;
+  checklistQuarantineReasonCode?: string | null;
   versionNo: number;
   updatedAt: string | null;
   itemCount: number;
   migrationReviewRequired?: boolean;
   distributionEnabled?: boolean;
+  /** Admin list projection only; consumers must never use this to distribute content. */
+  provenanceStatus?: string | null;
   latestReviewFeedback?: ReviewFeedback | null;
 }
 

@@ -23,6 +23,7 @@ public class JourneyTransitionPolicy {
             throw invalidTransition();
         }
         if (hasCreateDate(request)
+                && !isV2(request.getChecklistContractVersion())
                 && (request.getDateSource() == null || request.getDateConfidence() == null)) {
             throw missingProvenance();
         }
@@ -40,6 +41,7 @@ public class JourneyTransitionPolicy {
             }
         }
         if (hasUpdateDate(request)
+                && !isV2(request.getChecklistContractVersion())
                 && (request.getDateSource() == null || request.getDateConfidence() == null)) {
             throw missingProvenance();
         }
@@ -77,13 +79,15 @@ public class JourneyTransitionPolicy {
 
     private boolean hasCreateDate(CreateJourneyRequest request) {
         return request.getLastMenstrualDate() != null
-                || request.getEstimatedDueDate() != null;
+                || request.getEstimatedDueDate() != null
+                || request.getDatingBasis() != null;
     }
 
     private boolean hasUpdateDate(UpdateJourneyRequest request) {
         return request.getLastMenstrualDate() != null
                 || request.getEstimatedDueDate() != null
-                || request.getDeliveryDate() != null;
+                || request.getDeliveryDate() != null
+                || request.getDatingBasis() != null;
     }
 
     private BusinessException invalidTransition() {
@@ -96,5 +100,9 @@ public class JourneyTransitionPolicy {
                 HttpStatus.BAD_REQUEST,
                 "JOURNEY-018",
                 "Date source and confidence are required");
+    }
+
+    private boolean isV2(Integer contractVersion) {
+        return contractVersion != null && contractVersion == 2;
     }
 }

@@ -125,9 +125,14 @@ public class UnifiedTaskActionFacade {
             // FAMILY actions must recheck the exact group after the serialization
             // locks are held; otherwise a membership/permission revoke racing
             // with this request could turn an old command into a successful replay.
-            if (careGroupId != null) {
-                handler.authorize(actorUserId, taskId, careGroupId);
-            }
+            // Reminder occurrence aliases intentionally use authorizeReplay;
+            // checklist actions must always re-check their membership epoch.
+            AuthorizedTask replayAuthorization = taskKind == TaskKind.CHECKLIST || careGroupId != null
+                    ? (careGroupId == null
+                        ? handler.authorize(actorUserId, taskId)
+                        : handler.authorize(actorUserId, taskId, careGroupId))
+                    : authorized;
+            requireSameAuthorizationEpoch(authorized, replayAuthorization);
             var command = existing.get();
             if (!payloadHash.equals(command.getPayloadHash())) {
                 throw new BusinessException(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_REUSE",
@@ -142,6 +147,7 @@ public class UnifiedTaskActionFacade {
         var current = careGroupId == null
                 ? handler.authorizeForUpdate(actorUserId, authorized)
                 : handler.authorizeForUpdate(actorUserId, authorized, careGroupId);
+        requireSameAuthorizationEpoch(authorized, current);
         if (!current.allowedActions().contains(request.action())) {
             if (isTerminal(current.status())) {
                 throw new BusinessException(HttpStatus.CONFLICT, "TASK_ALREADY_TERMINAL",
@@ -175,6 +181,22 @@ public class UnifiedTaskActionFacade {
             throw new IllegalStateException("Unable to persist task action command", exception);
         }
         return response;
+    }
+
+    /**
+     * Authorization snapshots for Family checklist rows are bound to the
+     * membership epoch observed before the action locks.  A changed epoch means
+     * the request crossed a revoke/re-grant boundary and must not be replayed or
+     * applied under the newer membership.
+     */
+    private static void requireSameAuthorizationEpoch(
+            AuthorizedTask initial,
+            AuthorizedTask refreshed) {
+        if (initial.authorizationAccessEpoch() != null
+                && !java.util.Objects.equals(initial.authorizationAccessEpoch(),
+                        refreshed.authorizationAccessEpoch())) {
+            throw taskNotFound();
+        }
     }
 
     private static String hash(

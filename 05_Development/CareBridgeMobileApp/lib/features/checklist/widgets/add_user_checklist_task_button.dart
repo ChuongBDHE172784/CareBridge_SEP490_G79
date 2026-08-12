@@ -107,7 +107,6 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
   final _formKey = GlobalKey<FormState>();
   final _textController = TextEditingController();
   ChecklistCategory _category = ChecklistCategory.general;
-  String _targetSubject = 'MOTHER';
   bool _saving = false;
   String? _errorMessage;
   String? _lastPayload;
@@ -207,24 +206,6 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
                         ? 'Vui lòng nhập nội dung công việc.'
                         : null,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Dành cho',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF5A463F),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _targetChip('MOTHER', 'Mẹ', Icons.pregnant_woman),
-                      _targetChip('BABY', 'Bé', Icons.child_care_rounded),
-                    ],
-                  ),
                   const SizedBox(height: 18),
                   DropdownButtonFormField<ChecklistCategory>(
                     initialValue: _category,
@@ -322,44 +303,10 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
     );
   }
 
-  Widget _targetChip(String value, String label, IconData icon) {
-    final selected = _targetSubject == value;
-    return Semantics(
-      selected: selected,
-      label: 'Đối tượng $label',
-      child: ChoiceChip(
-        key: Key('user-checklist-target-${value.toLowerCase()}'),
-        label: Text(label),
-        avatar: Icon(
-          icon,
-          size: 20,
-          color: selected ? Colors.white : const Color(0xFF845143),
-        ),
-        selected: selected,
-        onSelected: _saving
-            ? null
-            : (_) => setState(() => _targetSubject = value),
-        selectedColor: const Color(0xFFC98C7B),
-        backgroundColor: const Color(0xFFF2EAE4),
-        labelStyle: TextStyle(
-          fontWeight: FontWeight.w800,
-          color: selected ? Colors.white : const Color(0xFF5A463F),
-        ),
-        side: const BorderSide(color: Color(0xFFE8DDD6)),
-        shape: const StadiumBorder(),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      ),
-    );
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final itemText = _textController.text.trim();
-    final payload = [
-      itemText,
-      _targetSubject,
-      _category.apiValue,
-    ].join('\u0000');
+    final payload = [itemText, _category.apiValue].join('\u0000');
     if (_lastPayload != payload || _clientTaskId == null) {
       _lastPayload = payload;
       _clientTaskId = widget.clientTaskIdFactory();
@@ -370,9 +317,8 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
       _errorMessage = null;
     });
     try {
-      await widget.service.addItem(
+      await widget.service.addItemV2(
         itemText: itemText,
-        targetSubject: _targetSubject,
         clientTaskId: _clientTaskId!,
         category: _category,
         journeyId: widget.journeyId,

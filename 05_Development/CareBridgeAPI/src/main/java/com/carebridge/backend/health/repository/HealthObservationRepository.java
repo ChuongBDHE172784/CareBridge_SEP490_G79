@@ -13,6 +13,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface HealthObservationRepository extends JpaRepository<HealthObservation, UUID> {
 
+    Optional<HealthObservation> findByLegacySourceAndLegacyId(String legacySource, String legacyId);
+
     @Query(value = """
             SELECT * FROM health_observations
              WHERE health_observation_id = :id

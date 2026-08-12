@@ -40,6 +40,27 @@ public class EnsureEligibleChecklistAssignmentsService {
                 .forEach(candidate -> executeIsolated(candidate, correlationId));
     }
 
+    /** Replays a bounded weekly horizon as closed, non-actionable History. */
+    public void ensureCatchUpAssignments(
+            UUID actorUserId,
+            LocalDate asOfDate,
+            ZoneId timezone,
+            UUID correlationId,
+            int weeklyPeriods) {
+        if (actorUserId == null || asOfDate == null || timezone == null || correlationId == null) {
+            return;
+        }
+        int boundedPeriods = Math.max(0, Math.min(weeklyPeriods, 12));
+        for (int offset = boundedPeriods; offset >= 1; offset--) {
+            LocalDate periodDate = asOfDate.minusWeeks(offset);
+            source.loadCandidatesForActor(actorUserId, periodDate, timezone, correlationId).stream()
+                    .filter(candidate -> candidate.cadence() != null)
+                    .map(candidate -> candidate.withCadence(candidate.cadence().catchUp()))
+                    .sorted(Comparator.comparing(EnsureEligibleChecklistAssignmentsService::signature))
+                    .forEach(candidate -> executeIsolated(candidate, correlationId));
+        }
+    }
+
     private void executeIsolated(ChecklistDistributionCommand candidate, UUID correlationId) {
         try {
             executor.execute(candidate);
@@ -68,10 +89,18 @@ public class EnsureEligibleChecklistAssignmentsService {
                         token(item.required()), token(item.targetSubject()), token(item.dueAnchor()),
                         token(item.dueOffsetDays()), token(item.dueOffsetUnit())))
                 .reduce((left, right) -> left + "," + right).orElse("");
+        String cadence = candidate.cadence() == null ? "<ABSENT>"
+                : String.join("|", token(candidate.cadence().scheduleType()),
+                        token(candidate.cadence().materializationPolicy()),
+                        token(candidate.cadence().periodKey()),
+                        token(candidate.cadence().scheduleZone()),
+                        token(candidate.cadence().materializationMode()),
+                        token(candidate.cadence().wasActionable()));
         return String.join("|", token(candidate.templateLineageId()), token(candidate.templateVersionId()),
                 token(candidate.careGroupId()), token(candidate.careGroupOwnerUserId()),
                 token(candidate.contextType()), token(candidate.contextId()), token(candidate.contextOwnerUserId()),
-                token(candidate.stage()), substage, recipients, items);
+                token(candidate.stage()), token(candidate.gestationalDatingRevision()), substage, recipients, items,
+                cadence);
     }
 
     private static String token(Object value) {

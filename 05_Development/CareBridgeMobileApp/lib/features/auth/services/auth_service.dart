@@ -15,6 +15,244 @@ typedef AuthApiPost =
 typedef GoogleIdTokenProvider = Future<String> Function();
 typedef AuthTokenPersister = Future<void> Function(AuthResponse response);
 typedef AuthPostLoginAction = Future<void> Function();
+typedef AuthSessionPersistenceGuard = bool Function();
+typedef WebPhoneVerificationStarter =
+    Future<WebPhoneConfirmation> Function(String phoneNumber);
+typedef NativePhoneVerificationStarter =
+    Future<void> Function({
+      required String phoneNumber,
+      int? forceResendingToken,
+      required Future<void> Function(String idToken) verificationCompleted,
+      required void Function(PhoneVerificationFailure error) verificationFailed,
+      required void Function(String verificationId, int? resendToken) codeSent,
+      required void Function(String verificationId) codeAutoRetrievalTimeout,
+    });
+
+enum AuthVerificationMethod {
+  email('EMAIL'),
+  phone('PHONE');
+
+  const AuthVerificationMethod(this.apiValue);
+
+  final String apiValue;
+}
+
+class PhoneVerificationFailure implements Exception {
+  const PhoneVerificationFailure(this.code);
+
+  factory PhoneVerificationFailure.fromFirebase(
+    firebase.FirebaseAuthException error,
+  ) {
+    return PhoneVerificationFailure(error.code);
+  }
+
+  final String code;
+
+  String get userMessage {
+    return switch (code) {
+      'invalid-phone-number' =>
+        'Số điện thoại không hợp lệ. Hãy nhập theo định dạng quốc tế, ví dụ +84912345678.',
+      'too-many-requests' =>
+        'Bạn đã yêu cầu quá nhiều mã. Vui lòng thử lại sau.',
+      'quota-exceeded' => 'Dịch vụ SMS đang quá tải. Vui lòng thử lại sau.',
+      'invalid-verification-code' =>
+        'Mã xác thực không đúng. Vui lòng kiểm tra và nhập lại.',
+      'session-expired' => 'Mã xác thực đã hết hạn. Vui lòng gửi lại mã mới.',
+      'network-request-failed' =>
+        'Không thể kết nối dịch vụ xác thực. Vui lòng kiểm tra mạng.',
+      _ => 'Không thể xác thực số điện thoại. Vui lòng thử lại.',
+    };
+  }
+
+  @override
+  String toString() => 'PhoneVerificationFailure($code)';
+}
+
+abstract interface class PhoneAuthGateway {
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    int? forceResendingToken,
+    required Future<void> Function(String idToken) verificationCompleted,
+    required void Function(PhoneVerificationFailure error) verificationFailed,
+    required void Function(String verificationId, int? resendToken) codeSent,
+    required void Function(String verificationId) codeAutoRetrievalTimeout,
+  });
+
+  Future<String> confirmSmsCode({
+    required String verificationId,
+    required String smsCode,
+  });
+}
+
+abstract interface class WebPhoneConfirmation {
+  Future<String> confirmSmsCode(String smsCode);
+}
+
+class _FirebaseWebPhoneConfirmation implements WebPhoneConfirmation {
+  const _FirebaseWebPhoneConfirmation(this._confirmation);
+
+  final firebase.ConfirmationResult _confirmation;
+
+  @override
+  Future<String> confirmSmsCode(String smsCode) async {
+    final user = (await _confirmation.confirm(smsCode)).user;
+    final idToken = await user?.getIdToken(true);
+    if (idToken == null || idToken.trim().isEmpty) {
+      throw StateError('Firebase phone authentication returned no ID token');
+    }
+    return idToken;
+  }
+}
+
+class FirebasePhoneAuthGateway implements PhoneAuthGateway {
+  FirebasePhoneAuthGateway({
+    firebase.FirebaseAuth? firebaseAuth,
+    bool? isWeb,
+    WebPhoneVerificationStarter? webPhoneVerificationStarter,
+    NativePhoneVerificationStarter? nativePhoneVerificationStarter,
+  }) : _firebaseAuth = firebaseAuth,
+       _isWeb = isWeb ?? kIsWeb,
+       _webPhoneVerificationStarter = webPhoneVerificationStarter,
+       _nativePhoneVerificationStarter = nativePhoneVerificationStarter;
+
+  final firebase.FirebaseAuth? _firebaseAuth;
+  final bool _isWeb;
+  final WebPhoneVerificationStarter? _webPhoneVerificationStarter;
+  final NativePhoneVerificationStarter? _nativePhoneVerificationStarter;
+  final Map<String, WebPhoneConfirmation> _webConfirmations = {};
+  int _latestWebStartGeneration = 0;
+
+  firebase.FirebaseAuth get _auth =>
+      _firebaseAuth ?? firebase.FirebaseAuth.instance;
+
+  @override
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    int? forceResendingToken,
+    required Future<void> Function(String idToken) verificationCompleted,
+    required void Function(PhoneVerificationFailure error) verificationFailed,
+    required void Function(String verificationId, int? resendToken) codeSent,
+    required void Function(String verificationId) codeAutoRetrievalTimeout,
+  }) async {
+    if (_isWeb) {
+      final startGeneration = ++_latestWebStartGeneration;
+      try {
+        final confirmation =
+            await (_webPhoneVerificationStarter ?? _startWebPhoneVerification)(
+              phoneNumber,
+            );
+        if (startGeneration != _latestWebStartGeneration) return;
+        final challengeToken = 'web-phone-$startGeneration';
+        _webConfirmations
+          ..clear()
+          ..[challengeToken] = confirmation;
+        codeSent(challengeToken, null);
+      } on firebase.FirebaseAuthException catch (error) {
+        if (startGeneration == _latestWebStartGeneration) {
+          verificationFailed(PhoneVerificationFailure.fromFirebase(error));
+        }
+      } on PhoneVerificationFailure catch (error) {
+        if (startGeneration == _latestWebStartGeneration) {
+          verificationFailed(error);
+        }
+      } catch (_) {
+        if (startGeneration == _latestWebStartGeneration) {
+          verificationFailed(const PhoneVerificationFailure('unknown'));
+        }
+      }
+      return;
+    }
+
+    try {
+      await (_nativePhoneVerificationStarter ?? _verifyPhoneNumberNatively)(
+        phoneNumber: phoneNumber,
+        forceResendingToken: forceResendingToken,
+        verificationCompleted: verificationCompleted,
+        verificationFailed: verificationFailed,
+        codeSent: codeSent,
+        codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
+      );
+    } on firebase.FirebaseAuthException catch (error) {
+      verificationFailed(PhoneVerificationFailure.fromFirebase(error));
+    } on PhoneVerificationFailure catch (error) {
+      verificationFailed(error);
+    } catch (_) {
+      verificationFailed(const PhoneVerificationFailure('unknown'));
+    }
+  }
+
+  Future<WebPhoneConfirmation> _startWebPhoneVerification(
+    String phoneNumber,
+  ) async {
+    final confirmation = await _auth.signInWithPhoneNumber(phoneNumber);
+    return _FirebaseWebPhoneConfirmation(confirmation);
+  }
+
+  Future<void> _verifyPhoneNumberNatively({
+    required String phoneNumber,
+    int? forceResendingToken,
+    required Future<void> Function(String idToken) verificationCompleted,
+    required void Function(PhoneVerificationFailure error) verificationFailed,
+    required void Function(String verificationId, int? resendToken) codeSent,
+    required void Function(String verificationId) codeAutoRetrievalTimeout,
+  }) {
+    return _auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      forceResendingToken: forceResendingToken,
+      verificationCompleted: (credential) async {
+        try {
+          final idToken = await _signInAndGetFreshIdToken(credential);
+          await verificationCompleted(idToken);
+        } on firebase.FirebaseAuthException catch (error) {
+          verificationFailed(PhoneVerificationFailure.fromFirebase(error));
+        } catch (_) {
+          verificationFailed(const PhoneVerificationFailure('unknown'));
+        }
+      },
+      verificationFailed: (error) {
+        verificationFailed(PhoneVerificationFailure.fromFirebase(error));
+      },
+      codeSent: codeSent,
+      codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
+    );
+  }
+
+  @override
+  Future<String> confirmSmsCode({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    try {
+      if (_isWeb) {
+        final confirmation = _webConfirmations[verificationId];
+        if (confirmation == null) {
+          throw const PhoneVerificationFailure('session-expired');
+        }
+        final idToken = await confirmation.confirmSmsCode(smsCode);
+        _webConfirmations.remove(verificationId);
+        return idToken;
+      }
+      final credential = firebase.PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+      return await _signInAndGetFreshIdToken(credential);
+    } on firebase.FirebaseAuthException catch (error) {
+      throw PhoneVerificationFailure.fromFirebase(error);
+    }
+  }
+
+  Future<String> _signInAndGetFreshIdToken(
+    firebase.AuthCredential credential,
+  ) async {
+    final user = (await _auth.signInWithCredential(credential)).user;
+    final idToken = await user?.getIdToken(true);
+    if (idToken == null || idToken.trim().isEmpty) {
+      throw StateError('Firebase phone authentication returned no ID token');
+    }
+    return idToken;
+  }
+}
 
 class GoogleIdTokenAcquirer {
   GoogleIdTokenAcquirer({
@@ -85,13 +323,15 @@ class AuthService {
     GoogleIdTokenAcquirer? googleIdTokenAcquirer,
     AuthTokenPersister? tokenPersister,
     AuthPostLoginAction? postLoginAction,
+    PhoneAuthGateway? phoneAuthGateway,
   }) : _getRequest = getRequest,
        _postRequest = postRequest,
        _googleIdTokenProvider =
            googleIdTokenProvider ??
            (googleIdTokenAcquirer ?? GoogleIdTokenAcquirer()).acquire,
        _tokenPersister = tokenPersister ?? _persistTokens,
-       _postLoginAction = postLoginAction ?? FcmService.instance.registerToken;
+       _postLoginAction = postLoginAction ?? FcmService.instance.registerToken,
+       _phoneAuthGateway = phoneAuthGateway ?? FirebasePhoneAuthGateway();
 
   @visibleForTesting
   factory AuthService.forTesting({
@@ -101,6 +341,7 @@ class AuthService {
     GoogleIdTokenAcquirer? googleIdTokenAcquirer,
     AuthTokenPersister? tokenPersister,
     AuthPostLoginAction? postLoginAction,
+    PhoneAuthGateway? phoneAuthGateway,
   }) {
     return AuthService._(
       getRequest: getRequest,
@@ -109,6 +350,7 @@ class AuthService {
       googleIdTokenAcquirer: googleIdTokenAcquirer,
       tokenPersister: tokenPersister,
       postLoginAction: postLoginAction,
+      phoneAuthGateway: phoneAuthGateway,
     );
   }
 
@@ -117,6 +359,7 @@ class AuthService {
   final GoogleIdTokenProvider _googleIdTokenProvider;
   final AuthTokenPersister _tokenPersister;
   final AuthPostLoginAction _postLoginAction;
+  final PhoneAuthGateway _phoneAuthGateway;
 
   Future<AuthResponse> federatedGoogle() async {
     try {
@@ -200,40 +443,32 @@ class AuthService {
     return response['data'] as Map<String, dynamic>;
   }
 
-  Future<String> beginPhoneVerification(String phoneNumber) async {
-    final completer = Completer<String>();
-    await firebase.FirebaseAuth.instance.verifyPhoneNumber(
+  Future<void> beginPhoneVerification({
+    required String phoneNumber,
+    int? forceResendingToken,
+    required Future<void> Function(String idToken) verificationCompleted,
+    required void Function(PhoneVerificationFailure error) verificationFailed,
+    required void Function(String verificationId, int? resendToken) codeSent,
+    required void Function(String verificationId) codeAutoRetrievalTimeout,
+  }) {
+    return _phoneAuthGateway.verifyPhoneNumber(
       phoneNumber: phoneNumber,
-      verificationCompleted: (credential) async {
-        await firebase.FirebaseAuth.instance.signInWithCredential(credential);
-      },
-      verificationFailed: completer.completeError,
-      codeSent: (verificationId, _) {
-        if (!completer.isCompleted) completer.complete(verificationId);
-      },
-      codeAutoRetrievalTimeout: (verificationId) {
-        if (!completer.isCompleted) completer.complete(verificationId);
-      },
+      forceResendingToken: forceResendingToken,
+      verificationCompleted: verificationCompleted,
+      verificationFailed: verificationFailed,
+      codeSent: codeSent,
+      codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
     );
-    return completer.future;
   }
 
-  Future<AuthResponse> confirmPhoneVerification(
-    String verificationId,
-    String smsCode,
-  ) async {
-    final credential = firebase.PhoneAuthProvider.credential(
+  Future<String> confirmPhoneSmsCode({
+    required String verificationId,
+    required String smsCode,
+  }) {
+    return _phoneAuthGateway.confirmSmsCode(
       verificationId: verificationId,
       smsCode: smsCode,
     );
-    final user = (await firebase.FirebaseAuth.instance.signInWithCredential(
-      credential,
-    )).user;
-    final idToken = await user?.getIdToken();
-    if (idToken == null) {
-      throw StateError('Firebase phone authentication returned no ID token');
-    }
-    return federatedWithIdToken(idToken);
   }
 
   // UC-01: Register — sends OTP; tokens not issued until OTP is verified
@@ -243,13 +478,59 @@ class AuthService {
     String? phone,
     required String password,
     String? role,
+    AuthVerificationMethod verificationMethod = AuthVerificationMethod.email,
   }) async {
-    final body = <String, dynamic>{'name': name, 'password': password};
+    final body = <String, dynamic>{
+      'name': name,
+      'password': password,
+      'verificationMethod': verificationMethod.apiValue,
+    };
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
     if (role != null && role.isNotEmpty) body['role'] = role;
     final res = await _postRequest('/api/v1/auth/register', body);
     return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
+  }
+
+  Future<AuthResponse> registerWithPhoneIdToken({
+    required String idToken,
+    required String name,
+    String? email,
+    required String phone,
+    required String password,
+    String? role,
+    AuthSessionPersistenceGuard? shouldPersistSession,
+  }) async {
+    final body = <String, dynamic>{
+      'idToken': idToken,
+      'name': name,
+      'phone': phone,
+      'password': password,
+      'deviceInfo': 'CareBridge Flutter',
+    };
+    if (email != null && email.trim().isNotEmpty) {
+      body['email'] = email.trim();
+    }
+    if (role != null && role.trim().isNotEmpty) body['role'] = role;
+    final response = await _postRequest('/api/v1/auth/phone/register', body);
+    return _parseAndPersistSession(
+      response,
+      shouldPersistSession: shouldPersistSession,
+    );
+  }
+
+  Future<AuthResponse> loginWithPhoneIdToken(
+    String idToken, {
+    AuthSessionPersistenceGuard? shouldPersistSession,
+  }) async {
+    final response = await _postRequest('/api/v1/auth/phone/login', {
+      'idToken': idToken,
+      'deviceInfo': 'CareBridge Flutter',
+    });
+    return _parseAndPersistSession(
+      response,
+      shouldPersistSession: shouldPersistSession,
+    );
   }
 
   // UC-03: Password login — returns and persists a token-backed session.
@@ -262,14 +543,22 @@ class AuthService {
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
     final res = await _postRequest('/api/v1/auth/login', body);
+    return _parseAndPersistSession(res);
+  }
+
+  Future<AuthResponse> _parseAndPersistSession(
+    dynamic response, {
+    AuthSessionPersistenceGuard? shouldPersistSession,
+  }) async {
     final auth = AuthResponse.fromJson(
-      res['data'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+      response['data'] as Map<String, dynamic>? ?? const <String, dynamic>{},
     );
     if (auth.accessToken.trim().isEmpty ||
         auth.refreshToken.trim().isEmpty ||
         auth.user.id.trim().isEmpty) {
       throw const FormatException('Login response is incomplete');
     }
+    if (shouldPersistSession != null && !shouldPersistSession()) return auth;
     await _tokenPersister(auth);
     unawaited(_postLoginAction());
     return auth;
@@ -290,20 +579,16 @@ class AuthService {
     String? email,
     String? phone,
     required String otp,
+    AuthSessionPersistenceGuard? shouldPersistSession,
   }) async {
     final body = <String, dynamic>{'otp': otp};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/verify-otp', body);
-    final auth = AuthResponse.fromJson(res['data'] as Map<String, dynamic>);
-    await AuthState.instance.setTokens(
-      accessToken: auth.accessToken,
-      refreshToken: auth.refreshToken,
-      userId: auth.user.id,
-      role: auth.user.role,
+    final response = await _postRequest('/api/v1/auth/verify-otp', body);
+    return _parseAndPersistSession(
+      response,
+      shouldPersistSession: shouldPersistSession,
     );
-    unawaited(_postLoginAction());
-    return auth;
   }
 
   // Resend OTP — rate limited to 1 request per 60 seconds per identifier
@@ -311,7 +596,7 @@ class AuthService {
     final body = <String, dynamic>{};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    await apiPost('/api/v1/auth/resend-otp', body);
+    await _postRequest('/api/v1/auth/resend-otp', body);
   }
 
   Future<AuthResponse> refreshSession() async {

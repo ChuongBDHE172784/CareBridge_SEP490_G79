@@ -42,6 +42,85 @@ public final class ChecklistDistributionKeyFactory {
                 windowToken(windowEnd));
     }
 
+    /**
+     * Pregnancy-aware parent identity. A dating revision is part of the
+     * occurrence key so a prospective correction cannot collide with the
+     * prior revision's window when the calendar window is unchanged.
+     */
+    public static String instanceKey(
+            UUID templateVersionId,
+            UUID recipientUserId,
+            String recipientRole,
+            UUID careGroupId,
+            String careContextType,
+            UUID careContextId,
+            String windowStart,
+            String windowEnd,
+            Long gestationalDatingRevision) {
+        if (gestationalDatingRevision == null) {
+            return instanceKey(templateVersionId, recipientUserId, recipientRole, careGroupId,
+                    careContextType, careContextId, windowStart, windowEnd);
+        }
+        if (gestationalDatingRevision <= 0) {
+            throw new IllegalArgumentException("Gestational dating revision must be positive");
+        }
+        validateWindowBounds(windowStart, windowEnd);
+        return hash(
+                uuidOrAbsent(templateVersionId),
+                uuid(recipientUserId),
+                enumToken(recipientRole),
+                uuidOrAbsent(careGroupId),
+                enumToken(careContextType),
+                uuid(careContextId),
+                windowToken(windowStart),
+                windowToken(windowEnd),
+                "DATING_REVISION",
+                Long.toString(gestationalDatingRevision));
+    }
+
+    /**
+     * V2 cadence identity.  The period token, schedule policy and zone are
+     * explicit key material so two periods of one Plan cannot reuse a parent
+     * merely because their broad Plan window is the same.
+     */
+    public static String cadenceInstanceKey(
+            UUID templateVersionId,
+            UUID recipientUserId,
+            String recipientRole,
+            UUID careGroupId,
+            String careContextType,
+            UUID careContextId,
+            String scheduleType,
+            String materializationPolicy,
+            String periodKey,
+            String scheduleZoneId,
+            Long gestationalDatingRevision) {
+        if (periodKey == null || periodKey.isBlank()) {
+            throw new IllegalArgumentException("Cadence period key is required");
+        }
+        if (scheduleZoneId == null || scheduleZoneId.isBlank()) {
+            throw new IllegalArgumentException("Cadence schedule zone is required");
+        }
+        if (gestationalDatingRevision != null && gestationalDatingRevision <= 0) {
+            throw new IllegalArgumentException("Gestational dating revision must be positive");
+        }
+        return hash(
+                "CADENCE_V2",
+                uuidOrAbsent(templateVersionId),
+                uuid(recipientUserId),
+                enumToken(recipientRole),
+                uuidOrAbsent(careGroupId),
+                enumToken(careContextType),
+                uuid(careContextId),
+                enumToken(scheduleType),
+                enumToken(materializationPolicy),
+                periodKey.trim(),
+                scheduleZoneId.trim(),
+                gestationalDatingRevision == null
+                        ? "DATING_REVISION:<ABSENT>"
+                        : "DATING_REVISION:" + gestationalDatingRevision);
+    }
+
     public static String userCreatedInstanceKey(
             UUID recipientUserId,
             String recipientRole,
@@ -53,6 +132,35 @@ public final class ChecklistDistributionKeyFactory {
         validateWindowBounds(windowStart, windowEnd);
         return hash(
                 ABSENT,
+                uuid(recipientUserId),
+                enumToken(recipientRole),
+                uuidOrAbsent(careGroupId),
+                enumToken(careContextType),
+                uuid(careContextId),
+                dateOrAbsent(windowStart),
+                dateOrAbsent(windowEnd));
+    }
+
+    /** Contract-aware namespace for targetless V2 user-created parents. */
+    public static String userCreatedInstanceKey(
+            UUID recipientUserId,
+            String recipientRole,
+            UUID careGroupId,
+            String careContextType,
+            UUID careContextId,
+            LocalDate windowStart,
+            LocalDate windowEnd,
+            short contractVersion) {
+        if (contractVersion == 1) {
+            return userCreatedInstanceKey(recipientUserId, recipientRole, careGroupId,
+                    careContextType, careContextId, windowStart, windowEnd);
+        }
+        if (contractVersion != 2) {
+            throw new IllegalArgumentException("Unsupported checklist contract version");
+        }
+        validateWindowBounds(windowStart, windowEnd);
+        return hash(
+                "STANDARD_V2",
                 uuid(recipientUserId),
                 enumToken(recipientRole),
                 uuidOrAbsent(careGroupId),

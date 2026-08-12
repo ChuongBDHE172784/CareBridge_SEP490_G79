@@ -67,7 +67,6 @@ import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
-import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
@@ -704,11 +703,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/babies',
       builder: (context, state) => const BabyProfilesScreen(),
-    ),
-    GoRoute(
-      path: '/baby-care-hub',
-      builder: (context, state) =>
-          BabyCareHubScreen(initialBabyId: state.uri.queryParameters['babyId']),
     ),
     GoRoute(
       path: '/babies/add',

@@ -22,8 +22,9 @@ void main() {
     final requests = <Map<String, dynamic>>[];
     var refreshCount = 0;
     final service = UserChecklistService(
-      postRequest: (path, body) async {
+      postV2Request: (path, body, headers) async {
         expect(path, '/api/v1/user-checklist-items');
+        expect(headers, {'X-Checklist-Contract-Version': '2'});
         requests.add(Map<String, dynamic>.from(body));
         return _createdItem(body);
       },
@@ -47,13 +48,12 @@ void main() {
       find.byKey(const Key('user-checklist-task-text')),
       'Chuẩn bị quần áo cho bé',
     );
-    await tester.tap(find.byKey(const Key('user-checklist-target-baby')));
     await tester.tap(find.byKey(const Key('save-user-checklist-task')));
     await tester.pumpAndSettle();
 
     expect(requests, hasLength(1));
     expect(requests.single['itemText'], 'Chuẩn bị quần áo cho bé');
-    expect(requests.single['targetSubject'], 'BABY');
+    expect(requests.single.containsKey('targetSubject'), isFalse);
     expect(
       requests.single['journeyId'],
       '22222222-2222-4222-8222-222222222222',
@@ -70,7 +70,7 @@ void main() {
     final clientTaskIds = <String>[];
     var attempts = 0;
     final service = UserChecklistService(
-      postRequest: (_, body) async {
+      postV2Request: (_, body, _) async {
         attempts++;
         clientTaskIds.add(body['clientTaskId'] as String);
         if (attempts == 1) throw Exception('offline');
@@ -95,7 +95,6 @@ void main() {
       find.byKey(const Key('user-checklist-task-text')),
       'Đặt lịch tiêm cho bé',
     );
-    await tester.tap(find.byKey(const Key('user-checklist-target-baby')));
     await tester.tap(find.byKey(const Key('save-user-checklist-task')));
     await tester.pumpAndSettle();
     expect(find.text('Không thể thêm việc. Vui lòng thử lại.'), findsOneWidget);
@@ -112,7 +111,7 @@ void main() {
   ) async {
     Map<String, dynamic>? request;
     final service = UserChecklistService(
-      postRequest: (path, body) async {
+      postV2Request: (path, body, _) async {
         expect(path, '/api/v1/user-checklist-items');
         request = Map<String, dynamic>.from(body);
         return _createdItem(body);

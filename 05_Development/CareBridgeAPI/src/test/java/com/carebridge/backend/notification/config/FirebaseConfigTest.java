@@ -4,6 +4,7 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.api.client.http.apache.v2.ApacheHttpTransport;
 import com.google.firebase.FirebaseOptions;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -18,6 +19,14 @@ class FirebaseConfigTest {
     private static final String PROJECT_ID = "project-d04b488f-17fb-4ae5-b64";
     private static final String SERVICE_ACCOUNT_ID =
             "firebase-adminsdk-fbsvc@project-d04b488f-17fb-4ae5-b64.iam.gserviceaccount.com";
+
+    @Test
+    void firebaseAppActivationIncludesStandaloneAuthFlag() {
+        ConditionalOnExpression condition = FirebaseConfig.class
+                .getAnnotation(ConditionalOnExpression.class);
+
+        assertThat(condition.value()).contains("${carebridge.firebase.auth.enabled:false}");
+    }
 
     @Test
     void base64ModeRemainsDefaultAndDoesNotLoadAdc() throws Exception {

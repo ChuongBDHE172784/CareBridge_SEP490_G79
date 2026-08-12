@@ -56,12 +56,13 @@ describe('fetchAdminChecklistTemplates', () => {
     const result = await fetchAdminChecklistTemplates({
       status: 'REJECTED',
       stage: 'POSTPARTUM',
+      keyword: 'Theo dõi',
       page: 2,
       size: 7,
     });
 
     expect(apiClient.get).toHaveBeenCalledWith('/api/v1/admin/checklist-templates', {
-      params: { status: 'REJECTED', stage: 'POSTPARTUM', page: 2, size: 7 },
+      params: { status: 'REJECTED', stage: 'POSTPARTUM', keyword: 'Theo dõi', page: 2, size: 7 },
     });
     expect(result).toEqual(response);
     expect(result.content[0]).toEqual(expect.objectContaining({

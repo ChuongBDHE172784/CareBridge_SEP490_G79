@@ -120,6 +120,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.textContaining('tab Hành trình'), findsOneWidget);
+    expect(find.textContaining('vẫn được giữ lại'), findsOneWidget);
+
     await tester.tap(find.text('Đồng ý và tiếp tục'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('recommendation-dob-field')), findsOneWidget);
@@ -196,7 +199,7 @@ void main() {
 
     await tester.enterText(
       find.byKey(const Key('recommendation-height-field')),
-      '160',
+      '250.0',
     );
     await tester.enterText(
       find.byKey(const Key('recommendation-weight-field')),
@@ -208,6 +211,7 @@ void main() {
     final bmi = service.lastDraft?['bmi'] as Map?;
     expect(bmi?['weightContext'], 'CURRENT_NON_PREGNANT');
     expect(bmi?['measuredOn'], '2026-08-03');
+    expect(bmi?['heightCm'], 250.0);
   });
 
   testWidgets('grouped lifestyle choices map to new audience flags', (

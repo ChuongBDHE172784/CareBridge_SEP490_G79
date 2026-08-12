@@ -27,6 +27,21 @@ Release remains blocked unless one evidence set proves all of the following on t
 
 Local embedded-PostgreSQL results are useful preflight evidence but do not satisfy this production-like gate.
 
+## Pregnancy V2 current-chain preflight (`20260812130000`)
+
+The CHK-041 verifier is intentionally not a verifier for the seeded Pregnancy V2 content. Run this preflight separately on the same disposable PostgreSQL 18 profile before any clinical-copy sign-off or cohort enablement:
+
+1. Start from a clean disposable database and apply the active `classpath:db/migration` location through `20260812130000`.
+2. Run `ChecklistFlywayEmbeddedPostgresTest` (or an equivalent SQL capture) and retain the Flyway version, validation result, and sanitized query evidence with the rehearsal record.
+3. Require all of these assertions: latest successful Flyway version is `20260812130000`; there are 16 Pregnancy V2 roots and 62 Pregnancy V2 leaves; every Pregnancy V2 row has `target_subject IS NULL` and `is_required IS NULL`; no Pregnancy DAILY root exists; Plan 2 starts at zero-based week offset 20 (source week 21); and all 16 roots remain `DRAFT`, `distribution_enabled = false`, and `provenanceStatus = PENDING_CLINICAL_COPY_SIGN_OFF`.
+4. Attempting to set a seeded root to `APPROVED` plus `distribution_enabled = true` before provenance sign-off must fail with the database constraint `checklist_pregnancy_v2_provenance_activation_ck`, and the row must remain Draft/non-distributable after the failed transaction.
+
+This preflight proves the current seed and fail-closed activation boundary only. It does not prove clinical/content sign-off, production-like migration throughput, occurrence/history behavior, or mobile distribution. Those remain separate release gates. The executable embedded evidence is `com.carebridge.backend.checklist.distribution.ChecklistFlywayEmbeddedPostgresTest`.
+
+### Staging-only signed-off activation rehearsal
+
+`com.carebridge.backend.checklist.distribution.PregnancyV2SignedOffActivationEmbeddedPostgresTest` applies the current chain to a disposable PostgreSQL 18 process, patches one WHO root with a test-only `SIGNED_OFF` fixture, and proves that the database gate permits one approved/distributable candidate while the remaining 15 roots stay Draft/non-distributable/pending. The fixture is under `src/test/resources/checklist/` and is never a Flyway migration. This is activation-boundary evidence only; it is not clinical approval, content sign-off, cohort enablement, occurrence/history E2E, or production-capacity evidence.
+
 ## Safety prerequisites
 
 1. Restore the sanitized production-representative backup into a disposable database. Never point this workflow at the live production primary.
@@ -50,6 +65,8 @@ The application-side readiness verifier independently defaults to zero unresolve
 The script validates integrity and cross-run binding; it does not establish artifact authenticity by itself. Before the database operator starts, an independent release reviewer must record the sanitized backup's dataset fingerprint, expected Flyway history hash and quarantine baselines in an access-controlled immutable change record. The operator must copy those reviewed values into the commands and must not derive replacements from the database under test. A script `PASS` without this separation-of-duties evidence is not release approval.
 
 An authenticated `OPERATIONS` principal can execute the same production verifier at `GET /api/v1/operations/checklist-migration/readiness`. A blocked report must prevent the separate rollout procedure from enabling a cohort; the endpoint itself never changes rollout state.
+
+> **Current-chain boundary:** The historical verifier in Sections 1–6 must not be passed an expected version newer than `20260730050000`; it reads the legacy staged fixture. The current active chain, including Pregnancy V2 seed/provenance migrations, is covered only by the separate preflight above until a production-like verifier is explicitly reviewed for the new schema.
 
 ## 1. Apply and time the expand/pre-backfill chain
 

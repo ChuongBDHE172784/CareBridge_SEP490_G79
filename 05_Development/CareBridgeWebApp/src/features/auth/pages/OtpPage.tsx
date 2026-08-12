@@ -29,9 +29,9 @@ export default function OtpPage() {
    state.identifier.includes('@') ? { email: state.identifier, otp: code } : { phone: state.identifier, otp: code }
   )
    .then((result) => {
-    const route = getDefaultRouteForRole(
-     result.user.role as Parameters<typeof getDefaultRouteForRole>[0],
-    );
+    const route = result.user.role
+     ? getDefaultRouteForRole(result.user.role)
+     : '/account/profile';
     navigate(route, { replace: true });
    })
    .catch((err: unknown) => {
@@ -114,8 +114,9 @@ export default function OtpPage() {
  };
 
  const handleResend = async () => {
-  if (cooldown > 0 || !state?.identifier) return;
+  if (cooldown > 0 || !state?.identifier || isSubmitting) return;
   setServerError(null);
+  setIsSubmitting(true);
   try {
    const isEmail = state.identifier.includes('@');
    await resendOtp(isEmail ? { email: state.identifier } : { phone: state.identifier });
@@ -124,6 +125,8 @@ export default function OtpPage() {
    setAutoFilled(false);
   } catch {
    setServerError('Không thể gửi lại OTP. Vui lòng thử lại sau.');
+  } finally {
+   setIsSubmitting(false);
   }
  };
 

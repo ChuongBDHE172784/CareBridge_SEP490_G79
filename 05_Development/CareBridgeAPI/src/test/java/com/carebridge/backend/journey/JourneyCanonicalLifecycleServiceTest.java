@@ -197,6 +197,20 @@ class JourneyCanonicalLifecycleServiceTest {
     }
 
     @Test
+    void nonPregnancyDatingErrorPrecedesPostpartumProvenanceValidation() {
+        when(userRepository.findById(JourneyLifecycleTestFactory.MOTHER_ID))
+                .thenReturn(Optional.of(JourneyLifecycleTestFactory.mother()));
+        var request = JourneyLifecycleTestFactory.postpartumCreate();
+        request.setDateSource(null);
+        request.setLastMenstrualDate(java.time.LocalDate.of(2026, 6, 1));
+
+        assertJourneyError("GESTATIONAL_DATING_STAGE_INAPPLICABLE", HttpStatus.BAD_REQUEST,
+                () -> service.createJourney(request, JourneyLifecycleTestFactory.MOTHER_ID));
+        verify(journeyRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(transitionRepository, auditService, eventPublisher);
+    }
+
+    @Test
     void jrnTc003_dateCorrectionRecordsPreviousAndNewValues() {
         MotherJourney current = JourneyLifecycleTestFactory.activePregnancy();
         when(journeyRepository.findById(current.getId())).thenReturn(Optional.of(current));
@@ -250,7 +264,8 @@ class JourneyCanonicalLifecycleServiceTest {
         ArgumentCaptor<MotherJourneyTransition> history =
                 ArgumentCaptor.forClass(MotherJourneyTransition.class);
         verify(transitionRepository).saveAndFlush(history.capture());
-        assertThat(history.getValue().getEventType()).isEqualTo(JourneyTransitionType.STAGE_CHANGED);
+        assertThat(history.getValue().getEventType())
+                .isEqualTo(JourneyTransitionType.PREGNANCY_EPOCH_STARTED);
         assertThat(history.getValue().getSource()).isEqualTo(JourneyDateSource.SYSTEM_DERIVED);
         assertThat(history.getValue().getReason()).isEqualTo("POSTPARTUM_NEW_PREGNANCY_EPOCH");
         assertThat(history.getValue().getChanges())

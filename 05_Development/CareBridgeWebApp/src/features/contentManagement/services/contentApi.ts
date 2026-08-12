@@ -116,6 +116,7 @@ export async function fetchChecklists(stage?: ContentStage): Promise<ChecklistTe
 export async function fetchAdminChecklistTemplates(params: {
   status?: ChecklistTemplateStatus;
   stage?: ContentStage;
+  keyword?: string;
   page?: number;
   size?: number;
 } = {}): Promise<PaginatedResponse<AdminChecklistTemplateDetail>> {

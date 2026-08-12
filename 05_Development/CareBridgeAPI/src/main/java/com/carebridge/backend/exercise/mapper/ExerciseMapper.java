@@ -89,7 +89,7 @@ public class ExerciseMapper {
         entity.setInstructionContent(request.getInstructionContent());
         entity.setMediaUrl(request.getMediaUrl());
         entity.setSafetyWarning(request.getSafetyWarning());
-        entity.setSupportsPostureAnalysis(request.getSupportsPostureAnalysis());
+        entity.setSupportsPostureAnalysis(Boolean.TRUE.equals(request.getSupportsPostureAnalysis()));
         entity.setStatus(ExerciseStatus.DRAFT);
         entity.setVersionNo(1);
         entity.setCreatedAt(now);

@@ -11,6 +11,7 @@ import ExpertLayout from '../layouts/ExpertLayout';
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
 import FederatedRegisterPage from '../../features/auth/pages/FederatedRegisterPage';
+import RegistrationVerificationPage from '../../features/auth/pages/RegistrationVerificationPage';
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
@@ -111,6 +112,7 @@ const ForbiddenPage = () => (
 
 export const router = createBrowserRouter([
   { path: '/register', element: <FederatedRegisterPage /> },
+  { path: '/register/verify', element: <RegistrationVerificationPage /> },
   {
     path: '/login',
     element: <AuthLayout />,

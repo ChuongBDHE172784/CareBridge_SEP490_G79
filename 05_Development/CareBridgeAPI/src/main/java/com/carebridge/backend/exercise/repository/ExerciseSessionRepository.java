@@ -34,9 +34,10 @@ public interface ExerciseSessionRepository extends JpaRepository<ExerciseSession
           AND s.sessionStatus = 'COMPLETED'
           AND (:trimesterScope IS NULL OR EXISTS (
               SELECT 1 FROM PregnancyExercise e WHERE e.exerciseId = s.exerciseId
-              AND e.trimesterScope = :trimesterScope))
-          AND (:from IS NULL OR s.startedAt >= :from)
-          AND (:to IS NULL OR s.startedAt <= :to)
+              AND (e.trimesterScope = :trimesterScope
+                   OR e.trimesterScope = com.carebridge.backend.exercise.entity.TrimesterScope.ALL)))
+          AND s.startedAt >= COALESCE(:from, s.startedAt)
+          AND s.startedAt <= COALESCE(:to, s.startedAt)
         ORDER BY s.startedAt DESC
     """)
     Page<ExerciseSession> findCompletedByUserIdAndFilters(

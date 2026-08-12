@@ -75,6 +75,7 @@ class GrowthTrendChart extends StatelessWidget {
                     painter: GrowthTrendChartPainter(
                       points,
                       whoPoints: whoPoints,
+                      unit: presentation.unit,
                     ),
                     size: Size.infinite,
                   ),
@@ -453,10 +454,12 @@ class GrowthTrendChartPainter extends CustomPainter {
 
   final List<GrowthTrendPoint> points;
   final List<GrowthTrendPoint> whoPoints;
+  final String? unit;
 
   GrowthTrendChartPainter(
     List<GrowthTrendPoint> points, {
     List<GrowthTrendPoint> whoPoints = const [],
+    this.unit,
   }) : points = List<GrowthTrendPoint>.unmodifiable(points),
        whoPoints = List<GrowthTrendPoint>.unmodifiable(whoPoints);
 
@@ -464,26 +467,16 @@ class GrowthTrendChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty || size.isEmpty) return;
 
-    const horizontalPadding = 18.0;
-    const verticalPadding = 20.0;
+    const leftPadding = 38.0;
+    const rightPadding = 18.0;
+    const topPadding = 20.0;
+    const bottomPadding = 24.0;
     final plotRect = Rect.fromLTRB(
-      horizontalPadding,
-      verticalPadding,
-      math.max(horizontalPadding, size.width - horizontalPadding),
-      math.max(verticalPadding, size.height - verticalPadding),
+      leftPadding,
+      topPadding,
+      math.max(leftPadding + 10, size.width - rightPadding),
+      math.max(topPadding + 10, size.height - bottomPadding),
     );
-
-    final gridPaint = Paint()
-      ..color = _gridColor
-      ..strokeWidth = 1;
-    for (var index = 0; index < 5; index++) {
-      final y = plotRect.top + (plotRect.height * index / 4);
-      canvas.drawLine(
-        Offset(plotRect.left, y),
-        Offset(plotRect.right, y),
-        gridPaint,
-      );
-    }
 
     final allPoints = [...points, ...whoPoints];
     final values = allPoints
@@ -496,6 +489,39 @@ class GrowthTrendChartPainter extends CustomPainter {
     final displayMinimum = rawRange == 0
         ? minimum - 0.5
         : minimum - rawRange * 0.15;
+
+    // Draw 5 Y-axis grid lines and Y-axis scale values
+    final gridPaint = Paint()
+      ..color = _gridColor
+      ..strokeWidth = 1;
+    final yAxisPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    for (var index = 0; index < 5; index++) {
+      final y = plotRect.top + (plotRect.height * index / 4);
+      canvas.drawLine(
+        Offset(plotRect.left, y),
+        Offset(plotRect.right, y),
+        gridPaint,
+      );
+
+      final yVal = displayMinimum + displayRange * (4 - index) / 4;
+      final yValStr = yVal % 1 == 0 ? yVal.toInt().toString() : yVal.toStringAsFixed(1);
+      
+      yAxisPainter.text = TextSpan(
+        text: yValStr,
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF9C857C),
+        ),
+      );
+      yAxisPainter.layout();
+      yAxisPainter.paint(
+        canvas,
+        Offset(plotRect.left - yAxisPainter.width - 5, y - yAxisPainter.height / 2),
+      );
+    }
 
     final times = allPoints
         .map((point) => point.measuredAt.millisecondsSinceEpoch)
@@ -557,6 +583,91 @@ class GrowthTrendChartPainter extends CustomPainter {
         pointBorderPaint,
       );
     }
+
+    // Paint X-axis date labels
+    final xAxisPainter = TextPainter(textDirection: TextDirection.ltr);
+    final datesToDraw = <int>{};
+    final step = (offsets.length > 5) ? (offsets.length / 4).ceil() : 1;
+    for (var i = 0; i < offsets.length; i += step) {
+      datesToDraw.add(i);
+    }
+    datesToDraw.add(offsets.length - 1);
+
+    for (final index in datesToDraw) {
+      if (index < 0 || index >= offsets.length) continue;
+      final offset = offsets[index];
+      final date = points[index].measuredAt;
+      final dateStr = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+
+      xAxisPainter.text = TextSpan(
+        text: dateStr,
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF9C857C),
+        ),
+      );
+      xAxisPainter.layout();
+
+      final labelX = (offset.dx - xAxisPainter.width / 2).clamp(
+        plotRect.left,
+        plotRect.right - xAxisPainter.width,
+      );
+      xAxisPainter.paint(
+        canvas,
+        Offset(labelX, plotRect.bottom + 5),
+      );
+    }
+
+    // Paint value labels for points to display measurements clearly
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    for (var index = 0; index < offsets.length; index++) {
+      final offset = offsets[index];
+      final val = points[index].value;
+      final valStr = val % 1 == 0 ? val.toInt().toString() : val.toStringAsFixed(1);
+      final labelText = (unit != null && unit!.isNotEmpty) ? '$valStr $unit' : valStr;
+
+      textPainter.text = TextSpan(
+        text: labelText,
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF845143),
+        ),
+      );
+      textPainter.layout();
+
+      final labelWidth = textPainter.width + 10;
+      final labelHeight = textPainter.height + 4;
+      final isTopHalf = offset.dy < plotRect.top + plotRect.height / 2;
+      double labelY = isTopHalf ? (offset.dy + 8) : (offset.dy - labelHeight - 8);
+      labelY = labelY.clamp(plotRect.top, plotRect.bottom - labelHeight);
+      final labelX = (offset.dx - labelWidth / 2).clamp(
+        plotRect.left,
+        plotRect.right - labelWidth,
+      );
+
+      final bgRRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(labelX, labelY, labelWidth, labelHeight),
+        const Radius.circular(6),
+      );
+
+      canvas.drawRRect(
+        bgRRect,
+        Paint()..color = const Color(0xFFFFFDFB),
+      );
+      canvas.drawRRect(
+        bgRRect,
+        Paint()
+          ..color = const Color(0xFFC98C7B).withValues(alpha: 0.4)
+          ..strokeWidth = 1
+          ..style = PaintingStyle.stroke,
+      );
+
+      textPainter.paint(canvas, Offset(labelX + 5, labelY + 2));
+    }
   }
 
   void _drawDashedPolyline(Canvas canvas, List<Offset> offsets, Paint paint) {
@@ -588,7 +699,8 @@ class GrowthTrendChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant GrowthTrendChartPainter oldDelegate) {
-    return _seriesChanged(points, oldDelegate.points) ||
+    return unit != oldDelegate.unit ||
+        _seriesChanged(points, oldDelegate.points) ||
         _seriesChanged(whoPoints, oldDelegate.whoPoints);
   }
 

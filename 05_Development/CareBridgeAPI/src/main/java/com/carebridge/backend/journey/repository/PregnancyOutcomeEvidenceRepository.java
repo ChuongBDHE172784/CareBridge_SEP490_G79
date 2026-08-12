@@ -26,7 +26,9 @@ public interface PregnancyOutcomeEvidenceRepository
              WHERE event_category='PREGNANCY_OUTCOME_EVIDENCE'
                AND subject_reference_id=:journeyId
                AND payload->>'submissionId'=CAST(:submissionId AS text)
-               AND CAST(COALESCE(payload->>'journeyVersion', '0') AS bigint) > :epochVersion
+               AND CASE WHEN COALESCE(payload->>'journeyVersion', '0') ~ '^[0-9]+$'
+                        AND COALESCE(payload->>'journeyVersion', '0')::numeric <= 9223372036854775807
+                        THEN COALESCE(payload->>'journeyVersion', '0')::bigint END > :epochVersion
              ORDER BY occurred_at DESC LIMIT 1
             """, nativeQuery = true)
     Optional<PregnancyOutcomeEvidence> findByJourneyIdAndSubmissionIdAfterEpochVersion(
@@ -38,7 +40,9 @@ public interface PregnancyOutcomeEvidenceRepository
             SELECT * FROM audit_events
              WHERE event_category='PREGNANCY_OUTCOME_EVIDENCE'
                AND subject_reference_id=:journeyId
-             ORDER BY CAST(NULLIF(payload->>'revisionNumber', '') AS integer) DESC NULLS LAST,
+             ORDER BY CASE WHEN payload->>'revisionNumber' ~ '^[0-9]+$'
+                           AND (payload->>'revisionNumber')::numeric <= 2147483647
+                           THEN (payload->>'revisionNumber')::integer END DESC NULLS LAST,
                       created_at DESC,
                       audit_event_id DESC
              LIMIT 1
@@ -50,8 +54,12 @@ public interface PregnancyOutcomeEvidenceRepository
             SELECT * FROM audit_events
              WHERE event_category='PREGNANCY_OUTCOME_EVIDENCE'
                AND subject_reference_id=:journeyId
-               AND CAST(COALESCE(payload->>'journeyVersion', '0') AS bigint) > :epochVersion
-             ORDER BY CAST(NULLIF(payload->>'revisionNumber', '') AS integer) DESC NULLS LAST,
+               AND CASE WHEN COALESCE(payload->>'journeyVersion', '0') ~ '^[0-9]+$'
+                        AND COALESCE(payload->>'journeyVersion', '0')::numeric <= 9223372036854775807
+                        THEN COALESCE(payload->>'journeyVersion', '0')::bigint END > :epochVersion
+             ORDER BY CASE WHEN payload->>'revisionNumber' ~ '^[0-9]+$'
+                           AND (payload->>'revisionNumber')::numeric <= 2147483647
+                           THEN (payload->>'revisionNumber')::integer END DESC NULLS LAST,
                       created_at DESC,
                       audit_event_id DESC
              LIMIT 1

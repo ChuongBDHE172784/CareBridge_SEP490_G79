@@ -14,6 +14,7 @@ type FormState = {
 type FieldErrors = Partial<Record<keyof FormState, string>>;
 
 const initialForm: FormState = { name: '', email: '', phone: '', password: '', confirmPassword: '' };
+const VIETNAMESE_PHONE_PATTERN = /^\+84[35789]\d{8}$/;
 
 export default function ExpertRegisterPage() {
   const navigate = useNavigate();
@@ -37,11 +38,16 @@ export default function ExpertRegisterPage() {
     event.preventDefault();
     setError(null);
     setFieldErrors({});
-    if (!form.name.trim() || !form.email.trim()) {
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
       setFieldErrors({
         ...(!form.name.trim() ? { name: 'Vui lòng nhập họ và tên.' } : {}),
         ...(!form.email.trim() ? { email: 'Vui lòng nhập email.' } : {}),
+        ...(!form.phone.trim() ? { phone: 'Vui lòng nhập số điện thoại.' } : {}),
       });
+      return;
+    }
+    if (!VIETNAMESE_PHONE_PATTERN.test(form.phone.trim())) {
+      setFieldErrors({ phone: 'Số điện thoại cần là số di động Việt Nam dạng +84xxxxxxxxx.' });
       return;
     }
     if (form.password.length < 8) {
@@ -58,7 +64,7 @@ export default function ExpertRegisterPage() {
       const result = await registerExpert({
         name: form.name.trim(),
         email: form.email.trim(),
-        phone: form.phone.trim() || undefined,
+        phone: form.phone.trim(),
         password: form.password,
       });
       navigate('/login/otp', {
@@ -146,7 +152,7 @@ export default function ExpertRegisterPage() {
           <form className="grid gap-5" onSubmit={submit}>
             <Field name="name" label="Họ và tên" required value={form.name} error={fieldErrors.name} onChange={update('name')} autoComplete="name" placeholder="Nguyễn Văn A" />
             <Field name="email" label="Email" type="email" required value={form.email} error={fieldErrors.email} onChange={update('email')} autoComplete="email" placeholder="email@example.com" />
-            <Field name="phone" label="Số điện thoại" type="tel" value={form.phone} error={fieldErrors.phone} onChange={update('phone')} autoComplete="tel" placeholder="09xxxxxxxx (Tùy chọn)" />
+            <Field name="phone" label="Số điện thoại" type="tel" required value={form.phone} error={fieldErrors.phone} onChange={update('phone')} autoComplete="tel" placeholder="+84901234567" />
             <div className="grid gap-5 sm:grid-cols-2">
               <Field name="password" label="Mật khẩu" type="password" required value={form.password} error={fieldErrors.password} onChange={update('password')} autoComplete="new-password" placeholder="••••••••" />
               <Field name="confirmPassword" label="Nhập lại mật khẩu" type="password" required value={form.confirmPassword} error={fieldErrors.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" placeholder="••••••••" />

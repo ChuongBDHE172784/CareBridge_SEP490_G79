@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/auth/screens/otp_verification_screen.dart';
 import 'package:untitled/features/auth/screens/register_screen.dart';
+import 'package:untitled/features/auth/screens/registration_verification_method_screen.dart';
 import 'package:untitled/features/auth/services/auth_service.dart';
 
 void main() {
@@ -18,6 +19,10 @@ void main() {
     });
 
     await _pumpAndSubmit(tester, service);
+    await tester.tap(
+      find.byKey(const Key('registration-verification-continue')),
+    );
+    await tester.pumpAndSettle();
 
     expect(find.text('Tài khoản đã tồn tại'), findsOneWidget);
     expect(
@@ -35,6 +40,10 @@ void main() {
     });
 
     await _pumpAndSubmit(tester, service);
+    await tester.tap(
+      find.byKey(const Key('registration-verification-continue')),
+    );
+    await tester.pumpAndSettle();
 
     expect(
       find.text('Thông tin không hợp lệ. Vui lòng kiểm tra lại.'),
@@ -54,15 +63,24 @@ void main() {
       };
     });
 
-    await _pumpAndSubmit(tester, service, settle: false);
-    await tester.pump();
+    await _pumpAndSubmit(tester, service);
+
+    expect(find.byType(RegistrationVerificationMethodScreen), findsOneWidget);
+    expect(requests, isEmpty);
+
+    await tester.tap(
+      find.byKey(const Key('registration-verification-continue')),
+    );
+    await tester.pumpAndSettle();
 
     expect(requests, hasLength(1));
     expect(requests.single.path, '/api/v1/auth/register');
     expect(requests.single.body, {
       'name': 'Mother Test',
       'password': 'Password@123',
+      'verificationMethod': 'EMAIL',
       'email': 'mother@example.com',
+      'phone': '+84912345678',
     });
     expect(find.byType(OtpVerificationScreen), findsOneWidget);
   });
@@ -88,8 +106,9 @@ Future<void> _pumpAndSubmit(
   final fields = find.byType(TextField);
   await tester.enterText(fields.at(0), 'Mother Test');
   await tester.enterText(fields.at(1), 'mother@example.com');
-  await tester.enterText(fields.at(2), 'Password@123');
+  await tester.enterText(fields.at(2), '+84912345678');
   await tester.enterText(fields.at(3), 'Password@123');
+  await tester.enterText(fields.at(4), 'Password@123');
   final checkbox = find.byType(Checkbox);
   await tester.ensureVisible(checkbox);
   await tester.pumpAndSettle();

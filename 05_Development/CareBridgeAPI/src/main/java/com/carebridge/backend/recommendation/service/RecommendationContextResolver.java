@@ -3,6 +3,7 @@ package com.carebridge.backend.recommendation.service;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.service.GestationalDatingResolver;
 import com.carebridge.backend.recommendation.dto.RecommendationEnums.WeekEligibilityMode;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -13,10 +14,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Component
 public class RecommendationContextResolver {
     private final Clock clock;
+    private final GestationalDatingResolver datingResolver;
 
     @Autowired
-    public RecommendationContextResolver() { this(Clock.systemUTC()); }
-    public RecommendationContextResolver(Clock clock) { this.clock = clock; }
+    public RecommendationContextResolver(GestationalDatingResolver datingResolver) {
+        this(Clock.systemUTC(), datingResolver);
+    }
+    public RecommendationContextResolver(Clock clock) {
+        this(clock, new GestationalDatingResolver());
+    }
+    public RecommendationContextResolver(Clock clock, GestationalDatingResolver datingResolver) {
+        this.clock = clock;
+        this.datingResolver = datingResolver;
+    }
 
     public RecommendationContext resolve(MotherJourney journey) {
         ContentStage stage = switch (journey.getJourneyType()) {
@@ -29,16 +39,22 @@ public class RecommendationContextResolver {
             return new RecommendationContext(stage, null, RecommendationContext.WeekState.NOT_APPLICABLE,
                     WeekEligibilityMode.NOT_APPLICABLE);
         }
+        if (!GestationalDatingResolver.hasResolvedAuthority(journey)) {
+            return new RecommendationContext(stage, null, RecommendationContext.WeekState.MISSING,
+                    WeekEligibilityMode.STAGE_WIDE_ONLY_MISSING);
+        }
         LocalDate today = LocalDate.now(clock.withZone(com.carebridge.backend.recommendation.RecommendationConstants.BUSINESS_ZONE));
-        LocalDate lmp = journey.getLastMenstrualDate();
-        if (lmp == null && journey.getEstimatedDueDate() != null) lmp = journey.getEstimatedDueDate().minusDays(280);
+        LocalDate lmp = GestationalDatingResolver.canonicalLmp(
+                journey.getGestationalDatingBasis(),
+                journey.getLastMenstrualDate(),
+                journey.getEstimatedDueDate());
         if (lmp == null) {
             return new RecommendationContext(stage, null, RecommendationContext.WeekState.MISSING,
                     WeekEligibilityMode.STAGE_WIDE_ONLY_MISSING);
         }
         long days = ChronoUnit.DAYS.between(lmp, today);
         int week = (int) Math.floorDiv(days, 7);
-        if (week < 0 || week > 42) {
+        if (week < 0) {
             return new RecommendationContext(stage, null, RecommendationContext.WeekState.OUT_OF_RANGE,
                     WeekEligibilityMode.STAGE_WIDE_ONLY_OUT_OF_RANGE);
         }

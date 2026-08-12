@@ -196,6 +196,7 @@ describe('ChecklistDetailPage version', () => {
     harness.fetchChecklistTemplateDetail.mockResolvedValue({
       ...checklistDetail(), status: 'PENDING_REVIEW', migrationReviewRequired: false,
       migrationReviewedAt: '2026-07-29T00:00:00Z', distributionEnabled: false,
+      provenance: { provenanceStatus: 'SIGNED_OFF' },
     });
     harness.activateChecklistVersion.mockResolvedValue({ previousStatus: 'PENDING_REVIEW', newStatus: 'APPROVED' });
 
@@ -204,5 +205,19 @@ describe('ChecklistDetailPage version', () => {
     await user.click(screen.getByRole('button', { name: 'Activate reviewed version' }));
 
     await waitFor(() => expect(harness.activateChecklistVersion).toHaveBeenCalledWith('lineage-1', 'version-3'));
+  });
+
+  it('does not offer activation while copy provenance is still pending sign-off', async () => {
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(), status: 'PENDING_REVIEW', migrationReviewRequired: false,
+      migrationReviewedAt: '2026-07-29T00:00:00Z', distributionEnabled: false,
+      provenance: { provenanceStatus: 'PENDING_CLINICAL_COPY_SIGN_OFF' },
+    });
+
+    render(<ChecklistDetailPage />);
+    await screen.findByRole('heading', { name: /Checklist phiên bản ba/ });
+
+    expect(screen.queryByRole('button', { name: 'Activate reviewed version' })).toBeNull();
+    expect(screen.getByText(/chưa có sign-off clinical\/content/)).toBeTruthy();
   });
 });

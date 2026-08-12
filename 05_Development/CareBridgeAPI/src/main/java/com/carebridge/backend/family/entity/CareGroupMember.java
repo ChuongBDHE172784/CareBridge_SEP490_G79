@@ -75,6 +75,18 @@ public class CareGroupMember {
     @Column(name = "permission_json", columnDefinition = "jsonb")
     private String permissionJson;
 
+    /** Append-only checklist VIEW/epoch timeline (CHECKLIST_ACCESS_TIMELINE_V1). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "checklist_access_timeline_jsonb", columnDefinition = "jsonb")
+    private String checklistAccessTimelineJson;
+
+    /** Monotonic checklist VIEW epoch; null until checklist baseline is established. */
+    @Column(name = "checklist_access_epoch")
+    private Long checklistAccessEpoch;
+
+    @Column(name = "checklist_access_quarantine_reason_code", length = 80)
+    private String checklistAccessQuarantineReasonCode;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

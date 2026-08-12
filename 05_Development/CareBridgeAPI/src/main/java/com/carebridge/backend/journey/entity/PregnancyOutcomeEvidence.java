@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -126,7 +127,7 @@ public class PregnancyOutcomeEvidence {
         if (payload == null) return;
         outcomeType = enumValue(PregnancyOutcomeType.class, payload.get("outcomeType"));
         Object date = payload.get("outcomeDate");
-        if (date != null && !date.toString().isBlank()) outcomeDate = LocalDate.parse(date.toString());
+        outcomeDate = localDateValue(date);
         revisionNumber = intValue(payload.get("revisionNumber"));
         // V312 legacy rows did not carry this value. Zero is the explicit
         // pre-versioning sentinel and prevents a missing payload key from
@@ -147,15 +148,36 @@ public class PregnancyOutcomeEvidence {
     }
 
     private int intValue(Object value) {
-        return value instanceof Number n ? n.intValue() : value == null ? 0 : Integer.parseInt(value.toString());
+        if (value == null) return 0;
+        try {
+            long parsed = value instanceof Number number
+                    ? number.longValue()
+                    : Long.parseLong(value.toString().trim());
+            return parsed < 0 ? 0 : Math.toIntExact(parsed);
+        } catch (ArithmeticException | NumberFormatException exception) {
+            return 0;
+        }
     }
 
     private long longValue(Object value) {
-        return value instanceof Number n ? n.longValue() : value == null ? 0 : Long.parseLong(value.toString());
+        if (value == null) return 0L;
+        try {
+            long parsed = value instanceof Number number
+                    ? number.longValue()
+                    : Long.parseLong(value.toString().trim());
+            return parsed < 0 ? 0L : parsed;
+        } catch (ArithmeticException | NumberFormatException exception) {
+            return 0L;
+        }
     }
 
     private <E extends Enum<E>> E enumValue(Class<E> type, Object value) {
-        return value == null || value.toString().isBlank() ? null : Enum.valueOf(type, value.toString());
+        if (value == null || value.toString().isBlank()) return null;
+        try {
+            return Enum.valueOf(type, value.toString());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private String text(Object value) {
@@ -163,6 +185,20 @@ public class PregnancyOutcomeEvidence {
     }
 
     private UUID uuid(Object value) {
-        return value == null || value.toString().isBlank() ? null : UUID.fromString(value.toString());
+        if (value == null || value.toString().isBlank()) return null;
+        try {
+            return UUID.fromString(value.toString());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private LocalDate localDateValue(Object value) {
+        if (value == null || value.toString().isBlank()) return null;
+        try {
+            return LocalDate.parse(value.toString());
+        } catch (DateTimeParseException exception) {
+            return null;
+        }
     }
 }

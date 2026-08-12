@@ -39,8 +39,10 @@ public class JourneyTimelineService implements IJourneyTimelineService {
                            payload->>'toStage' AS to_stage,
                            payload->>'riskLevel' AS risk_level,
                            payload->>'stage' AS stage,
-                           CAST(payload->>'triageSessionId' AS uuid) AS source_intake_id,
-                           CAST(payload->>'emergencySessionId' AS uuid) AS source_emergency_id,
+                           CASE WHEN payload->>'triageSessionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                                THEN CAST(payload->>'triageSessionId' AS uuid) END AS source_intake_id,
+                           CASE WHEN payload->>'emergencySessionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                                THEN CAST(payload->>'emergencySessionId' AS uuid) END AS source_emergency_id,
                            payload->>'originAction' AS origin_action
                     FROM audit_events
                     WHERE subject_reference_id = ?

@@ -5,9 +5,12 @@ import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationMode;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
 import com.carebridge.backend.checklist.entity.ChecklistInstance;
 import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
@@ -27,8 +30,10 @@ import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.service.GestationalDatingResolver;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -117,7 +122,7 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
             if (roles.isEmpty()) {
                 continue;
             }
-            ChecklistLifecycleEligibility eligibility = inlineEligibility(template);
+            ChecklistLifecycleEligibility planEligibility = inlineEligibility(template);
             List<ChecklistDistributionItem> items = itemRepository.findByTemplate_IdOrderByOrder(template.getId())
                     .stream()
                     .map(this::toDistributionItem)
@@ -134,18 +139,19 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                         continue;
                     }
                     commands.add(actorCommand(
-                            template, null, context, actorUserId, ChecklistRecipientRole.MOTHER,
-                            true, eligibility, items, effectiveDate, timezone, correlationId));
+                             template, null, context, actorUserId, ChecklistRecipientRole.MOTHER,
+                             null, null, true, planEligibility, items, effectiveDate, timezone, correlationId));
                 }
             }
             if (roles.contains(ChecklistRecipientRole.FAMILY)) {
                 for (AuthorizedFamilyGroup authorizedGroup : authorizedGroups) {
                     for (ContextSeed context : directContexts(authorizedGroup.group(), template.getStage())) {
                         commands.add(actorCommand(
-                                template, authorizedGroup.group(), context, actorUserId,
-                                ChecklistRecipientRole.FAMILY,
-                                authorizedGroup.permission().isChecklistComplete(), eligibility, items,
-                                effectiveDate, timezone, correlationId));
+                                 template, authorizedGroup.group(), context, actorUserId,
+                                 ChecklistRecipientRole.FAMILY,
+                                 authorizedGroup.memberId(), authorizedGroup.accessEpoch(),
+                                 authorizedGroup.permission().isChecklistComplete(), planEligibility, items,
+                                 effectiveDate, timezone, correlationId));
                     }
                 }
             }
@@ -183,13 +189,17 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
         Map<UUID, AuthorizedFamilyGroup> groups = new LinkedHashMap<>();
         memberRepository.findByUserIdAndInviteStatus(actorUserId, InviteStatus.ACCEPTED).forEach(member -> {
             FamilyPermission permission = FamilyPermission.fromJson(member.getPermissionJson());
-            if (!permission.isChecklistView() || member.getMemberRole() == GroupMemberRole.OWNER) {
+            if (!permission.isChecklistView()
+                    || member.getMemberRole() == GroupMemberRole.OWNER
+                    || member.getId() == null
+                    || member.getChecklistAccessEpoch() == null) {
                 return;
             }
             careGroupRepository.findByIdAndStatus(member.getCareGroupId(), CareGroupStatus.ACTIVE)
                     .filter(group -> !Objects.equals(group.getOwnerUserId(), actorUserId))
                     .ifPresent(group -> groups.putIfAbsent(
-                            group.getId(), new AuthorizedFamilyGroup(group, permission)));
+                            group.getId(), new AuthorizedFamilyGroup(
+                                    group, permission, member.getId(), member.getChecklistAccessEpoch())));
         });
         return List.copyOf(groups.values());
     }
@@ -199,7 +209,7 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
         if (stage == null || stage == ContentStage.PRE_PREGNANCY
                 || stage == ContentStage.PREGNANCY || stage == ContentStage.POSTPARTUM) {
             journeyRepository.findCanonical(actorUserId)
-                    .filter(journey -> stage == null || stage.name().equals(journey.getJourneyType().name()))
+                    .filter(journey -> isEligibleJourneyContext(journey, stage))
                     .map(this::journeyContext)
                     .ifPresent(contexts::add);
         }
@@ -221,7 +231,7 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                 journeyRepository.findById(journeyId)
                         .filter(journey -> journey.getStatus() == JourneyStatus.ACTIVE)
                         .filter(journey -> Objects.equals(journey.getOwnerUserId(), group.getOwnerUserId()))
-                        .filter(journey -> stage == null || stage.name().equals(journey.getJourneyType().name()))
+                        .filter(journey -> isEligibleJourneyContext(journey, stage))
                         .map(this::journeyContext)
                         .ifPresent(contexts::add);
             }
@@ -239,18 +249,24 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
         return List.copyOf(contexts);
     }
 
-    private static ChecklistDistributionCommand actorCommand(
+    private ChecklistDistributionCommand actorCommand(
             ChecklistTemplate template,
             CareGroup group,
             ContextSeed context,
             UUID actorUserId,
             ChecklistRecipientRole role,
+            UUID careGroupMemberId,
+            Long checklistAccessEpoch,
             boolean checklistComplete,
             ChecklistLifecycleEligibility eligibility,
             List<ChecklistDistributionItem> items,
             LocalDate effectiveDate,
             ZoneId timezone,
             UUID correlationId) {
+        ChecklistLifecycleEligibility resolvedEligibility = resolvedEligibility(
+                template, context, eligibility, effectiveDate);
+        ChecklistCadenceMetadata cadence = cadenceMetadata(
+                template, context, resolvedEligibility, effectiveDate, timezone);
         return new ChecklistDistributionCommand(
                 template.getTemplateLineageId() == null ? template.getId() : template.getTemplateLineageId(),
                 template.getTemplateVersionId(),
@@ -260,14 +276,104 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                 context.id(),
                 context.ownerUserId(),
                 template.getStage(),
-                eligibility,
+                resolvedEligibility,
                 context.dates(),
                 effectiveDate,
                 timezone,
                 List.of(new ChecklistDistributionRecipient(
-                        actorUserId, role, true, true, checklistComplete)),
+                         actorUserId, role, true, true, checklistComplete,
+                         careGroupMemberId, checklistAccessEpoch)),
                 items,
-                correlationId);
+                correlationId,
+                context.gestationalDatingRevision(),
+                cadence);
+    }
+
+    private static ChecklistLifecycleEligibility resolvedEligibility(
+            ChecklistTemplate template,
+            ContextSeed context,
+            ChecklistLifecycleEligibility planEligibility,
+            LocalDate effectiveDate) {
+        if (template.getScheduleType() != ChecklistScheduleType.WEEKLY
+                || template.getMaterializationPolicy() != ChecklistMaterializationPolicy.EACH_WEEK
+                || template.getStage() != ContentStage.PREGNANCY) {
+            return planEligibility;
+        }
+        LocalDate canonicalLmp = context.dates().lastMenstrualDate() != null
+                ? context.dates().lastMenstrualDate()
+                : context.dates().estimatedDueDate() == null
+                        ? null : context.dates().estimatedDueDate().minusDays(280);
+        if (canonicalLmp == null || effectiveDate.isBefore(canonicalLmp)) {
+            return planEligibility;
+        }
+        long completedWeek = ChronoUnit.DAYS.between(canonicalLmp, effectiveDate) / 7;
+        if (planEligibility == null
+                || planEligibility.getStartInclusive() == null
+                || planEligibility.getEndInclusive() == null
+                || completedWeek < planEligibility.getStartInclusive()
+                || (planEligibility.getEndInclusive() != Integer.MAX_VALUE
+                    && completedWeek > planEligibility.getEndInclusive())) {
+            return planEligibility;
+        }
+        int week = Math.toIntExact(completedWeek);
+        return new InlineLifecycleEligibility(
+                ContentStage.PREGNANCY.name(),
+                ChecklistAnchorType.LMP,
+                ChecklistRangeUnit.WEEK,
+                week,
+                week,
+                true);
+    }
+
+    private static ChecklistCadenceMetadata cadenceMetadata(
+            ChecklistTemplate template,
+            ContextSeed context,
+            ChecklistLifecycleEligibility eligibility,
+            LocalDate effectiveDate,
+            ZoneId timezone) {
+        ChecklistScheduleType scheduleType = template.getScheduleType();
+        ChecklistMaterializationPolicy policy = template.getMaterializationPolicy();
+        if (scheduleType == null || policy == null
+                || scheduleType == ChecklistScheduleType.LEGACY) {
+            return null;
+        }
+        if (eligibility == null || eligibility.getStartInclusive() == null) {
+            return null;
+        }
+        LocalDate start = null;
+        if (context.dates().lastMenstrualDate() != null) {
+            start = context.dates().lastMenstrualDate();
+        } else if (context.dates().estimatedDueDate() != null) {
+            start = context.dates().estimatedDueDate().minusDays(280);
+        }
+        if (start == null || effectiveDate.isBefore(start)) {
+            return null;
+        }
+        long completedWeek = ChronoUnit.DAYS.between(start, effectiveDate) / 7;
+        LocalDate windowStart = start.plusWeeks(eligibility.getStartInclusive());
+        String periodKey;
+        if (policy == ChecklistMaterializationPolicy.EACH_WEEK) {
+            periodKey = String.format(java.util.Locale.ROOT, "W:G:%04d:%s", completedWeek, windowStart);
+        } else if (policy == ChecklistMaterializationPolicy.ONCE_PER_WINDOW) {
+            String end = eligibility.getEndInclusive() == Integer.MAX_VALUE
+                    ? "EXIT"
+                    : windowStart.plusWeeks(eligibility.getEndInclusive()
+                            - eligibility.getStartInclusive()).toString();
+            periodKey = "O:" + windowStart + ":" + end;
+        } else {
+            return null;
+        }
+        return ChecklistCadenceMetadata.interactive(scheduleType, policy, periodKey, timezone);
+    }
+
+    private boolean isEligibleJourneyContext(MotherJourney journey, ContentStage stage) {
+        if (journey == null || journey.getStatus() != JourneyStatus.ACTIVE
+                || journey.getJourneyType() == null
+                || (stage != null && !stage.name().equals(journey.getJourneyType().name()))) {
+            return false;
+        }
+        return journey.getJourneyType() != com.carebridge.backend.journey.entity.JourneyType.PREGNANCY
+                || GestationalDatingResolver.hasResolvedAuthority(journey);
     }
 
     private ContextSeed journeyContext(MotherJourney journey) {
@@ -277,7 +383,10 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                 journey.getOwnerUserId(),
                 new ChecklistLifecycleDates(
                         journey.getLastMenstrualDate(), journey.getEstimatedDueDate(),
-                        journey.getDeliveryDate(), null));
+                        journey.getDeliveryDate(), null),
+                journey.getJourneyType() == com.carebridge.backend.journey.entity.JourneyType.PREGNANCY
+                        ? journey.getGestationalDatingRevision()
+                        : null);
     }
 
     private ContextSeed babyContext(BabyProfile baby) {
@@ -285,7 +394,8 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                 ChecklistCareContextType.BABY,
                 baby.getId(),
                 baby.getOwnerUserId(),
-                new ChecklistLifecycleDates(null, null, null, baby.getBirthDate()));
+                new ChecklistLifecycleDates(null, null, null, baby.getBirthDate()),
+                null);
     }
 
     private ChecklistDistributionItem toDistributionItem(ChecklistItem item) {
@@ -363,10 +473,15 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
             ChecklistCareContextType type,
             UUID id,
             UUID ownerUserId,
-            ChecklistLifecycleDates dates) {
+            ChecklistLifecycleDates dates,
+            Long gestationalDatingRevision) {
     }
 
-    private record AuthorizedFamilyGroup(CareGroup group, FamilyPermission permission) {
+    private record AuthorizedFamilyGroup(
+            CareGroup group,
+            FamilyPermission permission,
+            UUID memberId,
+            Long accessEpoch) {
     }
 
     private record InlineLifecycleEligibility(

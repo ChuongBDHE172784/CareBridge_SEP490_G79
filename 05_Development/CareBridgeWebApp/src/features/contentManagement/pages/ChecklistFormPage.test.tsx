@@ -115,6 +115,32 @@ describe('ChecklistFormPage version', () => {
 
     expect(screen.getByRole('checkbox', { name: 'Recipient MOTHER' })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: 'Recipient FAMILY' })).toBeTruthy();
+    expect((screen.getByRole('radio', { name: 'Recommendation-only V2 contract' }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByLabelText('Item 1 target')).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Bắt buộc' })).toBeNull();
+  });
+
+  it('keeps V2 item payload targetless and omits requiredness', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'v2-created', name: 'Daily recommendation', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Daily recommendation');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Uống đủ nước');
+    expect(screen.queryByLabelText('Item 1 target')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      checklistContractVersion: 2,
+      items: [expect.objectContaining({ itemText: 'Uống đủ nước' })],
+    })));
+    const payload = harness.createChecklistTemplate.mock.calls[0][0];
+    expect(payload.items[0]).not.toHaveProperty('targetSubject');
+    expect(payload.items[0]).not.toHaveProperty('isRequired');
   });
 
   it('renders lifecycle targeting for MOTHER and mixed recipients', async () => {
@@ -280,6 +306,7 @@ describe('ChecklistFormPage version', () => {
     render(<ChecklistFormPage />);
 
     await user.type(screen.getByLabelText('Template name'), 'Mixed checks');
+    await user.click(screen.getByRole('radio', { name: 'Legacy V1 target-bearing contract' }));
     await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     expect(screen.getByText('Cửa sổ vòng đời')).toBeTruthy();
@@ -292,6 +319,7 @@ describe('ChecklistFormPage version', () => {
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
       recipientRoles: ['MOTHER', 'FAMILY'],
+      checklistContractVersion: 1,
       stage: 'PREGNANCY',
       substage: expect.objectContaining({
         code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', unit: 'WEEK',
@@ -307,7 +335,7 @@ describe('ChecklistFormPage version', () => {
   it('uses AA contrast tokens for readable secondary copy', () => {
     render(<ChecklistFormPage />);
 
-    const guidance = screen.getByText(/Thi.*t l.*p.*ng.*i nh.*n/);
+    const guidance = screen.getByText((value) => value.startsWith('Checklist V2'));
     expect(guidance.className).toContain('text-on-surface-variant');
     expect(guidance.className).not.toContain('text-[#9C857C]');
   });

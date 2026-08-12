@@ -22,15 +22,6 @@ GoRouter _fixtureRouter(List<BabyProfile> babies) => GoRouter(
         body: MotherJourneyScreen(loadData: false, initialBabyProfiles: babies),
       ),
     ),
-    GoRoute(
-      path: '/baby-care-hub',
-      builder: (_, state) => Scaffold(
-        body: Text(
-          'hub:${state.uri.queryParameters['babyId']}',
-          key: const Key('route-probe'),
-        ),
-      ),
-    ),
     for (final route in const [
       ('/babies/:babyId/log-summary', 'journal'),
       ('/babies/:babyId/growth', 'growth'),
@@ -296,12 +287,6 @@ void main() {
       router,
       find.byKey(const Key('baby-care-growth-history')),
       'growth:mf03-second-baby',
-    );
-    await _expectRoute(
-      tester,
-      router,
-      find.byKey(const Key('baby-care-hub')),
-      'hub:mf03-second-baby',
     );
 
     await tester.tap(find.text('Cột mốc'));

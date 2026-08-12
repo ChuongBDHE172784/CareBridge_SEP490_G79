@@ -1,6 +1,7 @@
 package com.carebridge.backend.checklist.today;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -19,6 +20,7 @@ import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.testsupport.AbstractEmbeddedPostgresIntegrationTest;
@@ -125,6 +127,10 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
                 .startDate(EFFECTIVE_DATE.minusDays(70))
                 .lastMenstrualDate(EFFECTIVE_DATE.minusDays(70))
                 .estimatedDueDate(EFFECTIVE_DATE.plusDays(210))
+                .gestationalDatingBasis(GestationalDatingBasis.LMP)
+                .gestationalDatingRevision(1L)
+                .gestationalDatingEffectiveAt(EFFECTIVE_DATE.atStartOfDay()
+                        .toInstant(java.time.ZoneOffset.UTC))
                 .build()).getId();
         jdbcTemplate.update("update care_subjects set mother_journey_id=? where care_subject_id=?",
                 journey, subject);
@@ -411,13 +417,148 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
 
     @Test
     void acceptedMembershipRemainsAuthorizedAfterInvitationExpiry() throws Exception {
-        jdbcTemplate.update("""
-                update care_group_members
-                   set invite_expires_at = now() - interval '1 day', updated_at = now()
-                 where care_group_id=? and user_id=? and invitation_status='ACCEPTED'
-                """, primaryGroup, f1Ok);
+        expireAcceptedMembership(f1Ok);
 
         assertExactUnion(today(f1Ok, "FAMILY"), f1Tasks, primaryGroup, f1Ok);
+    }
+
+    @Test
+    void acceptedMembershipCanCompleteChecklistTaskAfterInvitationExpiry() throws Exception {
+        expireAcceptedMembership(f1Ok);
+
+        MvcResult result = mockMvc.perform(post(
+                        "/api/v1/care-groups/{groupId}/checklists/tasks/{taskId}/actions",
+                        primaryGroup, f1Tasks.checklistTaskId())
+                        .with(csrf())
+                        .with(user(f1Ok.toString()).roles("FAMILY"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "action", "COMPLETE",
+                                "clientRequestId", UUID.randomUUID()))))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(response.path("action").asText()).isEqualTo("COMPLETE");
+        assertThat(response.path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from checklist_task_instances where checklist_task_instance_id=?",
+                String.class, f1Tasks.checklistTaskId())).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void legacyMotherChecklistRowIsNotProjectedOrActionableForFamily() throws Exception {
+        TemplateIds template = seedApprovedMandatoryMotherTemplate();
+        JsonNode motherToday = today(m1, "MOTHER");
+        JsonNode motherTask = requiredSystemTemplateTask(motherToday, template.versionId());
+        UUID taskId = UUID.fromString(motherTask.path("taskId").asText());
+
+        MvcResult current = mockMvc.perform(get(
+                        "/api/v1/care-groups/{groupId}/checklists/current/tasks",
+                        primaryGroup)
+                        .param("date", EFFECTIVE_DATE.toString())
+                        .header("X-User-Timezone", ZONE)
+                        .with(user(f1Ok.toString()).roles("FAMILY")))
+                .andReturn();
+        assertThat(current.getResponse().getStatus()).isEqualTo(200);
+        JsonNode projected = objectMapper.readTree(current.getResponse().getContentAsString());
+        assertThat(flatten(projected)).noneMatch(task ->
+                task.path("taskId").asText().equals(taskId.toString()));
+
+        DeniedResponse denied = invokeDeniedChecklist(
+                new Actor(f1Ok, "FAMILY"), primaryGroup, taskId);
+        assertCanonicalNotFound(denied);
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from checklist_task_instances where checklist_task_instance_id=?",
+                String.class, taskId)).isEqualTo("PENDING");
+
+        jdbcTemplate.update("""
+                update checklist_task_instances
+                   set status='COMPLETED', completed_at=now(), updated_at=now()
+                 where checklist_task_instance_id=?
+                """, taskId);
+        DeniedResponse reopenDenied = invokeDeniedChecklist(
+                new Actor(f1Ok, "FAMILY"), primaryGroup, taskId, "REOPEN");
+        assertCanonicalNotFound(reopenDenied);
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from checklist_task_instances where checklist_task_instance_id=?",
+                String.class, taskId)).isEqualTo("COMPLETED");
+
+        UUID instanceId = UUID.fromString(motherTask.path("instanceId").asText());
+        jdbcTemplate.update("""
+                update checklist_instances
+                   set status='CANCELLED',
+                       cancellation_reason_code='CADENCE_PERIOD_CLOSED',
+                       cancelled_at=now(),
+                       historical_at=now(),
+                       history_reason_code='CADENCE_PERIOD_CLOSED',
+                       updated_at=now()
+                 where checklist_instance_id=?
+                """, instanceId);
+        MvcResult historyResult = mockMvc.perform(get(
+                        "/api/v1/care-groups/{groupId}/checklists/history", primaryGroup)
+                        .with(user(f1Ok.toString()).roles("FAMILY")))
+                .andReturn();
+        assertThat(historyResult.getResponse().getStatus()).isEqualTo(200);
+        JsonNode history = objectMapper.readTree(historyResult.getResponse().getContentAsString());
+        assertThat(history.path("data").path("items")).noneMatch(item ->
+                item.path("checklistInstanceId").asText().equals(instanceId.toString()));
+    }
+
+    @Test
+    void pendingExpiredMembershipCannotReadOrCompleteTodayTasks() throws Exception {
+        jdbcTemplate.update("""
+                update care_group_members
+                   set invitation_status='PENDING',
+                       invite_expires_at = now() - interval '1 day',
+                       permission_json=?::jsonb,
+                       updated_at = now()
+                 where care_group_id=? and user_id=?
+                """, new FamilyPermission(false, false, false, false, true, true).toJson(),
+                primaryGroup, fNoPermission);
+
+        assertThat(flatten(today(fNoPermission, "FAMILY"))).isEmpty();
+        DeniedResponse denied = invokeDeniedChecklist(
+                new Actor(fNoPermission, "FAMILY"), primaryGroup,
+                noPermissionTasks.checklistTaskId());
+        assertCanonicalNotFound(denied);
+    }
+
+    @Test
+    void duplicateAcceptedMembershipRowsFailClosedForToday() throws Exception {
+        assertThatThrownBy(() -> insertMember(primaryGroup, f1Ok, InviteStatus.ACCEPTED,
+                new FamilyPermission(false, false, false, false, true, true).toJson()))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void duplicateAcceptedMembershipRowsFailClosedForChecklistAction() throws Exception {
+        assertThatThrownBy(() -> insertMember(primaryGroup, f1Ok, InviteStatus.ACCEPTED,
+                new FamilyPermission(false, false, false, false, true, true).toJson()))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void revokeAndRegrantHidesPriorFamilyEpochRowsUntilRematerialized() throws Exception {
+        establishNegativeFamilyStates();
+        assertThat(flatten(today(fRevoked, "FAMILY"))).isEmpty();
+
+        String fullPermission = new FamilyPermission(false, false, false, false, true, true).toJson();
+        jdbcTemplate.update("""
+                update care_group_members
+                   set invitation_status='ACCEPTED',
+                       permission_json=?::jsonb,
+                       invite_expires_at=null,
+                       joined_at=now(),
+                       checklist_access_epoch=checklist_access_epoch + 1,
+                       updated_at=now()
+                 where care_group_id=? and user_id=?
+                """, fullPermission, primaryGroup, fRevoked);
+
+        assertThat(flatten(today(fRevoked, "FAMILY")).stream()
+                .filter(task -> "CHECKLIST".equals(task.path("taskKind").asText())))
+                .as("re-grant must open a new VIEW epoch and hide stale checklist rows")
+                .isEmpty();
     }
 
     @Test
@@ -492,17 +633,26 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
         UUID instanceId = UUID.randomUUID();
         UUID taskId = UUID.randomUUID();
         UUID recipientCareGroupId = "MOTHER".equals(role) ? null : primaryGroup;
+        UUID recipientMemberId = "MOTHER".equals(role) ? null : jdbcTemplate.queryForObject(
+                "select care_group_member_id from care_group_members where care_group_id=? and user_id=? "
+                        + "and invitation_status='ACCEPTED' order by care_group_member_id limit 1",
+                UUID.class, recipientCareGroupId, recipient);
+        Long recipientAccessEpoch = "MOTHER".equals(role) ? null : jdbcTemplate.queryForObject(
+                "select checklist_access_epoch from care_group_members where care_group_member_id=?",
+                Long.class, recipientMemberId);
         String instanceKey = ChecklistDistributionKeyFactory.userCreatedInstanceKey(
                 recipient, role, recipientCareGroupId, "JOURNEY", journey, null, null);
         String taskKey = ChecklistDistributionKeyFactory.userCreatedChildKey(instanceId, taskId);
         jdbcTemplate.update("""
                 insert into checklist_instances (
                     checklist_instance_id, distribution_key, key_version, recipient_user_id,
-                    recipient_role, care_group_id, care_context_type, care_context_id,
-                    context_owner_user_id, origin, status, lock_version, created_at, updated_at)
-                values (?, ?, 'v1', ?, ?, ?, 'JOURNEY', ?, ?, 'USER_CREATED',
-                        'PENDING', 0, now(), now())
-                """, instanceId, instanceKey, recipient, role, recipientCareGroupId, journey, m1);
+                     recipient_role, care_group_id, care_group_member_id, checklist_access_epoch,
+                     care_context_type, care_context_id,
+                     context_owner_user_id, origin, status, lock_version, created_at, updated_at)
+                 values (?, ?, 'v1', ?, ?, ?, ?, ?, 'JOURNEY', ?, ?, 'USER_CREATED',
+                         'PENDING', 0, now(), now())
+                 """, instanceId, instanceKey, recipient, role, recipientCareGroupId,
+                recipientMemberId, recipientAccessEpoch, journey, m1);
         jdbcTemplate.update("""
                 insert into checklist_task_instances (
                     checklist_task_instance_id, checklist_instance_id, task_key, key_version,
@@ -526,7 +676,6 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
                 .ownerUserId(m1)
                 .groupName("Today baby group")
                 .status(CareGroupStatus.ACTIVE)
-                .linkedJourneyId(journey)
                 .linkedBabyProfileId(authorizedBaby)
                 .build()).getId();
         String fullPermission = new FamilyPermission(false, false, false, false, true, true).toJson();
@@ -534,17 +683,26 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
 
         UUID instanceId = UUID.randomUUID();
         UUID taskId = UUID.randomUUID();
+        UUID recipientMemberId = jdbcTemplate.queryForObject(
+                "select care_group_member_id from care_group_members where care_group_id=? and user_id=? "
+                        + "and invitation_status='ACCEPTED' order by care_group_member_id limit 1",
+                UUID.class, authorizedBabyGroup, recipient);
+        Long recipientAccessEpoch = jdbcTemplate.queryForObject(
+                "select checklist_access_epoch from care_group_members where care_group_member_id=?",
+                Long.class, recipientMemberId);
         String instanceKey = ChecklistDistributionKeyFactory.userCreatedInstanceKey(
                 recipient, "FAMILY", authorizedBabyGroup, "BABY", authorizedBaby, null, null);
         String taskKey = ChecklistDistributionKeyFactory.userCreatedChildKey(instanceId, taskId);
         jdbcTemplate.update("""
                 insert into checklist_instances (
                     checklist_instance_id, distribution_key, key_version, recipient_user_id,
-                    recipient_role, care_group_id, care_context_type, care_context_id,
-                    context_owner_user_id, origin, status, lock_version, created_at, updated_at)
-                values (?, ?, 'v1', ?, 'FAMILY', ?, 'BABY', ?, ?, 'USER_CREATED',
-                        'PENDING', 0, now(), now())
-                """, instanceId, instanceKey, recipient, authorizedBabyGroup, authorizedBaby, m1);
+                     recipient_role, care_group_id, care_group_member_id, checklist_access_epoch,
+                     care_context_type, care_context_id,
+                     context_owner_user_id, origin, status, lock_version, created_at, updated_at)
+                 values (?, ?, 'v1', ?, 'FAMILY', ?, ?, ?, 'BABY', ?, ?, 'USER_CREATED',
+                         'PENDING', 0, now(), now())
+                 """, instanceId, instanceKey, recipient, authorizedBabyGroup,
+                recipientMemberId, recipientAccessEpoch, authorizedBaby, m1);
         jdbcTemplate.update("""
                 insert into checklist_task_instances (
                     checklist_task_instance_id, checklist_instance_id, task_key, key_version,
@@ -606,6 +764,7 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
                 .memberRole(GroupMemberRole.MEMBER)
                 .inviteStatus(status)
                 .permissionJson(permissionJson)
+                .checklistAccessEpoch(0L)
                 .build());
     }
 
@@ -616,6 +775,30 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "action", "COMPLETE",
+                                "clientRequestId", UUID.randomUUID()))))
+                .andReturn();
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        Set<String> keys = new TreeSet<>();
+        body.fieldNames().forEachRemaining(keys::add);
+        ObjectNode canonicalBody = (ObjectNode) body.deepCopy();
+        canonicalBody.remove(List.of("timestamp", "path"));
+        return new DeniedResponse(result.getResponse().getStatus(), keys, canonicalBody);
+    }
+
+    private DeniedResponse invokeDeniedChecklist(Actor actor, UUID groupId, UUID taskId) throws Exception {
+        return invokeDeniedChecklist(actor, groupId, taskId, "COMPLETE");
+    }
+
+    private DeniedResponse invokeDeniedChecklist(
+            Actor actor, UUID groupId, UUID taskId, String action) throws Exception {
+        MvcResult result = mockMvc.perform(post(
+                        "/api/v1/care-groups/{groupId}/checklists/tasks/{taskId}/actions",
+                        groupId, taskId)
+                        .with(csrf())
+                        .with(user(actor.userId().toString()).roles(actor.role()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "action", action,
                                 "clientRequestId", UUID.randomUUID()))))
                 .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
@@ -656,6 +839,14 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
                    set permission_json=?::jsonb, updated_at=now()
                  where care_group_id=? and user_id=?
                 """, noPermission, primaryGroup, fNoPermission);
+    }
+
+    private void expireAcceptedMembership(UUID userId) {
+        jdbcTemplate.update("""
+                update care_group_members
+                   set invite_expires_at = now() - interval '1 day', updated_at = now()
+                 where care_group_id=? and user_id=? and invitation_status='ACCEPTED'
+                """, primaryGroup, userId);
     }
 
     private Map<TaskKind, UUID> protectedIds(Actor actor) {

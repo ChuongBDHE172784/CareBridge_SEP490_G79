@@ -1,12 +1,15 @@
 package com.carebridge.backend.exercise;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.common.response.ApiResponse;
@@ -14,6 +17,7 @@ import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.exercise.controller.AdminExerciseController;
 import com.carebridge.backend.exercise.dto.AdminExerciseResponse;
+import com.carebridge.backend.exercise.exception.InvalidExerciseStateException;
 import com.carebridge.backend.exercise.service.IAdminExerciseService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
@@ -148,6 +152,42 @@ class AdminExerciseControllerSecurityTest {
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-0000000000a1", roles = "CONTENT_ADMIN")
+    @DisplayName("createExercise defaults an omitted posture flag to false")
+    void createExercise_omittedPostureFlag_defaultsToFalse() throws Exception {
+        AdminExerciseResponse response = AdminExerciseResponse.builder()
+                .exerciseId(EXERCISE_ID).status("DRAFT").supportsPostureAnalysis(false).build();
+        when(adminExerciseService.create(
+                argThat(request -> Boolean.FALSE.equals(request.getSupportsPostureAnalysis())), any()))
+                .thenReturn(response);
+
+        String body = """
+                {"title":"Test","trimesterScope":"FIRST","difficultyLevel":"EASY",
+                 "durationMinutes":10,"safetyWarning":"warn"}
+                """;
+        mockMvc.perform(post("/api/v1/admin/exercises")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.supportsPostureAnalysis").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-0000000000a1", roles = "CONTENT_ADMIN")
+    @DisplayName("createExercise rejects an explicit null posture flag")
+    void createExercise_nullPostureFlag_returns400() throws Exception {
+        String body = """
+                {"title":"Test","trimesterScope":"FIRST","difficultyLevel":"EASY",
+                 "durationMinutes":10,"safetyWarning":"warn","supportsPostureAnalysis":null}
+                """;
+
+        mockMvc.perform(post("/api/v1/admin/exercises")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+        verifyNoInteractions(adminExerciseService);
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-0000000000a1", roles = "CONTENT_ADMIN")
     @DisplayName("CONTENT_ADMIN succeeds on updateExercise")
     void updateExercise_contentAdmin_returns200() throws Exception {
         stubHappyPath();
@@ -163,6 +203,18 @@ class AdminExerciseControllerSecurityTest {
         stubHappyPath();
         mockMvc.perform(patch("/api/v1/admin/exercises/" + EXERCISE_ID + "/activate"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-0000000000a1", roles = "CONTENT_ADMIN")
+    @DisplayName("CONTENT_ADMIN sees stable posture readiness error on activation")
+    void activateExercise_postureNotReady_returns409WithStableCode() throws Exception {
+        when(adminExerciseService.activate(any(), any()))
+                .thenThrow(InvalidExerciseStateException.postureNotReady());
+
+        mockMvc.perform(patch("/api/v1/admin/exercises/" + EXERCISE_ID + "/activate"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("EXERCISE_POSTURE_NOT_READY"));
     }
 
     @Test

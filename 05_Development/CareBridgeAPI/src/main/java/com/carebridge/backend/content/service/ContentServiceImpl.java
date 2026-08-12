@@ -139,15 +139,8 @@ public class ContentServiceImpl implements ContentService {
         Set<UUID> ids = templates.stream().map(ChecklistTemplate::getId).collect(Collectors.toSet());
         Map<UUID, Long> counts = ids.isEmpty() ? Map.of() : checklistItemRepository.countByTemplateIds(ids)
                 .stream().collect(Collectors.toMap(TemplateItemCount::getTemplateId, TemplateItemCount::getItemCount));
-        return templates.map(template -> new AdminChecklistTemplateResponse(
-                template.getId(), template.getName(), template.getStage(), template.getTemplateType(), template.getStatus(),
-                template.getDescription(), template.getVersionNo(), template.getUpdatedAt(),
-                counts.getOrDefault(template.getId(), 0L),
-                contentMapper.toReviewFeedback(
-                        template.getRevisionReason(), template.getRevisionRequestedAt(),
-                        template.getRevisionRequestedBy(), template.getRevisionRequestedVersion()),
-                template.getSequencePosition(),
-                toRecipientRoles(template.getRecipientScope())));
+        return templates.map(template -> contentMapper.toAdminChecklistTemplateResponse(
+                template, counts.getOrDefault(template.getId(), 0L)));
     }
 
     private List<ChecklistTemplateResponse> shapeApprovedChecklists(List<ChecklistTemplate> templates) {

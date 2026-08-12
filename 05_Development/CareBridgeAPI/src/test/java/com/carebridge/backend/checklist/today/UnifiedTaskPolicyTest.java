@@ -135,7 +135,9 @@ class UnifiedTaskPolicyTest {
         assertThat(policy.canComplete(instance, FAMILY, GROUP)).isFalse();
         when(familyPolicy.hasPermission(GROUP, FAMILY, PermissionFlag.CHECKLIST_COMPLETE))
                 .thenReturn(true);
-        assertThat(policy.canComplete(instance, FAMILY, GROUP)).isTrue();
+        assertThat(policy.canComplete(instance, FAMILY, GROUP))
+                .as("legacy Mother-owned projections are read-only for Family")
+                .isFalse();
 
         instance.setOrigin(ChecklistOrigin.USER_CREATED);
         assertThat(policy.canView(instance, FAMILY, GROUP)).isFalse();

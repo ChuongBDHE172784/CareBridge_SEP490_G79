@@ -340,6 +340,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
         member.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
         member.setInviteStatus(InviteStatus.ACCEPTED);
         member.setJoinedAt(Instant.now());
+        openChecklistAccessEpoch(member);
         CareGroupMember saved = memberRepository.save(member);
 
         auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
@@ -869,6 +870,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
         member.setJoinedAt(now);
         member.setFamilyRelationshipRole(familyRelationshipRole.trim().toUpperCase());
         member.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
+        openChecklistAccessEpoch(member);
         memberRepository.save(member);
 
         // Step 7: audit log
@@ -996,6 +998,17 @@ public class CareGroupServiceImpl implements ICareGroupService {
         return customRole == null ? null : customRole.trim();
     }
 
+    /** Opens a new checklist VIEW epoch whenever a membership is accepted. */
+    private void openChecklistAccessEpoch(CareGroupMember member) {
+        long current = member.getChecklistAccessEpoch() == null
+                ? -1L : member.getChecklistAccessEpoch();
+        if (current == Long.MAX_VALUE) {
+            throw new BusinessException(HttpStatus.CONFLICT, "FAM-CHECKLIST-EPOCH_EXHAUSTED",
+                    "Checklist access epoch cannot be advanced");
+        }
+        member.setChecklistAccessEpoch(current + 1L);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<JoinRequestDto> listJoinRequests(UUID groupId, UUID callerId) {
@@ -1046,6 +1059,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
         if (approve) {
             member.setInviteStatus(InviteStatus.ACCEPTED);
             member.setJoinedAt(Instant.now());
+            openChecklistAccessEpoch(member);
             auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
                     "CareGroup", groupId.toString(), "Join request approved for member: " + memberId);
         } else {
