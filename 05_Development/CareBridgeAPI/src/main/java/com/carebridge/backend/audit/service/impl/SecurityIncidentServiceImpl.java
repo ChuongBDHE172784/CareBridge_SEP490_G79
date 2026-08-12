@@ -2,6 +2,7 @@ package com.carebridge.backend.audit.service.impl;
 
 import com.carebridge.backend.audit.dto.request.AddSecurityNoteRequest;
 import com.carebridge.backend.audit.dto.request.ReviewSecurityEventRequest;
+import com.carebridge.backend.audit.dto.request.ResolveSecurityIncidentRequest;
 import com.carebridge.backend.audit.dto.response.SecurityEventNoteResponse;
 import com.carebridge.backend.audit.dto.response.SecurityEventResponse;
 import com.carebridge.backend.audit.entity.AuditAction;
@@ -13,6 +14,7 @@ import com.carebridge.backend.audit.repository.SecurityEventRepository;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.audit.service.SecurityIncidentService;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import com.carebridge.backend.common.exception.BusinessException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -55,6 +58,14 @@ public class SecurityIncidentServiceImpl implements SecurityIncidentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public SecurityEventResponse getEvent(Long eventId) {
+        return securityEventRepository.findById(eventId)
+                .map(this::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Security event not found: " + eventId));
+    }
+
+    @Override
     @Transactional
     public SecurityEventResponse reviewEvent(Long eventId, ReviewSecurityEventRequest request, UUID reviewerId) {
         SecurityEvent event = securityEventRepository.findById(eventId)
@@ -70,6 +81,42 @@ public class SecurityIncidentServiceImpl implements SecurityIncidentService {
         auditService.log(AuditAction.SECURITY_EVENT_REVIEWED, reviewerId, "SecurityEvent",
                 eventId.toString(), request.status());
 
+        return toResponse(event);
+    }
+
+    @Override
+    @Transactional
+    public SecurityEventResponse resolveEvent(
+            Long eventId, ResolveSecurityIncidentRequest request, UUID reviewerId) {
+        SecurityEvent event = securityEventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Security event not found: " + eventId));
+        if ("RESOLVED".equals(event.getStatus()) || "FALSE_POSITIVE".equals(event.getStatus())) {
+            throw new BusinessException(HttpStatus.CONFLICT, "SECURITY_INCIDENT_CLOSED",
+                    "Security incident is already closed");
+        }
+
+        String resolutionNote = "[RESOLUTION]\n"
+                + "Root cause: " + request.rootCause().trim() + "\n"
+                + "Affected scope: " + request.affectedScope().trim() + "\n"
+                + "Notify affected: " + request.notifyAffected() + "\n"
+                + "Remediation: " + String.join(" | ", request.remediationTasks()) + "\n"
+                + "Summary: " + request.summary().trim();
+        SecurityEventNote note = SecurityEventNote.builder()
+                .eventId(eventId)
+                .authorId(reviewerId)
+                .noteText(resolutionNote)
+                .build();
+        securityEventNoteRepository.save(note);
+
+        String targetStatus = "FALSE_POSITIVE".equals(request.rootCause()) ? "FALSE_POSITIVE" : "RESOLVED";
+        Instant now = Instant.now();
+        securityEventRepository.updateStatus(eventId, targetStatus, reviewerId, now);
+        event.setStatus(targetStatus);
+        event.setReviewedBy(reviewerId);
+        event.setReviewedAt(now);
+
+        auditService.log(AuditAction.SECURITY_EVENT_REVIEWED, reviewerId, "SecurityEvent",
+                eventId.toString(), targetStatus);
         return toResponse(event);
     }
 

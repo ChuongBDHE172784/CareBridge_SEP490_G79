@@ -73,9 +73,33 @@ public class MotherJourney {
     @Column(name = "date_confidence", length = 20)
     private JourneyDateConfidence dateConfidence;
 
+    /** Server-owned pregnancy dating basis; unrelated Journey edits use version. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gestational_dating_basis", length = 20)
+    private GestationalDatingBasis gestationalDatingBasis;
+
+    /** Monotonic pregnancy dating revision reconstructed from immutable transitions. */
+    @Column(name = "gestational_dating_revision")
+    private Long gestationalDatingRevision;
+
+    @Column(name = "gestational_dating_effective_at")
+    private Instant gestationalDatingEffectiveAt;
+
+    @Column(name = "gestational_dating_quarantine_reason_code", length = 80)
+    private String gestationalDatingQuarantineReasonCode;
+
     /** Existing onboarding snapshot (comma-separated SupportPreference names). */
     @Column(name = "baseline_preferences", length = 300)
     private String baselinePreferences;
+
+    /**
+     * Timezone captured during onboarding.  Checklist repair runs without a request
+     * header, so this persisted value is the only per-owner calendar authority available
+     * to an app-independent scheduler.  The repair job validates it and falls back to its
+     * configured business zone when it is absent or stale.
+     */
+    @Column(name = "baseline_time_zone", length = 80)
+    private String baselineTimeZone;
 
     /** Server-authored consented profile. Raw values are cleared when inactive. */
     @Builder.Default

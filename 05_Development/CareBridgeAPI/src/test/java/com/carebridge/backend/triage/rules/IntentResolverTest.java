@@ -120,4 +120,35 @@ class IntentResolverTest {
     void evidenceIsRecorded() {
         assertThat(resolver.resolve("Nguồn này từ đâu?", null, null).evidence()).isNotEmpty();
     }
+
+    @Test
+    @DisplayName("Confirmed conversation intent survives an ambiguous follow-up")
+    void confirmedIntentSurvivesAmbiguousFollowUp() {
+        var resolution = resolver.resolve(
+                "không biết", null, null, IntentType.SYMPTOM_TRIAGE);
+
+        assertThat(resolution.intent()).isEqualTo(IntentType.SYMPTOM_TRIAGE);
+        assertThat(resolution.source())
+                .isEqualTo(ResolutionSource.CONFIRMED_CONVERSATION_INTENT);
+    }
+
+    @Test
+    @DisplayName("Explicit latest intent outranks confirmed conversation intent")
+    void explicitLatestIntentOutranksConfirmedIntent() {
+        var resolution = resolver.resolve(
+                "Nguồn này từ đâu vậy?", null, null, IntentType.SYMPTOM_TRIAGE);
+
+        assertThat(resolution.intent()).isEqualTo(IntentType.SOURCE_LOOKUP);
+        assertThat(resolution.source()).isEqualTo(ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("Structural answer outranks confirmed conversation intent")
+    void structuralAnswerOutranksConfirmedIntent() {
+        var resolution = resolver.resolve(
+                "không biết", List.of("UNSURE"), null, IntentType.SYMPTOM_TRIAGE);
+
+        assertThat(resolution.intent()).isEqualTo(IntentType.FOLLOW_UP_ANSWER);
+        assertThat(resolution.source()).isEqualTo(ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER);
+    }
 }

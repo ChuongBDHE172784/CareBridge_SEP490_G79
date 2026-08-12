@@ -1,15 +1,164 @@
 /**
  * Shared CSS for rendering content_items.body HTML — used by BOTH the RichTextEditor (while
- * composing) and ContentDetailPage (reader view). Deliberately a single shared file: keeping
- * these rules in two places already caused one real bug this session (ContentDetailPage was
- * missing the base img max-width rule that RichTextEditor.css had) — see
- * ContentRichTextEditor_TDS.md ADR-RTE-008 §5.2.1 note. Apply the `rich-content-body` class to
- * any element that renders this HTML.
+ * composing), ContentDetailPage (reader view), and Import Content Preview Modal.
  */
 
+.rich-content-body {
+  font-family: inherit;
+  color: var(--on-surface, #1f1f1f);
+  line-height: 1.7;
+}
+
+/* Headings */
+.rich-content-body h1 {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  color: var(--on-surface, #111827);
+}
+
+.rich-content-body h2 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-top: 20px;
+  margin-bottom: 12px;
+  color: var(--on-surface, #1f2937);
+}
+
+.rich-content-body h3 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: var(--on-surface, #374151);
+}
+
+.rich-content-body h4 {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.45;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  color: var(--on-surface, #4b5563);
+}
+
+/* Paragraphs & Text formatting */
+.rich-content-body p {
+  line-height: 1.7;
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.rich-content-body strong,
+.rich-content-body b {
+  font-weight: 700;
+  color: var(--on-surface, #111827);
+}
+
+.rich-content-body em,
+.rich-content-body i {
+  font-style: italic;
+}
+
+.rich-content-body u {
+  text-decoration: underline;
+}
+
+/* Lists */
+.rich-content-body ul {
+  list-style-type: disc;
+  padding-left: 24px;
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+.rich-content-body ol {
+  list-style-type: decimal;
+  padding-left: 24px;
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+.rich-content-body li {
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+
+.rich-content-body li > p {
+  margin-bottom: 4px;
+}
+
+/* Blockquotes */
+.rich-content-body blockquote {
+  border-left: 4px solid var(--primary, #006874);
+  background-color: var(--surface-container-low, #f0f4f5);
+  padding: 12px 18px;
+  margin: 16px 0;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  color: var(--on-surface-variant, #3f484a);
+}
+
+.rich-content-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Tables */
+.rich-content-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+  overflow-x: auto;
+  display: block;
+}
+
+.rich-content-body table th,
+.rich-content-body table td {
+  border: 1px solid var(--outline-variant, #bec8ca);
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.rich-content-body table th {
+  background-color: var(--surface-container-high, #e0e9eb);
+  font-weight: 700;
+  color: var(--on-surface, #191c1d);
+}
+
+.rich-content-body table tr:nth-child(even) td {
+  background-color: var(--surface-container-lowest, #ffffff);
+}
+
+/* Links */
+.rich-content-body a {
+  color: var(--primary, #006874);
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.rich-content-body a:hover {
+  color: var(--primary-container, #004f58);
+}
+
+/* Horizontal Rule */
+.rich-content-body hr {
+  border: 0;
+  border-top: 1px solid var(--outline-variant, #bec8ca);
+  margin: 24px 0;
+}
+
+/* Images */
 .rich-content-body img {
   max-width: 100%;
+  height: auto;
   border-radius: 8px;
+  margin: 8px 0;
 }
 
 /* ADR-RTE-008: image resize presets */
@@ -18,7 +167,7 @@
 .rich-content-body img[data-width-pct="75"] { width: 75%; height: auto; }
 .rich-content-body img[data-width-pct="100"] { width: 100%; height: auto; }
 
-/* ADR-RTE-008: image alignment — text wraps around left/right-aligned images */
+/* ADR-RTE-008: image alignment */
 .rich-content-body img[data-align="left"] {
   float: left;
   margin: 4px 16px 8px 0;
@@ -32,5 +181,5 @@
 .rich-content-body img[data-align="center"] {
   display: block;
   float: none;
-  margin: 8px auto;
+  margin: 12px auto;
 }

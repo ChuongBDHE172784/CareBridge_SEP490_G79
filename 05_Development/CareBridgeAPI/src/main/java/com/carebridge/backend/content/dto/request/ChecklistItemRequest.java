@@ -11,7 +11,8 @@ public record ChecklistItemRequest(
         UUID id,
         @NotBlank @Size(max = 500) String itemText,
         @NotNull Integer order,
-        @NotNull Boolean isRequired,
+        /** V1 requires this flag; V2 recommendation leaves intentionally omit it. */
+        Boolean isRequired,
         ChecklistTargetSubject targetSubject,
         @Size(max = 4000) String description,
         ChecklistSupportFunction supportFunction

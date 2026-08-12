@@ -61,9 +61,24 @@ public class ChecklistItem {
     @Column(name = "is_required")
     private Boolean isRequired;
 
-    @Enumerated(EnumType.STRING)
+    /**
+     * Leaf-level copy of the owning template contract.  The database constraint
+     * is intentionally leaf-local, so the ORM must persist the same contract
+     * that the root uses (V1 target-bearing, V2 targetless).
+     */
     @Builder.Default
-    @Column(name = "target_subject", nullable = false, length = 10)
+    @Column(name = "checklist_contract_version")
+    private Short checklistContractVersion = 1;
+
+    @Enumerated(EnumType.STRING)
+    /**
+     * V1 checklist entries carry a MOTHER/BABY target.  Contract V2 entries are
+     * recommendation leaves and deliberately persist SQL NULL; the owning
+     * template's checklistContractVersion is the discriminator.  Keep the
+     * compatibility builder default for old V1 callers that omit the field.
+     */
+    @Builder.Default
+    @Column(name = "target_subject", nullable = true, length = 10)
     private ChecklistTargetSubject targetSubject = ChecklistTargetSubject.MOTHER;
 
     @Enumerated(EnumType.STRING)
@@ -112,7 +127,7 @@ public class ChecklistItem {
             String entryType,
             Instant createdAt,
             Instant updatedAt) {
-        this(id, template, itemText, null, null, order, isRequired, targetSubject,
+        this(id, template, itemText, null, null, order, isRequired, (short) 1, targetSubject,
                 dueAnchorType, dueOffsetStart, dueOffsetEnd, dueOffsetUnit,
                 isActive, entryType, createdAt, updatedAt);
     }

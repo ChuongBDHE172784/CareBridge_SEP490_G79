@@ -109,6 +109,77 @@ class StageResolverTest {
                 .isEqualTo(CareStage.PREGNANCY);
     }
 
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "Em bầu 31 tuần|MOTHER|POSTPARTUM_MOTHER|PREGNANCY",
+            "Em bầu ba mươi mốt tuần|MOTHER|POSTPARTUM_MOTHER|PREGNANCY",
+            "Con mười tháng sốt 39,3 độ|BABY|TODDLER_12_24M|INFANT_0_12M",
+            "Bé hai tháng đo được 38,2 độ|BABY|TODDLER_12_24M|INFANT_0_12M"
+    })
+    @DisplayName("Latest message stage with digits or Vietnamese words outranks journey")
+    void latestMessageStageOutranksJourney(
+            String message, TargetEntity entity, CareStage journey, CareStage expected) {
+        var resolution = resolver.resolve(entity, null, null, journey, null, null, null, message);
+
+        assertThat(resolution.stage()).isEqualTo(expected);
+        assertThat(resolution.source()).isEqualTo(ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("Two incompatible stages in the latest message are CONFLICTED")
+    void incompatibleLatestStagesAreConflicted() {
+        var resolution = resolver.resolve(
+                TargetEntity.MOTHER, null, null, CareStage.PREGNANCY,
+                null, null, null, "Em bầu 31 tuần nhưng cũng sau sinh 5 ngày");
+
+        assertThat(resolution.stage()).isEqualTo(CareStage.CONFLICTED);
+        assertThat(resolution.source()).isEqualTo(ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE);
+        assertThat(resolution.conflicts()).contains("LATEST_MESSAGE_STAGE_CONFLICT");
+    }
+
+    @Test
+    @DisplayName("A duration in a baby message is not misread as the baby's age")
+    void durationInBabyMessageIsNotBabyAge() {
+        var resolution = resolver.resolve(
+                TargetEntity.BABY, null, null, CareStage.TODDLER_12_24M,
+                null, null, null, "Be ho muoi thang nay");
+
+        assertThat(resolution.stage()).isEqualTo(CareStage.TODDLER_12_24M);
+        assertThat(resolution.source()).isEqualTo(ResolutionSource.CONFIRMED_CONVERSATION_TARGET);
+    }
+
+    @Test
+    @DisplayName("A negated postpartum phrase does not override journey stage")
+    void negatedPostpartumPhraseDoesNotOverrideJourney() {
+        var resolution = resolver.resolve(
+                TargetEntity.MOTHER, null, null, CareStage.PREGNANCY,
+                null, null, null, "Em khong o giai doan hau san");
+
+        assertThat(resolution.stage()).isEqualTo(CareStage.PREGNANCY);
+        assertThat(resolution.source()).isEqualTo(ResolutionSource.CONFIRMED_CONVERSATION_TARGET);
+    }
+
+    @Test
+    @DisplayName("Incomplete number words do not become a baby age")
+    void incompleteNumberWordsDoNotBecomeBabyAge() {
+        var resolution = resolver.resolve(
+                TargetEntity.BABY, null, null, CareStage.INFANT_0_12M,
+                null, null, null, "Be ba muoi linh thang");
+
+        assertThat(resolution.stage()).isEqualTo(CareStage.INFANT_0_12M);
+    }
+
+    @Test
+    @DisplayName("Stage clarification option is consumed as an explicit stage")
+    void stageClarificationOptionIsConsumed() {
+        var resolution = resolver.resolve(
+                TargetEntity.MOTHER, null, null, CareStage.POSTPARTUM_MOTHER,
+                null, null, null, null, List.of("STAGE_PREGNANCY"));
+
+        assertThat(resolution.stage()).isEqualTo(CareStage.PREGNANCY);
+        assertThat(resolution.source()).isEqualTo(ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER);
+    }
+
     @Test
     @DisplayName("Nothing to go on stays UNKNOWN")
     void nothingToGoOnStaysUnknown() {

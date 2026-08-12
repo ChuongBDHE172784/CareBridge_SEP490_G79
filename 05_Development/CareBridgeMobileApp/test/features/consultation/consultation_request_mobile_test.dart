@@ -13,6 +13,15 @@ import 'package:untitled/features/consultation/screens/expert_requests_tab_scree
 import 'package:untitled/features/consultation/screens/my_consultation_requests_screen.dart';
 import 'package:untitled/features/consultation/services/consultation_request_refresh_bus.dart';
 import 'package:untitled/features/consultation/services/consultation_request_service.dart';
+import 'package:untitled/features/expert/models/expert_availability_slot.dart';
+import 'package:untitled/features/expert/services/expert_availability_service.dart';
+
+class _EmptyAvailabilityService extends ExpertAvailabilityService {
+  @override
+  Future<List<ExpertAvailabilitySlot>> getPublicAvailability(
+    String expertProfileId,
+  ) async => [];
+}
 
 class _FakeConsultationRequestService extends ConsultationRequestService {
   ConsultationRequestPage page = const ConsultationRequestPage(
@@ -132,15 +141,17 @@ void main() {
     final fake = _FakeConsultationRequestService()..detail = _detail();
     ConsultationRequestService.instance = fake;
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: ConsultationRequestFormScreen(
           expertProfileId: 'expert-1',
           expertDisplayName: 'BS. Bình',
+          availabilityService: _EmptyAvailabilityService(),
         ),
       ),
     );
 
-    await tester.tap(find.text('Gửi yêu cầu'));
+    await tester.ensureVisible(find.byKey(const Key('consultation-submit')));
+    await tester.tap(find.byKey(const Key('consultation-submit')));
     await tester.pump();
 
     expect(find.text('Vui lòng nhập chủ đề'), findsOneWidget);
@@ -157,10 +168,11 @@ void main() {
       ..createCompleter = Completer<ConsultationRequestDetail>();
     ConsultationRequestService.instance = fake;
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: ConsultationRequestFormScreen(
           expertProfileId: 'expert-1',
           expertDisplayName: 'BS. Bình',
+          availabilityService: _EmptyAvailabilityService(),
         ),
       ),
     );
@@ -173,7 +185,8 @@ void main() {
       'Cần tư vấn lịch ăn dặm.',
     );
 
-    await tester.tap(find.text('Gửi yêu cầu'));
+    await tester.ensureVisible(find.byKey(const Key('consultation-submit')));
+    await tester.tap(find.byKey(const Key('consultation-submit')));
     await tester.pump();
     await tester.tap(find.text('Đang gửi...'));
     expect(fake.createCalls, 1);

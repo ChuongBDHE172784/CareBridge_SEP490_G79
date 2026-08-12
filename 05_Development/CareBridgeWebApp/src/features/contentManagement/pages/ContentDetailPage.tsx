@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchRecommendationTags, fetchStaffContentDetail, fetchTags, updateContent, archiveContent } from '../services/contentApi';
-import type { ContentDetail, RecommendationTag } from '../models/content';
+import { fetchStaffContentDetail, updateContent, archiveContent } from '../services/contentApi';
+import type { ContentDetail } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS, TYPE_LABELS } from '../models/content';
-import { recommendationClassification } from './recommendationMetadata';
 import { useAuth } from '../../../shared/auth/useAuth';
 import '../richContentBody.css';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
@@ -42,8 +41,6 @@ export default function ContentDetailPage() {
   // actions must stay hidden rather than link into a route that will bounce to /forbidden.
   const canManage = hasRole('CONTENT_ADMIN');
   const [detail, setDetail] = useState<ContentDetail | null>(null);
-  const [recommendationTags, setRecommendationTags] = useState<RecommendationTag[]>([]);
-  const [ordinaryTagIds, setOrdinaryTagIds] = useState<Set<string> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -55,20 +52,6 @@ export default function ContentDetailPage() {
     setError('');
     try {
       const data = await fetchStaffContentDetail(id);
-      let catalogItems: RecommendationTag[] = [];
-      let ordinaryIds: Set<string> | null = null;
-      if (data.type === 'ARTICLE') {
-        try {
-          const catalog = await fetchRecommendationTags();
-          catalogItems = catalog.items;
-        } catch { /* detail remains readable when the catalog is unavailable */ }
-        try {
-          const ordinaryTags = await fetchTags();
-          ordinaryIds = new Set(ordinaryTags.filter((tag) => !tag.slug.startsWith('rec-')).map((tag) => tag.id));
-        } catch { /* do not label ordinary IDs as stale when the tag catalog is unavailable */ }
-      }
-      setRecommendationTags(catalogItems);
-      setOrdinaryTagIds(ordinaryIds);
       setDetail(data);
     } catch {
       setError('Không tải được nội dung. Vui lòng thử lại.');
@@ -138,15 +121,6 @@ export default function ContentDetailPage() {
 
   const typeLabel = TYPE_LABELS[detail.type];
   const typeListPath = TYPE_LIST_PATH[detail.type] ?? '/content/list';
-  const catalogById = new Map(recommendationTags.map((tag) => [tag.id, tag]));
-  const controlledRecommendationTags = (detail.tagIds ?? [])
-    .map((tagId) => catalogById.get(tagId))
-    .filter((tag): tag is RecommendationTag => Boolean(tag));
-  const staleRecommendationTagIds = (detail.tagIds ?? [])
-    .filter((tagId) => !catalogById.has(tagId)
-      && ordinaryTagIds != null
-      && !ordinaryTagIds.has(tagId));
-  const recommendationTagIds = controlledRecommendationTags.map((tag) => tag.id);
 
   return (
     <div className="p-8 font-sans">
@@ -202,29 +176,6 @@ export default function ContentDetailPage() {
             </div>
           </div>
 
-          {detail.type === 'ARTICLE' && (
-            <div className="bg-surface rounded-2xl p-5 shadow-md mb-6">
-              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">RECOMMENDATION METADATA</div>
-              <div className="text-sm text-on-surface">
-                Classification: {recommendationClassification(recommendationTagIds)} {' · '}
-                {detail.eligibleFromWeek == null && detail.eligibleToWeek == null
-                  ? 'Stage-wide'
-                  : `Pregnancy weeks ${detail.eligibleFromWeek}-${detail.eligibleToWeek}`}
-                {' · '}Priority {detail.recommendationPriority ?? 0}
-              </div>
-              <div className="text-xs text-outline mt-1">
-                Audience: {controlledRecommendationTags.length > 0
-                  ? controlledRecommendationTags.map((tag) => tag.label).join(', ')
-                  : 'No controlled audience tags (fallback eligible)'}
-              </div>
-              {staleRecommendationTagIds.length > 0 && (
-                <div className="text-xs text-error mt-1" role="alert">
-                  Retired or unknown audience IDs: {staleRecommendationTagIds.join(', ')}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Article canvas */}
           <div className="bg-surface rounded-2xl p-8 shadow-md">
             {/* Body content */}
@@ -233,6 +184,59 @@ export default function ContentDetailPage() {
               dangerouslySetInnerHTML={{ __html: detail.body }}
             />
           </div>
+
+          {/* Sources & References Block */}
+          {((detail.sources && detail.sources.length > 0) || detail.sourceLabel) && (
+            <div className="bg-surface rounded-2xl p-6 shadow-md mt-6 border border-outline-variant">
+              <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-[0.05em] mb-4 pb-2 border-b border-surface-container-highest">
+                <span className="material-symbols-outlined text-lg">verified</span>
+                <span>NGUỒN THAM KHẢO / KIỂM DUYỆT</span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {detail.sources && detail.sources.length > 0 ? (
+                  detail.sources.map((src, idx) => (
+                    <div key={idx} className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-2">
+                      {src.title && (
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline text-base">person</span>
+                          <span className="text-xs text-outline font-medium">Tác giả / Tên nguồn:</span>
+                          <strong className="text-sm text-on-surface font-semibold">{src.title}</strong>
+                        </div>
+                      )}
+                      {src.url && (
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-base">link</span>
+                          <span className="text-xs text-outline font-medium">Liên kết nguồn:</span>
+                          <a
+                            href={src.url.startsWith('http') ? src.url : `https://${src.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary font-semibold underline hover:text-primary-container break-all"
+                          >
+                            {src.url}
+                          </a>
+                        </div>
+                      )}
+                      {src.publisher && (
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline text-base">domain</span>
+                          <span className="text-xs text-outline font-medium">Đơn vị xuất bản:</span>
+                          <span className="text-xs text-on-surface font-semibold">{src.publisher}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 rounded-xl bg-surface-container-low flex items-center gap-2">
+                    <span className="material-symbols-outlined text-outline text-base">menu_book</span>
+                    <span className="text-xs text-outline font-medium">Nguồn:</span>
+                    <strong className="text-sm text-on-surface">{detail.sourceLabel}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right sidebar */}

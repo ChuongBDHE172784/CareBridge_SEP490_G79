@@ -45,8 +45,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return "POST".equals(method) && (
                 path.equals("/api/v1/auth/register") ||
                 path.equals("/api/v1/auth/login") ||
+                path.equals("/api/v1/auth/federated") ||
+                path.equals("/api/v1/auth/phone/register") ||
+                path.equals("/api/v1/auth/phone/login") ||
                 path.equals("/api/v1/auth/verify-otp") ||
+                path.equals("/api/v1/auth/resend-otp") ||
                 path.equals("/api/v1/auth/refresh") ||
+                path.equals("/api/v1/auth/forgot-password") ||
+                path.equals("/api/v1/auth/reset-password") ||
                 path.equals("/api/v1/auth/lock-appeals")
         );
     }

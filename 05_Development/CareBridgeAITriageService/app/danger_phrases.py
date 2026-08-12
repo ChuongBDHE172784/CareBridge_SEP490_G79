@@ -110,6 +110,14 @@ MATERNAL_SEVERE_HEADACHE_PHRASES = (
     "đau đầu nhiều",
     "nhức đầu dữ dội",
     "nhức đầu nhiều",
+    # Bệnh viện Từ Dũ words the pre-eclampsia warning as "Đau đầu kéo dài, mức độ tăng dần,
+    # không thuyên giảm khi nghỉ ngơi..." (tudu.com.vn, pre-eclampsia warning-signs page).
+    # Added under D-031 as another spelling of a sign PREG_RED_002 already acts on; the mirror
+    # "nhức đầu" form follows the pattern of the four above. Neither matches "đau đầu nhẹ" or
+    # "đau đầu chút rồi hết", and neither reaches RED alone — the rule is a conjunction with
+    # VISUAL_DISTURBANCE.
+    "đau đầu kéo dài",
+    "nhức đầu kéo dài",
     "severe headache",
 )
 MATERNAL_VISUAL_DISTURBANCE_PHRASES = (

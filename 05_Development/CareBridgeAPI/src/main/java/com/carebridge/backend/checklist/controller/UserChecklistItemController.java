@@ -33,9 +33,16 @@ public class UserChecklistItemController {
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<ChecklistItemResponse>> addItem(
             @Valid @RequestBody AddChecklistItemRequest request,
+            @RequestHeader(name = "X-Checklist-Contract-Version", required = false)
+            String contractVersionHeader,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = userCreatedTaskService.create(request, callerId);
+        short contractVersion = parseContractVersion(contractVersionHeader);
+        // Keep the no-header and explicit V1 route on the legacy-compatible
+        // overload so existing clients/tests retain the target-bearing contract.
+        var response = contractVersion == 1
+                ? userCreatedTaskService.create(request, callerId)
+                : userCreatedTaskService.create(request, callerId, contractVersion);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "Checklist item added"));
     }
 
@@ -112,5 +119,29 @@ public class UserChecklistItemController {
     private static BusinessException retiredMutation() {
         return new BusinessException(HttpStatus.GONE, "CHECKLIST_LEGACY_ROUTE_RETIRED",
                 "Use the unified Today task APIs");
+    }
+
+    private static short parseContractVersion(String raw) {
+        if (raw == null) {
+            return 1;
+        }
+        if (raw.isBlank()) {
+            throw unsupportedContractVersion();
+        }
+        try {
+            int value = Integer.parseInt(raw.trim());
+            if (value == 1 || value == 2) {
+                return (short) value;
+            }
+        } catch (NumberFormatException ignored) {
+            // Use the stable API error below.
+        }
+        throw unsupportedContractVersion();
+    }
+
+    private static BusinessException unsupportedContractVersion() {
+        return new BusinessException(HttpStatus.BAD_REQUEST,
+                "CHECKLIST_CONTRACT_VERSION_UNSUPPORTED",
+                "Unsupported checklist contract version");
     }
 }

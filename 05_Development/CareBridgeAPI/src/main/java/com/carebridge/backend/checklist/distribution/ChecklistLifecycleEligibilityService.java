@@ -40,9 +40,17 @@ public class ChecklistLifecycleEligibilityService {
             return ChecklistEligibilityDecision.failure("LIFECYCLE_ANCHOR_MISSING");
         }
         LocalDate start = add(anchor, substage.getRangeUnit(), substage.getStartInclusive());
-        LocalDate end = add(anchor, substage.getRangeUnit(), substage.getEndInclusive());
+        // Integer.MAX_VALUE is the persisted open-ended sentinel used by a
+        // stage-exit Plan (currently pregnancy Plan 8).  Do not feed it into
+        // LocalDate.plusWeeks/plusDays: that overflows before the lifecycle
+        // exit can close the occurrence.  A null end is also the existing
+        // representation for an active stage-exit window.
+        boolean openEnded = substage.getEndInclusive() == Integer.MAX_VALUE;
+        LocalDate end = openEnded ? null
+                : add(anchor, substage.getRangeUnit(), substage.getEndInclusive());
         long position = completedUnits(anchor, effectiveDate, substage.getRangeUnit());
-        boolean eligible = position >= substage.getStartInclusive() && position <= substage.getEndInclusive();
+        boolean eligible = position >= substage.getStartInclusive()
+                && (openEnded || position <= substage.getEndInclusive());
         return eligible
                 ? ChecklistEligibilityDecision.eligible(anchor, start, end)
                 : ChecklistEligibilityDecision.outside(anchor, start, end);

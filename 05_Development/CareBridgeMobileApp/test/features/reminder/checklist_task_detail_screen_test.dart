@@ -11,7 +11,7 @@ const _supportRoutes = <String, String>{
   'APPOINTMENTS': '/appointments/calendar',
   'REMINDERS': '/reminder-schedules',
   'JOURNEY': '/mother-home?tab=1',
-  'BABY_CARE': '/baby-care-hub',
+  'BABY_CARE': '/babies',
   'EXPERT_CONSULTATION': '/experts',
   'CONTENT_LIBRARY': '/content',
   'AI_TRIAGE': '/triage/intake',
@@ -96,6 +96,21 @@ void main() {
     expect(find.text('Bé'), findsOneWidget);
     expect(find.text('Đang chờ'), findsOneWidget);
     expect(find.text('Bé An'), findsOneWidget);
+  });
+
+  testWidgets('renders targetless V2 checklist as a neutral recommendation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChecklistTaskDetailScreen(
+          task: _task(target: TodayTaskTarget.unknown),
+        ),
+      ),
+    );
+
+    expect(find.text('Khuyến nghị'), findsOneWidget);
+    expect(find.text('Cá nhân'), findsNothing);
   });
 
   testWidgets(

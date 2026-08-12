@@ -111,6 +111,7 @@ public class GrowthMeasurementStore {
         Map<String, HealthObservation> existing = new LinkedHashMap<>();
         for (HealthObservation row : observationRepository.findGrowthByMeasurementGroup(
                 LEGACY_SOURCE, session.getGrowthMeasurementId())) {
+            validateExistingRowIdentity(session, row);
             existing.put(row.getMetricCode(), row);
         }
 
@@ -168,6 +169,27 @@ public class GrowthMeasurementStore {
 
         observationRepository.saveAll(toSave);
         return findById(session.getGrowthMeasurementId()).orElse(session);
+    }
+
+    /**
+     * A deterministic group id is only safe to replay when every existing row still belongs
+     * to the same canonical baby session. Fail closed instead of repairing a row that has been
+     * misbound to another subject or source.
+     */
+    private static void validateExistingRowIdentity(
+            GrowthMeasurement session, HealthObservation row) {
+        String metricCode = row.getMetricCode();
+        String expectedLegacyId = metricCode == null
+                ? null
+                : session.getGrowthMeasurementId() + ":" + metricCode;
+        if (!session.getCareSubjectId().equals(row.getCareSubjectId())
+                || !"BABY".equals(row.getSubjectType())
+                || !LEGACY_SOURCE.equals(row.getLegacySource())
+                || !session.getGrowthMeasurementId().equals(row.getMeasurementGroupId())
+                || !TYPES.contains(metricCode)
+                || !java.util.Objects.equals(expectedLegacyId, row.getLegacyId())) {
+            throw new IllegalStateException("Growth measurement identity mismatch");
+        }
     }
 
     private List<GrowthMeasurement> sessionsOf(UUID careSubjectId, boolean includeDeleted) {

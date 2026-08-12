@@ -18,6 +18,8 @@ import com.carebridge.backend.consultation.service.IConsultationRequestService;
 import com.carebridge.backend.directchat.service.IDirectConversationService;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Clock;
@@ -47,6 +49,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
     private final ConsultationRequestRepository repository;
     private final ConsultationRequestWriter writer;
     private final ExpertProfileRepository expertProfileRepository;
+    private final ExpertAvailabilityRepository expertAvailabilityRepository;
     private final UserRepository userRepository;
     private final ConsultationRequestPolicy policy;
     private final IDirectConversationService directConversationService;
@@ -60,6 +63,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
             ConsultationRequestRepository repository,
             ConsultationRequestWriter writer,
             ExpertProfileRepository expertProfileRepository,
+            ExpertAvailabilityRepository expertAvailabilityRepository,
             UserRepository userRepository,
             ConsultationRequestPolicy policy,
             IDirectConversationService directConversationService,
@@ -70,6 +74,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                 repository,
                 writer,
                 expertProfileRepository,
+                expertAvailabilityRepository,
                 userRepository,
                 policy,
                 directConversationService,
@@ -83,6 +88,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
             ConsultationRequestRepository repository,
             ConsultationRequestWriter writer,
             ExpertProfileRepository expertProfileRepository,
+            ExpertAvailabilityRepository expertAvailabilityRepository,
             UserRepository userRepository,
             ConsultationRequestPolicy policy,
             IDirectConversationService directConversationService,
@@ -93,6 +99,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
         this.repository = repository;
         this.writer = writer;
         this.expertProfileRepository = expertProfileRepository;
+        this.expertAvailabilityRepository = expertAvailabilityRepository;
         this.userRepository = userRepository;
         this.policy = policy;
         this.directConversationService = directConversationService;
@@ -131,6 +138,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                 .findByIdForUpdate(lockedExpert.getUserId())
                 .orElseThrow(ConsultationRequestException::expertNotEligible);
         policy.assertExpertEligibleForConsultation(lockedExpert, lockedExpertAccount, now);
+        validatePreferredAvailability(request, now);
         ConsultationRequest candidate = ConsultationRequest.builder()
                 .id(UUID.randomUUID())
                 .requesterUserId(requesterUserId)
@@ -164,6 +172,27 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
         audit("REQUEST_CREATED", created.getId(), requesterUserId);
         return new CreateConsultationRequestResult(
                 toResponse(created, requesterUserId), true);
+    }
+
+    private void validatePreferredAvailability(
+            CreateConsultationRequestRequest request, Instant now) {
+        if (request.getPreferredWindowStart() == null) {
+            return;
+        }
+        Instant start = request.getPreferredWindowStart();
+        Instant end = request.getPreferredWindowEnd();
+        boolean exactHourlySlot = start.isAfter(now)
+                && end.equals(start.plus(1, ChronoUnit.HOURS));
+        boolean exists = exactHourlySlot
+                && expertAvailabilityRepository
+                        .existsByExpertProfileIdAndStartAtAndEndAtAndStatus(
+                                request.getExpertProfileId(),
+                                start,
+                                end,
+                                AvailabilityStatus.AVAILABLE);
+        if (!exists) {
+            throw ConsultationRequestException.availabilityNoLongerAvailable();
+        }
     }
 
     @Override

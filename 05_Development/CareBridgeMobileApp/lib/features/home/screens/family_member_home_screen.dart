@@ -33,6 +33,7 @@ class FamilyMemberHomeScreen extends StatefulWidget {
     this.todayTaskService,
     this.recommendationService,
     this.recommendationLoader,
+    this.hideBottomNav = false,
   });
 
   final Future<FamilyHomeSnapshot> Function({String? selectedCareGroupId})?
@@ -40,6 +41,7 @@ class FamilyMemberHomeScreen extends StatefulWidget {
   final TodayTaskService? todayTaskService;
   final RecommendationService? recommendationService;
   final Future<RecommendationContentResponse> Function()? recommendationLoader;
+  final bool hideBottomNav;
 
   @override
   State<FamilyMemberHomeScreen> createState() => _FamilyMemberHomeScreenState();
@@ -223,7 +225,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
               onRefresh: _load,
               child: ListView(
                 // Leave top inset space for header but allow content to scroll behind status bar
-                padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, 220),
+                padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, widget.hideBottomNav ? 40 : 220),
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 20),
@@ -310,7 +312,8 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                 ],
               ),
             ),
-            Align(alignment: Alignment.bottomCenter, child: _buildBottomNav()),
+            if (!widget.hideBottomNav)
+              Align(alignment: Alignment.bottomCenter, child: _buildBottomNav()),
           ],
         ),
       ),

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/exercise_model.dart';
 import '../services/exercise_service.dart';
 
 class ExerciseHistoryScreen extends StatefulWidget {
-  const ExerciseHistoryScreen({super.key});
+  const ExerciseHistoryScreen({super.key, this.service, this.authState});
+
+  final ExerciseService? service;
+  final AuthState? authState;
 
   @override
   State<ExerciseHistoryScreen> createState() => _ExerciseHistoryScreenState();
@@ -21,16 +25,32 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   static const _secondaryContainer = Color(0xFFF6DACF);
 
   static const _filters = [
-    _Filter('Tháng này', null),
-    _Filter('Yoga', 'YOGA'),
-    _Filter('Đi bộ', 'WALKING'),
-    _Filter('Kegel', 'KEGEL'),
+    _Filter('Tất cả', null),
+    _Filter('Tam cá nguyệt 1', 'FIRST'),
+    _Filter('Tam cá nguyệt 2', 'SECOND'),
+    _Filter('Tam cá nguyệt 3', 'THIRD'),
   ];
 
   int _activeFilter = 0;
   List<ExerciseHistoryItem> _history = [];
   bool _isLoading = true;
   String? _error;
+  int _loadGeneration = 0;
+  late AuthState _authState;
+  late int _observedSessionGeneration;
+  String? _observedUserId;
+  late bool _observedAuthenticated;
+
+  ExerciseService get _service {
+    final service = widget.service;
+    if (service != null) return service;
+    if (widget.authState != null) {
+      throw StateError(
+        'A custom AuthState requires an injected ExerciseService',
+      );
+    }
+    return ExerciseService.instance;
+  }
 
   int get _totalMinutes => _history.fold(0, (s, h) => s + h.durationMinutes);
   int get _sessionCount => _history.length;
@@ -38,39 +58,149 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _authState = widget.authState ?? AuthState.instance;
+    _captureAuthSnapshot();
+    _authState.addListener(_handleAuthStateChanged);
+    if (_hasAuthenticatedAccount) {
+      _load();
+    } else {
+      _isLoading = false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ExerciseHistoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextAuthState = widget.authState ?? AuthState.instance;
+    final authStateChanged = !identical(nextAuthState, _authState);
+    final serviceChanged = !identical(oldWidget.service, widget.service);
+
+    if (authStateChanged) {
+      _authState.removeListener(_handleAuthStateChanged);
+      _authState = nextAuthState;
+      _captureAuthSnapshot();
+      _authState.addListener(_handleAuthStateChanged);
+    }
+    if (authStateChanged || serviceChanged) {
+      _invalidateHistoryAndReload();
+    }
+  }
+
+  @override
+  void dispose() {
+    _loadGeneration++;
+    _authState.removeListener(_handleAuthStateChanged);
+    super.dispose();
+  }
+
+  bool get _hasAuthenticatedAccount =>
+      _authState.isAuthenticated && _authState.userId != null;
+
+  void _captureAuthSnapshot() {
+    _observedSessionGeneration = _authState.sessionGeneration;
+    _observedUserId = _authState.userId;
+    _observedAuthenticated = _authState.isAuthenticated;
+  }
+
+  void _handleAuthStateChanged() {
+    final sessionChanged =
+        _observedSessionGeneration != _authState.sessionGeneration ||
+        _observedUserId != _authState.userId ||
+        _observedAuthenticated != _authState.isAuthenticated;
+    if (!sessionChanged) return;
+
+    _captureAuthSnapshot();
+    _invalidateHistoryAndReload();
+  }
+
+  void _invalidateHistoryAndReload() {
+    _loadGeneration++;
+    if (!mounted) return;
+    final shouldReload = _hasAuthenticatedAccount;
+    setState(() {
+      _history = [];
+      _error = null;
+      _isLoading = shouldReload;
+    });
+    if (shouldReload) {
+      _load();
+    }
   }
 
   Future<void> _load() async {
+    final authState = _authState;
+    final userId = authState.userId;
+    final sessionGeneration = authState.sessionGeneration;
+    final loadGeneration = ++_loadGeneration;
+    if (!authState.isAuthenticated || userId == null) {
+      if (!mounted) return;
+      setState(() {
+        _history = [];
+        _error = null;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final trimesterScope = _filters[_activeFilter].scope;
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
-      final trimesterScope = _activeFilter == 0
-          ? null
-          : _filters[_activeFilter].scope;
-      final result = await ExerciseService.instance.getHistory(
-        trimesterScope: trimesterScope,
-      );
-      if (!mounted) return;
+      final result = await _service.getHistory(trimesterScope: trimesterScope);
+      if (!_canApplyLoad(
+        authState: authState,
+        userId: userId,
+        sessionGeneration: sessionGeneration,
+        loadGeneration: loadGeneration,
+      )) {
+        return;
+      }
       setState(() {
         _history = result;
         _isLoading = false;
       });
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!_canApplyLoad(
+        authState: authState,
+        userId: userId,
+        sessionGeneration: sessionGeneration,
+        loadGeneration: loadGeneration,
+      )) {
+        return;
+      }
       setState(() {
         _error = 'Lỗi tải lịch sử (${e.statusCode})';
         _isLoading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!_canApplyLoad(
+        authState: authState,
+        userId: userId,
+        sessionGeneration: sessionGeneration,
+        loadGeneration: loadGeneration,
+      )) {
+        return;
+      }
       setState(() {
         _error = 'Không thể kết nối. Vui lòng thử lại.';
         _isLoading = false;
       });
     }
+  }
+
+  bool _canApplyLoad({
+    required AuthState authState,
+    required String userId,
+    required int sessionGeneration,
+    required int loadGeneration,
+  }) {
+    return mounted &&
+        identical(authState, _authState) &&
+        loadGeneration == _loadGeneration &&
+        authState.isAuthenticated &&
+        authState.matchesSession(generation: sessionGeneration, userId: userId);
   }
 
   @override
@@ -159,67 +289,51 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   }
 
   Widget _buildFilters() {
-    return SizedBox(
-      height: 56,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        scrollDirection: Axis.horizontal,
-        itemCount: _filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final active = _activeFilter == i;
-          final f = _filters[i];
-          return GestureDetector(
-            onTap: () {
-              setState(() => _activeFilter = i);
-              _load();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: active ? _primary : _secondaryContainer,
-                borderRadius: BorderRadius.circular(9999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (active) ...[
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      color: Colors.white,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 6),
-                  ] else if (f.scope == 'YOGA') ...[
-                    const Icon(
-                      Icons.self_improvement_outlined,
-                      color: _primary,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 6),
-                  ] else if (f.scope == 'WALKING') ...[
-                    const Icon(
-                      Icons.directions_walk_outlined,
-                      color: _primary,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Text(
-                    f.label,
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: active ? Colors.white : _primary,
-                    ),
-                  ),
-                ],
+    final chipAnimationStyle = MediaQuery.disableAnimationsOf(context)
+        ? ChipAnimationStyle(
+            enableAnimation: AnimationStyle.noAnimation,
+            selectAnimation: AnimationStyle.noAnimation,
+            avatarDrawerAnimation: AnimationStyle.noAnimation,
+            deleteDrawerAnimation: AnimationStyle.noAnimation,
+          )
+        : null;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      child: Row(
+        children: [
+          for (var i = 0; i < _filters.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: ChoiceChip(
+                key: ValueKey(
+                  'exercise-history-filter-${_filters[i].scope ?? 'ALL'}',
+                ),
+                label: Text(_filters[i].label),
+                selected: _activeFilter == i,
+                onSelected: (_) {
+                  if (_activeFilter == i) return;
+                  setState(() => _activeFilter = i);
+                  _load();
+                },
+                showCheckmark: false,
+                selectedColor: _primary,
+                backgroundColor: _secondaryContainer,
+                side: BorderSide.none,
+                shape: const StadiumBorder(),
+                labelStyle: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _activeFilter == i ? Colors.white : _primary,
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+                chipAnimationStyle: chipAnimationStyle,
               ),
             ),
-          );
-        },
+          ],
+        ],
       ),
     );
   }
@@ -342,7 +456,6 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   spacing: 8,
                   runSpacing: 4,
                   children: [
-                    _tag('Tam cá nguyệt 2'),
                     _tag(
                       item.isCompleted
                           ? '${item.durationMinutes} Phút'

@@ -25,6 +25,7 @@ import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.dto.request.SelectRoleRequest;
 import com.carebridge.backend.security.dto.request.UpdateProfileRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
+import com.carebridge.backend.security.dto.request.VerificationMethod;
 import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.OtpResendResponse;
 import com.carebridge.backend.security.dto.response.OtpSendResponse;
@@ -51,12 +52,15 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -115,24 +119,44 @@ public class AuthServiceImpl implements AuthService {
             throw new ValidationException(passwordComplexityPolicy.getRequirements());
         }
 
-        // 2. Determine identifier (email or phone)
-        String email = request.getEmail();
-        String phone = normalizePhone(request.getPhone());
-        String identifier;
+        VerificationMethod requestedMethod = request.getVerificationMethod();
+        if (requestedMethod == null) {
+            throw new ValidationException("Verification method is required");
+        }
+        // Explicit PHONE registration is completed only after Firebase SMS verification
+        // through /auth/phone/register.
+        if (requestedMethod == VerificationMethod.PHONE) {
+            throw new ValidationException(
+                    "Phone verification must be completed through Firebase Phone Authentication");
+        }
 
+        String email = request.getEmail() == null ? null : request.getEmail().trim().toLowerCase(Locale.ROOT);
+        String phone = normalizePhone(request.getPhone());
+        if (requestedMethod == VerificationMethod.EMAIL
+                && (email == null || email.isBlank())) {
+            throw new ValidationException("Email is required for email verification");
+        }
+
+        String identifier;
         if (email != null && !email.isBlank()) {
-            identifier = email.trim().toLowerCase();
-            if (!identifier.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            identifier = email;
+            if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
                 throw new ValidationException("Invalid email format");
             }
         } else if (phone != null && !phone.isBlank()) {
             identifier = phone;
         } else {
-            throw new ValidationException("Either email or phone must be provided");
+            throw new ValidationException("Email and phone are required");
         }
 
+        boolean emailChannel = requestedMethod == VerificationMethod.EMAIL;
+        String otpEmail = emailChannel ? email : null;
+        String otpPhone = emailChannel ? null : phone;
+
         // 3. Check for duplicate account
-        boolean emailExists = email != null && !email.isBlank() && userRepository.existsByEmail(email);
+        boolean emailExists = email != null && !email.isBlank()
+                && (userRepository.existsByEmail(email)
+                || userRepository.findByEmailIgnoreCase(email).isPresent());
         boolean phoneExists = phone != null && !phone.isBlank() && userRepository.existsByPhone(phone);
 
         if (emailExists || phoneExists) {
@@ -160,7 +184,15 @@ public class AuthServiceImpl implements AuthService {
                 .accountStatus("PENDING_ACTIVATION")
                 .build();
 
-        user = userRepository.save(user);
+        try {
+            user = userRepository.save(user);
+            // Flush while the contact uniqueness constraints are still inside
+            // this transaction so a concurrent duplicate registration maps to
+            // the same privacy-preserving 409 as the pre-check path.
+            userRepository.flush();
+        } catch (DataIntegrityViolationException collision) {
+            throw new AccountAlreadyExistsException();
+        }
 
         // 7. Generate 6-digit OTP and hash with SHA256
         String otp = generate6DigitOtp();
@@ -170,8 +202,8 @@ public class AuthServiceImpl implements AuthService {
         OtpVerification otpVerification = OtpVerification.builder()
                 .user(user)
                 .codeHash(otpHash)
-                .phone(phone != null && !phone.isBlank() ? phone : null)
-                .email(identifier != null && identifier.contains("@") ? identifier : null)
+                .phone(otpPhone)
+                .email(otpEmail)
                 .purpose(OtpVerification.OtpPurpose.REGISTER)
                 .expiresAt(Instant.now().plusSeconds(otpExpirationSeconds))
                 .attempts(5)
@@ -181,10 +213,9 @@ public class AuthServiceImpl implements AuthService {
         otpVerificationRepository.save(otpVerification);
 
         // 9. Send OTP
-        if (email != null && !email.isBlank()) {
+        if (emailChannel) {
             emailService.sendOtpVerificationEmail(email, otp, (int) (otpExpirationSeconds / 60));
-        }
-        if (phone != null && !phone.isBlank()) {
+        } else {
             smsService.sendOtpVerificationSms(phone, otp, (int) (otpExpirationSeconds / 60));
         }
 
@@ -196,9 +227,11 @@ public class AuthServiceImpl implements AuthService {
                 otpVerification.getId() != null ? otpVerification.getId().toString() : null,
                 Map.ofEntries(
                     Map.entry("purpose", "REGISTER"),
-                    Map.entry("email", email != null ? email : ""),
-                    Map.entry("phone", phone != null ? phone : ""),
-                    Map.entry("role", role != null ? role.name() : "UNASSIGNED")));
+                    Map.entry("email", otpEmail != null ? otpEmail : ""),
+                    Map.entry("phone", otpPhone != null ? otpPhone : ""),
+                    Map.entry("role", role != null ? role.name() : "UNASSIGNED"),
+                    Map.entry("verificationMethod", emailChannel
+                            ? VerificationMethod.EMAIL.name() : VerificationMethod.PHONE.name())));
 
         return OtpSendResponse.builder()
                 .message("Registration initiated. Please verify your OTP.")
@@ -217,7 +250,7 @@ public class AuthServiceImpl implements AuthService {
         if (userAgent == null || userAgent.isBlank()) {
             return "Unknown Device";
         }
-        userAgent = userAgent.toLowerCase();
+        userAgent = userAgent.toLowerCase(Locale.ROOT);
         if (userAgent.contains("mobile") || userAgent.contains("android") || userAgent.contains("iphone")) {
             return "Mobile Device";
         }
@@ -239,7 +272,8 @@ public class AuthServiceImpl implements AuthService {
         // 1. Normalize identifier (phone or email)
         String phone = normalizePhone(request.getPhone());
         String emailRaw = request.getEmail();
-        String email = (emailRaw == null || emailRaw.isBlank()) ? null : emailRaw.trim().toLowerCase();
+        String email = (emailRaw == null || emailRaw.isBlank())
+                ? null : emailRaw.trim().toLowerCase(Locale.ROOT);
 
         // Validate exactly one identifier
         boolean hasPhone = phone != null;
@@ -249,9 +283,13 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 2. Fetch user
-        User user = hasPhone
-                ? userRepository.findByPhone(phone).orElse(null)
-                : userRepository.findByEmail(email).orElse(null);
+        User user;
+        if (hasPhone) {
+            user = userRepository.findByPhone(phone).orElse(null);
+        } else {
+            Optional<User> emailUser = userRepository.findByEmailIgnoreCase(email);
+            user = emailUser.orElseGet(() -> userRepository.findByEmail(email).orElse(null));
+        }
 
         if (user == null) {
             throw new AuthenticationException("Invalid credentials");
@@ -333,17 +371,24 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
         String phone = normalizePhone(request.getPhone());
         String emailRaw = request.getEmail();
-        String email = (emailRaw == null || emailRaw.isBlank()) ? null : emailRaw.trim().toLowerCase();
+        String email = (emailRaw == null || emailRaw.isBlank())
+                ? null : emailRaw.trim().toLowerCase(Locale.ROOT);
         String otpInput = request.getOtp();
+
+        boolean hasPhone = phone != null && !phone.isBlank();
+        boolean hasEmail = email != null && !email.isBlank();
+        if (hasPhone == hasEmail) {
+            throw new ValidationException("Either phone or email must be provided (exactly one)");
+        }
 
         // Find valid OtpVerification by phone or email
         OtpVerification verification;
-        if (phone != null && !phone.isBlank()) {
+        if (hasPhone) {
             verification = otpVerificationRepository
                     .findTopByPhoneAndUsedAtIsNullOrderByCreatedAtDesc(phone)
                     .filter(v -> v.getExpiresAt().isAfter(Instant.now()))
                     .orElseThrow(() -> new ValidationException("Invalid or expired OTP"));
-        } else if (email != null && !email.isBlank()) {
+        } else if (hasEmail) {
             verification = otpVerificationRepository
                     .findTopByEmailAndUsedAtIsNullOrderByCreatedAtDesc(email)
                     .filter(v -> v.getExpiresAt().isAfter(Instant.now()))
@@ -371,6 +416,9 @@ public class AuthServiceImpl implements AuthService {
     public OtpResendResponse resendOtp(ResendOtpRequest request) {
         String phone = normalizePhone(request.getPhone());
         String email = StringUtils.trimToNull(request.getEmail());
+        if (email != null) {
+            email = email.toLowerCase(Locale.ROOT);
+        }
 
         boolean hasPhone = phone != null;
         boolean hasEmail = email != null;
@@ -378,20 +426,32 @@ public class AuthServiceImpl implements AuthService {
             throw new ValidationException("Exactly one of phone or email must be provided");
         }
 
-        User user = hasPhone
-                ? userRepository.findByPhone(phone)
-                        .orElseThrow(() -> new ResourceNotFoundException("User not found"))
-                : userRepository.findByEmail(email)
-                        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user;
+        if (hasPhone) {
+            user = userRepository.findByPhone(phone)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        } else {
+            Optional<User> emailUser = userRepository.findByEmailIgnoreCase(email);
+            user = emailUser.isPresent()
+                    ? emailUser.get()
+                    : userRepository.findByEmail(email)
+                            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        }
 
         OtpVerification existingVerification = otpVerificationRepository
                 .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow(() -> new ValidationException(
                         "No pending OTP verification found. Please request a new OTP."));
 
+        boolean verificationUsesPhone = StringUtils.trimToNull(existingVerification.getPhone()) != null;
+        boolean verificationUsesEmail = StringUtils.trimToNull(existingVerification.getEmail()) != null;
+        if (hasPhone != verificationUsesPhone || hasEmail != verificationUsesEmail) {
+            throw new ValidationException("Use the same verification channel for OTP resend");
+        }
+
         String deliveryIdentifier = hasPhone
-                ? StringUtils.trimToNull(user.getPhone())
-                : StringUtils.trimToNull(user.getEmail());
+                ? normalizePhone(user.getPhone())
+                : normalizeEmail(user.getEmail());
         if (deliveryIdentifier == null) {
             throw new ValidationException("The account does not have the requested delivery identifier");
         }
@@ -455,8 +515,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthResponse completeRegistration(OtpVerification verification, User user, String otpInput) {
+        // Serialize activation with administrator status changes. Without a row
+        // lock, an admin disable racing this method could be overwritten by the
+        // final user save below and the OTP would silently reactivate the account.
+        user = userRepository.findByIdForUpdate(user.getId()).orElse(user);
         String inputHash = TokenUtils.hashSha256(otpInput);
-        if (!constantTimeHashEquals(inputHash, verification.getCodeHash()) && !"111111".equals(otpInput)) {
+        if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
             verification.setAttempts(verification.getAttempts() - 1);
             if (verification.getAttempts() <= 0) {
                 verification.setUsedAt(Instant.now());
@@ -465,10 +529,21 @@ public class AuthServiceImpl implements AuthService {
             throw new ValidationException("Invalid OTP");
         }
 
+        if (!"PENDING_ACTIVATION".equalsIgnoreCase(user.getAccountStatus())
+                || user.isLocked()) {
+            throw new ValidationException("Account cannot be activated");
+        }
+
         verification.setUsedAt(Instant.now());
         verification.setVerified(true);
         otpVerificationRepository.save(verification);
 
+        if (verification.getEmail() != null && !verification.getEmail().isBlank()) {
+            user.setEmailVerified(true);
+        }
+        if (verification.getPhone() != null && !verification.getPhone().isBlank()) {
+            user.setPhoneVerified(true);
+        }
         user.setEnabled(true);
         user.setAccountStatus("ACTIVE");
         userRepository.save(user);
@@ -520,7 +595,7 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse completeLogin(OtpVerification verification, String phone, String otpInput) {
         String inputHash = TokenUtils.hashSha256(otpInput);
-        if (!constantTimeHashEquals(inputHash, verification.getCodeHash()) && !"111111".equals(otpInput)) {
+        if (!constantTimeHashEquals(inputHash, verification.getCodeHash())) {
             verification.setAttempts(verification.getAttempts() - 1);
             if (verification.getAttempts() <= 0) {
                 verification.setUsedAt(Instant.now());
@@ -726,8 +801,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserProfileResponse selectRole(UUID userId, SelectRoleRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseGet(() -> userRepository.findById(userId)
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found")));
         if (user.getRole() != null) {
             throw new ValidationException("Role has already been assigned");
         }
@@ -735,6 +811,9 @@ public class AuthServiceImpl implements AuthService {
         Role selectedRole = authenticationPolicy.resolveSelfRegistrationRole(request.getRole());
         if (selectedRole == null) {
             throw new ValidationException("Role is required");
+        }
+        if (selectedRole == Role.EXPERT && !Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new ValidationException("Expert registration requires email verification");
         }
 
         user.setRole(selectedRole);
@@ -853,6 +932,11 @@ public class AuthServiceImpl implements AuthService {
         byte[] bytes = new byte[48];
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String normalizeEmail(String email) {
+        String trimmed = StringUtils.trimToNull(email);
+        return trimmed == null ? null : trimmed.toLowerCase(Locale.ROOT);
     }
 
     private String normalizePhone(String phone) {

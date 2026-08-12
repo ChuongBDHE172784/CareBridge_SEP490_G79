@@ -3,6 +3,7 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/healthRecords/models/health_metric_model.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
 import 'package:untitled/features/journey/screens/mother_journey_screen.dart';
 import 'package:untitled/features/journey/services/journey_service.dart';
@@ -162,6 +163,51 @@ void main() {
       }
     });
   }
+
+  testWidgets('latest synchronized BMI context renders weight and height', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final trend = MetricTrend(
+      metricType: 'BMI',
+      unit: 'kg/m²',
+      dataPoints: [
+        MetricDataPoint(
+          metricId: 'recommendation-bmi-point',
+          measuredAt: DateTime(2026, 8, 10),
+          valueNumeric: 8.8,
+          context: const {
+            'weightKg': 55.0,
+            'heightCm': 250.0,
+            'weightContext': 'CURRENT_PREGNANCY',
+          },
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MotherJourneyScreen(
+            loadData: false,
+            loadSupportingData: false,
+            initialDashboard: _pregnancyDashboard(24),
+            initialBmiTrend: trend,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.text('Cân nặng'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('55 kg'), findsOneWidget);
+    expect(find.text('250 cm'), findsOneWidget);
+  });
 
   testWidgets('maternal journey keeps AI Triage as a single floating entry', (
     tester,

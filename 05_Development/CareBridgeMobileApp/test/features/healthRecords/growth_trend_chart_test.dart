@@ -441,7 +441,7 @@ void main() {
     expect(find.descendant(of: chartCard, matching: filters), findsOneWidget);
     expect(
       find.descendant(of: filters, matching: find.byType(ChoiceChip)),
-      findsNWidgets(4),
+      findsNWidgets(3),
     );
 
     await tester.tap(find.text('Chiều cao'));

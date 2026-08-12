@@ -2,6 +2,7 @@ package com.carebridge.backend.audit.controller;
 
 import com.carebridge.backend.audit.dto.request.AddSecurityNoteRequest;
 import com.carebridge.backend.audit.dto.request.ReviewSecurityEventRequest;
+import com.carebridge.backend.audit.dto.request.ResolveSecurityIncidentRequest;
 import com.carebridge.backend.audit.dto.response.SecurityEventNoteResponse;
 import com.carebridge.backend.audit.dto.response.SecurityEventResponse;
 import com.carebridge.backend.audit.entity.AuditAction;
@@ -88,6 +89,11 @@ public class SecurityIncidentController {
         return ResponseEntity.ok(ApiResponse.success(timeline));
     }
 
+    @GetMapping("/{eventId}")
+    public ResponseEntity<ApiResponse<SecurityEventResponse>> getEvent(@PathVariable Long eventId) {
+        return ResponseEntity.ok(ApiResponse.success(securityIncidentService.getEvent(eventId)));
+    }
+
     @PutMapping("/{eventId}/review")
     public ResponseEntity<ApiResponse<SecurityEventResponse>> reviewEvent(
             @PathVariable Long eventId,
@@ -96,6 +102,16 @@ public class SecurityIncidentController {
         UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
         SecurityEventResponse response = securityIncidentService.reviewEvent(eventId, request, reviewerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Security event reviewed"));
+    }
+
+    @PutMapping("/{eventId}/resolve")
+    public ResponseEntity<ApiResponse<SecurityEventResponse>> resolveEvent(
+            @PathVariable Long eventId,
+            @Valid @RequestBody ResolveSecurityIncidentRequest request,
+            Principal principal) {
+        UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
+        SecurityEventResponse response = securityIncidentService.resolveEvent(eventId, request, reviewerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Security incident resolved"));
     }
 
     @PostMapping("/{eventId}/notes")

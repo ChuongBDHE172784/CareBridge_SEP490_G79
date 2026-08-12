@@ -24,9 +24,11 @@ import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.content.dto.request.ContentDecisionRequest;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateDecisionResponse;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ContentDecision;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ChecklistTemplateType;
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
@@ -194,6 +196,128 @@ class ChecklistTemplateApprovalServiceImplTest {
         assertThrows(IllegalArgumentException.class, () -> service.decide(
                 TEMPLATE_ID, new ContentDecisionRequest(null, null), principal));
 
+        verify(checklistTemplateRepository, never()).save(any());
+        verify(checklistAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void decide_v2RejectsLeafWithLegacyContractMetadata() {
+        ChecklistTemplate template = makeTemplate(t -> {
+            t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            t.setChecklistContractVersion((short) 2);
+        });
+        ChecklistItem legacyLeaf = ChecklistItem.builder()
+                .template(template)
+                .itemText("Legacy target")
+                .order(1)
+                .checklistContractVersion((short) 1)
+                .targetSubject(ChecklistTargetSubject.MOTHER)
+                .isRequired(true)
+                .build();
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID))
+                .thenReturn(List.of(legacyLeaf));
+
+        ContentException error = assertThrows(ContentException.class, () -> service.decide(
+                TEMPLATE_ID, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+
+        assertEquals("CNT-001", error.getCode());
+        verify(checklistTemplateRepository, never()).save(any());
+        verify(checklistAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void reviewImported_draftSeedMovesToPendingReviewAndRecordsTechnicalReview() {
+        ChecklistTemplate template = makeTemplate(value -> {
+            value.setStatus(ChecklistTemplateStatus.DRAFT);
+            value.setMigrationReviewRequired(true);
+            value.setChecklistContractVersion((short) 2);
+        });
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChecklistTemplateDecisionResponse response = service.reviewImported(TEMPLATE_ID, principal);
+
+        assertEquals(ChecklistTemplateStatus.DRAFT, response.previousStatus());
+        assertEquals(ChecklistTemplateStatus.PENDING_REVIEW, response.newStatus());
+        assertEquals(ChecklistTemplateStatus.PENDING_REVIEW, template.getStatus());
+        assertFalse(template.getMigrationReviewRequired());
+        assertNotNull(template.getMigrationReviewedAt());
+        assertEquals(ADMIN_ID, template.getMigrationReviewedBy());
+        assertFalse(template.getDistributionEnabled());
+        verify(checklistAuditWriter).write(any());
+    }
+
+    @Test
+    void activateImported_pendingPregnancyV2ProvenanceFailsBeforeMutation() {
+        ChecklistTemplate template = makeTemplate(value -> {
+            value.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            value.setMigrationReviewRequired(false);
+            value.setMigrationReviewedAt(java.time.Instant.now());
+            value.setMigrationReviewedBy(ADMIN_ID);
+            value.setChecklistContractVersion((short) 2);
+            value.setChecklistMetadataJson(
+                    "{\"schema\":\"CHECKLIST_METADATA_V1\","
+                            + "\"provenanceStatus\":\"PENDING_CLINICAL_COPY_SIGN_OFF\"}");
+        });
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+
+        ContentException error = assertThrows(ContentException.class,
+                () -> service.activateImported(TEMPLATE_ID, principal));
+
+        assertEquals("CHECKLIST_PROVENANCE_SIGN_OFF_REQUIRED", error.getCode());
+        verify(checklistTemplateRepository, never()).save(any());
+        verify(checklistAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void activateImported_signedOffPregnancyV2TransitionsToApprovedAndEnablesDistribution() {
+        ChecklistTemplate template = makeTemplate(value -> {
+            value.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            value.setMigrationReviewRequired(false);
+            value.setMigrationReviewedAt(java.time.Instant.now());
+            value.setMigrationReviewedBy(ADMIN_ID);
+            value.setChecklistContractVersion((short) 2);
+            value.setChecklistMetadataJson(
+                    "{\"schema\":\"CHECKLIST_METADATA_V1\","
+                            + "\"provenanceStatus\":\"SIGNED_OFF\"}");
+        });
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChecklistTemplateDecisionResponse response = service.activateImported(TEMPLATE_ID, principal);
+
+        assertEquals(ChecklistTemplateStatus.PENDING_REVIEW, response.previousStatus());
+        assertEquals(ChecklistTemplateStatus.APPROVED, response.newStatus());
+        assertEquals(ChecklistTemplateStatus.APPROVED, template.getStatus());
+        assertEquals(Boolean.TRUE, template.getDistributionEnabled());
+        assertEquals(ADMIN_ID, template.getApprovedBy());
+        assertNotNull(template.getApprovedAt());
+        verify(checklistTemplateRepository).save(template);
+        verify(checklistAuditWriter).write(any());
+    }
+
+    @Test
+    void decide_approveAfterTechnicalReviewUsesStableProvenanceGate() {
+        ChecklistTemplate template = makeTemplate(value -> {
+            value.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            value.setMigrationReviewRequired(false);
+            value.setMigrationReviewedAt(java.time.Instant.now());
+            value.setMigrationReviewedBy(ADMIN_ID);
+            value.setChecklistContractVersion((short) 2);
+            value.setChecklistMetadataJson(
+                    "{\"schema\":\"CHECKLIST_METADATA_V1\","
+                            + "\"provenanceStatus\":\"PENDING_CLINICAL_COPY_SIGN_OFF\"}");
+        });
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+
+        ContentException error = assertThrows(ContentException.class,
+                () -> service.decide(TEMPLATE_ID,
+                        new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+
+        assertEquals("CHECKLIST_PROVENANCE_SIGN_OFF_REQUIRED", error.getCode());
         verify(checklistTemplateRepository, never()).save(any());
         verify(checklistAuditWriter, never()).write(any());
     }

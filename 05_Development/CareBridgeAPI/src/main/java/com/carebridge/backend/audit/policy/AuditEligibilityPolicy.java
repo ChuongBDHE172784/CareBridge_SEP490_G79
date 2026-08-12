@@ -67,6 +67,8 @@ public class AuditEligibilityPolicy {
             AuditAction.CHECKLIST_CANCELLED,
             AuditAction.CHECKLIST_RECONCILIATION_FAILED,
             AuditAction.CHECKLIST_MIGRATION_QUARANTINED,
+            AuditAction.CHECKLIST_ACCESS_BASELINE,
+            AuditAction.CHECKLIST_ACCESS_REVOKED,
             AuditAction.CHECKLIST_QUARANTINE_VIEWED,
             AuditAction.CHECKLIST_QUARANTINE_RESOLVED,
             AuditAction.CHECKLIST_RETENTION_PURGED,

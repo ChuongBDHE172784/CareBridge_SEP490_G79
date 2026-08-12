@@ -21,7 +21,7 @@ import org.springframework.data.domain.Pageable;
 public interface AdminChecklistTemplateService {
 
     Page<AdminChecklistTemplateDetailResponse> list(
-            ChecklistTemplateStatus status, ContentStage stage, Pageable pageable);
+            ChecklistTemplateStatus status, ContentStage stage, String keyword, Pageable pageable);
 
     AdminChecklistTemplateDetailResponse getById(UUID id);
 

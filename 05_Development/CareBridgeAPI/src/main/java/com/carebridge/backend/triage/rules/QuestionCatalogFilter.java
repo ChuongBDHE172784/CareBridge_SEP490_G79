@@ -35,6 +35,7 @@ public class QuestionCatalogFilter {
             Set<String> missingFields,
             Set<String> missingSignals,
             Set<String> answeredQuestionIds,
+            Set<String> askedQuestionIds,
             Map<String, Object> signals,
             String safetyScreenStatus) {
 
@@ -49,7 +50,7 @@ public class QuestionCatalogFilter {
             return new FilterContext(entity, stage, intent, status,
                     missingFields == null ? Set.of() : missingFields,
                     missingSignals == null ? Set.of() : missingSignals,
-                    Set.of(), Map.of(), "INCOMPLETE");
+                    Set.of(), Set.of(), Map.of(), "INCOMPLETE");
         }
     }
 
@@ -61,7 +62,8 @@ public class QuestionCatalogFilter {
 
     /** Whether a single question may be asked in this context. */
     public boolean isEligible(QuestionCatalog.Question question, FilterContext context) {
-        if (context.answeredQuestionIds().contains(question.questionId())) {
+        if (context.answeredQuestionIds().contains(question.questionId())
+                || context.askedQuestionIds().contains(question.questionId())) {
             return false;
         }
         if (question.requiresResolvedTarget()) {
@@ -109,6 +111,7 @@ public class QuestionCatalogFilter {
             for (String questionId : clarifications) {
                 catalog.question(questionId)
                         .filter(question -> !context.answeredQuestionIds().contains(questionId))
+                        .filter(question -> !context.askedQuestionIds().contains(questionId))
                         .ifPresent(forced::add);
             }
             catalog.questions().values().stream()
@@ -116,6 +119,7 @@ public class QuestionCatalogFilter {
                     .filter(QuestionCatalog.Question::mayRunWithoutResolvedTarget)
                     .filter(question -> !"COMPLETE".equals(context.safetyScreenStatus()))
                     .filter(question -> !context.answeredQuestionIds().contains(question.questionId()))
+                    .filter(question -> !context.askedQuestionIds().contains(question.questionId()))
                     .filter(question -> forced.stream().noneMatch(existing ->
                             existing.questionId().equals(question.questionId())))
                     .forEach(forced::add);
@@ -145,6 +149,9 @@ public class QuestionCatalogFilter {
         }
         return switch (context.contextStatus()) {
             case NEEDS_TARGET_ENTITY -> List.of("Q_CLARIFY_TARGET_ENTITY");
+            case NEEDS_STAGE -> List.of(
+                    context.targetEntity() == TargetEntity.MOTHER
+                            ? "Q_CLARIFY_STAGE" : "Q_BABY_AGE_MONTHS");
             case NEEDS_INTENT -> List.of("Q_CLARIFY_INTENT");
             case CONFLICTED -> List.of("Q_CLARIFY_TARGET_FIRST");
             default -> List.of();

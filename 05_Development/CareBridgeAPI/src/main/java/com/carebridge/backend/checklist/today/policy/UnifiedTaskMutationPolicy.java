@@ -15,6 +15,30 @@ public class UnifiedTaskMutationPolicy {
         }
     }
 
+    /** Contract-aware target guard used by the V1/V2 user-created adapter. */
+    public void requireUserCreatedTarget(
+            ChecklistOrigin origin,
+            ChecklistTargetSubject targetSubject,
+            short contractVersion) {
+        if (origin != ChecklistOrigin.USER_CREATED) {
+            return;
+        }
+        if (contractVersion == 2) {
+            if (targetSubject != null) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "CHECKLIST_TARGET_UNSUPPORTED",
+                        "Targetless V2 tasks cannot define a target subject");
+            }
+            return;
+        }
+        if (contractVersion != 1) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "CHECKLIST_CONTRACT_VERSION_UNSUPPORTED",
+                    "Unsupported checklist contract version");
+        }
+        requireUserCreatedTarget(origin, targetSubject);
+    }
+
     public void requireMutable(ChecklistOrigin origin) {
         if (origin == ChecklistOrigin.SYSTEM_TEMPLATE) {
             throw new BusinessException(HttpStatus.CONFLICT, "SYSTEM_TASK_IMMUTABLE",

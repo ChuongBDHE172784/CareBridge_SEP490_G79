@@ -63,11 +63,25 @@ public class CloudinaryStorageService implements IStorageService {
                 case PRIVATE -> "private";
             };
 
-            Map<?, ?> result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                    "folder", "carebridge",
-                    "resource_type", resourceType,
-                    "type", type
-            ));
+            Map<?, ?> result;
+            try {
+                result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
+                        "folder", "carebridge",
+                        "resource_type", resourceType,
+                        "type", type
+                ));
+            } catch (Exception e) {
+                if (!"upload".equals(type)) {
+                    result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
+                            "folder", "carebridge",
+                            "resource_type", resourceType,
+                            "type", "upload"
+                    ));
+                    accessMode = FileAccessMode.PUBLIC;
+                } else {
+                    throw e;
+                }
+            }
 
             String publicId = (String) result.get("public_id");
             if (publicId == null) {

@@ -47,17 +47,6 @@ const NAV_LINKS: readonly NavItem[] = [
   { to: '/admin/content-approval-queue', label: 'Duyệt nội dung', icon: 'fact_check', roles: ['SYSTEM_ADMIN'] },
   { to: '/admin/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
   { to: '/admin/notifications', label: 'Thông báo', icon: 'notifications', roles: ['SYSTEM_ADMIN'] },
-  { to: '/admin/settings/privacy', label: 'Quyền riêng tư', icon: 'privacy_tip', roles: ['SYSTEM_ADMIN'] },
-  {
-    type: 'group',
-    label: 'Bảo mật',
-    icon: 'security',
-    roles: ['SYSTEM_ADMIN'],
-    children: [
-      { to: '/admin/security/incidents', label: 'Sự cố bảo mật', icon: 'security', roles: ['SYSTEM_ADMIN'] },
-      { to: '/admin/security/events', label: 'Sự kiện bảo mật', icon: 'policy', roles: ['SYSTEM_ADMIN'] },
-    ],
-  },
   { to: '/expert/dashboard', label: 'Expert', icon: 'stethoscope', roles: ['EXPERT'] },
   { to: '/moderator/moderator-dashboard', label: 'Tổng quan', icon: 'dashboard', roles: ['MODERATOR'] },
   { to: '/moderator/pending-content', label: 'Nội dung mới', icon: 'fact_check', roles: ['MODERATOR'] },
@@ -78,7 +67,6 @@ export default function AdminLayout() {
       '/admin/safety-rules',
       '/admin/system-configuration',
     ].some((path) => location.pathname.startsWith(path)),
-    'Bảo mật': location.pathname.startsWith('/admin/security/'),
   }));
 
   const handleLogout = () => {

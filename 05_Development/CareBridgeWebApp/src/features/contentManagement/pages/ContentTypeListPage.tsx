@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchStaffContentList, archiveContent } from '../services/contentApi';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { fetchStaffContentList, archiveContent, updateContent } from '../services/contentApi';
 import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
 import { STAGE_LABELS, STAGE_OPTIONS, STATUS_LABELS } from '../models/content';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { nextSortDirection, sortRows } from '../utils/tableSorting';
+import ImportContentModal from '../components/ImportContentModal';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -51,6 +53,7 @@ interface ContentTypeListPageProps {
 export default function ContentTypeListPage({ type, title, subtitle, createLabel, emptyLabel }: ContentTypeListPageProps) {
   const navigate = useNavigate();
   const createPath = type === 'ARTICLE' ? '/content/articles/create' : '/content/faq/create';
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [items, setItems] = useState<ContentDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -58,9 +61,20 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [sortKey, setSortKey] = useState<'title' | 'stage' | 'status' | 'updatedAt'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Submit all state
+  const [isSubmitAllConfirmOpen, setIsSubmitAllConfirmOpen] = useState(false);
+  const [isFetchingDrafts, setIsFetchingDrafts] = useState(false);
+  const [isSubmittingAll, setIsSubmittingAll] = useState(false);
+  const [submitAllError, setSubmitAllError] = useState('');
+  const [draftItemsToSubmit, setDraftItemsToSubmit] = useState<ContentDetail[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isListExpanded, setIsListExpanded] = useState(false);
+
   const latestRequestId = useRef(0);
   const debouncedKeyword = useDebouncedValue(searchInput.trim());
   const pageSize = 10;
@@ -116,6 +130,131 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
     setSortKey(key);
   };
 
+  const handleQuickSubmit = async (item: ContentDetail) => {
+    if (submittingId) return;
+    setSubmittingId(item.id);
+    setActionError('');
+    try {
+      await updateContent(item.id, {
+        title: item.title,
+        body: item.body,
+        summary: item.summary ?? undefined,
+        stage: item.stage,
+        topicId: item.topicId ?? undefined,
+        tagIds: item.tagIds,
+        eligibleFromWeek: item.eligibleFromWeek ?? null,
+        eligibleToWeek: item.eligibleToWeek ?? null,
+        recommendationPriority: item.recommendationPriority ?? 0,
+        status: 'PENDING_REVIEW',
+        sourceLabel: item.sourceLabel ?? undefined,
+        sources: item.sources,
+      });
+      await loadData();
+    } catch {
+      setActionError('Không thể gửi duyệt bài viết. Vui lòng thử lại.');
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  const handleOpenSubmitAllModal = async () => {
+    setIsFetchingDrafts(true);
+    setSubmitAllError('');
+    setIsListExpanded(false);
+    try {
+      let allDrafts: ContentDetail[] = [];
+      let pageNum = 0;
+      let totalP = 1;
+
+      do {
+        const data = await fetchStaffContentList({
+          type,
+          status: 'DRAFT',
+          size: 50,
+          page: pageNum,
+        });
+        allDrafts = [...allDrafts, ...data.content];
+        totalP = data.totalPages;
+        pageNum += 1;
+      } while (pageNum < totalP && pageNum < 10);
+
+      setDraftItemsToSubmit(allDrafts);
+      setSelectedItemIds(new Set(allDrafts.map((item) => item.id)));
+      setIsSubmitAllConfirmOpen(true);
+    } catch {
+      setSubmitAllError('Không thể lấy danh sách bản nháp. Vui lòng thử lại.');
+      setIsSubmitAllConfirmOpen(true);
+    } finally {
+      setIsFetchingDrafts(false);
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItemIds.size === draftItemsToSubmit.length) {
+      setSelectedItemIds(new Set());
+    } else {
+      setSelectedItemIds(new Set(draftItemsToSubmit.map((item) => item.id)));
+    }
+  };
+
+  const handleConfirmSubmitAll = async () => {
+    const itemsToSubmit = draftItemsToSubmit.filter((item) => selectedItemIds.has(item.id));
+    if (itemsToSubmit.length === 0) {
+      setIsSubmitAllConfirmOpen(false);
+      return;
+    }
+
+    setIsSubmittingAll(true);
+    setSubmitAllError('');
+
+    try {
+      const results = await Promise.allSettled(
+        itemsToSubmit.map((item) =>
+          updateContent(item.id, {
+            title: item.title,
+            body: item.body,
+            summary: item.summary ?? undefined,
+            stage: item.stage,
+            topicId: item.topicId ?? undefined,
+            tagIds: item.tagIds,
+            eligibleFromWeek: item.eligibleFromWeek ?? null,
+            eligibleToWeek: item.eligibleToWeek ?? null,
+            recommendationPriority: item.recommendationPriority ?? 0,
+            status: 'PENDING_REVIEW',
+            sourceLabel: item.sourceLabel ?? undefined,
+            sources: item.sources,
+          }),
+        ),
+      );
+
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+      if (failedCount > 0) {
+        const successCount = results.length - failedCount;
+        setSubmitAllError(`Đã gửi duyệt ${successCount}/${results.length} mục. ${failedCount} mục gặp lỗi, vui lòng thử lại.`);
+        await loadData();
+      } else {
+        setIsSubmitAllConfirmOpen(false);
+        await loadData();
+      }
+    } catch {
+      setSubmitAllError('Không thể gửi duyệt các mục đã chọn. Vui lòng thử lại.');
+    } finally {
+      setIsSubmittingAll(false);
+    }
+  };
+
   const handleDelete = async (item: ContentDetail) => {
     const reason = window.prompt(`Nhập lý do xóa (lưu trữ) "${item.title}":`);
     if (reason === null) return;
@@ -140,13 +279,37 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
           <h1 className="text-[26px] font-bold text-on-surface m-0">{title}</h1>
           <p className="text-on-surface-variant text-sm mt-1">{subtitle}</p>
         </div>
-        <button
-          onClick={() => navigate(createPath)}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-lg">add</span>
-          {createLabel}
-        </button>
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={() => void handleOpenSubmitAllModal()}
+            disabled={isLoading || isFetchingDrafts}
+            className="flex items-center gap-2 py-3 px-5 rounded-full border border-primary/40 bg-surface text-primary text-sm font-semibold cursor-pointer whitespace-nowrap hover:bg-primary-container/20 transition-colors disabled:opacity-50"
+          >
+            {isFetchingDrafts ? (
+              <span className="material-symbols-outlined text-lg animate-spin">sync</span>
+            ) : (
+              <span className="material-symbols-outlined text-lg">send</span>
+            )}
+            Gửi phê duyệt tất cả
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 py-3 px-5 rounded-full border border-primary/40 bg-surface text-primary text-sm font-semibold cursor-pointer whitespace-nowrap hover:bg-primary-container/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">upload_file</span>
+            Import từ file
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(createPath)}
+            className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-lg">add</span>
+            {createLabel}
+          </button>
+        </div>
       </div>
 
       {actionError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{actionError}</div>}
@@ -249,6 +412,18 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
                           <span className="material-symbols-outlined text-primary text-base">edit</span>
                         </button>
                         <button
+                          onClick={() => handleQuickSubmit(item)}
+                          disabled={item.status !== 'DRAFT' || submittingId === item.id}
+                          className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={item.status !== 'DRAFT' ? 'Chỉ bài viết/FAQ dạng Bản nháp mới có thể gửi duyệt' : 'Gửi duyệt nhanh'}
+                        >
+                          {submittingId === item.id ? (
+                            <span className="material-symbols-outlined text-primary text-base animate-spin">sync</span>
+                          ) : (
+                            <span className="material-symbols-outlined text-primary text-base">send</span>
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleDelete(item)}
                           className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                           title="Xóa"
@@ -304,6 +479,96 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
           </>
         )}
       </div>
+
+      <ImportContentModal
+        type={type}
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={loadData}
+      />
+
+      <ConfirmDialog
+        key="submit-all-confirm-dialog"
+        open={isSubmitAllConfirmOpen}
+        title={type === 'ARTICLE' ? 'Gửi phê duyệt tất cả bài viết?' : 'Gửi phê duyệt tất cả FAQ?'}
+        description={
+          draftItemsToSubmit.length === 0
+            ? `Không có ${type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp nào cần gửi phê duyệt.`
+            : `Bạn có chắc chắn muốn gửi phê duyệt ${selectedItemIds.size}/${draftItemsToSubmit.length} ${type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp đã chọn không? Các mục này sẽ được chuyển sang trạng thái Chờ duyệt.`
+        }
+        icon="send"
+        tone="default"
+        confirmLabel={
+          draftItemsToSubmit.length === 0
+            ? 'Đóng'
+            : selectedItemIds.size > 0
+              ? `Gửi phê duyệt (${selectedItemIds.size} mục)`
+              : 'Chọn ít nhất 1 mục'
+        }
+        submitting={isSubmittingAll}
+        errorText={submitAllError}
+        onConfirm={selectedItemIds.size > 0 ? handleConfirmSubmitAll : () => setIsSubmitAllConfirmOpen(false)}
+        onCancel={() => setIsSubmitAllConfirmOpen(false)}
+      >
+        {draftItemsToSubmit.length > 0 && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setIsListExpanded((prev) => !prev)}
+              className="w-full py-2.5 px-3.5 rounded-xl border border-outline-variant bg-surface-container-low hover:bg-surface-container flex items-center justify-between text-xs font-semibold text-on-surface cursor-pointer font-sans transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-primary">list_alt</span>
+                <span>
+                  Danh sách {type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp ({selectedItemIds.size}/{draftItemsToSubmit.length} đã chọn)
+                </span>
+              </span>
+              <span className="material-symbols-outlined text-base text-outline">
+                {isListExpanded ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {isListExpanded && (
+              <div className="mt-2.5 max-h-56 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-2 space-y-1">
+                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-surface-container-highest text-xs font-semibold text-outline">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="text-primary cursor-pointer hover:underline bg-transparent border-0 p-0 text-xs font-semibold font-sans"
+                  >
+                    {selectedItemIds.size === draftItemsToSubmit.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                  <span>
+                    Đã chọn {selectedItemIds.size} / {draftItemsToSubmit.length}
+                  </span>
+                </div>
+
+                {draftItemsToSubmit.map((item) => {
+                  const isChecked = selectedItemIds.has(item.id);
+                  return (
+                    <label
+                      key={item.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors"
+                    >
+                      <span className="text-xs font-medium text-on-surface line-clamp-1 flex-1 pr-3">
+                        {item.title}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelectItem(item.id)}
+                        className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary/20 cursor-pointer accent-primary"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }
+
+

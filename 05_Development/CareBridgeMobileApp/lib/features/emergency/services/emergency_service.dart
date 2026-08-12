@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import '../models/emergency_alert_model.dart';
 import '../models/emergency_session_model.dart';
+import '../models/location_share_result.dart';
 
 class EmergencyService {
   // UC-62: Idempotent open — returns the existing ACTIVE session if one exists.
@@ -49,5 +50,18 @@ class EmergencyService {
       const {},
     );
     return EmergencyAlert.fromDetailJson(data['data'] as Map<String, dynamic>);
+  }
+
+  Future<LocationShareResult> shareCurrentLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final response = await apiPost('/api/v1/emergency/location-shares', {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+    return LocationShareResult.fromJson(
+      response['data'] as Map<String, dynamic>,
+    );
   }
 }

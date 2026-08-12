@@ -43,6 +43,24 @@ public class EmergencyAlertDeliveryPersistenceService {
                 recipient, sharedNotificationId, claim, true, true);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public UUID persistInAppNotification(
+            EmergencySessionOpened event,
+            AlertRecipientEndpoint recipient,
+            boolean createNewNotification) {
+        NotificationRecord notification = createNewNotification
+                ? createNotification(event, recipient)
+                : notificationRepository.findByUserIdAndReferenceIdAndTypeAndReferenceTypeAndCareGroupId(
+                        recipient.userId(), event.sessionId(), NotificationType.EMERGENCY,
+                        "EMERGENCY_SESSION", recipient.careGroupId())
+                    .orElseGet(() -> createNotification(event, recipient));
+        notification.setChannel("IN_APP");
+        notification.setStatus(NotificationRecordStatus.SENT);
+        notification.setSentAt(Instant.now());
+        notification.setFailedAt(null);
+        return notificationRepository.save(notification).getId();
+    }
+
     private PreparedAlertDelivery prepare(
             EmergencySessionOpened event,
             AlertRecipientEndpoint recipient,

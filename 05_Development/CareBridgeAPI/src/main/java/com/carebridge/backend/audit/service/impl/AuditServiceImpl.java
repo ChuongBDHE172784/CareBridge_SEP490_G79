@@ -61,7 +61,9 @@ public class AuditServiceImpl implements AuditService {
             AuditAction.CHECKLIST_REOPENED,
             AuditAction.CHECKLIST_CANCELLED,
             AuditAction.CHECKLIST_RECONCILIATION_FAILED,
-            AuditAction.CHECKLIST_MIGRATION_QUARANTINED);
+            AuditAction.CHECKLIST_MIGRATION_QUARANTINED,
+            AuditAction.CHECKLIST_ACCESS_BASELINE,
+            AuditAction.CHECKLIST_ACCESS_REVOKED);
 
     private static final Set<AuditAction> CHECKLIST_WRITER_ACTIONS = EnumSet.of(
             AuditAction.CHECKLIST_TEMPLATE_DECIDED,
@@ -72,7 +74,9 @@ public class AuditServiceImpl implements AuditService {
             AuditAction.CHECKLIST_REOPENED,
             AuditAction.CHECKLIST_CANCELLED,
             AuditAction.CHECKLIST_RECONCILIATION_FAILED,
-            AuditAction.CHECKLIST_MIGRATION_QUARANTINED);
+            AuditAction.CHECKLIST_MIGRATION_QUARANTINED,
+            AuditAction.CHECKLIST_ACCESS_BASELINE,
+            AuditAction.CHECKLIST_ACCESS_REVOKED);
 
     private final AuditLogRepository auditLogRepository;
     private final AuditLogMapper auditLogMapper;
@@ -100,7 +104,12 @@ public class AuditServiceImpl implements AuditService {
                 .entityType(resourceType)
                 .entityId(parseUuidSafely(resourceId))
                 .reasonCode(reasonCode)
-                .correlationId(correlationId)
+                // P1 makes correlation mandatory for every CHECKLIST_* row,
+                // including legacy template/item events that still arrive
+                // through this generic audit overload. Preserve an explicit
+                // caller correlation and synthesize one only for that
+                // compatibility path.
+                .correlationId(checklistCorrelation(action, correlationId))
                 .newValueJson(toJson(action, details))
                 .build();
         auditLogRepository.save(log);
@@ -155,6 +164,13 @@ public class AuditServiceImpl implements AuditService {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    private static java.util.UUID checklistCorrelation(AuditAction action, java.util.UUID correlationId) {
+        if (correlationId != null || action == null || !action.name().startsWith("CHECKLIST_")) {
+            return correlationId;
+        }
+        return java.util.UUID.randomUUID();
     }
 
     private String toJson(AuditAction action, Object details) {

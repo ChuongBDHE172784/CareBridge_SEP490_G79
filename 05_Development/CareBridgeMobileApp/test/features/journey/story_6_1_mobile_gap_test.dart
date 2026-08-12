@@ -43,9 +43,11 @@ void main() {
         journeyType: JourneyType.pregnancy,
         startDate: '2026-07-18',
         lastMenstrualDate: '2026-05-01',
-        estimatedDueDate: '2027-02-05',
+        datingBasis: 'LMP',
       ).toJson();
 
+      expect(json['datingBasis'], 'LMP');
+      expect(json.containsKey('estimatedDueDate'), isFalse);
       expect(json['dateSource'], 'SELF_REPORTED');
       expect(json['dateConfidence'], 'ESTIMATED');
       expect(json['changeReason'], 'INITIAL_SETUP');
@@ -72,8 +74,11 @@ void main() {
       final json = const UpdateJourneyRequest(
         journeyType: JourneyType.pregnancy,
         estimatedDueDate: '2027-02-12',
+        datingBasis: 'EDD',
       ).toJson();
 
+      expect(json['datingBasis'], 'EDD');
+      expect(json.containsKey('lastMenstrualDate'), isFalse);
       expect(json['dateSource'], 'SELF_REPORTED');
       expect(json['dateConfidence'], 'ESTIMATED');
       expect(json['changeReason'], 'DATE_CORRECTION');
@@ -192,6 +197,53 @@ void main() {
         ),
         isFalse,
       );
+    });
+
+    test('unresolved or quarantined pregnancy never restores cached Plan', () {
+      final cached = JourneyDashboard(
+        journeyId: 'journey-1',
+        journeyType: 'PREGNANCY',
+        status: 'ACTIVE_PREGNANCY',
+        lastMenstrualDate: DateTime(2026, 1, 1),
+        estimatedDueDate: DateTime(2026, 10, 8),
+        sourceWeekNumber: 21,
+        plan: 2,
+        datingBasis: 'LMP',
+      );
+      final unresolved = JourneyDashboard(
+        journeyId: 'journey-1',
+        journeyType: 'PREGNANCY',
+        status: 'ACTIVE_PREGNANCY',
+        lastMenstrualDate: DateTime(2026, 1, 1),
+        estimatedDueDate: DateTime(2026, 10, 8),
+      );
+      final quarantined = JourneyDashboard(
+        journeyId: 'journey-1',
+        journeyType: 'PREGNANCY',
+        status: 'ACTIVE_PREGNANCY',
+        lastMenstrualDate: DateTime(2026, 1, 1),
+        estimatedDueDate: DateTime(2026, 10, 8),
+        datingQuarantineReason: 'DATING_DISCREPANCY',
+      );
+
+      expect(
+        JourneyDashboardReconciler.shouldUse(
+          unresolved,
+          cached,
+          pendingSync: true,
+        ),
+        isFalse,
+      );
+      expect(
+        JourneyDashboardReconciler.shouldUse(
+          quarantined,
+          cached,
+          pendingSync: true,
+        ),
+        isFalse,
+      );
+      expect(unresolved.displayPregnancyWeek, isNull);
+      expect(quarantined.displayPregnancyWeek, isNull);
     });
 
     test('EDD-only update clears a cached LMP', () {
@@ -410,18 +462,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Quay lại'), findsOneWidget);
-    final method = find.byIcon(Icons.timeline_rounded).first;
+    final method = find.byKey(const Key('dating-method-due-date'));
     await tester.ensureVisible(method);
     await tester.tap(method);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
-    await tester.pumpAndSettle();
-
-    await tester.drag(
-      find.byType(SingleChildScrollView),
-      const Offset(0, -260),
-    );
-    await tester.pumpAndSettle();
+    final today = DateTime.now().day.toString();
+    final day = find.text(today);
+    await tester.tap(day.last);
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();
 

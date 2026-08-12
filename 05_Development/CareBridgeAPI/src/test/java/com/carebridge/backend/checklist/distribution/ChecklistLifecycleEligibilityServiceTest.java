@@ -97,6 +97,21 @@ class ChecklistLifecycleEligibilityServiceTest {
     }
 
     @Test
+    void openEndedPregnancyPlanDoesNotOverflowAndHasNoNominalWindowEnd() {
+        var lmp = LocalDate.of(2026, 1, 1);
+        var dates = new ChecklistLifecycleDates(lmp, lmp.plusWeeks(40), null, null);
+        var planEight = substage("PREGNANCY_PLAN_8", ContentStage.PREGNANCY,
+                ChecklistAnchorType.LMP, ChecklistRangeUnit.WEEK, 39, Integer.MAX_VALUE);
+
+        var decision = service.evaluate(ContentStage.PREGNANCY, planEight, dates,
+                lmp.plusWeeks(60));
+
+        assertThat(decision.eligible()).isTrue();
+        assertThat(decision.windowStart()).isEqualTo(lmp.plusWeeks(39));
+        assertThat(decision.windowEnd()).isNull();
+    }
+
+    @Test
     void postpartumUsesDeliveryDateWithMonthClampingAndDeterministicLocalStart() {
         var delivery = LocalDate.of(2026, 1, 31);
         var dates = new ChecklistLifecycleDates(null, null, delivery, null);

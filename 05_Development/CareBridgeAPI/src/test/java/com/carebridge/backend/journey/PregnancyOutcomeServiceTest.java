@@ -98,6 +98,11 @@ class PregnancyOutcomeServiceTest {
     @Test
     void liveBirthRecordsEvidenceAndTransitionsSameJourneyToPostpartum() {
         MotherJourney journey = activePregnancy();
+        journey.setLastMenstrualDate(LocalDate.of(2026, 1, 1));
+        journey.setEstimatedDueDate(LocalDate.of(2026, 10, 8));
+        journey.setGestationalDatingBasis(GestationalDatingBasis.LMP);
+        journey.setGestationalDatingRevision(7L);
+        journey.setGestationalDatingEffectiveAt(NOW.minusSeconds(60));
         when(journeyRepository.findByIdForUpdate(JOURNEY_ID)).thenReturn(Optional.of(journey));
         when(outcomeRepository.findByJourneyIdAndSubmissionId(JOURNEY_ID, SUBMISSION_ID))
                 .thenReturn(Optional.empty());
@@ -128,6 +133,9 @@ class PregnancyOutcomeServiceTest {
         assertThat(response.getJourneyType()).isEqualTo(JourneyType.POSTPARTUM);
         assertThat(journey.getJourneyType()).isEqualTo(JourneyType.POSTPARTUM);
         assertThat(journey.getDeliveryDate()).isEqualTo(LocalDate.of(2026, 7, 18));
+        assertThat(journey.getGestationalDatingBasis()).isNull();
+        assertThat(journey.getGestationalDatingRevision()).isNull();
+        assertThat(journey.getGestationalDatingEffectiveAt()).isNull();
         ArgumentCaptor<MotherJourneyTransition> transition =
                 ArgumentCaptor.forClass(MotherJourneyTransition.class);
         verify(transitionRepository).saveAndFlush(transition.capture());

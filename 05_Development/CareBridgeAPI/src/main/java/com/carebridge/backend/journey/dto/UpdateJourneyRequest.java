@@ -3,7 +3,9 @@ package com.carebridge.backend.journey.dto;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.JourneyDateConfidence;
 import com.carebridge.backend.journey.entity.JourneyDateSource;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -20,6 +22,9 @@ public class UpdateJourneyRequest {
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate estimatedDueDate;
+
+    /** V2 dating authority. The contract version itself is negotiated by header. */
+    private GestationalDatingBasis datingBasis;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate deliveryDate;
@@ -38,4 +43,8 @@ public class UpdateJourneyRequest {
 
     /** User-settable statuses: ACTIVE, COMPLETED only. ARCHIVED is system-only. */
     private String status;
+
+    /** Populated by the controller from X-Checklist-Contract-Version; never accepted from JSON. */
+    @JsonIgnore
+    private Integer checklistContractVersion;
 }

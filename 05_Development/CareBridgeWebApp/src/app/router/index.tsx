@@ -11,6 +11,7 @@ import ExpertLayout from '../layouts/ExpertLayout';
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
 import FederatedRegisterPage from '../../features/auth/pages/FederatedRegisterPage';
+import RegistrationVerificationPage from '../../features/auth/pages/RegistrationVerificationPage';
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
@@ -55,7 +56,6 @@ import SecurityEventDetailPage from '../../features/security/pages/SecurityEvent
 import SecurityIncidentInvestigationPage from '../../features/security/pages/SecurityIncidentInvestigationPage';
 import SecurityIncidentResolutionPage from '../../features/security/pages/SecurityIncidentResolutionPage';
 import NotificationCenterPage from '../../features/notification/pages/NotificationCenterPage';
-import PrivacySettingsPage from '../../features/settings/pages/PrivacySettingsPage';
 
 // Content Management screens (CB-073..081)
 import ContentDashboardPage from '../../features/contentManagement/pages/ContentDashboardPage';
@@ -112,6 +112,7 @@ const ForbiddenPage = () => (
 
 export const router = createBrowserRouter([
   { path: '/register', element: <FederatedRegisterPage /> },
+  { path: '/register/verify', element: <RegistrationVerificationPage /> },
   {
     path: '/login',
     element: <AuthLayout />,
@@ -180,7 +181,6 @@ export const router = createBrowserRouter([
               { path: '/admin/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
               { path: '/admin/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
               { path: '/admin/notifications', element: <NotificationCenterPage /> },
-              { path: '/admin/settings/privacy', element: <PrivacySettingsPage /> },
               { path: '/admin/posture-configs', element: <PostureConfigListPage /> },
               { path: '/admin/posture-configs/new', element: <EditPostureConfigPage /> },
               { path: '/admin/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },

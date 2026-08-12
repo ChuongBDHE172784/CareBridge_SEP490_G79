@@ -39,19 +39,15 @@ void main() {
     },
   );
 
-  testWidgets('phone password login uses the canonical endpoint', (
-    tester,
-  ) async {
+  test('legacy phone password service remains on the canonical endpoint', () async {
     final requests = <({String path, Map<String, dynamic> body})>[];
     final service = _authService((path, body) async {
       requests.add((path: path, body: Map.of(body)));
       return _authResponse;
     });
 
-    await _pumpAndSubmit(
-      tester,
-      service: service,
-      identifier: '  0912345678  ',
+    await service.login(
+      phone: '0912345678',
       password: 'Password@123',
     );
 
@@ -61,7 +57,6 @@ void main() {
       'password': 'Password@123',
     });
     expect(requests.single.body, isNot(contains('email')));
-    expect(find.text('authenticated'), findsOneWidget);
   });
 
   testWidgets('duplicate submits issue only one password request', (

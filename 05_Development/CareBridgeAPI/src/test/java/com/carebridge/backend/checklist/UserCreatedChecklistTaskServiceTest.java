@@ -127,7 +127,8 @@ class UserCreatedChecklistTaskServiceTest {
                 CareGroup.builder().id(groupId).ownerUserId(owner).status(CareGroupStatus.ACTIVE)
                         .linkedJourneyId(journeyId).build()));
         when(members.findByCareGroupIdAndUserId(groupId, actor)).thenReturn(Optional.of(
-                CareGroupMember.builder().careGroupId(groupId).userId(actor)
+                CareGroupMember.builder().id(UUID.randomUUID()).careGroupId(groupId).userId(actor)
+                        .checklistAccessEpoch(0L)
                         .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.ACCEPTED).build()));
         when(permissions.hasPermission(groupId, actor,
                 com.carebridge.backend.family.entity.PermissionFlag.CHECKLIST_VIEW)).thenReturn(true);
@@ -157,6 +158,8 @@ class UserCreatedChecklistTaskServiceTest {
                 .isEqualTo(com.carebridge.backend.checklist.model.ChecklistRecipientRole.FAMILY);
         assertThat(parent.getValue().getRecipientUserId()).isEqualTo(actor);
         assertThat(parent.getValue().getCareGroupId()).isEqualTo(groupId);
+        assertThat(parent.getValue().getCareGroupMemberId()).isNotNull();
+        assertThat(parent.getValue().getChecklistAccessEpoch()).isZero();
         assertThat(parent.getValue().getContextOwnerUserId()).isEqualTo(owner);
         assertThat(parent.getValue().getCareContextId()).isEqualTo(journeyId);
         assertThat(response.journeyId()).isEqualTo(journeyId);

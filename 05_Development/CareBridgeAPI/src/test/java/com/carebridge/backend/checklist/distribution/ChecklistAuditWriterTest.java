@@ -19,6 +19,7 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -182,6 +183,126 @@ class ChecklistAuditWriterTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("CHECKLIST_TASK_INSTANCE");
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void persistsFullAccessPayloadWithMigrationActorAndOrigin() throws Exception {
+        UUID memberId = UUID.randomUUID();
+        UUID correlationId = UUID.randomUUID();
+        Map<String, Object> before = accessPayload("LEGACY_ACCESS_BASELINE", "ACCEPTED", 0L, correlationId);
+        Map<String, Object> after = accessPayload("LEGACY_ACCESS_BASELINE", "ACCEPTED", 1L, correlationId);
+        ChecklistAuditEvent event = new ChecklistAuditEvent(
+                AuditAction.CHECKLIST_ACCESS_BASELINE,
+                null,
+                ChecklistAuditActorType.SYSTEM,
+                "CHECKLIST_P2_BACKFILL",
+                ChecklistAuditResourceType.CARE_GROUP_MEMBER,
+                memberId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "LEGACY_ACCESS_BASELINE",
+                correlationId,
+                before,
+                after,
+                "CHECKLIST_ACCESS");
+        when(policy.shouldAudit(event.action())).thenReturn(true);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"schema\":\"CHECKLIST_ACCESS_AUDIT_V1\"}",
+                "{\"schema\":\"CHECKLIST_ACCESS_AUDIT_V1\"}");
+
+        writer.write(event);
+
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getEntityType()).isEqualTo("CARE_GROUP_MEMBER");
+        assertThat(captor.getValue().getEventOrigin()).isEqualTo("CHECKLIST_ACCESS");
+        assertThat(captor.getValue().getOldValueJson()).contains("CHECKLIST_ACCESS_AUDIT_V1");
+        assertThat(captor.getValue().getNewValueJson()).contains("CHECKLIST_ACCESS_AUDIT_V1");
+    }
+
+    @Test
+    void rejectsAccessAuditWithWrongOriginOrReason() {
+        UUID memberId = UUID.randomUUID();
+        UUID correlationId = UUID.randomUUID();
+        Map<String, Object> before = accessPayload("LEGACY_ACCESS_BASELINE", "ACCEPTED", 0L, correlationId);
+        Map<String, Object> after = accessPayload("LEGACY_ACCESS_BASELINE", "ACCEPTED", 1L, correlationId);
+        ChecklistAuditEvent wrongOrigin = new ChecklistAuditEvent(
+                AuditAction.CHECKLIST_ACCESS_BASELINE, null, ChecklistAuditActorType.SYSTEM,
+                "CHECKLIST_P2_BACKFILL", ChecklistAuditResourceType.CARE_GROUP_MEMBER, memberId,
+                null, null, null, null, null, null, null, "LEGACY_ACCESS_BASELINE", correlationId,
+                before, after, "AUDIT_LOG");
+        ChecklistAuditEvent wrongReason = new ChecklistAuditEvent(
+                AuditAction.CHECKLIST_ACCESS_BASELINE, null, ChecklistAuditActorType.SYSTEM,
+                "CHECKLIST_P2_BACKFILL", ChecklistAuditResourceType.CARE_GROUP_MEMBER, memberId,
+                null, null, null, null, null, null, null, "FAMILY_MEMBER_DUPLICATE", correlationId,
+                before, after, "CHECKLIST_ACCESS");
+        when(policy.shouldAudit(AuditAction.CHECKLIST_ACCESS_BASELINE)).thenReturn(true);
+
+        assertThatThrownBy(() -> writer.write(wrongOrigin))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("origin");
+        assertThatThrownBy(() -> writer.write(wrongReason))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("reason");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void persistsRedactedMigrationQuarantinePayloadOnlyWithBackfillActor() throws Exception {
+        UUID sourceId = UUID.randomUUID();
+        UUID correlationId = UUID.randomUUID();
+        ChecklistAuditEvent event = new ChecklistAuditEvent(
+                AuditAction.CHECKLIST_MIGRATION_QUARANTINED,
+                null,
+                ChecklistAuditActorType.SYSTEM,
+                "CHECKLIST_P2_BACKFILL",
+                ChecklistAuditResourceType.MOTHER_JOURNEY,
+                sourceId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "JOURNEY_DATING_CONFLICT",
+                correlationId,
+                null,
+                Map.of(
+                        "schema", "CHECKLIST_MIGRATION_QUARANTINE_V1",
+                        "sourceKind", "mother_journeys",
+                        "sourceIdHash", "md5:abc",
+                        "reasonCode", "JOURNEY_DATING_CONFLICT",
+                        "disposition", "UNAVAILABLE",
+                        "correlationId", correlationId.toString(),
+                        "metadata", "REDACTED"),
+                "CHECKLIST_MIGRATION");
+        when(policy.shouldAudit(event.action())).thenReturn(true);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"schema\":\"CHECKLIST_MIGRATION_QUARANTINE_V1\"}");
+
+        writer.write(event);
+
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getEventOrigin()).isEqualTo("CHECKLIST_MIGRATION");
+        assertThat(captor.getValue().getReasonCode()).isEqualTo("JOURNEY_DATING_CONFLICT");
+    }
+
+    private static Map<String, Object> accessPayload(
+            String eventType, String membershipStatus, long epoch, UUID correlationId) {
+        return Map.of(
+                "schema", "CHECKLIST_ACCESS_AUDIT_V1",
+                "eventType", eventType,
+                "membershipStatus", membershipStatus,
+                "checklistView", true,
+                "checklistComplete", false,
+                "accessEpoch", epoch,
+                "effectiveFrom", "2026-08-11T10:00:00Z",
+                "correlationId", correlationId.toString());
     }
 
     private static ChecklistAuditEvent event(AuditAction action) {

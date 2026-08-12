@@ -20,7 +20,11 @@ def target_entity_resolver(state: Mapping[str, object]) -> dict[str, object]:
         return {}
 
     latest = state.get("latestUserMessage")
-    clarification = latest if type(latest) is str and latest in _CLARIFICATION_OPTIONS else None
+    submitted = state.get("submittedOptionCodes", [])
+    clarification = next(
+        (code for code in submitted if code in _CLARIFICATION_OPTIONS),
+        latest if type(latest) is str and latest in _CLARIFICATION_OPTIONS else None,
+    )
     current_target = _enum_or_none(state.get("targetEntity"), TargetEntity)
     current_source = _enum_or_none(state.get("targetEntitySource"), ResolutionSource)
     selected = (

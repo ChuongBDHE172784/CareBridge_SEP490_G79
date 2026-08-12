@@ -2,6 +2,7 @@ package com.carebridge.backend.audit.service;
 
 import com.carebridge.backend.audit.dto.request.AddSecurityNoteRequest;
 import com.carebridge.backend.audit.dto.request.ReviewSecurityEventRequest;
+import com.carebridge.backend.audit.dto.request.ResolveSecurityIncidentRequest;
 import com.carebridge.backend.audit.dto.response.SecurityEventNoteResponse;
 import com.carebridge.backend.audit.dto.response.SecurityEventResponse;
 import java.time.Instant;
@@ -24,7 +25,11 @@ public interface SecurityIncidentService {
 
     List<SecurityEventResponse> getTimeline(UUID correlationId);
 
+    SecurityEventResponse getEvent(Long eventId);
+
     SecurityEventResponse reviewEvent(Long eventId, ReviewSecurityEventRequest request, UUID reviewerId);
+
+    SecurityEventResponse resolveEvent(Long eventId, ResolveSecurityIncidentRequest request, UUID reviewerId);
 
     SecurityEventNoteResponse addNote(Long eventId, AddSecurityNoteRequest request, UUID authorId);
 

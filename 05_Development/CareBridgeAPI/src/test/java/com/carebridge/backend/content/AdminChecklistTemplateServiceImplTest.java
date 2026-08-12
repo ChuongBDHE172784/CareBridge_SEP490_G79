@@ -19,6 +19,11 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
+import com.carebridge.backend.checklist.model.ChecklistScheduleEndMode;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
 import com.carebridge.backend.content.dto.request.ChecklistSubstageRequest;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
@@ -30,6 +35,7 @@ import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
@@ -47,6 +53,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class AdminChecklistTemplateServiceImplTest {
@@ -320,5 +328,131 @@ class AdminChecklistTemplateServiceImplTest {
         assertEquals(requestedAt, template.getRevisionRequestedAt());
         assertEquals(ADMIN_ID, template.getRevisionRequestedBy());
         assertEquals(1, template.getRevisionRequestedVersion());
+    }
+
+    @Test
+    void create_v2StampsTargetlessLeafContract() {
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(inv -> { ChecklistTemplate t = inv.getArgument(0); t.setId(TEMPLATE_ID); return t; });
+        when(checklistItemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateChecklistTemplateRequest request = new CreateChecklistTemplateRequest(
+                "Recommendation", "Advisory", ChecklistTemplateType.MANDATORY, (short) 2,
+                Set.of(ChecklistRecipientRole.MOTHER), ContentStage.PREGNANCY,
+                pregnancyEligibility(),
+                List.of(new ChecklistItemRequest(null, "Uống đủ nước", 1, null, null, null, null)), 0);
+
+        AdminChecklistTemplateDetailResponse response = service.create(request, ADMIN_ID);
+
+        ArgumentCaptor<List<ChecklistItem>> captor = ArgumentCaptor.forClass(List.class);
+        verify(checklistItemRepository).saveAll(captor.capture());
+        ChecklistItem item = captor.getValue().getFirst();
+        assertEquals((short) 2, item.getChecklistContractVersion());
+        assertEquals(null, item.getTargetSubject());
+        assertEquals(null, item.getIsRequired());
+        assertEquals((short) 2, response.getChecklistContractVersion());
+    }
+
+    @Test
+    void update_v1ToV2WithoutReplacementItems_rejectsContractMismatch() {
+        ChecklistTemplate template = makeTemplate();
+        ChecklistItem existing = makeItem(template, 1);
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+
+        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
+                "Recommendation", "Advisory", ChecklistTemplateType.MANDATORY, (short) 2,
+                Set.of(ChecklistRecipientRole.MOTHER), ContentStage.PREGNANCY,
+                pregnancyEligibility(), ChecklistTemplateStatus.DRAFT, null, 0);
+
+        ContentException error = assertThrows(ContentException.class,
+                () -> service.update(TEMPLATE_ID, request, ADMIN_ID));
+
+        assertEquals("CNT-001", error.getCode());
+        verify(checklistTemplateRepository, never()).save(any(ChecklistTemplate.class));
+        verify(checklistItemRepository, never()).findByTemplate_IdOrderByOrder(TEMPLATE_ID);
+    }
+
+    @Test
+    void update_v1ToV2WithReplacementItems_stampsEveryLeaf() {
+        ChecklistTemplate template = makeTemplate();
+        ChecklistItem existing = makeItem(template, 1);
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
+                .thenReturn(List.of(existing));
+        when(checklistItemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
+                "Recommendation", "Advisory", ChecklistTemplateType.MANDATORY, (short) 2,
+                Set.of(ChecklistRecipientRole.MOTHER), ContentStage.PREGNANCY,
+                pregnancyEligibility(), ChecklistTemplateStatus.DRAFT,
+                List.of(new ChecklistItemRequest(existing.getId(), "Uống đủ nước", 1, null, null, null, null)), 0);
+
+        service.update(TEMPLATE_ID, request, ADMIN_ID);
+
+        assertEquals((short) 2, existing.getChecklistContractVersion());
+        assertEquals(null, existing.getTargetSubject());
+        assertEquals(null, existing.getIsRequired());
+    }
+
+    @Test
+    void cloneApprovedPregnancyV2_preservesCadenceAndProvenanceForLaterActivation() {
+        ChecklistTemplate source = makeTemplate();
+        source.setStatus(ChecklistTemplateStatus.APPROVED);
+        source.setChecklistContractVersion((short) 2);
+        source.setScheduleType(ChecklistScheduleType.WEEKLY);
+        source.setMaterializationPolicy(ChecklistMaterializationPolicy.EACH_WEEK);
+        source.setScheduleGroupKey("PREGNANCY_WHO");
+        source.setScheduleContextType(ChecklistCareContextType.JOURNEY);
+        source.setScheduleEndMode(ChecklistScheduleEndMode.STAGE_EXIT);
+        source.setWeekBoundaryRule(ChecklistWeekBoundaryRule.ANCHOR_RELATIVE_7D);
+        source.setChecklistMetadataJson(
+                "{\"schema\":\"CHECKLIST_METADATA_V1\",\"provenanceStatus\":\"SIGNED_OFF\"}");
+        source.setChecklistMetadataHash("sha256:source");
+        ChecklistItem sourceItem = makeItem(source, 1);
+        sourceItem.setChecklistContractVersion((short) 2);
+        sourceItem.setTargetSubject(null);
+        sourceItem.setIsRequired(null);
+
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(source));
+        when(checklistTemplateRepository.findMaxVersionNoForLineage(any())).thenReturn(3);
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(invocation -> {
+                    ChecklistTemplate value = invocation.getArgument(0);
+                    value.setId(UUID.randomUUID());
+                    return value;
+                });
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID))
+                .thenReturn(List.of(sourceItem));
+        when(checklistItemRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AdminChecklistTemplateDetailResponse response = service.cloneVersion(TEMPLATE_ID, ADMIN_ID);
+
+        ArgumentCaptor<ChecklistTemplate> captor = ArgumentCaptor.forClass(ChecklistTemplate.class);
+        verify(checklistTemplateRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        ChecklistTemplate clone = captor.getAllValues().getLast();
+        assertEquals(ChecklistTemplateStatus.DRAFT, clone.getStatus());
+        assertEquals((short) 2, clone.getChecklistContractVersion());
+        assertEquals(ChecklistScheduleType.WEEKLY, clone.getScheduleType());
+        assertEquals(ChecklistMaterializationPolicy.EACH_WEEK, clone.getMaterializationPolicy());
+        assertEquals("PREGNANCY_WHO", clone.getScheduleGroupKey());
+        assertEquals(ChecklistCareContextType.JOURNEY, clone.getScheduleContextType());
+        assertEquals(ChecklistScheduleEndMode.STAGE_EXIT, clone.getScheduleEndMode());
+        assertEquals(ChecklistWeekBoundaryRule.ANCHOR_RELATIVE_7D, clone.getWeekBoundaryRule());
+        assertEquals(source.getChecklistMetadataJson(), clone.getChecklistMetadataJson());
+        assertEquals(source.getChecklistMetadataHash(), clone.getChecklistMetadataHash());
+        assertEquals((short) 2, response.getChecklistContractVersion());
+    }
+
+    @Test
+    void list_trimsKeywordAndPassesItToAdminRepository() {
+        when(checklistTemplateRepository.findAdminByOptionalStageAndStatus(
+                any(), any(), eq("thai"), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.list(null, ContentStage.PREGNANCY, "  thai  ", PageRequest.of(0, 20));
+
+        verify(checklistTemplateRepository).findAdminByOptionalStageAndStatus(
+                eq(ContentStage.PREGNANCY), eq(null), eq("thai"), any());
     }
 }

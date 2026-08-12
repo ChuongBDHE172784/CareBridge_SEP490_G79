@@ -6,10 +6,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.dto.request.AddSecurityNoteRequest;
 import com.carebridge.backend.audit.dto.request.ReviewSecurityEventRequest;
+import com.carebridge.backend.audit.dto.request.ResolveSecurityIncidentRequest;
 import com.carebridge.backend.audit.dto.response.SecurityEventResponse;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.entity.SecurityEvent;
@@ -18,6 +20,7 @@ import com.carebridge.backend.audit.repository.SecurityEventNoteRepository;
 import com.carebridge.backend.audit.repository.SecurityEventRepository;
 import com.carebridge.backend.audit.service.impl.SecurityIncidentServiceImpl;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import com.carebridge.backend.common.exception.BusinessException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -116,6 +119,51 @@ class SecurityIncidentServiceImplTest {
 
         assertThatThrownBy(() -> service.reviewEvent(999L, new ReviewSecurityEventRequest("RESOLVED"), UUID.randomUUID()))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getEvent_knownId_returnsDetail() {
+        SecurityIncidentServiceImpl service = newService();
+        SecurityEvent event = SecurityEvent.builder().id(7L).status("OPEN").occurredAt(Instant.now()).build();
+        when(securityEventRepository.findById(7L)).thenReturn(Optional.of(event));
+
+        assertThat(service.getEvent(7L).id()).isEqualTo(7L);
+    }
+
+    @Test
+    void resolveEvent_appendsResolutionNote_updatesStatusAndAudits() {
+        SecurityIncidentServiceImpl service = newService();
+        UUID reviewerId = UUID.randomUUID();
+        SecurityEvent event = SecurityEvent.builder().id(5L).status("UNDER_REVIEW").occurredAt(Instant.now()).build();
+        when(securityEventRepository.findById(5L)).thenReturn(Optional.of(event));
+        when(securityEventNoteRepository.save(any(SecurityEventNote.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        ResolveSecurityIncidentRequest request = new ResolveSecurityIncidentRequest(
+                "MISCONFIGURATION", "Configuration corrected and access was verified safe.",
+                "One administrator session", List.of("Revoked affected session"), false, true);
+
+        SecurityEventResponse response = service.resolveEvent(5L, request, reviewerId);
+
+        verify(securityEventNoteRepository).save(org.mockito.ArgumentMatchers.argThat(note ->
+                note.getNoteText().contains("Root cause: MISCONFIGURATION")
+                        && note.getNoteText().contains("Summary: Configuration corrected")));
+        verify(securityEventRepository).updateStatus(eq(5L), eq("RESOLVED"), eq(reviewerId), any());
+        verify(auditService).log(eq(AuditAction.SECURITY_EVENT_REVIEWED), eq(reviewerId),
+                eq("SecurityEvent"), eq("5"), eq("RESOLVED"));
+        assertThat(response.status()).isEqualTo("RESOLVED");
+    }
+
+    @Test
+    void resolveEvent_closedIncident_isRejectedWithoutNewEvidence() {
+        SecurityIncidentServiceImpl service = newService();
+        when(securityEventRepository.findById(5L)).thenReturn(Optional.of(
+                SecurityEvent.builder().id(5L).status("RESOLVED").build()));
+        ResolveSecurityIncidentRequest request = new ResolveSecurityIncidentRequest(
+                "MISCONFIGURATION", "Configuration corrected and access was verified safe.",
+                "One administrator session", List.of("Revoked affected session"), false, true);
+
+        assertThatThrownBy(() -> service.resolveEvent(5L, request, UUID.randomUUID()))
+                .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(securityEventNoteRepository);
     }
 
     // SEC175-TC-002

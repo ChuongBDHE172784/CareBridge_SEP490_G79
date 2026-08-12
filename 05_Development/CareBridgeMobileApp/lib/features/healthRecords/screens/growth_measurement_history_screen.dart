@@ -36,7 +36,7 @@ class _GrowthMeasurementHistoryScreenState
   List<GrowthMeasurement> _records = [];
   BabyProfile? _babyProfile;
   bool _profileLoadFailed = false;
-  String _selectedTab = 'Tất cả';
+  String _selectedTab = 'Cân nặng';
   int _loadGeneration = 0;
   Future<void>? _profileLoadFuture;
   bool _isOpeningFullscreen = false;
@@ -490,7 +490,7 @@ GrowthTrendMetric _metricForTab(String tab) {
 }
 
 class _GrowthMetricSelector extends StatelessWidget {
-  static const _tabs = ['Tất cả', 'Chiều cao', 'Cân nặng', 'Vòng đầu'];
+  static const _tabs = ['Cân nặng', 'Chiều cao', 'Vòng đầu'];
 
   final String selectedTab;
   final ValueChanged<String> onSelected;

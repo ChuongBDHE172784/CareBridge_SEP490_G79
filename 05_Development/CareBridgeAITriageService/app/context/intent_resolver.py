@@ -77,6 +77,7 @@ def resolve_intent(
     latest_user_message: str | None = None,
     submitted_option_codes: Sequence[str] | None = None,
     submitted_question_ids: Sequence[str] | None = None,
+    confirmed_conversation_intent: IntentType | None = None,
 ) -> IntentResolution:
     """Classify the turn's intent, or return UNKNOWN when nothing is clear enough."""
 
@@ -90,7 +91,7 @@ def resolve_intent(
     indicators = load_intent_indicators()
     folded = _fold(latest_user_message)
     if not folded:
-        return IntentResolution(IntentType.UNKNOWN, ResolutionSource.NONE)
+        return _confirmed_or_unknown(confirmed_conversation_intent)
 
     symptom_hits = _hits(folded, indicators["symptomTriage"]["firstPersonReportMarkers"])
     symptom_hits += _accent_sensitive_hits(
@@ -124,4 +125,14 @@ def resolve_intent(
         return IntentResolution(IntentType.SYMPTOM_TRIAGE,
                                 ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE, tuple(symptom_hits))
 
+    return _confirmed_or_unknown(confirmed_conversation_intent)
+
+
+def _confirmed_or_unknown(confirmed: IntentType | None) -> IntentResolution:
+    if confirmed is not None and confirmed.is_resolved:
+        return IntentResolution(
+            confirmed,
+            ResolutionSource.CONFIRMED_CONVERSATION_INTENT,
+            (confirmed.value,),
+        )
     return IntentResolution(IntentType.UNKNOWN, ResolutionSource.NONE)

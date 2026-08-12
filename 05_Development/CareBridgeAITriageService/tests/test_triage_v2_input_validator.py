@@ -56,9 +56,10 @@ def test_exact_json_enum_values_are_normalized_without_other_updates():
     assert set(updates) == {
         "targetEntity",
         "targetEntitySource",
-        "intent",
-        "intentSource",
-        "stage",
+            "intent",
+            "intentSource",
+            "confirmedConversationIntent",
+            "stage",
         "contextResolutionStatus",
         "safetyScreenStatus",
         "contextDatasetStatus",
@@ -175,6 +176,10 @@ def test_cyclic_and_oversized_collections_are_rejected():
     state["answeredQuestionIds"] = [f"Q-{index}" for index in range(37)]
     _assert_rejected(state, "COLLECTION_TOO_LARGE", "answeredQuestionIds")
 
+    state = _state()
+    state["askedQuestionIds"] = [f"Q-{index}" for index in range(37)]
+    _assert_rejected(state, "COLLECTION_TOO_LARGE", "askedQuestionIds")
+
 
 @pytest.mark.parametrize(
     "field,value",
@@ -183,6 +188,7 @@ def test_cyclic_and_oversized_collections_are_rejected():
         ("measurements", ()),
         ("contextConflicts", {}),
         ("answeredQuestionIds", {}),
+        ("askedQuestionIds", {}),
         ("readingLinks", {}),
     ],
 )

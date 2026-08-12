@@ -43,6 +43,7 @@ def entity_stage_validator(state: Mapping[str, object]) -> dict[str, object]:
         missing_fields=missing,
         missing_signals=missing,
         answered_question_ids=frozenset(state.get("answeredQuestionIds", [])),
+        asked_question_ids=frozenset(state.get("askedQuestionIds", [])),
         signals=state.get("signals") if type(state.get("signals")) is dict else {},
         safety_screen_status=state.get("safetyScreenStatus", "INCOMPLETE"),
     )
@@ -50,7 +51,7 @@ def entity_stage_validator(state: Mapping[str, object]) -> dict[str, object]:
         stage_question_ids = (
             ["Q_BABY_AGE_MONTHS"]
             if entity is TargetEntity.BABY
-            else ["Q_PREGNANCY_TEST", "Q_GESTATIONAL_WEEK", "Q_POSTPARTUM_DAY"]
+            else ["Q_CLARIFY_STAGE"]
             if entity is TargetEntity.MOTHER
             else []
         )
@@ -58,12 +59,14 @@ def entity_stage_validator(state: Mapping[str, object]) -> dict[str, object]:
             question_id
             for question_id in stage_question_ids
             if question_id not in state.get("answeredQuestionIds", [])
+            and question_id not in state.get("askedQuestionIds", [])
         ]
         safety_status = getattr(state.get("safetyScreenStatus"), "value",
                                 state.get("safetyScreenStatus"))
         if (safety_status != "COMPLETE"
                 and "Q_GLOBAL_DANGER" not in state.get("answeredQuestionIds", [])):
-            eligible_ids.append("Q_GLOBAL_DANGER")
+            if "Q_GLOBAL_DANGER" not in state.get("askedQuestionIds", []):
+                eligible_ids.append("Q_GLOBAL_DANGER")
     else:
         eligible = eligible_questions(context, state.get("candidateQuestionIds", []))
         eligible_ids = [question.question_id for question in eligible]

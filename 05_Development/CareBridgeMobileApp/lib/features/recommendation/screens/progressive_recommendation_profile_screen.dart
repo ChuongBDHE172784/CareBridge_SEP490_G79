@@ -37,6 +37,17 @@ class RecommendationProfileScreen extends StatefulWidget {
 
 class _RecommendationProfileScreenState
     extends State<RecommendationProfileScreen> {
+  static const _primary = Color(0xFF845143);
+  static const _primaryAccent = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFFFF8F6);
+  static const _surface = Colors.white;
+  static const _surfaceLow = Color(0xFFFAF2EF);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF6B5850);
+  static const _borderNormal = Color(0xFFE8DDD6);
+  static const _errorBg = Color(0xFFFFDAD6);
+  static const _errorText = Color(0xFF93000A);
+
   late final RecommendationService _service;
   late final JourneyService _journeyService;
 
@@ -142,9 +153,6 @@ class _RecommendationProfileScreenState
       try {
         dateOfBirth = await _service.getDateOfBirth();
       } catch (_) {
-        // A transient account-profile read must not block the questionnaire.
-        // The user can still enter a DOB directly; account switching remains
-        // guarded by the generation/current-user check below.
         if (!current()) return;
       }
       if (!current()) return;
@@ -297,21 +305,39 @@ class _RecommendationProfileScreenState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: _canvas,
+        body: const Center(
+          child: CircularProgressIndicator(color: _primary),
+        ),
+      );
     }
     if (_error != null && !_consentDecisionMade) {
       return _buildErrorScaffold();
     }
     return Scaffold(
+      backgroundColor: _canvas,
       appBar: AppBar(
+        backgroundColor: _canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
         leading: _consentDecisionMade && _questionIndex > 0
             ? IconButton(
                 tooltip: 'Quay lại',
                 onPressed: _saving ? null : _goBack,
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back_rounded, color: _textDark),
               )
             : null,
-        title: const Text('Hồ sơ nền cá nhân hóa'),
+        title: const Text(
+          'Hồ sơ nền cá nhân hóa',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: _textDark,
+          ),
+        ),
       ),
       body: SafeArea(
         child: _consentDecisionMade ? _buildQuestionnaire() : _buildConsent(),
@@ -320,54 +346,176 @@ class _RecommendationProfileScreenState
   }
 
   Widget _buildErrorScaffold() => Scaffold(
+    backgroundColor: _canvas,
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Semantics(
-              liveRegion: true,
-              child: Text(_error!, textAlign: TextAlign.center),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: _load, child: const Text('Thử lại')),
-          ],
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _borderNormal),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF5A463F).withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 48, color: _errorText),
+              const SizedBox(height: 16),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: _textDark,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: _load,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child: const Text(
+                    'Thử lại',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ),
   );
 
   Widget _buildConsent() => ListView(
-    padding: const EdgeInsets.all(24),
+    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
     children: [
-      const Icon(
-        Icons.auto_awesome_rounded,
-        size: 56,
-        color: Color(0xFFC98C7B),
+      Center(
+        child: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: _primaryAccent.withValues(alpha: 0.16),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            size: 32,
+            color: _primary,
+          ),
+        ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 14),
       const Text(
         'Nội dung phù hợp với hành trình của mẹ',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          color: _textDark,
+          height: 1.25,
+          letterSpacing: -0.4,
+        ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 10),
       const Text(
         'Mẹ có thể chia sẻ thông tin nền theo từng câu để CareBridge chọn bài viết giáo dục an toàn, đúng thời điểm. Mẹ có thể bỏ qua bất kỳ câu nào.',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: _textMuted,
+          height: 1.45,
+        ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 10),
+      const Text(
+        'Nếu mẹ cung cấp cân nặng và chiều cao, CareBridge cũng lưu một chỉ số BMI trong tab Hành trình. Bản ghi sức khỏe này được quản lý độc lập và vẫn được giữ lại khi mẹ ngừng cá nhân hóa; mẹ có thể xem hoặc xóa trong Hành trình.',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: _textMuted,
+          height: 1.45,
+        ),
+      ),
+      const SizedBox(height: 10),
       const Text(
         'Đây là nội dung giáo dục, không thay thế chẩn đoán hoặc điều trị. Nhu cầu khẩn cấp luôn đi qua luồng an toàn hiện có.',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: _textMuted,
+          height: 1.45,
+        ),
       ),
-      const SizedBox(height: 28),
-      FilledButton(
-        onPressed: () => setState(() => _consentDecisionMade = true),
-        child: const Text('Đồng ý và tiếp tục'),
+      const SizedBox(height: 20),
+      SizedBox(
+        height: 50,
+        child: FilledButton(
+          onPressed: () => setState(() => _consentDecisionMade = true),
+          style: FilledButton.styleFrom(
+            backgroundColor: _primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+            elevation: 2,
+          ),
+          child: const Text(
+            'Đồng ý và tiếp tục',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
-      const SizedBox(height: 12),
-      OutlinedButton(
-        onPressed: _decline,
-        child: const Text('Tiếp tục không cá nhân hóa'),
+      const SizedBox(height: 10),
+      SizedBox(
+        height: 50,
+        child: OutlinedButton(
+          onPressed: _decline,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _textDark,
+            side: const BorderSide(color: _borderNormal),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+          ),
+          child: const Text(
+            'Tiếp tục không cá nhân hóa',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     ],
   );
@@ -377,27 +525,85 @@ class _RecommendationProfileScreenState
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Semantics(
-            label: _isReview
-                ? 'Đã hoàn tất các câu hỏi'
-                : 'Câu ${_questionIndex + 1} trên ${_questions.length}',
-            child: LinearProgressIndicator(value: progress),
+          padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _isReview
+                        ? 'HOÀN TẤT HỒ SƠ'
+                        : 'CÂU ${_questionIndex + 1} / ${_questions.length}',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: _primaryAccent,
+                    ),
+                  ),
+                  Text(
+                    '${(progress * 100).round()}%',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: _primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: Semantics(
+                  label: _isReview
+                      ? 'Đã hoàn tất các câu hỏi'
+                      : 'Câu ${_questionIndex + 1} trên ${_questions.length}',
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: _borderNormal.withValues(alpha: 0.6),
+                    color: _primary,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
             children: [
               if (_isReview) _buildReview() else _buildCurrentQuestion(),
               if (_error != null && _consentDecisionMade)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: 10),
                   child: Semantics(
                     liveRegion: true,
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: Colors.red.shade700),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _errorBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _errorText.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: _errorText,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -411,25 +617,46 @@ class _RecommendationProfileScreenState
 
   Widget _buildCurrentQuestion() {
     final question = _questions[_questionIndex];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              question.title,
-              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+    return Container(
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _borderNormal.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            question.title,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: _textDark,
+              height: 1.25,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Câu ${_questionIndex + 1}/${_questions.length}',
-              style: TextStyle(color: Colors.grey.shade700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Câu ${_questionIndex + 1}/${_questions.length}',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: _textMuted,
             ),
-            const SizedBox(height: 20),
-            _buildQuestionBody(question),
-          ],
-        ),
+          ),
+          const SizedBox(height: 14),
+          _buildQuestionBody(question),
+        ],
       ),
     );
   }
@@ -453,20 +680,44 @@ class _RecommendationProfileScreenState
     children: [
       const Text(
         'Ngày sinh được lưu trong hồ sơ tài khoản và không gửi lại trong hồ sơ cá nhân hóa.',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: _textMuted,
+          height: 1.45,
+        ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 16),
       TextField(
         key: const Key('recommendation-dob-field'),
         controller: _dobController,
         keyboardType: TextInputType.datetime,
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 15,
+          color: _textDark,
+        ),
         decoration: InputDecoration(
           labelText: 'Ngày sinh (YYYY-MM-DD)',
           hintText: 'Ví dụ: 1995-08-21',
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: _surfaceLow,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _borderNormal),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _borderNormal),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _primary, width: 2),
+          ),
           suffixIcon: IconButton(
             tooltip: 'Chọn ngày sinh',
             onPressed: _pickDateOfBirth,
-            icon: const Icon(Icons.calendar_today_outlined),
+            icon: const Icon(Icons.calendar_today_rounded, color: _primary),
           ),
         ),
       ),
@@ -480,19 +731,55 @@ class _RecommendationProfileScreenState
         key: const Key('recommendation-height-field'),
         controller: _heightController,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 15,
+          color: _textDark,
+        ),
+        decoration: InputDecoration(
           labelText: 'Chiều cao (cm)',
-          border: OutlineInputBorder(),
+          filled: true,
+          fillColor: _surfaceLow,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _borderNormal),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _borderNormal),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _primary, width: 2),
+          ),
         ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 14),
       TextField(
         key: const Key('recommendation-weight-field'),
         controller: _weightController,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 15,
+          color: _textDark,
+        ),
+        decoration: InputDecoration(
           labelText: 'Cân nặng (kg)',
-          border: OutlineInputBorder(),
+          filled: true,
+          fillColor: _surfaceLow,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _borderNormal),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _borderNormal),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _primary, width: 2),
+          ),
         ),
       ),
     ],
@@ -506,8 +793,15 @@ class _RecommendationProfileScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Có thể chọn một hoặc nhiều lựa chọn.'),
-        const SizedBox(height: 12),
+        const Text(
+          'Có thể chọn một hoặc nhiều lựa chọn.',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            color: _textMuted,
+          ),
+        ),
+        const SizedBox(height: 10),
         _choiceWrap(
           values:
               RecommendationQuestionnaire.codeOptions[question.domain] ??
@@ -539,8 +833,15 @@ class _RecommendationProfileScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Có thể chọn một hoặc nhiều lựa chọn.'),
-        const SizedBox(height: 12),
+        const Text(
+          'Có thể chọn một hoặc nhiều lựa chọn.',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            color: _textMuted,
+          ),
+        ),
+        const SizedBox(height: 10),
         _choiceWrap(
           values: RecommendationQuestionnaire.lifestyleGroupOptions,
           selected: selected,
@@ -557,8 +858,15 @@ class _RecommendationProfileScreenState
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Có thể chọn một hoặc nhiều lựa chọn.'),
-          const SizedBox(height: 12),
+          const Text(
+            'Có thể chọn một hoặc nhiều lựa chọn.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: _textMuted,
+            ),
+          ),
+          const SizedBox(height: 10),
           _choiceWrap(
             values: RecommendationQuestionnaire.vaccinationGroupOptions,
             selected: selected,
@@ -611,8 +919,15 @@ class _RecommendationProfileScreenState
           },
         ),
         if (needsInfections) ...[
-          const SizedBox(height: 16),
-          const Text('Chọn nhóm nhiễm nếu phù hợp.'),
+          const SizedBox(height: 14),
+          const Text(
+            'Chọn nhóm nhiễm nếu phù hợp.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: _textMuted,
+            ),
+          ),
           const SizedBox(height: 8),
           _choiceWrap(
             values: const [
@@ -653,17 +968,15 @@ class _RecommendationProfileScreenState
         : selected is String
         ? <String>{selected}
         : <String>{};
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: values
           .map(
-            (value) => FilterChip(
+            (value) => _CheckboxOptionTile(
               key: ValueKey('recommendation-option-$value'),
-              label: Text(RecommendationQuestionnaire.labelFor(value)),
+              label: RecommendationQuestionnaire.labelFor(value),
               selected: selectedValues.contains(value),
-              onSelected: (_) => onSelected(value),
-              showCheckmark: multiSelect,
+              onTap: () => onSelected(value),
             ),
           )
           .toList(),
@@ -958,24 +1271,72 @@ class _RecommendationProfileScreenState
           ),
         )
         .length;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Kiểm tra hồ sơ',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+    return Container(
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _borderNormal.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: _primaryAccent.withValues(alpha: 0.16),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.task_alt_rounded,
+                size: 36,
+                color: _primary,
+              ),
             ),
-            const SizedBox(height: 12),
-            Text('Đã hoàn tất $answered/${_questions.length} câu hỏi.'),
-            const SizedBox(height: 8),
-            const Text(
-              'Bạn có thể quay lại để chỉnh sửa. Hồ sơ chỉ được gửi một lần sau khi bạn bấm lưu.',
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Kiểm tra hồ sơ',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: _textDark,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Đã hoàn tất $answered/${_questions.length} câu hỏi.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: _primary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Bạn có thể quay lại để chỉnh sửa. Hồ sơ chỉ được gửi một lần sau khi bạn bấm lưu.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: _textMuted,
+              height: 1.45,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -983,32 +1344,99 @@ class _RecommendationProfileScreenState
   Widget _buildNavigation() {
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _canvas,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5A463F).withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -6),
+            ),
+          ],
+          border: const Border(top: BorderSide(color: Color(0xFFE8DDD6))),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
         child: _isReview
             ? SizedBox(
                 width: double.infinity,
+                height: 50,
                 child: FilledButton.icon(
                   onPressed: _saving ? null : _submit,
-                  icon: const Icon(Icons.check),
-                  label: Text(_saving ? 'Đang lưu...' : 'Lưu hồ sơ'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: _primary.withValues(alpha: 0.40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    elevation: 3,
+                    shadowColor: _primary.withValues(alpha: 0.3),
+                  ),
+                  icon: const Icon(Icons.check_rounded, size: 20),
+                  label: Text(
+                    _saving ? 'Đang lưu...' : 'Lưu hồ sơ',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               )
             : Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      key: const Key('recommendation-skip-button'),
-                      onPressed: _saving ? null : _skipCurrent,
-                      child: const Text('Bỏ qua'),
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        key: const Key('recommendation-skip-button'),
+                        onPressed: _saving ? null : _skipCurrent,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _textDark,
+                          side: const BorderSide(color: _borderNormal, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: const Text(
+                          'Bỏ qua',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: FilledButton(
-                      key: const Key('recommendation-continue-button'),
-                      onPressed: _saving ? null : _advance,
-                      child: const Text('Tiếp tục'),
+                    child: SizedBox(
+                      height: 50,
+                      child: FilledButton(
+                        key: const Key('recommendation-continue-button'),
+                        onPressed: _saving ? null : _advance,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor:
+                              _primary.withValues(alpha: 0.40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          elevation: 3,
+                          shadowColor: _primary.withValues(alpha: 0.3),
+                        ),
+                        child: const Text(
+                          'Tiếp tục',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1112,7 +1540,7 @@ class _RecommendationProfileScreenState
           !_oneDecimal(height) ||
           !_oneDecimal(weight) ||
           !_allowedContexts.contains(context)) {
-        setState(() => _error = 'Vui lòng hoàn tất các trường BMI hợp lệ.');
+        setState(() => _error = 'Vui lòng nhập cân nặng và chiều cao hiện tại của bạn.');
         return false;
       }
       _setDomain('bmi', <String, dynamic>{
@@ -1260,8 +1688,6 @@ class _RecommendationProfileScreenState
         try {
           await _service.clearDraftFor(expectedUserId);
         } catch (_) {
-          // The server profile is already committed. A local cleanup failure
-          // must not report a false submission failure or trigger a duplicate.
         }
       }
       if (!_isCurrentOperation(generation, expectedUserId)) return;
@@ -1309,8 +1735,6 @@ class _RecommendationProfileScreenState
     try {
       await _service.saveDraft(value);
     } catch (_) {
-      // Draft persistence is best effort; the in-memory profile remains the
-      // source for the current submission and API errors are handled there.
     }
   }
 
@@ -1318,8 +1742,105 @@ class _RecommendationProfileScreenState
     try {
       await _service.clearDraftFor(userId);
     } catch (_) {
-      // Account changes must never surface a storage cleanup failure as a
-      // questionnaire error for the newly authenticated account.
     }
+  }
+}
+
+class _CheckboxOptionTile extends StatelessWidget {
+  const _CheckboxOptionTile({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const _primary = Color(0xFF845143);
+  static const _textDark = Color(0xFF2E211C);
+  static const _surfaceLow = Color(0xFFFAF2EF);
+  static const _borderNormal = Color(0xFFE8DDD6);
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: label,
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            color: selected ? _surfaceLow : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? _primary : _borderNormal.withValues(alpha: 0.8),
+              width: selected ? 1.8 : 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: selected
+                    ? _primary.withValues(alpha: 0.10)
+                    : const Color(0xFF5A463F).withValues(alpha: 0.03),
+                blurRadius: selected ? 12 : 6,
+                offset: Offset(0, selected ? 4 : 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: selected ? _primary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: selected ? _primary : _borderNormal,
+                          width: selected ? 0 : 2,
+                        ),
+                      ),
+                      child: selected
+                          ? const Icon(
+                              Icons.check_rounded,
+                              size: 15,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          color: selected ? _primary : _textDark,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -102,6 +102,21 @@ void main() {
     expect(detector.phase, FallDetectionPhase.idle);
   });
 
+  test('rejects a 1 cm tap whose low-g phase is less than 60ms', () {
+    final detector = ImuFallDetector();
+    detector.addSample(sample(at: Duration.zero, acceleration: 7.0));
+
+    detector.addSample(
+      sample(at: const Duration(milliseconds: 40), acceleration: 12),
+    );
+
+    expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.freeFallTooShort,
+    );
+  });
+
   test('rejects impact after the 1500ms free-fall window', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
@@ -118,22 +133,160 @@ void main() {
     expect(completeImmobility(detector), isNull);
   });
 
-  test('rejects an impact whose jerk is below 40 m/s3', () {
+  test(
+    'rejects an impact whose jerk is below the applicable soft-fall floor',
+    () {
+      final detector = ImuFallDetector();
+      detector.addSample(sample(at: Duration.zero, acceleration: 6.4));
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 500), acceleration: 9.6),
+      );
+
+      expect(detector.phase, FallDetectionPhase.freeFall);
+      expect(
+        detector.latestDecision.reason,
+        ImuDetectorDecisionReason.jerkTooLow,
+      );
+    },
+  );
+
+  test('allows a long soft landing with jerk between 20 and 40 m/s3', () {
     final detector = ImuFallDetector();
-    detector.addSample(sample(at: Duration.zero, acceleration: 6.4));
-
-    detector.addSample(
-      sample(at: const Duration(milliseconds: 500), acceleration: 9.6),
+    detector.addSample(sample(at: Duration.zero, acceleration: 2));
+    final impact = sample(
+      at: const Duration(milliseconds: 250),
+      acceleration: 9.6,
+      gyro: 0.2,
     );
 
-    expect(detector.phase, FallDetectionPhase.freeFall);
-    expect(
-      detector.latestDecision.reason,
-      ImuDetectorDecisionReason.jerkTooLow,
-    );
+    expect(detector.addSample(impact), isNull);
+    expect(detector.phase, FallDetectionPhase.impact);
+    FallCandidate? candidate;
+    for (var index = 1; index <= 6; index++) {
+      candidate ??= detector.addSample(
+        sample(
+          at: Duration(milliseconds: 500 + index * 200),
+          acceleration: 9.81,
+          gyro: 0.1,
+        ),
+      );
+    }
+    expect(candidate, isNotNull);
   });
 
-  test('cancels a candidate on post-impact strong rotation', () {
+  test(
+    'accepts a long soft landing whose peak stays below hard-impact threshold',
+    () {
+      final detector = ImuFallDetector();
+      detector.addSample(sample(at: Duration.zero, acceleration: 2));
+      final impact = sample(
+        at: const Duration(milliseconds: 80),
+        acceleration: 8.6,
+        gyro: 0.2,
+      );
+
+      expect(detector.addSample(impact), isNull);
+      expect(detector.phase, FallDetectionPhase.impact);
+      expect(
+        completeImmobility(
+          detector,
+          impactAt: const Duration(milliseconds: 80),
+        ),
+        isNotNull,
+      );
+    },
+  );
+
+  test('allows brief pillow rebound after a long fall', () {
+    final detector = ImuFallDetector();
+    detector.addSample(sample(at: Duration.zero, acceleration: 2));
+    detector.addSample(
+      sample(
+        at: const Duration(milliseconds: 250),
+        acceleration: 9.6,
+        gyro: 0.2,
+      ),
+    );
+
+    expect(
+      detector.addSample(
+        sample(
+          at: const Duration(milliseconds: 500),
+          acceleration: 9.81,
+          gyro: 2.0,
+        ),
+      ),
+      isNull,
+    );
+    FallCandidate? candidate;
+    for (var index = 1; index <= 6; index++) {
+      candidate ??= detector.addSample(
+        sample(
+          at: Duration(milliseconds: 500 + index * 200),
+          acceleration: 9.81,
+          gyro: 0.1,
+        ),
+      );
+    }
+    expect(candidate, isNotNull);
+  });
+
+  test(
+    'accepts a filtered noisy 50 cm pillow fall before the phone is picked up',
+    () {
+      final detector = ImuFallDetector();
+      detector.addSample(sample(at: Duration.zero, acceleration: 7.0));
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 20), acceleration: 6.9),
+      );
+      detector.addSample(
+        sample(
+          at: const Duration(milliseconds: 80),
+          acceleration: 8.8,
+          gyro: 0.4,
+        ),
+      );
+      expect(detector.phase, FallDetectionPhase.impact);
+
+      final postImpact = <ImuSample>[
+        sample(
+          at: const Duration(milliseconds: 300),
+          acceleration: 12.0,
+          gyro: 1.8,
+        ),
+        sample(
+          at: const Duration(milliseconds: 380),
+          acceleration: 12.2,
+          gyro: 1.6,
+        ),
+        sample(
+          at: const Duration(milliseconds: 480),
+          acceleration: 11.8,
+          gyro: 0.8,
+        ),
+        sample(
+          at: const Duration(milliseconds: 580),
+          acceleration: 10.8,
+          gyro: 0.7,
+        ),
+        sample(
+          at: const Duration(milliseconds: 700),
+          acceleration: 9.9,
+          gyro: 0.6,
+        ),
+      ];
+      FallCandidate? candidate;
+      for (final current in postImpact) {
+        candidate ??= detector.addSample(current);
+      }
+
+      expect(candidate, isNotNull);
+      expect(candidate!.stationarySampleRatio, greaterThanOrEqualTo(0.6));
+    },
+  );
+
+  test('cancels a soft-fall candidate on post-impact strong rotation', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
     detector.addSample(
@@ -144,7 +297,7 @@ void main() {
       sample(
         at: const Duration(milliseconds: 400),
         acceleration: 9.81,
-        gyro: 1.6,
+        gyro: 2.6,
       ),
     );
 
@@ -215,14 +368,14 @@ void main() {
 
   test('rejects out-of-order samples and exact exclusive thresholds', () {
     final detector = ImuFallDetector();
-    detector.addSample(sample(at: Duration.zero, acceleration: 6.5));
+    detector.addSample(sample(at: Duration.zero, acceleration: 7.2));
     expect(detector.phase, FallDetectionPhase.idle);
 
     detector.addSample(
-      sample(at: const Duration(milliseconds: 100), acceleration: 6.4),
+      sample(at: const Duration(milliseconds: 100), acceleration: 7.1),
     );
     detector.addSample(
-      sample(at: const Duration(milliseconds: 200), acceleration: 9.5),
+      sample(at: const Duration(milliseconds: 200), acceleration: 8.5),
     );
     expect(detector.phase, FallDetectionPhase.freeFall);
 
@@ -236,7 +389,7 @@ void main() {
     );
   });
 
-  test('requires at least 80 percent stationary post-impact samples', () {
+  test('requires at least 60 percent stationary samples for a soft fall', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
     detector.addSample(
@@ -244,12 +397,12 @@ void main() {
     );
 
     FallCandidate? result;
-    for (var index = 1; index <= 5; index++) {
+    for (var index = 1; index <= 3; index++) {
       result ??= detector.addSample(
         sample(
           at: Duration(milliseconds: 100 + index * 200),
-          acceleration: index <= 2 ? 9.81 : 11.9,
-          gyro: index <= 2 ? 0.1 : 0.6,
+          acceleration: index <= 2 ? 9.81 : 13,
+          gyro: index <= 2 ? 0.1 : 1.0,
         ),
       );
     }
@@ -280,6 +433,48 @@ void main() {
     expect(detector.phase, FallDetectionPhase.idle);
     expect(detector.latestDecision.reason, ImuDetectorDecisionReason.cooldown);
   });
+
+  test(
+    'alert response clears partial phases but preserves a three-second cooldown',
+    () {
+      final detector = ImuFallDetector();
+      detector.addSample(sample(at: Duration.zero, acceleration: 2));
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 100), acceleration: 30),
+      );
+      expect(completeImmobility(detector), isNotNull);
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 4200), acceleration: 2),
+      );
+      expect(detector.phase, FallDetectionPhase.freeFall);
+
+      final respondedAt = sample(
+        at: const Duration(milliseconds: 4300),
+        acceleration: 9.81,
+      ).timestamp;
+      detector.rearmAfterAlertResponse(respondedAt);
+      expect(detector.phase, FallDetectionPhase.idle);
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 7200), acceleration: 2),
+      );
+      expect(detector.phase, FallDetectionPhase.idle);
+      expect(
+        detector.latestDecision.reason,
+        ImuDetectorDecisionReason.cooldown,
+      );
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 7400), acceleration: 9.81),
+      );
+      expect(detector.phase, FallDetectionPhase.idle);
+      expect(
+        detector.latestDecision.reason,
+        ImuDetectorDecisionReason.awaitingFreeFall,
+      );
+    },
+  );
 
   test('reports structured phase transitions and rejection reasons', () {
     final detector = ImuFallDetector();
@@ -313,6 +508,7 @@ void main() {
       DateTime.utc(2026, 8, 4),
     )) {
       candidate = detector.addSample(simulated) ?? candidate;
+      if (candidate != null) break;
     }
 
     expect(candidate, isNotNull);
@@ -326,14 +522,15 @@ void main() {
 
     final samples = <ImuSample>[
       sample(at: Duration.zero, acceleration: 5.5),
+      sample(at: const Duration(milliseconds: 300), acceleration: 2.0),
       sample(
-        at: const Duration(milliseconds: 60),
+        at: const Duration(milliseconds: 320),
         acceleration: 9.6,
         gyro: 0.2,
       ),
       for (var index = 1; index <= 6; index++)
         sample(
-          at: Duration(milliseconds: 60 + index * 200),
+          at: Duration(milliseconds: 320 + index * 200),
           acceleration: 9.81,
           gyro: 0.1,
         ),

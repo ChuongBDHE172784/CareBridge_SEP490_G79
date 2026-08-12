@@ -7,7 +7,7 @@ export function useAuth() {
 
   const hasRole = (role: UserRole) => user?.role === role;
   const hasAnyRole = (...roles: UserRole[]) =>
-    user ? roles.includes(user.role) : false;
+    user?.role ? roles.includes(user.role) : false;
 
   return {
     accessToken,

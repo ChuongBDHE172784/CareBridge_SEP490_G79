@@ -1,6 +1,6 @@
 {
   "$comment": "CANONICAL CONTEXT CONTRACT — the single definition of TargetEntity, CareStage, IntentType and ContextResolutionStatus shared by Java, Python and the response contract. Both runtimes assert their enums against this file, so a value added on one side without the other fails the parity test instead of drifting silently. Same generated-copy discipline as the rule registry: never edit a copy, run DevTools/sync_triage_rule_registry.py.",
-  "contractVersion": "1.0.0",
+  "contractVersion": "1.1.0",
   "projectType": "ACADEMIC_COMMUNITY_PROJECT",
   "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
 
@@ -69,6 +69,7 @@
     ],
     "blocksSymptomQuestions": [
       "NEEDS_TARGET_ENTITY",
+      "NEEDS_STAGE",
       "NEEDS_INTENT",
       "CONFLICTED",
       "INSUFFICIENT_CONTEXT"
@@ -83,6 +84,7 @@
       "EXPLICIT_IN_LATEST_MESSAGE",
       "EXPLICIT_SELECTED_PROFILE",
       "CONFIRMED_CONVERSATION_TARGET",
+      "CONFIRMED_CONVERSATION_INTENT",
       "STAGE_SPECIFIC_CONTEXT",
       "EXTRACTOR_INFERENCE",
       "NONE"
@@ -92,6 +94,7 @@
       "EXPLICIT_IN_LATEST_MESSAGE",
       "EXPLICIT_SELECTED_PROFILE",
       "CONFIRMED_CONVERSATION_TARGET",
+      "CONFIRMED_CONVERSATION_INTENT",
       "STAGE_SPECIFIC_CONTEXT",
       "EXTRACTOR_INFERENCE"
     ],

@@ -10,12 +10,14 @@ import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.baby.entity.Gender;
 import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
+import com.carebridge.backend.baby.service.BabyBirthGrowthSynchronizer;
 import com.carebridge.backend.baby.service.impl.BabyServiceImpl;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.vaccination.service.IVaccinationBookService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -36,6 +38,7 @@ class BabyServiceImplTest {
     @Mock private BabyAccessPolicy accessPolicy;
     @Mock private AuditService auditService;
     @Mock private IVaccinationBookService vaccinationBookService;
+    @Mock private BabyBirthGrowthSynchronizer babyBirthGrowthSynchronizer;
     @InjectMocks private BabyServiceImpl babyService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -74,6 +77,38 @@ class BabyServiceImplTest {
 
         assertThat(resp.getId()).isEqualTo(PROFILE_ID);
         assertThat(resp.getStatus()).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void createBabyProfile_projectsBirthMeasurementsBeforeVaccinationAndAudit() {
+        BabyProfile saved = savedProfile(PROFILE_ID);
+        when(babyRepository.save(any())).thenReturn(saved);
+
+        babyService.createBabyProfile(makeRequest(), CALLER_ID);
+
+        InOrder order = inOrder(babyRepository, babyBirthGrowthSynchronizer,
+                vaccinationBookService, auditService);
+        order.verify(babyRepository).save(any(BabyProfile.class));
+        order.verify(babyBirthGrowthSynchronizer).synchronize(saved);
+        order.verify(vaccinationBookService).initializeBook(saved);
+        order.verify(auditService).log(any(), eq(CALLER_ID), eq("BabyProfile"),
+                eq(PROFILE_ID.toString()), eq("created"));
+    }
+
+    @Test
+    void createBabyProfile_growthProjectionFailureStopsOtherCreateSideEffects() {
+        BabyProfile saved = savedProfile(PROFILE_ID);
+        when(babyRepository.save(any())).thenReturn(saved);
+        doThrow(new IllegalStateException("Growth projection unavailable"))
+                .when(babyBirthGrowthSynchronizer).synchronize(saved);
+
+        assertThatThrownBy(() -> babyService.createBabyProfile(makeRequest(), CALLER_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Growth projection unavailable")
+                .hasMessageNotContaining("3.2")
+                .hasMessageNotContaining("50.0");
+        verify(vaccinationBookService, never()).initializeBook(any());
+        verify(auditService, never()).log(any(), any(), any(), any(), any());
     }
 
     // BABY-TC-002: C5 — no medical diagnosis from birth measurements

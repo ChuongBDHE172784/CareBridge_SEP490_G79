@@ -12,6 +12,8 @@ import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.checklist.repository.ChecklistActionCommandRepository;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
@@ -34,6 +36,7 @@ public class ChecklistDistributionService {
 
     private static final String DISTRIBUTOR = "CHECKLIST_DISTRIBUTOR";
     private static final String OBSOLETE = "LIFECYCLE_WINDOW_OBSOLETE";
+    private static final String CADENCE_PERIOD_CLOSED = "CADENCE_PERIOD_CLOSED";
     private static final String OWNER_MISMATCH = "CONTEXT_OWNER_MISMATCH";
     private static final String KEY_CONFLICT = "DISTRIBUTION_KEY_CONFLICT";
     private final ChecklistInstanceRepository instanceRepository;
@@ -119,7 +122,12 @@ public class ChecklistDistributionService {
                         counters.result(), "RECIPIENT_NOT_ELIGIBLE"));
                 continue;
             }
-            cancelObsoletePending(command, recipient, decision, counters);
+            // A catch-up replay addresses one closed cadence period only.  It must
+            // never run the ordinary "obsolete current window" sweep, otherwise a
+            // replay for last week could historyize a newer live occurrence.
+            if (!isCatchUp(command)) {
+                cancelObsoletePending(command, recipient, decision, counters);
+            }
             distributeToRecipient(command, recipient, decision, counters);
             totals.add(counters);
             recipientResults.add(new ChecklistRecipientDistributionResult(
@@ -147,10 +155,19 @@ public class ChecklistDistributionService {
         String windowStartToken = decision.windowStart() == null ? "NONE" : decision.windowStart().toString();
         String windowEndToken = decision.windowEnd() == null ? "NONE" : decision.windowEnd().toString();
         UUID recipientCareGroupId = recipientCareGroupId(command, recipient);
-        String key = ChecklistDistributionKeyFactory.instanceKey(
-                command.templateVersionId(), recipient.userId(), recipient.role().name(),
-                recipientCareGroupId, command.contextType().name(), command.contextId(),
-                windowStartToken, windowEndToken);
+        String key = command.cadence() == null
+                ? ChecklistDistributionKeyFactory.instanceKey(
+                        command.templateVersionId(), recipient.userId(), recipient.role().name(),
+                        recipientCareGroupId, command.contextType().name(), command.contextId(),
+                        windowStartToken, windowEndToken, command.gestationalDatingRevision())
+                : ChecklistDistributionKeyFactory.cadenceInstanceKey(
+                        command.templateVersionId(), recipient.userId(), recipient.role().name(),
+                        recipientCareGroupId, command.contextType().name(), command.contextId(),
+                        command.cadence().scheduleType().name(),
+                        command.cadence().materializationPolicy().name(),
+                        command.cadence().periodKey(),
+                        command.cadence().scheduleZone().getId(),
+                        command.gestationalDatingRevision());
         ChecklistInstance instance = instanceRepository.findByDistributionKey(key).orElse(null);
         if (instance == null && isPersonalMother(recipient)) {
             List<ChecklistInstance> legacy = instanceRepository.findAllByLogicalPersonalIdentity(
@@ -159,6 +176,8 @@ public class ChecklistDistributionService {
                     .stream()
                     .filter(candidate -> candidate.getStatus() != ChecklistInstanceStatus.CANCELLED)
                     .filter(candidate -> candidate.getHistoricalAt() == null)
+                    .filter(candidate -> Objects.equals(
+                            candidate.getGestationalDatingRevision(), command.gestationalDatingRevision()))
                     .filter(candidate -> sameWindow(candidate, decision))
                     .toList();
             if (!legacy.isEmpty()) {
@@ -167,6 +186,22 @@ public class ChecklistDistributionService {
             }
         }
         if (instance != null && !matches(instance, command, recipient, decision)) {
+            // The V2 key intentionally excludes materialization mode.  A repair
+            // replay therefore finds either an already-closed catch-up row or the
+            // interactive row that was left open when the user missed the period.
+            // Both cases are the same occurrence identity and must converge rather
+            // than becoming a key conflict.
+            if (sameOccurrenceIdentity(instance, command, recipient, decision)) {
+                if (isCatchUp(command)) {
+                    counters.existingInstances++;
+                    closeCatchUpOccurrence(instance, command, recipient, counters);
+                    return;
+                }
+                if (isCatchUpInstance(instance)) {
+                    counters.existingInstances++;
+                    return;
+                }
+            }
             recordFailure(command, KEY_CONFLICT, instance.getId());
             counters.conflicts++;
             return;
@@ -176,13 +211,24 @@ public class ChecklistDistributionService {
                     .distributionKey(key)
                     .templateLineageId(command.templateLineageId())
                     .templateVersionId(command.templateVersionId())
-                    .recipientUserId(recipient.userId())
-                    .recipientRole(recipient.role())
-                    .careGroupId(recipientCareGroupId)
-                    .careContextType(command.contextType())
+                     .recipientUserId(recipient.userId())
+                     .recipientRole(recipient.role())
+                     .careGroupId(recipientCareGroupId)
+                     .careGroupMemberId(recipient.role() == ChecklistRecipientRole.FAMILY
+                             ? recipient.careGroupMemberId() : null)
+                     .checklistAccessEpoch(recipient.role() == ChecklistRecipientRole.FAMILY
+                             ? recipient.checklistAccessEpoch() : null)
+                     .careContextType(command.contextType())
                     .careContextId(command.contextId())
                     .contextOwnerUserId(command.contextOwnerUserId())
                     .origin(ChecklistOrigin.SYSTEM_TEMPLATE)
+                    .gestationalDatingRevision(command.gestationalDatingRevision())
+                    .keyVersion(command.cadence() == null ? "v1" : "v2")
+                    .periodKey(command.cadence() == null ? null : command.cadence().periodKey())
+                    .scheduleZoneId(command.cadence() == null ? null : command.cadence().scheduleZone().getId())
+                    .checklistContractVersion(command.cadence() == null ? null : (short) 2)
+                    .materializationMode(command.cadence() == null ? null : command.cadence().materializationMode())
+                    .wasActionable(command.cadence() == null ? null : command.cadence().wasActionable())
                     .windowStart(decision.windowStart())
                     .windowEnd(decision.windowEnd())
                     .status(ChecklistInstanceStatus.PENDING)
@@ -239,12 +285,14 @@ public class ChecklistDistributionService {
                     .templateVersionId(command.templateVersionId())
                     .templateItemVersionId(item.templateItemVersionId())
                     .taskKey(taskKey)
+                    .keyVersion(command.cadence() == null ? "v1" : "v2")
                     .titleSnapshot(item.title())
                     .descriptionSnapshot(item.description())
                     .supportFunction(item.supportFunction())
                     .displayOrder(item.displayOrder())
                     .required(item.required())
                     .targetSubject(item.targetSubject())
+                    .checklistContractVersion(command.cadence() == null ? null : (short) 2)
                     .dueAt(dueAt)
                     .status(ChecklistTaskStatus.PENDING)
                     .build();
@@ -263,6 +311,9 @@ public class ChecklistDistributionService {
                 }
                 counters.existingTasks++;
             }
+        }
+        if (isCatchUp(command)) {
+            closeCatchUpOccurrence(instance, command, recipient, counters);
         }
     }
 
@@ -292,7 +343,7 @@ public class ChecklistDistributionService {
             ChecklistInstance instance = instanceRepository.findForUpdateById(discovered.getId())
                     .orElse(null);
             if (instance == null || instance.getStatus() == ChecklistInstanceStatus.CANCELLED
-                    || sameWindow(instance, decision)
+                    || sameOccurrence(instance, command, decision)
                     || instance.getHistoricalAt() != null) {
                 continue;
             }
@@ -321,7 +372,7 @@ public class ChecklistDistributionService {
             if (instance == null
                     || instance.getOrigin() != ChecklistOrigin.SYSTEM_TEMPLATE
                     || instance.getStatus() != ChecklistInstanceStatus.PENDING
-                    || sameWindow(instance, decision)
+                    || sameOccurrence(instance, command, decision)
                     || instance.getCompletedAt() != null
                     || instance.getCancelledAt() != null
                     || instance.getCancellationReasonCode() != null
@@ -387,15 +438,32 @@ public class ChecklistDistributionService {
             ChecklistDistributionCommand command,
             ChecklistDistributionRecipient recipient,
             ChecklistEligibilityDecision decision) {
+        return sameOccurrenceIdentity(instance, command, recipient, decision)
+                && sameCadence(instance, command.cadence());
+    }
+
+    private static boolean sameOccurrenceIdentity(
+            ChecklistInstance instance,
+            ChecklistDistributionCommand command,
+            ChecklistDistributionRecipient recipient,
+            ChecklistEligibilityDecision decision) {
         return Objects.equals(instance.getTemplateLineageId(), command.templateLineageId())
                 && Objects.equals(instance.getTemplateVersionId(), command.templateVersionId())
                 && Objects.equals(instance.getRecipientUserId(), recipient.userId())
                 && instance.getRecipientRole() == recipient.role()
                 && Objects.equals(instance.getCareGroupId(), recipientCareGroupId(command, recipient))
+                && Objects.equals(instance.getCareGroupMemberId(),
+                        recipient.role() == ChecklistRecipientRole.FAMILY
+                                ? recipient.careGroupMemberId() : null)
+                && Objects.equals(instance.getChecklistAccessEpoch(),
+                        recipient.role() == ChecklistRecipientRole.FAMILY
+                                ? recipient.checklistAccessEpoch() : null)
                 && instance.getCareContextType() == command.contextType()
                 && Objects.equals(instance.getCareContextId(), command.contextId())
                 && Objects.equals(instance.getContextOwnerUserId(), command.contextOwnerUserId())
                 && instance.getOrigin() == ChecklistOrigin.SYSTEM_TEMPLATE
+                && Objects.equals(instance.getGestationalDatingRevision(), command.gestationalDatingRevision())
+                && sameCadenceIdentity(instance, command.cadence())
                 && sameWindow(instance, decision);
     }
 
@@ -414,12 +482,112 @@ public class ChecklistDistributionService {
                 && Objects.equals(task.getDisplayOrder(), item.displayOrder())
                 && Objects.equals(task.getRequired(), item.required())
                 && task.getTargetSubject() == item.targetSubject()
+                && Objects.equals(task.getChecklistContractVersion(),
+                        command.cadence() == null ? null : (short) 2)
                 && Objects.equals(task.getDueAt(), dueAt);
+    }
+
+    private static boolean sameCadence(
+            ChecklistInstance instance,
+            ChecklistCadenceMetadata cadence) {
+        return sameCadenceIdentity(instance, cadence)
+                && (cadence == null
+                    || (instance.getMaterializationMode() == cadence.materializationMode()
+                        && Objects.equals(instance.getWasActionable(), cadence.wasActionable())));
+    }
+
+    private static boolean sameCadenceIdentity(
+            ChecklistInstance instance,
+            ChecklistCadenceMetadata cadence) {
+        if (cadence == null) {
+            return instance.getPeriodKey() == null
+                    && instance.getScheduleZoneId() == null
+                    && (instance.getChecklistContractVersion() == null
+                        || instance.getChecklistContractVersion() == 1);
+        }
+        return Objects.equals(instance.getPeriodKey(), cadence.periodKey())
+                && Objects.equals(instance.getScheduleZoneId(), cadence.scheduleZone().getId())
+                && Objects.equals(instance.getChecklistContractVersion(), (short) 2);
+    }
+
+    private static boolean isCatchUp(ChecklistDistributionCommand command) {
+        return command.cadence() != null
+                && command.cadence().materializationMode()
+                    == com.carebridge.backend.checklist.model.ChecklistMaterializationMode.CATCH_UP;
+    }
+
+    private static boolean isCatchUpInstance(ChecklistInstance instance) {
+        return instance.getMaterializationMode()
+                == com.carebridge.backend.checklist.model.ChecklistMaterializationMode.CATCH_UP;
+    }
+
+    /**
+     * Closes one missed cadence period in-place.  Existing completed work is
+     * preserved; open work becomes CANCELLED and the parent is retained in
+     * History with the controlled cadence-close reason.  The historical marker
+     * is set before the transaction returns, so no action authorization can see
+     * a half-open catch-up row.
+     */
+    private void closeCatchUpOccurrence(
+            ChecklistInstance instance,
+            ChecklistDistributionCommand command,
+            ChecklistDistributionRecipient recipient,
+            Counters counters) {
+        if (instance.getHistoricalAt() != null) {
+            return;
+        }
+        List<ChecklistTaskInstance> lockedTasks = taskRepository
+                .findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instance.getId());
+        Instant closedAt = clock.instant();
+        for (ChecklistTaskInstance task : lockedTasks) {
+            ChecklistTaskStatus status = task.getStatus();
+            if (status == ChecklistTaskStatus.COMPLETED
+                    || status == ChecklistTaskStatus.SKIPPED
+                    || status == ChecklistTaskStatus.CANCELLED) {
+                continue;
+            }
+            String beforeStatus = status == null ? ChecklistTaskStatus.PENDING.name() : status.name();
+            task.setStatus(ChecklistTaskStatus.CANCELLED);
+            task.setCompletedAt(null);
+            task.setSkippedAt(null);
+            task.setCancelledAt(closedAt);
+            task.setActionReasonCode(CADENCE_PERIOD_CLOSED);
+            taskRepository.save(task);
+            auditWriter.write(event(AuditAction.CHECKLIST_CANCELLED, command, recipient.userId(),
+                    ChecklistAuditResourceType.CHECKLIST_TASK_INSTANCE, task.getId(), task.getId(),
+                    beforeStatus, ChecklistTaskStatus.CANCELLED.name(), CADENCE_PERIOD_CLOSED));
+        }
+        boolean parentWasOpen = instance.getStatus() != ChecklistInstanceStatus.COMPLETED
+                && instance.getStatus() != ChecklistInstanceStatus.CANCELLED;
+        if (parentWasOpen) {
+            String parentBeforeStatus = instance.getStatus() == null
+                    ? ChecklistInstanceStatus.PENDING.name() : instance.getStatus().name();
+            instance.setStatus(ChecklistInstanceStatus.CANCELLED);
+            instance.setCompletedAt(null);
+            instance.setCancelledAt(closedAt);
+            instance.setCancellationReasonCode(CADENCE_PERIOD_CLOSED);
+            auditWriter.write(event(AuditAction.CHECKLIST_CANCELLED, command, recipient.userId(),
+                    ChecklistAuditResourceType.CHECKLIST_INSTANCE, instance.getId(), null,
+                    parentBeforeStatus, ChecklistInstanceStatus.CANCELLED.name(),
+                    CADENCE_PERIOD_CLOSED));
+        }
+        instance.setHistoricalAt(closedAt);
+        instance.setHistoryReasonCode(CADENCE_PERIOD_CLOSED);
+        instanceRepository.save(instance);
+        counters.cancelledInstances++;
     }
 
     private static boolean sameWindow(ChecklistInstance instance, ChecklistEligibilityDecision decision) {
         return Objects.equals(instance.getWindowStart(), decision.windowStart())
                 && Objects.equals(instance.getWindowEnd(), decision.windowEnd());
+    }
+
+    private static boolean sameOccurrence(
+            ChecklistInstance instance,
+            ChecklistDistributionCommand command,
+            ChecklistEligibilityDecision decision) {
+        return Objects.equals(instance.getGestationalDatingRevision(), command.gestationalDatingRevision())
+                && sameWindow(instance, decision);
     }
 
     private static boolean isPersonalMother(ChecklistDistributionRecipient recipient) {
@@ -488,10 +656,21 @@ public class ChecklistDistributionService {
         Objects.requireNonNull(command.recipients(), "Recipients are required");
         Objects.requireNonNull(command.items(), "Items are required");
         Objects.requireNonNull(command.timezone(), "Timezone is required");
+        if (command.cadence() != null
+                && command.cadence().scheduleZone() == null) {
+            throw new IllegalArgumentException("Cadence schedule zone is required");
+        }
         if (command.careGroupId() == null && command.recipients().stream()
                 .filter(Objects::nonNull)
                 .anyMatch(recipient -> recipient.role() != ChecklistRecipientRole.MOTHER)) {
             throw new IllegalArgumentException("A care group is required for non-mother recipients");
+        }
+        if (command.stage() == ContentStage.PREGNANCY
+                && command.contextType() == ChecklistCareContextType.JOURNEY
+                && (command.gestationalDatingRevision() == null
+                || command.gestationalDatingRevision() <= 0)) {
+            throw new IllegalArgumentException(
+                    "Resolved pregnancy dating revision is required for checklist distribution");
         }
     }
 

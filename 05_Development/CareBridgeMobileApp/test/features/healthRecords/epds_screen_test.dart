@@ -29,6 +29,14 @@ void main() {
     expect(scores, [3, 2, 1, 0]);
   });
 
+  test('EPDS result guidance is reconstructed for saved history', () {
+    expect(epdsLevel(9), 'Nguy cơ hiện tại thấp');
+    expect(epdsGuidance(9, 0), contains('Tiếp tục theo dõi'));
+    expect(epdsLevel(13), 'Cần được đánh giá chuyên sâu');
+    expect(epdsGuidance(13, 0), contains('đánh giá chuyên sâu'));
+    expect(epdsGuidance(4, 1), contains('sức khỏe tâm thần ngay'));
+  });
+
   test('stored EPDS answers can be restored for history detail', () {
     final answers = parseEpdsAnswers(
       '{"version":"EPDS_VI_NSW_2023","periodDays":7,"answers":[0,1,2,3,0,1,2,3,0,1]}',
@@ -55,6 +63,8 @@ void main() {
 
     expect(find.text('Chi tiết sàng lọc EPDS'), findsOneWidget);
     expect(find.text('Tổng điểm 13/30'), findsOneWidget);
+    expect(find.text('Cần được đánh giá chuyên sâu'), findsOneWidget);
+    expect(find.textContaining('sức khỏe tâm thần ngay'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_rounded), findsWidgets);
 
     await tester.scrollUntilVisible(
@@ -63,5 +73,23 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.textContaining('Câu 10.'), findsOneWidget);
+  });
+
+  testWidgets('EPDS header opens the conditions and guidance note', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EpdsScreen(journeyId: '00000000-0000-0000-0000-000000000001'),
+      ),
+    );
+
+    expect(find.text('Sàng lọc tâm trạng EPDS'), findsOneWidget);
+    await tester.tap(find.byTooltip('Điều kiện và hướng dẫn EPDS'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Điều kiện và hướng dẫn EPDS'), findsOneWidget);
+    expect(find.textContaining('0–9 điểm'), findsOneWidget);
+    expect(find.textContaining('Câu 10 có điểm 1–3'), findsOneWidget);
   });
 }

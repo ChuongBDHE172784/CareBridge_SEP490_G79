@@ -79,6 +79,48 @@ def test_explicit_baby_target_is_not_overridden_by_maternal_journey_context():
     assert updates["contextResolutionStatus"] is ContextResolutionStatus.CONFLICTED
 
 
+def test_latest_message_pregnancy_stage_replaces_stale_postpartum_journey_stage():
+    state = _state()
+    state.update(
+        targetEntity=TargetEntity.MOTHER,
+        stage=CareStage.POSTPARTUM_MOTHER,
+        latestUserMessage="Em bầu 31 tuần, đầu đau dữ dội",
+    )
+
+    updates = stage_context_resolver(state)
+
+    assert updates["stage"] is CareStage.PREGNANCY
+    assert updates["contextResolutionStatus"] is ContextResolutionStatus.RESOLVED
+
+
+def test_latest_message_word_age_replaces_stale_toddler_journey_stage():
+    state = _state()
+    state.update(
+        targetEntity=TargetEntity.BABY,
+        stage=CareStage.TODDLER_12_24M,
+        latestUserMessage="Con mười tháng sốt 39,3 độ",
+    )
+
+    updates = stage_context_resolver(state)
+
+    assert updates["stage"] is CareStage.INFANT_0_12M
+    assert updates["contextResolutionStatus"] is ContextResolutionStatus.RESOLVED
+
+
+def test_stage_clarification_option_is_consumed_by_graph_adapter():
+    state = _state()
+    state.update(
+        targetEntity=TargetEntity.MOTHER,
+        stage=CareStage.POSTPARTUM_MOTHER,
+        submittedOptionCodes=["STAGE_PREGNANCY"],
+    )
+
+    updates = stage_context_resolver(state)
+
+    assert updates["stage"] is CareStage.PREGNANCY
+    assert updates["contextResolutionStatus"] is ContextResolutionStatus.RESOLVED
+
+
 def test_general_information_is_resolved_without_a_stage():
     state = _state()
     state["targetEntity"] = TargetEntity.MOTHER

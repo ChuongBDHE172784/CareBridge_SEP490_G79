@@ -14,7 +14,7 @@ export interface AuthUser {
   phone: string;
   name: string | null;
   avatarUrl: string | null;
-  role: UserRole;
+  role: UserRole | null;
 }
 
 interface AuthState {
@@ -22,7 +22,7 @@ interface AuthState {
   refreshToken: string | null;
   user: AuthUser | null;
   setTokens: (accessToken: string, refreshToken: string) => void;
-  setUser: (user: AuthUser) => void;
+  setUser: (user: AuthUser | null) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
 }

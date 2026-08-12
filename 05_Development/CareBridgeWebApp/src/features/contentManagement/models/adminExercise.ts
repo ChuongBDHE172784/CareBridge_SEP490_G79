@@ -28,9 +28,26 @@ export interface AdminExerciseForm {
   durationMinutes: number;
   instructionContent: string;
   mediaUrl: string;
-  safetyWarning?: string;
+  safetyWarning: string;
   supportsPostureAnalysis: boolean;
 }
+
+export type AdminExerciseFormField = keyof AdminExerciseForm;
+
+export type AdminExerciseFieldErrors = Partial<Record<AdminExerciseFormField, string>>;
+
+export interface AdminExerciseRequestError {
+  code?: string;
+  message: string;
+  fieldErrors: AdminExerciseFieldErrors;
+}
+
+export const adminExerciseLimits = {
+  titleMaxLength: 255,
+  safetyWarningMaxLength: 2000,
+  durationMinutesMin: 1,
+  durationMinutesMax: 180,
+} as const;
 
 export interface PaginatedResponse<T> {
   success: boolean;

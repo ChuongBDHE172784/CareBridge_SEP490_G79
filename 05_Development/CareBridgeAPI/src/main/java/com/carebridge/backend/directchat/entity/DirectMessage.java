@@ -50,6 +50,15 @@ public class DirectMessage {
     @Column(name = "attachment_id")
     private UUID attachmentId;
 
+    @Column(name = "location_latitude")
+    private Double locationLatitude;
+
+    @Column(name = "location_longitude")
+    private Double locationLongitude;
+
+    @Column(name = "location_label", length = 200)
+    private String locationLabel;
+
     @Column(name = "recalled_at")
     private Instant recalledAt;
 

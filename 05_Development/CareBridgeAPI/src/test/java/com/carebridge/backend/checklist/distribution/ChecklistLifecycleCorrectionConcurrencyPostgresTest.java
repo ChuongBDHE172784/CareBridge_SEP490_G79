@@ -330,7 +330,8 @@ class ChecklistLifecycleCorrectionConcurrencyPostgresTest
                 List.of(new ChecklistDistributionItem(
                         templateItem, "CHK-011 lifecycle task", 1, true,
                         ChecklistTargetSubject.MOTHER, ChecklistAnchorType.LMP, 0)),
-                correlationId);
+                 correlationId,
+                 1L);
     }
 
     private void seedTemplateVersion() {

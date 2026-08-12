@@ -83,7 +83,7 @@ def test_unknown_target_allows_target_clarification_and_global_danger():
     [
         (
             TargetEntity.MOTHER,
-            ["Q_PREGNANCY_TEST", "Q_GESTATIONAL_WEEK", "Q_POSTPARTUM_DAY"],
+            ["Q_CLARIFY_STAGE"],
         ),
         (TargetEntity.BABY, ["Q_BABY_AGE_MONTHS"]),
     ],

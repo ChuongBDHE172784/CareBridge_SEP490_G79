@@ -63,7 +63,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   final _lengthCtrl = TextEditingController();
 
   DateTime? _birthDate;
-  BabyGender _gender = BabyGender.unknown;
+  BabyGender _gender = BabyGender.male;
   bool _loading = false;
   bool _deferring = false;
   String? _errorMsg;
@@ -494,20 +494,14 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
         ),
         const SizedBox(height: 10),
         Row(
-          children: BabyGender.values.map((g) {
+          children: [BabyGender.male, BabyGender.female].map((g) {
             final selected = _gender == g;
-            final label = g == BabyGender.unknown
-                ? 'Chưa biết'
-                : g.displayLabel;
-            final icon = g == BabyGender.male
-                ? Icons.male
-                : g == BabyGender.female
-                ? Icons.female
-                : Icons.device_unknown_outlined;
+            final label = g.displayLabel;
+            final icon = g == BabyGender.male ? Icons.male : Icons.female;
             return Expanded(
               child: Padding(
                 padding: EdgeInsets.only(
-                  right: g != BabyGender.unknown ? 8 : 0,
+                  right: g == BabyGender.male ? 8 : 0,
                 ),
                 child: GestureDetector(
                   onTap: () => setState(() => _gender = g),
@@ -557,6 +551,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
 
   Widget _buildWeightField() {
     return TextFormField(
+      key: const Key('add-baby-birth-weight'),
       controller: _weightCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
@@ -586,6 +581,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
 
   Widget _buildLengthField() {
     return TextFormField(
+      key: const Key('add-baby-birth-length'),
       controller: _lengthCtrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [

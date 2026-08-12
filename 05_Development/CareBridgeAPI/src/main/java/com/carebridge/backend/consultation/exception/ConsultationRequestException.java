@@ -50,4 +50,11 @@ public class ConsultationRequestException extends RuntimeException {
         return new ConsultationRequestException(
                 "CONREQ-009", "clientRequestId already used with different payload", HttpStatus.CONFLICT);
     }
+
+    public static ConsultationRequestException availabilityNoLongerAvailable() {
+        return new ConsultationRequestException(
+                "CONREQ-010",
+                "Selected expert availability is no longer available",
+                HttpStatus.CONFLICT);
+    }
 }

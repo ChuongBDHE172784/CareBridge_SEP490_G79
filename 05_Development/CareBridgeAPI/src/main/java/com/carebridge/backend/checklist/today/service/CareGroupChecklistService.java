@@ -21,31 +21,25 @@ import com.carebridge.backend.checklist.today.policy.CareGroupChecklistScopeReso
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.common.exception.BusinessException;
-import com.carebridge.backend.content.entity.ChecklistTemplate;
-import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Projects the mother's canonical checklist rows into one selected FAMILY scope. */
+/** Projects epoch-bound FAMILY checklist rows into one selected care-group scope. */
 @Service
 public class CareGroupChecklistService {
     private final UnifiedTodayTaskService unifiedTodayTaskService;
     private final CareGroupChecklistScopeResolver scopeResolver;
     private final UnifiedTaskActionFacade actionFacade;
-    private final ChecklistTemplateRepository templateRepository;
     private final ChecklistInstanceRepository instanceRepository;
     private final ChecklistTaskInstanceRepository taskRepository;
     private final boolean lockScope;
@@ -73,7 +67,6 @@ public class CareGroupChecklistService {
         this.unifiedTodayTaskService = unifiedTodayTaskService;
         this.scopeResolver = scopeResolver;
         this.actionFacade = actionFacade;
-        this.templateRepository = templateRepository;
         this.instanceRepository = instanceRepository;
         this.taskRepository = taskRepository;
         this.lockScope = lockScope;
@@ -104,29 +97,29 @@ public class CareGroupChecklistService {
         boolean canComplete = (lockScope
                 ? scopeResolver.resolveCompleteForUpdate(actorUserId, careGroupId)
                 : scopeResolver.resolveComplete(actorUserId, careGroupId)) != null;
-        var ownerResponse = unifiedTodayTaskService.getTodayTasks(
-                scope.ownerUserId(), date, timezoneHeader, Set.of(TaskKind.CHECKLIST), false);
-        TodayTaskSections ownerSections = ownerResponse.sections();
-        Map<UUID, ChecklistTemplate> shareableTemplates = shareableTemplates(ownerSections);
+        // Family current is sourced from the actor's own materialized rows.  A
+        // Mother-owned row has no member/epoch snapshot and must never be
+        // adopted by this route as a writable (or Family-current) projection.
+        var familyResponse = unifiedTodayTaskService.getTodayTasks(
+                actorUserId, date, timezoneHeader, Set.of(TaskKind.CHECKLIST), false);
+        TodayTaskSections familySections = familyResponse.sections();
         List<CurrentChecklistTaskResponse> personalTasks = mapPersonalFamilyTasks(
                 actorUserId, scope);
         List<CurrentChecklistTaskResponse> unscheduled = new ArrayList<>(
-                map(ownerSections.unscheduled(), scope, canComplete, shareableTemplates));
+                map(familySections.unscheduled(), scope, canComplete));
         unscheduled.addAll(personalTasks);
         CurrentChecklistSections sections = new CurrentChecklistSections(
-                map(ownerSections.overdue(), scope, canComplete, shareableTemplates),
-                map(ownerSections.today(), scope, canComplete, shareableTemplates),
-                map(ownerSections.upcoming(), scope, canComplete, shareableTemplates),
+                map(familySections.overdue(), scope, canComplete),
+                map(familySections.today(), scope, canComplete),
+                map(familySections.upcoming(), scope, canComplete),
                 List.copyOf(unscheduled));
         requireSameScope(actorUserId, careGroupId, scope);
         TodayTaskCounts counts = new TodayTaskCounts(
                 sections.overdue().size(), sections.today().size(),
                 sections.upcoming().size(), sections.unscheduled().size());
-        // Sequence controls are deliberately Mother-only; the owner's sequence is
-        // still applied by the provider before this projection.
         return new CurrentChecklistResponse(
-                ownerResponse.asOf(), ownerResponse.zoneId(), ownerResponse.horizonDays(),
-                sections, counts, ownerResponse.correlationId(), null);
+                familyResponse.asOf(), familyResponse.zoneId(), familyResponse.horizonDays(),
+                sections, counts, familyResponse.correlationId(), null);
     }
 
     private CareGroupChecklistScope requireView(UUID actorUserId, UUID careGroupId) {
@@ -143,17 +136,14 @@ public class CareGroupChecklistService {
     private static List<CurrentChecklistTaskResponse> map(
             List<TodayTaskItemResponse> items,
             CareGroupChecklistScope scope,
-            boolean canComplete,
-            Map<UUID, ChecklistTemplate> shareableTemplates) {
+            boolean canComplete) {
         return items.stream()
                 .filter(item -> item.origin() == ChecklistOrigin.SYSTEM_TEMPLATE)
-                .filter(item -> item.careGroupId() == null)
+                .filter(item -> scope.careGroupId().equals(item.careGroupId()))
                 .filter(item -> scope.includes(item.careContextType(), item.careContextId()))
-                .filter(item -> item.templateVersionId() != null
-                        && shareableTemplates.containsKey(item.templateVersionId()))
                 .map(item -> new CurrentChecklistTaskResponse(
                         item.taskId(), item.instanceId(), item.templateVersionId(),
-                        scope.careGroupId(), item.careContextType(), item.careContextId(),
+                        item.careGroupId(), item.careContextType(), item.careContextId(),
                         scope.careGroupLabel(), item.careContextLabel(), item.title(),
                         item.targetSubject(), item.origin(), item.status(), item.timeBucket(),
                 canComplete ? item.allowedActions() : java.util.Set.of(), item.dueAt(),
@@ -206,41 +196,6 @@ public class CareGroupChecklistService {
                 Set.copyOf(actions), task.getDueAt(), task.getDescriptionSnapshot(), task.getSupportFunction());
     }
 
-    private Map<UUID, ChecklistTemplate> shareableTemplates(TodayTaskSections sections) {
-        if (templateRepository == null) {
-            // Compatibility tests without metadata retain the provider's visibility policy.
-            Map<UUID, ChecklistTemplate> result = new LinkedHashMap<>();
-            allItems(sections)
-                    .map(TodayTaskItemResponse::templateVersionId)
-                    .filter(java.util.Objects::nonNull)
-                    .forEach(id -> result.put(id, null));
-            return result;
-        }
-        List<UUID> versionIds = allItems(sections)
-                .filter(item -> item.origin() == ChecklistOrigin.SYSTEM_TEMPLATE)
-                .map(item -> item.templateVersionId())
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
-        if (versionIds.isEmpty()) {
-            return Map.of();
-        }
-        return templateRepository.findAllByTemplateVersionIdIn(versionIds).stream()
-                .filter(template -> template.getStatus() == ChecklistTemplateStatus.APPROVED)
-                .filter(template -> template.getRecipientScope()
-                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER
-                        || template.getRecipientScope()
-                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
-                .collect(Collectors.toMap(ChecklistTemplate::getTemplateVersionId,
-                        Function.identity(), (left, right) -> left));
-    }
-
-    private static Stream<TodayTaskItemResponse> allItems(TodayTaskSections sections) {
-        return Stream.of(
-                        sections.overdue(), sections.today(), sections.upcoming(), sections.unscheduled())
-                .flatMap(List::stream);
-    }
-
     private void requireSameScope(
             UUID actorUserId,
             UUID careGroupId,
@@ -264,8 +219,9 @@ public class CareGroupChecklistService {
             UUID taskId,
             TaskActionRequest request) {
         // View permission is enough to enter this endpoint: the action handler
-        // applies the stricter CHECKLIST_COMPLETE rule to the mother's shared
-        // rows, while a member's own USER_CREATED row is mutable with view only.
+        // applies the stored Family member/epoch boundary to a direct Family
+        // occurrence, while a member's own USER_CREATED row is mutable with
+        // view only. Mother-owned projection ids are not actionable.
         boolean permitted = (lockScope
                 ? scopeResolver.resolveViewForUpdate(actorUserId, careGroupId)
                 : scopeResolver.resolveView(actorUserId, careGroupId)) != null;

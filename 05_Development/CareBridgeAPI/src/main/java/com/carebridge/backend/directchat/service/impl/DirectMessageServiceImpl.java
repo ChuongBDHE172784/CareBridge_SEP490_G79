@@ -116,18 +116,32 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
             throw DirectChatException.invalidMessageBody();
         }
         boolean textPayload = messageType == MessageType.TEXT;
+        boolean attachmentPayload = messageType == MessageType.IMAGE || messageType == MessageType.FILE;
+        boolean locationPayload = messageType == MessageType.LOCATION;
+        String locationLabel = request.getLocationLabel() == null ? null : request.getLocationLabel().trim();
+        if (locationLabel != null && locationLabel.isEmpty()) {
+            locationLabel = null;
+        }
         if ((textPayload && (trimmedBody.isEmpty() || trimmedBody.length() > MAX_BODY_LENGTH))
-                || (!textPayload && request.getAttachmentId() == null)) {
+                || (attachmentPayload && request.getAttachmentId() == null)
+                || (locationPayload && !validCoordinates(request.getLocationLatitude(), request.getLocationLongitude()))
+                || ((textPayload || locationPayload) && request.getAttachmentId() != null)
+                || (locationPayload && !trimmedBody.isEmpty())
+                || (locationLabel != null && locationLabel.length() > 200)
+                || (!locationPayload && (request.getLocationLatitude() != null
+                        || request.getLocationLongitude() != null || locationLabel != null))) {
             throw DirectChatException.invalidMessageBody();
         }
-        if (!textPayload) {
+        if (attachmentPayload) {
             assertAttachmentOwnedBySender(request.getAttachmentId(), senderUserId);
         }
 
         Optional<DirectMessage> existing = messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
                 conversationId, senderUserId, request.getClientMessageId());
         if (existing.isPresent()) {
-            assertSameIdempotentPayload(existing.get(), textPayload ? trimmedBody : null, messageType, request.getAttachmentId());
+            assertSameIdempotentPayload(existing.get(), trimmedBody.isEmpty() ? null : trimmedBody,
+                    messageType, request.getAttachmentId(), request.getLocationLatitude(),
+                    request.getLocationLongitude(), locationLabel);
             return new SendDirectMessageResult(toItemResponse(existing.get()), false);
         }
 
@@ -137,8 +151,11 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
                 .senderUserId(senderUserId)
                 .clientMessageId(request.getClientMessageId())
                 .messageType(messageType)
-                .messageBody(textPayload ? trimmedBody : null)
+                .messageBody(trimmedBody.isEmpty() ? null : trimmedBody)
                 .attachmentId(request.getAttachmentId())
+                .locationLatitude(request.getLocationLatitude())
+                .locationLongitude(request.getLocationLongitude())
+                .locationLabel(locationLabel)
                 .createdAt(Instant.now(clock))
                 .build();
 
@@ -148,7 +165,9 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
             saved = messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
                             conversationId, senderUserId, request.getClientMessageId())
                     .orElseThrow(DirectChatException::idempotencyConflict);
-            assertSameIdempotentPayload(saved, textPayload ? trimmedBody : null, messageType, request.getAttachmentId());
+            assertSameIdempotentPayload(saved, trimmedBody.isEmpty() ? null : trimmedBody,
+                    messageType, request.getAttachmentId(), request.getLocationLatitude(),
+                    request.getLocationLongitude(), locationLabel);
         }
 
         if (created) {
@@ -226,6 +245,9 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
             }
             message.setMessageBody(null);
             message.setAttachmentId(null);
+            message.setLocationLatitude(null);
+            message.setLocationLongitude(null);
+            message.setLocationLabel(null);
             message.setRecalledAt(Instant.now(clock));
             message.setRecalledByUserId(senderUserId);
             messageRepository.save(message);
@@ -241,12 +263,23 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
     }
 
     private static void assertSameIdempotentPayload(DirectMessage existing, String requestedBody,
-            MessageType requestedType, UUID requestedAttachmentId) {
+            MessageType requestedType, UUID requestedAttachmentId, Double requestedLatitude,
+            Double requestedLongitude, String requestedLocationLabel) {
         if (existing.getMessageType() != requestedType
                 || !java.util.Objects.equals(existing.getMessageBody(), requestedBody)
-                || !java.util.Objects.equals(existing.getAttachmentId(), requestedAttachmentId)) {
+                || !java.util.Objects.equals(existing.getAttachmentId(), requestedAttachmentId)
+                || !java.util.Objects.equals(existing.getLocationLatitude(), requestedLatitude)
+                || !java.util.Objects.equals(existing.getLocationLongitude(), requestedLongitude)
+                || !java.util.Objects.equals(existing.getLocationLabel(), requestedLocationLabel)) {
             throw DirectChatException.idempotencyConflict();
         }
+    }
+
+    private static boolean validCoordinates(Double latitude, Double longitude) {
+        return latitude != null && longitude != null
+                && Double.isFinite(latitude) && Double.isFinite(longitude)
+                && latitude >= -90 && latitude <= 90
+                && longitude >= -180 && longitude <= 180;
     }
 
     private void assertAttachmentOwnedBySender(UUID attachmentId, UUID senderUserId) {
@@ -308,6 +341,9 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
                 .messageType(message.getMessageType().name())
                 .messageBody(message.getMessageBody())
                 .attachmentId(message.getAttachmentId())
+                .locationLatitude(message.getLocationLatitude())
+                .locationLongitude(message.getLocationLongitude())
+                .locationLabel(message.getLocationLabel())
                 .recalledAt(message.getRecalledAt())
                 .createdAt(message.getCreatedAt())
                 .build();

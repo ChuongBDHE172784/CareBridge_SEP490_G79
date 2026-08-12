@@ -29,5 +29,50 @@ void main() {
 
       expect(week, 13);
     });
+
+    test('keeps server source week separate from legacy pregnancy week', () {
+      final dashboard = JourneyDashboard(
+        journeyType: 'PREGNANCY',
+        pregnancyWeek: 20,
+        sourceWeekNumber: 21,
+        plan: 2,
+        datingBasis: 'EDD',
+      );
+
+      expect(dashboard.displayPregnancyWeek, 20);
+      expect(dashboard.effectiveSourceWeekNumber, 21);
+      expect(dashboard.plan, 2);
+      expect(dashboard.gestationalDatingBasis, 'EDD');
+    });
+
+    test('does not infer a checklist source week from legacy pregnancy week', () {
+      final dashboard = JourneyDashboard(
+        journeyType: 'PREGNANCY',
+        pregnancyWeek: 20,
+      );
+
+      expect(dashboard.effectiveSourceWeekNumber, isNull);
+    });
+
+    test('parses dashboard dating and plan metadata', () {
+      final dashboard = JourneyDashboard.fromJson({
+        'journeyType': 'PREGNANCY',
+        'pregnancyWeek': 20,
+        'completedGestationalWeek': 20,
+        'sourceWeekNumber': 21,
+        'plan': 2,
+        'gestationalDatingBasis': 'EDD',
+        'gestationalDatingQuarantineReasonCode': 'DATING_DISCREPANCY',
+        'canonicalLmp': '2026-01-01',
+        'gestationalDatingRevision': 4,
+      });
+
+      expect(dashboard.sourceWeekNumber, 21);
+      expect(dashboard.plan, 2);
+      expect(dashboard.datingBasis, 'EDD');
+      expect(dashboard.datingQuarantineReason, 'DATING_DISCREPANCY');
+      expect(dashboard.canonicalLmp, DateTime(2026, 1, 1));
+      expect(dashboard.gestationalDatingRevision, 4);
+    });
   });
 }

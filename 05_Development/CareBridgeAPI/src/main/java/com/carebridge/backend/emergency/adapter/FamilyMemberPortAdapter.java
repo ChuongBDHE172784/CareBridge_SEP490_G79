@@ -1,5 +1,6 @@
 package com.carebridge.backend.emergency.adapter;
 
+import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareGroupStatus;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
-import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
+import java.util.stream.Stream;
 
 @Component
 @RequiredArgsConstructor
@@ -24,15 +25,24 @@ public class FamilyMemberPortAdapter implements FamilyMemberPort {
 
     @Override
     public List<String> getFamilyFcmTokens(UUID userId) {
-        return getFamilyAlertRecipients(userId).stream().map(AlertRecipientEndpoint::token).toList();
+        return getFamilyAlertRecipients(userId).stream()
+                .filter(AlertRecipientEndpoint::hasPushEndpoint)
+                .map(AlertRecipientEndpoint::token)
+                .toList();
     }
 
     @Override
     public List<AlertRecipientEndpoint> getFamilyAlertRecipients(UUID userId) {
         return careGroupMemberRepository.findAcceptedFamilyMembersForEmergencyAlerts(userId).stream()
-                .flatMap(member -> deviceTokenRepository.findByUserIdAndActiveTrue(member.getUserId()).stream()
-                        .map(token -> new AlertRecipientEndpoint(
-                                member.getUserId(), token.getId(), member.getCareGroupId(), token.getToken())))
+                .flatMap(member -> {
+                    var activeTokens = deviceTokenRepository.findByUserIdAndActiveTrue(member.getUserId());
+                    if (activeTokens.isEmpty()) {
+                        return Stream.of(AlertRecipientEndpoint.inAppOnly(
+                                member.getUserId(), member.getCareGroupId()));
+                    }
+                    return activeTokens.stream().map(token -> new AlertRecipientEndpoint(
+                            member.getUserId(), token.getId(), member.getCareGroupId(), token.getToken()));
+                })
                 .distinct()
                 .toList();
     }

@@ -125,7 +125,9 @@ class ChecklistDistributionHardeningContractTest {
     void entityNullabilityAndBuilderDefaultsMatchDatabaseContract() throws Exception {
         Field targetSubject = Class.forName("com.carebridge.backend.content.entity.ChecklistItem")
                 .getDeclaredField("targetSubject");
-        assertThat(targetSubject.getAnnotation(Column.class).nullable()).isFalse();
+        assertThat(targetSubject.getAnnotation(Column.class).nullable()).isTrue();
+        assertThat(Class.forName("com.carebridge.backend.content.entity.ChecklistItem")
+                .getDeclaredField("checklistContractVersion")).isNotNull();
 
         ChecklistActionCommand command = ChecklistActionCommand.builder().build();
         assertThat(command.getResultJson()).isEqualTo("{}");

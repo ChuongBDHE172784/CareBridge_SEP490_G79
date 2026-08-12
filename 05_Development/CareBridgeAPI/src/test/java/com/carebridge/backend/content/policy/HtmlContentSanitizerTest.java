@@ -156,6 +156,31 @@ class HtmlContentSanitizerTest {
         assertFalse(style.toLowerCase().contains("float"));
     }
 
+    @Test
+    void sanitize_tableAndHeadersAndLinks_keptIntact() {
+        String input = "<h2>Tiêu đề</h2><p>Đoạn văn <strong>đậm</strong> và <em>nghiêng</em>.</p>"
+                + "<ul><li>Ý 1</li><li>Ý 2</li></ul>"
+                + "<blockquote>Trích dẫn</blockquote>"
+                + "<hr />"
+                + "<a href=\"https://example.com\" target=\"_blank\" rel=\"noopener noreferrer\">Link</a>"
+                + "<table><thead><tr><th>Cột 1</th></tr></thead><tbody><tr><td>Hàng 1</td></tr></tbody></table>";
+
+        String output = sanitizer.sanitize(input);
+
+        assertTrue(output.contains("<h2>Tiêu đề</h2>"));
+        assertTrue(output.contains("<strong>đậm</strong>"));
+        assertTrue(output.contains("<em>nghiêng</em>"));
+        assertTrue(output.contains("<ul>"));
+        assertTrue(output.contains("<li>Ý 1</li>"));
+        assertTrue(output.contains("<blockquote>Trích dẫn</blockquote>"));
+        assertTrue(output.contains("<hr"));
+        assertTrue(output.contains("<a href=\"https://example.com\""));
+        assertTrue(output.contains("<table>"));
+        assertTrue(output.contains("<thead>"));
+        assertTrue(output.contains("<th>Cột 1</th>"));
+        assertTrue(output.contains("<td>Hàng 1</td>"));
+    }
+
     // Không so khớp chuỗi cứng cho style — parse attribute trước khi assert (per Test-Spec §4 RTE-TC-006 note)
     private static String extractStyleAttribute(String html) {
         int start = html.indexOf("style=\"");

@@ -12,7 +12,9 @@ someone who is not the subject of the session. That is CONFLICTED, never silentl
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from typing import Sequence
 
 from app.context.enums import (
     CareStage,
@@ -23,6 +25,45 @@ from app.context.enums import (
     map_legacy_stage,
     stages_for_entity,
 )
+from app.context.target_entity_resolver import _fold
+
+
+_NUMBER_WORD = r"(?:khong|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi|linh|le|lam)"
+_NUMBER = rf"(?:\d{{1,2}}|{_NUMBER_WORD}(?:\s+{_NUMBER_WORD}){{0,3}})"
+_GESTATIONAL_WEEK = re.compile(
+    rf"\b(?:bau|mang thai)(?:\s+(?:duoc|khoang|gan|hon))?\s+(?P<number>{_NUMBER})\s+tuan\b"
+)
+_BABY_AGE_MONTHS = re.compile(
+    rf"(?:\b(?:be|con)(?:\s+(?:nha\s+em|cua\s+(?:toi|em)))?"
+    rf"(?:\s+(?:duoc|moi|da|hien))?\s+(?P<subject_number>{_NUMBER})"
+    rf"\s+thang(?:\s+tuoi)?\b|"
+    rf"\b(?P<age_number>{_NUMBER})\s+thang\s+tuoi\b)"
+)
+_POSTPARTUM = re.compile(r"\b(?:sau sinh|hau san|moi sinh|sinh em be duoc)\b")
+_NEGATED_STAGE_PREFIX = re.compile(
+    r"(?:^|\s)(?:khong|chua)(?:\s+phai)?(?:\s+o)?(?:\s+giai\s+doan)?\s*$"
+)
+
+_ONES = {
+    "khong": 0,
+    "mot": 1,
+    "hai": 2,
+    "ba": 3,
+    "bon": 4,
+    "tu": 4,
+    "nam": 5,
+    "lam": 5,
+    "sau": 6,
+    "bay": 7,
+    "tam": 8,
+    "chin": 9,
+}
+_STAGE_CLARIFICATION_OPTIONS = {
+    "STAGE_PRECONCEPTION": CareStage.PRECONCEPTION,
+    "STAGE_POSSIBLE_PREGNANCY": CareStage.POSSIBLE_PREGNANCY,
+    "STAGE_PREGNANCY": CareStage.PREGNANCY,
+    "STAGE_POSTPARTUM_MOTHER": CareStage.POSTPARTUM_MOTHER,
+}
 
 
 @dataclass(frozen=True)
@@ -45,6 +86,8 @@ def resolve_stage(
     baby_age_months: int | None = None,
     gestational_week: int | None = None,
     postpartum_day: int | None = None,
+    latest_user_message: str | None = None,
+    submitted_option_codes: Sequence[str] | None = None,
 ) -> StageResolution:
     """Resolve the care stage for an already-resolved entity."""
 
@@ -54,12 +97,39 @@ def resolve_stage(
 
     valid = stages_for_entity(entity)
 
+    clarified = {
+        stage
+        for code in submitted_option_codes or ()
+        if (stage := _STAGE_CLARIFICATION_OPTIONS.get(code)) is not None
+    }
+    if len(clarified) > 1:
+        return StageResolution(
+            CareStage.CONFLICTED,
+            ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER,
+            ("STAGE_CLARIFICATION_ANSWERS_CONFLICT",),
+        )
+    if clarified:
+        clarified_stage = next(iter(clarified))
+        if clarified_stage not in valid:
+            return StageResolution(
+                CareStage.CONFLICTED,
+                ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER,
+                (f"STAGE_NOT_VALID_FOR_ENTITY:{entity.value}/{clarified_stage.value}",),
+            )
+        return StageResolution(
+            clarified_stage, ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER
+        )
+
     if explicit_stage is not None and explicit_stage.is_resolved:
         if explicit_stage not in valid:
             return StageResolution(
                 CareStage.CONFLICTED, ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE,
                 (f"STAGE_NOT_VALID_FOR_ENTITY:{entity.value}/{explicit_stage.value}",))
         return StageResolution(explicit_stage, ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE)
+
+    latest = _stage_from_latest_message(entity, latest_user_message)
+    if latest is not None:
+        return latest
 
     if legacy_stage_name:
         mapped = map_legacy_stage(legacy_stage_name, entity)
@@ -100,6 +170,90 @@ def resolve_stage(
                                    ResolutionSource.STAGE_SPECIFIC_CONTEXT)
 
     return StageResolution(CareStage.UNKNOWN, ResolutionSource.NONE)
+
+
+def _stage_from_latest_message(
+    entity: TargetEntity, latest_user_message: str | None
+) -> StageResolution | None:
+    folded = _fold(latest_user_message)
+    if not folded:
+        return None
+
+    stages: set[CareStage] = set()
+    conflicts: list[str] = []
+
+    if entity is TargetEntity.MOTHER:
+        if any(
+            not _is_negated(folded, match.start())
+            and _parse_vietnamese_number(match.group("number")) is not None
+            for match in _GESTATIONAL_WEEK.finditer(folded)
+        ):
+            stages.add(CareStage.PREGNANCY)
+        if any(
+            not _is_negated(folded, match.start())
+            for match in _POSTPARTUM.finditer(folded)
+        ):
+            stages.add(CareStage.POSTPARTUM_MOTHER)
+
+    elif entity is TargetEntity.BABY:
+        for match in _BABY_AGE_MONTHS.finditer(folded):
+            months = _parse_vietnamese_number(
+                match.group("subject_number") or match.group("age_number")
+            )
+            if months is None:
+                continue
+            if months >= 24:
+                conflicts.append(f"BABY_AGE_OUT_OF_SUPPORTED_RANGE:{months}")
+            else:
+                stages.add(
+                    CareStage.INFANT_0_12M if months < 12 else CareStage.TODDLER_12_24M
+                )
+
+    if conflicts or len(stages) > 1:
+        return StageResolution(
+            CareStage.CONFLICTED,
+            ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE,
+            tuple(["LATEST_MESSAGE_STAGE_CONFLICT", *conflicts]),
+        )
+    if stages:
+        return StageResolution(
+            next(iter(stages)), ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE
+        )
+    return None
+
+
+def _is_negated(message: str, match_start: int) -> bool:
+    return _NEGATED_STAGE_PREFIX.search(message[:match_start]) is not None
+
+
+def _parse_vietnamese_number(value: str) -> int | None:
+    if value.isdigit():
+        number = int(value)
+        return number if 0 <= number <= 99 else None
+
+    tokens = value.split()
+    if not tokens:
+        return None
+    if len(tokens) == 1:
+        if tokens[0] == "muoi":
+            return 10
+        return _ONES.get(tokens[0])
+
+    if tokens[0] == "muoi":
+        tail = next((token for token in tokens[1:] if token not in {"linh", "le"}), None)
+        return 10 + _ONES[tail] if tail in _ONES else None
+
+    if len(tokens) >= 2 and tokens[1] == "muoi" and tokens[0] in _ONES:
+        number = _ONES[tokens[0]] * 10
+        tail = next((token for token in tokens[2:] if token not in {"linh", "le"}), None)
+        if tail is None and len(tokens) > 2:
+            return None
+        if tail is not None:
+            if tail not in _ONES:
+                return None
+            number += _ONES[tail]
+        return number if number <= 99 else None
+    return None
 
 
 def validate_entity_stage(entity: TargetEntity, stage: CareStage) -> tuple[str, ...]:

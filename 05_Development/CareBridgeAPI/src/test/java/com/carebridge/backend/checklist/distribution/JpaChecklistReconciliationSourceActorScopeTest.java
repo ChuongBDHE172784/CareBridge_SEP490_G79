@@ -9,9 +9,13 @@ import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
@@ -26,9 +30,11 @@ import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -71,7 +77,8 @@ class JpaChecklistReconciliationSourceActorScopeTest {
                 .thenReturn(List.of(template));
         when(items.findByTemplate_IdOrderByOrder(template.getId())).thenReturn(List.of());
         when(members.findByUserIdAndInviteStatus(ACTOR, InviteStatus.ACCEPTED)).thenReturn(List.of(
-                CareGroupMember.builder().careGroupId(GROUP).userId(ACTOR).inviteStatus(InviteStatus.ACCEPTED)
+                CareGroupMember.builder().id(UUID.randomUUID()).careGroupId(GROUP).userId(ACTOR)
+                        .checklistAccessEpoch(0L).inviteStatus(InviteStatus.ACCEPTED)
                         .permissionJson("{\"CHECKLIST_VIEW\":true,\"CHECKLIST_COMPLETE\":false}").build()));
         when(groups.findByIdAndStatus(GROUP, CareGroupStatus.ACTIVE)).thenReturn(Optional.of(
                 CareGroup.builder().id(GROUP).ownerUserId(OWNER).status(CareGroupStatus.ACTIVE)
@@ -93,7 +100,8 @@ class JpaChecklistReconciliationSourceActorScopeTest {
     @Test
     void ownerMembershipNeverCreatesAnExtraFamilyAssignment() {
         when(members.findByUserIdAndInviteStatus(ACTOR, InviteStatus.ACCEPTED)).thenReturn(List.of(
-                CareGroupMember.builder().careGroupId(GROUP).userId(ACTOR)
+                CareGroupMember.builder().id(UUID.randomUUID()).careGroupId(GROUP).userId(ACTOR)
+                        .checklistAccessEpoch(0L)
                         .memberRole(GroupMemberRole.OWNER).inviteStatus(InviteStatus.ACCEPTED)
                         .permissionJson("{\"CHECKLIST_VIEW\":true,\"CHECKLIST_COMPLETE\":true}").build()));
 
@@ -105,6 +113,45 @@ class JpaChecklistReconciliationSourceActorScopeTest {
             assertThat(command.recipients().get(0).role()).isEqualTo(ChecklistRecipientRole.MOTHER);
         });
         verify(groups, never()).findByIdAndStatus(any(), any());
+    }
+
+    @Test
+    void unresolvedPregnancyAuthorityIsNotMaterializedForAnyRecipient() {
+        MotherJourney unresolved = journey(PERSONAL_JOURNEY, ACTOR).toBuilder()
+                .gestationalDatingRevision(null)
+                .build();
+        MotherJourney unresolvedFamily = journey(FAMILY_JOURNEY, OWNER).toBuilder()
+                .gestationalDatingQuarantineReasonCode("DATING_DISCREPANCY")
+                .build();
+        when(journeys.findCanonical(ACTOR)).thenReturn(Optional.of(unresolved));
+        when(journeys.findById(FAMILY_JOURNEY)).thenReturn(Optional.of(unresolvedFamily));
+
+        assertThat(source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION)).isEmpty();
+    }
+
+    @Test
+    void weeklyTemplateUsesTheCurrentAnchorRelativeWeekAndV2PeriodIdentity() {
+        template.setScheduleType(ChecklistScheduleType.WEEKLY);
+        template.setMaterializationPolicy(ChecklistMaterializationPolicy.EACH_WEEK);
+        template.setScheduleGroupKey("PREGNANCY_WHO_PLAN_01");
+        template.setScheduleContextType(ChecklistCareContextType.JOURNEY);
+        template.setWeekBoundaryRule(ChecklistWeekBoundaryRule.ANCHOR_RELATIVE_7D);
+        template.setEligibilityEndInclusive(40);
+
+        List<ChecklistDistributionCommand> result =
+                source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).allSatisfy(command -> {
+            assertThat(command.substage().getStartInclusive()).isEqualTo(30);
+            assertThat(command.substage().getEndInclusive()).isEqualTo(30);
+            assertThat(command.cadence()).isNotNull();
+            assertThat(command.cadence().scheduleType()).isEqualTo(ChecklistScheduleType.WEEKLY);
+            assertThat(command.cadence().materializationPolicy())
+                    .isEqualTo(ChecklistMaterializationPolicy.EACH_WEEK);
+            assertThat(command.cadence().periodKey()).isEqualTo("W:G:0030:2026-07-30");
+            assertThat(command.cadence().scheduleZone()).isEqualTo(ZONE);
+        });
     }
 
     private static void assertActorOnlyPersonalAndFamily(List<ChecklistDistributionCommand> result) {
@@ -137,7 +184,12 @@ class JpaChecklistReconciliationSourceActorScopeTest {
 
     private static MotherJourney journey(UUID id, UUID owner) {
         return MotherJourney.builder().id(id).ownerUserId(owner).status(JourneyStatus.ACTIVE)
-                .journeyType(JourneyType.PREGNANCY).lastMenstrualDate(LocalDate.of(2026, 1, 1)).build();
+                .journeyType(JourneyType.PREGNANCY).lastMenstrualDate(LocalDate.of(2026, 1, 1))
+                .estimatedDueDate(LocalDate.of(2026, 10, 8))
+                .gestationalDatingBasis(GestationalDatingBasis.LMP)
+                .gestationalDatingRevision(1L)
+                .gestationalDatingEffectiveAt(DATE.atStartOfDay().toInstant(ZoneOffset.UTC))
+                .build();
     }
 
 }

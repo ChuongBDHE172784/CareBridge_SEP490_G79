@@ -24,6 +24,9 @@ public class TimelineItemResponse {
     private final String messageType;
     private final String messageBody;
     private final UUID attachmentId;
+    private final Double locationLatitude;
+    private final Double locationLongitude;
+    private final String locationLabel;
     private final Instant recalledAt;
     private final Instant createdAt;
 

@@ -101,6 +101,48 @@ class FamilyAlertServiceTest {
     }
 
     @Test
+    void tokenlessFamilyRecipientGetsInAppNotificationWithoutFcmOrFallback() {
+        UUID recipientUserId = UUID.fromString("00000000-0000-0000-0000-000000000030");
+        UUID careGroupId = UUID.fromString("00000000-0000-0000-0000-000000000040");
+        AlertRecipientEndpoint recipient = AlertRecipientEndpoint.inAppOnly(
+                recipientUserId, careGroupId);
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(List.of(recipient));
+        when(deliveryPersistenceService.persistInAppNotification(any(), eq(recipient), eq(false)))
+                .thenReturn(UUID.randomUUID());
+
+        familyAlertService.sendAlert(event());
+
+        verify(deliveryPersistenceService).persistInAppNotification(any(), eq(recipient), eq(false));
+        verify(alertAttemptService).complete(CLAIM, "SENT", 1, 0, false);
+        verifyNoInteractions(fcmNotificationPort, smsFallbackPort);
+        verify(deliveryPersistenceService, never())
+                .prepare(any(), any(), nullable(UUID.class), any());
+    }
+
+    @Test
+    void multipleDevicesShareOneNotificationRecordAndEachReceivePush() {
+        UUID recipientUserId = UUID.fromString("00000000-0000-0000-0000-000000000030");
+        UUID careGroupId = UUID.fromString("00000000-0000-0000-0000-000000000040");
+        UUID notificationId = UUID.fromString("00000000-0000-0000-0000-000000000050");
+        List<AlertRecipientEndpoint> recipients = List.of(
+                new AlertRecipientEndpoint(recipientUserId, UUID.randomUUID(), careGroupId, "token-1"),
+                new AlertRecipientEndpoint(recipientUserId, UUID.randomUUID(), careGroupId, "token-2"));
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients);
+        when(deliveryPersistenceService.prepare(any(), any(), nullable(UUID.class), eq(CLAIM)))
+                .thenAnswer(invocation -> new PreparedAlertDelivery(
+                        UUID.randomUUID(), notificationId, false, 0));
+
+        familyAlertService.sendAlert(event());
+
+        verify(deliveryPersistenceService).prepare(any(), eq(recipients.get(0)), isNull(), eq(CLAIM));
+        verify(deliveryPersistenceService).prepare(
+                any(), eq(recipients.get(1)), eq(notificationId), eq(CLAIM));
+        verify(fcmNotificationPort).send(eq("token-1"), any());
+        verify(fcmNotificationPort).send(eq("token-2"), any());
+        verify(alertAttemptService).complete(CLAIM, "SENT", 1, 0, false);
+    }
+
+    @Test
     void noConsentExcludesLocation() {
         when(locationConsentPort.hasLocationConsent(USER_ID)).thenReturn(false);
         when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));

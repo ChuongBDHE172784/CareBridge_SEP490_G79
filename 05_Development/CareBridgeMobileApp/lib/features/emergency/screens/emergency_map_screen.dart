@@ -9,6 +9,7 @@ import 'package:trackasia_gl/trackasia_gl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/network/api_client.dart';
 import '../../aiTriage/models/triage_continuation.dart';
 import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../aiTriage/services/triage_continuation_store.dart';
@@ -145,6 +146,9 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   bool _loading = true;
   bool _sendingFamilyAlert = false;
   bool _familyAlertFailed = false;
+  bool _sharingLocation = false;
+  bool _locationShareFailed = false;
+  bool _locationShareSent = false;
   bool _accountChanged = false;
   bool _restoringContinuation = false;
   bool _noticeIsDialFallback = false;
@@ -157,6 +161,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   int _loadGeneration = 0;
   int _selectionGeneration = 0;
   int _sessionGeneration = 0;
+  int _locationShareGeneration = 0;
   int _radiusMeters = 5000;
   String _facilityType = 'hospital';
   final String _transportMode = 'DRIVING';
@@ -223,12 +228,16 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     ++_loadGeneration;
     ++_selectionGeneration;
     ++_sessionGeneration;
+    ++_locationShareGeneration;
     _resetMapRendererState();
     if (!mounted) return;
     setState(() {
       _accountChanged = true;
       _loading = false;
       _sendingFamilyAlert = false;
+      _sharingLocation = false;
+      _locationShareFailed = false;
+      _locationShareSent = false;
       _restoringContinuation = false;
       _position = null;
       _results = const [];
@@ -256,7 +265,9 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         _route = null;
       });
     }
-    if (!_isActiveSession(_session)) {
+    // The manual route is the nearby-care map, not an emergency trigger.
+    // Only a triage handoff may create/reconcile an emergency session.
+    if (_isTriageHandoff && !_isActiveSession(_session)) {
       await _ensureEmergencySession(showFeedback: false);
     }
     if (!mounted || generation != _loadGeneration || _accountChanged) return;
@@ -513,6 +524,103 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           generation == _sessionGeneration &&
           AuthState.instance.userId == accountId) {
         setState(() => _sendingFamilyAlert = false);
+      }
+    }
+  }
+
+  Future<void> _shareCurrentLocation() async {
+    if (_sharingLocation || _accountChanged || _sendingFamilyAlert) return;
+    final generation = ++_locationShareGeneration;
+    final accountId = AuthState.instance.userId;
+    setState(() {
+      _sharingLocation = true;
+      _locationShareFailed = false;
+      _locationShareSent = false;
+    });
+    try {
+      if (!await _hasLocationConsent()) {
+        await _requestLocationConsent();
+      }
+      if (!mounted ||
+          generation != _locationShareGeneration ||
+          AuthState.instance.userId != accountId) {
+        return;
+      }
+      if (!await _hasLocationConsent()) {
+        throw StateError('Cần đồng ý chia sẻ vị trí trước khi gửi.');
+      }
+      final position = await _permissions.readConsentedLocation();
+      if (position == null) {
+        throw StateError(
+          'Không thể lấy vị trí hiện tại. Hãy bật định vị và thử lại.',
+        );
+      }
+      // Seven decimal places retain centimetre-level precision and remain
+      // compatible with older API deployments that reject raw Dart doubles.
+      final latitude = double.parse(position.latitude.toStringAsFixed(7));
+      final longitude = double.parse(position.longitude.toStringAsFixed(7));
+      final result = await _emergency.shareCurrentLocation(
+        latitude: latitude,
+        longitude: longitude,
+      );
+      if (!mounted ||
+          generation != _locationShareGeneration ||
+          AuthState.instance.userId != accountId) {
+        return;
+      }
+      setState(() {
+        _position = position;
+        _locationShareSent = true;
+        _locationShareFailed = false;
+      });
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đã gửi vị trí hiện tại cho ${result.recipientCount} người thân.',
+            ),
+            backgroundColor: const Color(0xFF5A463F),
+            behavior: SnackBarBehavior.floating,
+            shape: const StadiumBorder(),
+          ),
+        );
+    } catch (error) {
+      if (!mounted ||
+          generation != _locationShareGeneration ||
+          AuthState.instance.userId != accountId) {
+        return;
+      }
+      setState(() {
+        _locationShareFailed = true;
+        _locationShareSent = false;
+      });
+      final message = switch (error) {
+        StateError() => error.message.toString(),
+        ApiException(statusCode: 403) =>
+          'Quyền chia sẻ vị trí đã hết hiệu lực. Hãy cấp quyền lại rồi thử gửi.',
+        ApiException(statusCode: 409) =>
+          'Chưa có tài khoản Family hợp lệ trong nhóm gia đình để nhận vị trí.',
+        ApiException(statusCode: >= 500) =>
+          'Máy chủ chưa thể lưu vị trí. Hãy thử gửi lại sau ít phút.',
+        ApiException() => error.displayMessage,
+        _ => 'Không thể gửi vị trí. Hãy kiểm tra kết nối và thử lại.',
+      };
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: const Color(0xFF5A463F),
+            behavior: SnackBarBehavior.floating,
+            shape: const StadiumBorder(),
+          ),
+        );
+    } finally {
+      if (mounted &&
+          generation == _locationShareGeneration &&
+          AuthState.instance.userId == accountId) {
+        setState(() => _sharingLocation = false);
       }
     }
   }
@@ -1462,23 +1570,40 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                     key: const Key('emergency-family-alert'),
                     child: OutlinedButton.icon(
                       key: const Key('family-alert'),
-                      onPressed: _sendingFamilyAlert || _accountChanged
+                      onPressed:
+                          _sharingLocation ||
+                              _sendingFamilyAlert ||
+                              _accountChanged
                           ? null
-                          : () => _ensureEmergencySession(),
-                      icon: _sendingFamilyAlert
+                          : _shareCurrentLocation,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF845143),
+                        backgroundColor: _locationShareSent
+                            ? const Color(0xFFF2EAE4)
+                            : Colors.white,
+                        side: const BorderSide(color: Color(0xFFE8DDD6)),
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: _sharingLocation
                           ? const SizedBox.square(
                               dimension: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Icon(
-                              _familyAlertFailed
-                                  ? Icons.refresh
-                                  : Icons.campaign_outlined,
+                              _locationShareFailed
+                                  ? Icons.refresh_rounded
+                                  : _locationShareSent
+                                  ? Icons.check_circle_rounded
+                                  : Icons.share_location_rounded,
                             ),
                       label: Text(
-                        _familyAlertFailed
-                            ? 'Thử gửi lại báo động gia đình'
-                            : 'Báo động gia đình',
+                        _sharingLocation
+                            ? 'Đang gửi vị trí...'
+                            : _locationShareFailed
+                            ? 'Thử gửi lại vị trí'
+                            : _locationShareSent
+                            ? 'Đã gửi vị trí'
+                            : 'Gửi vị trí',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

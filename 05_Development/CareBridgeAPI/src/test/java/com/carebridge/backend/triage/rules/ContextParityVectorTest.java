@@ -27,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ContextParityVectorTest {
 
     private static final String VECTORS_RESOURCE = "triage/context_parity_vectors_v1.json";
+    private static final String PHASE_2B_PREFIX = "CV_PHASE2B_";
+    private static final String PHASE_2CD_PREFIX = "CV_PHASE2CD_";
 
     private static TargetEntityResolver targetResolver;
     private static IntentResolver intentResolver;
@@ -64,14 +66,18 @@ class ContextParityVectorTest {
 
         List<String> optionCodes = new ArrayList<>();
         input.path("optionCodes").forEach(node -> optionCodes.add(node.asText()));
-        var intent = intentResolver.resolve(message, optionCodes, null);
+        IntentType confirmedIntent = input.hasNonNull("confirmedIntent")
+                ? IntentType.valueOf(input.get("confirmedIntent").asText()) : null;
+        var intent = intentResolver.resolve(message, optionCodes, null, confirmedIntent);
 
         CareStage explicit = input.hasNonNull("explicitStage")
                 ? CareStage.valueOf(input.get("explicitStage").asText()) : null;
+        CareStage journey = input.hasNonNull("journeyStage")
+                ? CareStage.valueOf(input.get("journeyStage").asText()) : null;
         var stage = stageResolver.resolve(
-                target.entity(), explicit, input.path("legacyStage").asText(null), null,
+                target.entity(), explicit, input.path("legacyStage").asText(null), journey,
                 input.hasNonNull("babyAgeMonths") ? input.get("babyAgeMonths").asInt() : null,
-                null, null);
+                null, null, message, optionCodes);
 
         var status = stageResolver.resolveContextStatus(
                 target.entity(), stage.stage(), intent.intent(), stage.conflicts());
@@ -84,9 +90,17 @@ class ContextParityVectorTest {
             assertThat(intent.intent()).as(label)
                     .isEqualTo(IntentType.valueOf(expected.get("intent").asText()));
         }
+        if (expected.hasNonNull("intentSource")) {
+            assertThat(intent.source()).as(label)
+                    .isEqualTo(ResolutionSource.valueOf(expected.get("intentSource").asText()));
+        }
         if (expected.hasNonNull("stage")) {
             assertThat(stage.stage()).as(label)
                     .isEqualTo(CareStage.valueOf(expected.get("stage").asText()));
+        }
+        if (expected.hasNonNull("stageSource")) {
+            assertThat(stage.source()).as(label)
+                    .isEqualTo(ResolutionSource.valueOf(expected.get("stageSource").asText()));
         }
         if (expected.hasNonNull("contextStatus")) {
             assertThat(status.status()).as(label).isEqualTo(
@@ -120,6 +134,36 @@ class ContextParityVectorTest {
     @Test
     @DisplayName("Every shared context vector is executed")
     void everyVectorIsExecuted() throws IOException {
-        assertThat(vectors().count()).isEqualTo(14);
+        List<JsonNode> allVectors = vectors().toList();
+        assertThat(allVectors).hasSize(35);
+        assertThat(allVectors.stream()
+                .map(vector -> vector.path("id").asText())
+                .filter(id -> id.startsWith(PHASE_2B_PREFIX)))
+                .containsExactlyInAnyOrder(
+                        "CV_PHASE2B_NARRATOR_WORRIED_BABY_REFUSES_FEED",
+                        "CV_PHASE2B_NO_THERMOMETER_IS_CONTEXT",
+                        "CV_PHASE2B_SAME_CLAUSE_NARRATOR_BABY",
+                        "CV_PHASE2B_EM_AND_BABY_HAVE_FEVER",
+                        "CV_PHASE2B_TOI_AND_BABY_HAVE_FEVER",
+                        "CV_PHASE2B_MOTHER_HEADACHE_BABY_HOT",
+                        "CV_PHASE2B_POSTPARTUM_MOTHER_AND_BABY",
+                        "CV_PHASE2B_MOTHER_ABDOMINAL_PAIN",
+                        "CV_PHASE2B_BABY_FEVER",
+                        "CV_PHASE2B_MOTHER_DISCOMFORT",
+                        "CV_PHASE2B_BREAST_MILK_LEXICAL_TRAP",
+                        "CV_PHASE2B_HELPING_CHILD");
+        assertThat(allVectors.stream()
+                .map(vector -> vector.path("id").asText())
+                .filter(id -> id.startsWith(PHASE_2CD_PREFIX)))
+                .containsExactlyInAnyOrder(
+                        "CV_PHASE2CD_PREGNANCY_DIGITS_OVERRIDE_JOURNEY",
+                        "CV_PHASE2CD_PREGNANCY_WORDS_OVERRIDE_JOURNEY",
+                        "CV_PHASE2CD_INFANT_WORDS_OVERRIDE_JOURNEY",
+                        "CV_PHASE2CD_TWO_MONTH_INFANT_WORDS",
+                        "CV_PHASE2CD_CONFIRMED_INTENT_AMBIGUOUS_FOLLOW_UP",
+                        "CV_PHASE2CD_EXPLICIT_INTENT_OVERRIDES_CONFIRMED",
+                    "CV_PHASE2CD_STAGE_CLARIFICATION_OPTION",
+                    "CV_PHASE2CD_NEGATED_POSTPARTUM_KEEPS_JOURNEY",
+                    "CV_PHASE2CD_INCOMPLETE_BABY_AGE_WORDS_KEEP_JOURNEY");
     }
 }

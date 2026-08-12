@@ -134,6 +134,8 @@ class AuthServiceVerifyOtpTest {
         assertThat(otp.getUsedAt()).isNotNull();
         assertThat(user.isEnabled()).isTrue();
         assertThat(user.getAccountStatus()).isEqualTo("ACTIVE");
+        assertThat(user.getPhoneVerified()).isTrue();
+        assertThat(user.getEmailVerified()).isNotEqualTo(true);
         verify(userRepository).save(user);
     }
 

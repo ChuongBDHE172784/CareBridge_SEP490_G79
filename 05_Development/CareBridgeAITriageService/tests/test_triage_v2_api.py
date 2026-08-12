@@ -251,17 +251,35 @@ def test_answered_question_ids_must_exist_in_the_canonical_catalogue(monkeypatch
     assert response.status_code == 422
 
 
+def test_submitted_option_must_belong_to_the_answered_question(monkeypatch):
+    monkeypatch.setattr(api, "TRIAGE_V2_INTERNAL_API_KEY", "expected-secret")
+    response = client.post(
+        "/internal/triage/v2/turn",
+        headers={"X-CareBridge-Internal-Key": "expected-secret"},
+        json=_request(
+            signals={},
+            answeredQuestionIds=["Q_GLOBAL_DANGER"],
+            submittedOptionCodes=["STAGE_PREGNANCY"],
+        ),
+    )
+
+    assert response.status_code == 422
+
+
 def test_answered_questions_accumulate_without_duplicates():
     """The planner stops re-asking only if answers are actually recorded and never doubled."""
 
     state = api._turn_state(api.TriageV2TurnRequest(**_request(
-        answeredQuestionIds=["Q_DIZZINESS"], signals={},
+        answeredQuestionIds=["Q_DIZZINESS"],
+        submittedOptionCodes=["DIZZINESS_NO"],
+        signals={},
     )))
     assert state["answeredQuestionIds"] == ["Q_DIZZINESS"]
 
     resumed = api._turn_state(api.TriageV2TurnRequest(**_request(
         stateVersion=1, expectedStateVersion=1, signals={},
         answeredQuestionIds=["Q_DIZZINESS", "Q_CLOTS"],
+        submittedOptionCodes=["DIZZINESS_NO", "CLOTS_NONE"],
         previousState={**state, "stateVersion": 1},
     )))
     assert resumed["answeredQuestionIds"] == ["Q_DIZZINESS", "Q_CLOTS"]

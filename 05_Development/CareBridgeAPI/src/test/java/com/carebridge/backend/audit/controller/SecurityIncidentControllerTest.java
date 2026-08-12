@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.audit.dto.response.SecurityEventResponse;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.audit.service.SecurityIncidentService;
 import com.carebridge.backend.common.config.JpaAuditingConfig;
@@ -21,6 +22,7 @@ import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.util.UUID;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -98,6 +100,37 @@ class SecurityIncidentControllerTest {
         verifyNoInteractions(securityIncidentService);
     }
 
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"SYSTEM_ADMIN"}, mode = EnumSource.Mode.EXCLUDE)
+    void resolveEvent_nonAdminRole_isRejected(Role role) throws Exception {
+        mockMvc.perform(put(BASE_URL + "/1/resolve")
+                        .with(SecurityMockMvcRequestPostProcessors.user(UUID.randomUUID().toString()).roles(role.name()))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"rootCause":"MISCONFIGURATION","summary":"Configuration corrected and verified safe.",
+                                 "affectedScope":"One session","remediationTasks":["Revoked session"],
+                                 "notifyAffected":false,"confirmed":true}
+                                """))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(securityIncidentService);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_ID, roles = "SYSTEM_ADMIN")
+    void resolveEvent_missingConfirmation_returns400() throws Exception {
+        mockMvc.perform(put(BASE_URL + "/1/resolve")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"rootCause":"MISCONFIGURATION","summary":"Configuration corrected and verified safe.",
+                                 "affectedScope":"One session","remediationTasks":["Revoked session"],
+                                 "notifyAffected":false,"confirmed":false}
+                                """))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(securityIncidentService);
+    }
+
     // SEC174-TC-006 — meta-audit wiring
     @Test
     @WithMockUser(username = ADMIN_ID, roles = "SYSTEM_ADMIN")
@@ -120,5 +153,36 @@ class SecurityIncidentControllerTest {
 
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_ID, roles = "SYSTEM_ADMIN")
+    void getEvent_asSystemAdmin_returns200() throws Exception {
+        org.mockito.Mockito.when(securityIncidentService.getEvent(1L))
+                .thenReturn(new SecurityEventResponse(1L, "LOGIN_FAILED", null, "203.0.113.1",
+                        "HIGH", "OPEN", null, null, null, null, Instant.now()));
+
+        mockMvc.perform(get(BASE_URL + "/1"))
+                .andExpect(status().isOk());
+        verify(securityIncidentService).getEvent(1L);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_ID, roles = "SYSTEM_ADMIN")
+    void resolveEvent_asSystemAdmin_returns200() throws Exception {
+        org.mockito.Mockito.when(securityIncidentService.resolveEvent(eq(1L), any(), any()))
+                .thenReturn(new SecurityEventResponse(1L, "LOGIN_FAILED", null, "203.0.113.1",
+                        "HIGH", "RESOLVED", null, null, UUID.fromString(ADMIN_ID), Instant.now(), Instant.now()));
+
+        mockMvc.perform(put(BASE_URL + "/1/resolve")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"rootCause":"MISCONFIGURATION","summary":"Configuration corrected and verified safe.",
+                                 "affectedScope":"One session","remediationTasks":["Revoked session"],
+                                 "notifyAffected":false,"confirmed":true}
+                                """))
+                .andExpect(status().isOk());
+        verify(securityIncidentService).resolveEvent(eq(1L), any(), eq(UUID.fromString(ADMIN_ID)));
     }
 }

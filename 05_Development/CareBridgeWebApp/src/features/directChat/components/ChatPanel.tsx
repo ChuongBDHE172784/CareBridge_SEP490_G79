@@ -6,6 +6,7 @@ import { conversationSignalHub } from '../../../shared/integrations/firebaseReal
 import * as directChatApi from '../services/directChatApi';
 import { mergeTimelineItems, optimisticMessage, type TimelineItem } from '../models/timelineItem';
 import { useDirectCall } from '../calls/directCallContext';
+import LocationMessageBubble from './LocationMessageBubble';
 
 interface ChatPanelProps {
   conversationId: string;
@@ -104,24 +105,40 @@ function AttachmentBubble({
   );
   if (item.messageType === 'IMAGE') {
     return (
-      <div className="group relative">
-        <button type="button" onClick={() => onPreview(attachment.presignedUrl, attachment.originalName)} className="block overflow-hidden rounded-xl cursor-zoom-in">
-          <img src={attachment.presignedUrl} alt={attachment.originalName} className="chat-inline-image" />
-        </button>
-        {actions}
+      <div className="group relative flex flex-col gap-2">
+        <div className="relative">
+          <button type="button" onClick={() => onPreview(attachment.presignedUrl, attachment.originalName)} className="block overflow-hidden rounded-xl cursor-zoom-in">
+            <img src={attachment.presignedUrl} alt={attachment.originalName} className="chat-inline-image" />
+          </button>
+          {actions}
+        </div>
+        {item.messageBody && (
+          <p className="m-0 text-sm whitespace-pre-wrap">{item.messageBody}</p>
+        )}
       </div>
     );
   }
   return (
-    <div className="group relative flex min-w-52 items-center gap-3 pr-14">
-      <span className="material-symbols-outlined text-2xl">description</span>
-      <div className="min-w-0">
-        <p className="m-0 truncate font-semibold">{attachment.originalName}</p>
-        <p className="m-0 text-xs opacity-75">Tài liệu đính kèm</p>
+    <div className="group relative flex flex-col gap-2">
+      <div className="flex min-w-52 items-center gap-3 pr-14">
+        <span className="material-symbols-outlined text-2xl">description</span>
+        <div className="min-w-0">
+          <p className="m-0 truncate font-semibold">{attachment.originalName}</p>
+          <p className="m-0 text-xs opacity-75">Tài liệu đính kèm</p>
+        </div>
+        {actions}
       </div>
-      {actions}
+      {item.messageBody && (
+        <p className="m-0 text-sm whitespace-pre-wrap pt-1 border-t border-current/10">{item.messageBody}</p>
+      )}
     </div>
   );
+}
+
+interface PendingAttachment {
+  file: File;
+  kind: 'IMAGE' | 'DOCUMENT';
+  previewUrl?: string;
 }
 
 export default function ChatPanel({ conversationId }: ChatPanelProps) {
@@ -137,6 +154,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -286,16 +304,75 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (pendingAttachment?.previewUrl) {
+        URL.revokeObjectURL(pendingAttachment.previewUrl);
+      }
+    };
+  }, [pendingAttachment]);
+
+  const handleSelectFile = (file: File, kind: 'IMAGE' | 'DOCUMENT') => {
+    if (sending || !expertAvailable || !currentUserId) return;
+    const image = kind === 'IMAGE';
+    const sizeLimit = image ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
+    if (file.size > sizeLimit) {
+      setError(image ? 'Ảnh phải nhỏ hơn 10 MB.' : 'Tài liệu phải nhỏ hơn 20 MB.');
+      return;
+    }
+    if (pendingAttachment?.previewUrl) {
+      URL.revokeObjectURL(pendingAttachment.previewUrl);
+    }
+    const previewUrl = image ? URL.createObjectURL(file) : undefined;
+    setPendingAttachment({ file, kind, previewUrl });
+  };
+
   const handleSend = async () => {
     const body = draft.trim();
-    if (!body || sending || !expertAvailable || !currentUserId) return;
+    if ((!body && !pendingAttachment) || sending || !expertAvailable || !currentUserId) return;
+
+    const attachment = pendingAttachment;
     const clientMessageId = crypto.randomUUID();
-    setItems((prev) =>
-      mergeTimelineItems(prev, [optimisticMessage({ clientMessageId, senderUserId: currentUserId, messageBody: body })])
-    );
+
+    if (attachment?.previewUrl) {
+      URL.revokeObjectURL(attachment.previewUrl);
+    }
+    setPendingAttachment(null);
     setDraft('');
     setSending(true);
-    await sendWithClientId(clientMessageId, body);
+
+    try {
+      if (attachment) {
+        const uploaded = await directChatApi.uploadAttachment(conversationId, attachment.file, attachment.kind);
+        const messageType = attachment.kind === 'IMAGE' ? 'IMAGE' : 'FILE';
+        setItems((prev) =>
+          mergeTimelineItems(prev, [
+            optimisticMessage({
+              clientMessageId,
+              senderUserId: currentUserId,
+              messageType,
+              attachmentId: uploaded.fileId,
+              messageBody: body || undefined,
+            }),
+          ])
+        );
+        await sendWithClientId(clientMessageId, body || undefined, messageType, uploaded.fileId);
+      } else {
+        setItems((prev) =>
+          mergeTimelineItems(prev, [
+            optimisticMessage({
+              clientMessageId,
+              senderUserId: currentUserId,
+              messageBody: body,
+            }),
+          ])
+        );
+        await sendWithClientId(clientMessageId, body);
+      }
+    } catch (e) {
+      setError(`Không thể gửi tin nhắn: ${e}`);
+      setSending(false);
+    }
   };
 
   const handleRetry = async (item: TimelineItem) => {
@@ -306,29 +383,6 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     setSending(true);
     // Same clientMessageId — idempotent retry (BR-DCC-005), never creates a duplicate.
     await sendWithClientId(item.clientMessageId, item.messageBody);
-  };
-
-  const handleAttachment = async (file: File, kind: 'IMAGE' | 'DOCUMENT') => {
-    if (sending || !expertAvailable || !currentUserId) return;
-    const image = kind === 'IMAGE';
-    const sizeLimit = image ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
-    if (file.size > sizeLimit) {
-      setError(image ? 'Ảnh phải nhỏ hơn 10 MB.' : 'Tài liệu phải nhỏ hơn 20 MB.');
-      return;
-    }
-    setSending(true);
-    try {
-      const uploaded = await directChatApi.uploadAttachment(conversationId, file, kind);
-      const clientMessageId = crypto.randomUUID();
-      const messageType = image ? 'IMAGE' : 'FILE';
-      setItems((prev) => mergeTimelineItems(prev, [optimisticMessage({
-        clientMessageId, senderUserId: currentUserId, messageType, attachmentId: uploaded.fileId,
-      })]));
-      await sendWithClientId(clientMessageId, undefined, messageType, uploaded.fileId);
-    } catch (e) {
-      setError(`Không thể gửi ${image ? 'ảnh' : 'tài liệu'}: ${e}`);
-      setSending(false);
-    }
   };
 
   const handleRecall = async (messageId: string) => {
@@ -488,6 +542,12 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
                         onRecall={handleRecall}
                         onError={setError}
                       />
+                    ) : item.messageType === 'LOCATION' && !item.recalledAt ? (
+                      <LocationMessageBubble
+                        item={item}
+                        isOwn={isOwn}
+                        onRecall={handleRecall}
+                      />
                     ) : item.recalledAt ? (
                       <span className="italic text-on-surface-variant">Tin nhắn đã được thu hồi</span>
                     ) : item.messageBody}
@@ -517,64 +577,102 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
         {/* Input Bar */}
         {expertAvailable && (
-          <div className="p-4 bg-surface border-t border-outline-variant/60 flex items-center gap-3 shrink-0">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/gif"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.currentTarget.files?.[0];
-                e.currentTarget.value = '';
-                if (file) void handleAttachment(file, 'IMAGE');
-              }}
-            />
-            <input
-              ref={documentInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.currentTarget.files?.[0];
-                e.currentTarget.value = '';
-                if (file) void handleAttachment(file, 'DOCUMENT');
-              }}
-            />
-            <button
-              type="button"
-              disabled={sending}
-              onClick={() => imageInputRef.current?.click()}
-              className="w-10 h-10 rounded-full border border-outline-variant text-primary hover:bg-surface-container-low disabled:opacity-40 cursor-pointer"
-              title="Gửi ảnh"
-            >
-              <span className="material-symbols-outlined">image</span>
-            </button>
-            <button
-              type="button"
-              disabled={sending}
-              onClick={() => documentInputRef.current?.click()}
-              className="w-10 h-10 rounded-full border border-outline-variant text-primary hover:bg-surface-container-low disabled:opacity-40 cursor-pointer"
-              title="Gửi tài liệu"
-            >
-              <span className="material-symbols-outlined">attach_file</span>
-            </button>
-            <div className="relative flex-1">
+          <div className="bg-surface border-t border-outline-variant/60 shrink-0">
+            {pendingAttachment && (
+              <div className="px-4 py-2.5 flex items-center justify-between bg-surface-container-low/90 border-b border-outline-variant/40">
+                <div className="flex items-center gap-3 min-w-0">
+                  {pendingAttachment.kind === 'IMAGE' && pendingAttachment.previewUrl ? (
+                    <img
+                      src={pendingAttachment.previewUrl}
+                      alt={pendingAttachment.file.name}
+                      className="w-11 h-11 rounded-lg object-cover border border-outline-variant shrink-0"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+                      <span className="material-symbols-outlined text-2xl">description</span>
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="m-0 text-xs font-semibold text-on-surface truncate">
+                      {pendingAttachment.file.name}
+                    </p>
+                    <p className="m-0 text-[11px] text-on-surface-variant">
+                      {(pendingAttachment.file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pendingAttachment.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+                    setPendingAttachment(null);
+                  }}
+                  className="w-7 h-7 rounded-full text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                  title="Hủy tệp đính kèm"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              </div>
+            )}
+            <div className="p-4 flex items-center gap-3">
               <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                placeholder="Nhập tin nhắn tư vấn cho mẹ bầu..."
-                className="w-full py-3 px-5 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-sans"
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.currentTarget.files?.[0];
+                  e.currentTarget.value = '';
+                  if (file) handleSelectFile(file, 'IMAGE');
+                }}
               />
+              <input
+                ref={documentInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.currentTarget.files?.[0];
+                  e.currentTarget.value = '';
+                  if (file) handleSelectFile(file, 'DOCUMENT');
+                }}
+              />
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => imageInputRef.current?.click()}
+                className="w-10 h-10 rounded-full border border-outline-variant text-primary hover:bg-surface-container-low disabled:opacity-40 cursor-pointer"
+                title="Gửi ảnh"
+              >
+                <span className="material-symbols-outlined">image</span>
+              </button>
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => documentInputRef.current?.click()}
+                className="w-10 h-10 rounded-full border border-outline-variant text-primary hover:bg-surface-container-low disabled:opacity-40 cursor-pointer"
+                title="Gửi tài liệu"
+              >
+                <span className="material-symbols-outlined">attach_file</span>
+              </button>
+              <div className="relative flex-1">
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                  placeholder="Nhập tin nhắn tư vấn cho mẹ bầu..."
+                  className="w-full py-3 px-5 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-sans"
+                />
+              </div>
+              <button
+                disabled={sending || (!draft.trim() && !pendingAttachment)}
+                onClick={handleSend}
+                className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer shadow-md"
+                title="Gửi tin nhắn"
+              >
+                <span className="material-symbols-outlined text-xl">send</span>
+              </button>
             </div>
-            <button
-              disabled={sending || !draft.trim()}
-              onClick={handleSend}
-              className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer shadow-md"
-              title="Gửi tin nhắn"
-            >
-              <span className="material-symbols-outlined text-xl">send</span>
-            </button>
           </div>
         )}
       </div>

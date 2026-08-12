@@ -75,11 +75,14 @@ export async function fetchStaffContentList(params: {
   size?: number;
 } = {},
 ): Promise<PaginatedResponse<ContentDetail>> {
+  const requestedSize = params.size ?? 50;
+  const safeSize = Math.min(Math.max(1, requestedSize), 50);
   const res = await apiClient.get<ApiResponse<PaginatedResponse<ContentDetail>>>('/api/v1/admin/content', {
-    params: { ...params, page: params.page ?? 0, size: params.size ?? 50 },
+    params: { ...params, page: params.page ?? 0, size: safeSize },
   });
   return res.data.data;
 }
+
 
 export async function searchContent(params: {
   keyword: string;
@@ -113,6 +116,7 @@ export async function fetchChecklists(stage?: ContentStage): Promise<ChecklistTe
 export async function fetchAdminChecklistTemplates(params: {
   status?: ChecklistTemplateStatus;
   stage?: ContentStage;
+  keyword?: string;
   page?: number;
   size?: number;
 } = {}): Promise<PaginatedResponse<AdminChecklistTemplateDetail>> {
@@ -379,5 +383,34 @@ export async function archiveContent(id: string, reason: string): Promise<{ prev
   const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
     `/api/v1/admin/content/${id}/archive`, { reason },
   );
+  return res.data.data;
+}
+
+export interface BulkImportItemPayload {
+  rowIndex: number;
+  title: string;
+  body: string;
+  summary?: string;
+  stage: string;
+  categoryName?: string;
+  topicId?: string;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  sourcePublisher?: string;
+}
+
+export interface BulkImportResult {
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  errors: string[];
+  createdIds: string[];
+}
+
+export async function importContentBatch(data: {
+  type: ContentType;
+  items: BulkImportItemPayload[];
+}): Promise<BulkImportResult> {
+  const res = await apiClient.post<ApiResponse<BulkImportResult>>('/api/v1/admin/content/import-batch', data);
   return res.data.data;
 }

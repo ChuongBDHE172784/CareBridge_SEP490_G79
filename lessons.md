@@ -1,5 +1,64 @@
 # Lessons learned
 
+## 2026-08-12 — Pregnancy V2 staging activation evidence
+
+- A signed-off Pregnancy V2 fixture must stay outside Flyway production locations; use a disposable embedded database and an explicit test-resource SQL patch so production WHO roots remain `DRAFT`/non-distributable.
+- Keep database-gate evidence separate from application-service evidence: a direct SQL fixture proves constraint acceptance/rejection, while the approval service requires its own unit test.
+- A current-chain preflight is not occurrence/history E2E or clinical sign-off. Label the evidence boundary explicitly in the runbook and never promote staging fixture activation into production approval.
+
+## 2026-08-12 — Firebase phone/email authentication hardening
+
+- Firebase Phone Auth returns a short-lived ID token. If the backend exchange
+  fails after SMS confirmation, retry with `User.getIdToken(true)` instead of
+  replaying the cached proof; keep the confirmation session only until the SMS
+  code succeeds.
+- A role selected after a roleless login changes the server-side JWT authority,
+  not just the profile response. Refresh the session before routing into a
+  role-protected portal, and reconcile a lost role-selection response by
+  re-reading the profile before retrying.
+- OTP lookups use canonical E.164/lowercase subjects, so migrations must update
+  legacy `auth_challenges.subject_identifier` rows as well as `users.phone`;
+  otherwise resend/verify can disagree after deployment.
+- Channel-bound resend tests must populate the same email/phone field as the
+  pending challenge. A mock entity with no channel hides the production
+  compatibility state populated by `@PostLoad` and produces misleading failures.
+
+## 2026-08-12 — Targetless V2 parent metadata
+
+- The P2 `checklist_instance_period_shape_ck` constraint applies to every V2
+  parent, including unscheduled user-created tasks. Use a stable sentinel
+  occurrence shape (`USER_CREATED`, `UTC`, `INTERACTIVE`, `was_actionable=true`)
+  instead of weakening the database contract or adding a table.
+- On Windows, a Maven wrapper cell can time out after the forked Surefire JVM
+  has already completed; inspect the Surefire report before treating the run as
+  failed.
+- Family permission changes currently lack a runtime access-timeline/audit
+  contract. Do not increment `checklist_access_epoch` ad hoc: the deferred P2
+  trigger requires a paired timeline and access audit event, so this is a
+  separate migration design item.
+
+## 2026-08-11 - Checklist P1/P2 legacy evidence closure
+
+- PostgreSQL 18 does not expose `jsonb_object_length(jsonb)`; exact JSON object
+  shape checks can use `jsonb - ARRAY[allowed_keys] = '{}'::jsonb` together with
+  `?&` instead of relying on a missing helper.
+- Polymorphic immutable audit rows cannot be quarantined by resource marker. A
+  legacy checklist access event with an unknown member id must fail the P2
+  upgrade before any backfill write; malformed quarantine evidence likewise
+  fails at final `VALIDATE`.
+- A Flyway login kept separate from the NOLOGIN schema-owner role can still be
+  authorized explicitly by its existing DDL privilege; runtime roles remain
+  denied even if a broad schema grant accidentally gives them `CREATE`.
+- Windows embedded PostgreSQL may require an unsandboxed test process for the
+  restricted-token startup path; sandbox failures (`error code 87`) are not
+  migration evidence.
+
+## 2026-08-11 - Checklist P1/P2 migration seam review
+
+- Deferred PostgreSQL constraint triggers validate final transaction state; malformed legacy shapes must be marked before the flush, with read-only preflight and trigger predicates kept in lockstep.
+- Migration helper functions need an explicit execution-role model; revoking PUBLIC and granting a NOLOGIN owner role is insufficient when the deployment runner is separate.
+- Family parent rows must be stamped only after the member epoch is durable, otherwise recipient authorization triggers reject the migration's own update.
+
 ## 2026-08-07 — MF-03 vaccination book & reminders
 
 - `vaccination_records.care_subject_id` is NOT NULL but `VaccinationRecord` never mapped it, so
@@ -259,3 +318,182 @@
 - A branch-specific `.gitignore` can make a worktree look clean on the recovery branch and expose many existing generated artifacts after switching to an older target. Group the untracked paths and compare them against the incoming tree before proceeding; a collision-free fast-forward can preserve the artifacts while applying the incoming ignore rule.
 - A timed-out `git commit` may still have completed successfully. Check `HEAD`, the index/worktree status, `index.lock`, and live Git processes before retrying so the same content is not committed twice.
 - Publishing a locally merged branch is a separate external action from merging and deleting a local recovery branch. If push is not explicitly authorized, leave remote refs untouched and report their exact lag.
+
+## 2026-08-10 — Cadence revision reality check
+
+- Re-hash source artifacts at review time: the pregnancy checklist had already moved from the documented rejected hash to a 62-leaf decision-aligned revision, so provenance remained gated but “source unsynchronized” had become stale.
+- A migration can make legacy target columns nullable without dropping their ORM fields; V1 adapters still need nullable mappings while V2 writers/projections explicitly use null, and only a later zero-consumer gate permits physical removal.
+- When a design introduces gestational dating authority, bind it to the existing Journey routes and request/response DTOs; a domain rule without an endpoint/version/error contract is not implementation-ready.
+
+## 2026-08-10 — Admin-authored exercise and posture capability
+
+- Exercise content and posture-analysis readiness are separate governed assets. `CONTENT_ADMIN` can author a `DRAFT`, while a posture-enabled publish needs an independently validated, versioned configuration owned by `SYSTEM_ADMIN`/ML operations plus clinical review.
+- `supportsPostureAnalysis` is a request, not evidence of readiness. The current resolver and sidecar support only `bicep_curl`, `plank`, `squat`, and `lunge` on one pinned concept-demo model that is not validated for pregnancy or the CareBridge population.
+- Validate posture configuration before activation or publication. Runtime fallback for a missing or invalid config can keep a session alive while hiding that only generic rules ran, and a valid-looking but semantically wrong exercise key can produce confident feedback for the wrong movement.
+- New exercises should default to posture analysis off. A new movement family requires an engineering release for model/rule work and verification; the admin UI must not imply that adding catalog content trains or extends ML automatically.
+- Do not infer a model family from a localized title or seeded UUID. Expose a canonical server-owned posture capability/key only after the content-to-model mapping has been reviewed.
+- `rg --files` can omit ignored `_bmad-output` context files. When a skill names a persistent fact path and the user supplies its exact location, read that path directly rather than concluding that the file is absent.
+
+## 2026-08-10 — Cadence revision adversarial convergence
+
+- Re-read normative artifacts after concurrent reviewer edits and remove findings that the current bytes already close; a review against a stale revision is worse than a shorter review.
+- A monotonic dating revision is not enough to make correction prospective: app-independent catch-up also needs a durable revision-effective instant, otherwise restart logic can backfill pre-correction periods under the new anchor.
+- Current Family authorization and historical materialization are different predicates. Repair needs temporal membership/permission bounds so a new grant cannot silently manufacture earlier recipient-owned History.
+- An append-only transition event cannot later acquire its own `effectiveTo`; derive the interval end from the next event or append an explicit prior-closure fact. Also compare every canonical identity/order tuple across spine and addendum—omitting `accessEpoch` from either the repair cursor or V2 hash recreates re-grant collisions.
+- A final architecture PASS can be narrower than release readiness: once canonical interval, cursor, and key tuples converge, preserve migration, client-floor, provenance, scheduler, and alert evidence as separate activation gates instead of reopening settled design decisions.
+
+## 2026-08-10 — Exercise authoring improvement roadmap
+
+- Fix safety truth before visual polish: new exercises currently request posture analysis by default while publication ignores posture readiness. Default posture off and enforce a static, no-mutation publish gate before wiring any Web activate action.
+- A create workflow must distinguish save, preview and submit-review. Navigating away without persisting, swallowing the API error into a preview route without an ID, and presenting non-interactive toolbar/upload affordances all make the current form dishonest.
+- Reuse the existing `care_item_templates` approval columns and checklist state-machine pattern, but not the checklist entity/service wholesale: their `SQLRestriction`, triggers and rules are scoped to `TEMPLATE_ROOT`, while exercise rows use `EXERCISE_TEMPLATE` and `template_status`.
+- Keep two axes: `content_status` for review and `template_status` for catalogue publication. A public compatibility flag must represent effective posture readiness, not merely an author's request.
+- Validate registry key/model/rule configuration before save/activation and keep live sidecar health outside the publication transaction; transient provider outages belong to runtime degradation, not editorial approval.
+- Cross-role setup needs a read-only posture-candidate projection for `SYSTEM_ADMIN`. Requiring a copied exercise UUID is a symptom of the current RBAC boundary, not an acceptable admin workflow.
+- Media semantics are a contract: a field labeled video cannot be rendered everywhere as an image. Either narrow the MVP to an image or add an explicit media type and matching validation/renderer in a separate compatible wave.
+
+## 2026-08-10 — Exercise authoring implementation
+
+- A boxed Boolean can support both backward-compatible omission and strict explicit-null rejection: initialize the create DTO field to `false`, retain `@NotNull`, and normalize at the mapper boundary with `Boolean.TRUE.equals(...)`.
+- Keep the already-published idempotent return before readiness checks, then run the static posture policy before changing status, saving, or writing an activation audit. This preserves old retries while making every real publication fail closed without partial mutation.
+- A truthful draft form needs to retain the first returned server ID as local state: POST once, PUT that exact ID thereafter, and navigate to preview only after the awaited persistence succeeds.
+- Parse the shared backend error envelope at the feature API boundary so stable codes and field details remain typed; UI catch blocks can then preserve form data and render actionable inline feedback without duplicating Axios-shape assumptions.
+- Treat every error-envelope element and successful response identity as untrusted at runtime; malformed `details` entries or a mismatched exercise ID must degrade to visible failure instead of hiding the original save outcome.
+- A save notice is only truthful if the editable snapshot cannot change in flight. Disable authoring controls while persistence is pending, then re-enable them after success or failure.
+- A transition-time publish gate does not settle edits to an already-published record, concurrent activation, or ambiguous POST recovery; record those as explicit policy/idempotency follow-ups rather than silently broadening a narrow safety sprint.
+- Review trails stored under ignored `_bmad-output` paths need separate UTF-8 and link-anchor validation; `git diff --check` cannot inspect an ignored spec, and terminal mojibake can make a correct patch anchor fail safely.
+
+## 2026-08-10 — Final cadence architecture reality gate
+
+- A persisted V1/V2 discriminator does not select a wire contract by itself. When user-created aggregates split into target-bearing V1 and targetless V2 namespaces, bind the existing create/read/delete/import routes to explicit version negotiation (or name a separate V2 route) and test old-client isolation plus cross-contract idempotency.
+- If the prescribed `uv run` wrapper cannot initialize its cache under the sandbox, run the same deterministic review script directly, retain the wrapper failure as an environment note, and still re-hash every frozen input after writing the review.
+
+## 2026-08-10 — Final cadence adversarial architecture gate
+
+- An architecture PASS and activation readiness are different claims: independently reconstruct the row owners, immutable timelines, key tokens, locks, and authorization order first, then preserve migrations, clients, repair, audit, and operations as evidence gates rather than treating their pending implementation as a spine inconsistency.
+- A V2 union cannot promise epoch-authorized mutation of legacy Family rows unless migration gives those rows a normative epoch boundary or the compatibility contract explicitly hides them after revoke; otherwise current-membership authorization and stored-epoch authorization are both plausible and diverge after re-grant.
+
+## 2026-08-10 — Concurrent normative review freeze
+
+- Re-hash both normative artifacts after every concurrent edit and immediately before and after generating the review artifact. Bind the verdict to one explicitly frozen hash pair and stop the approval pass on any drift; a matching hash for only one companion document is not a stable review boundary.
+
+## 2026-08-10 — User-created route contract recheck
+
+- Closing a cross-contract API seam requires the complete live operation matrix, not only a create endpoint: bind POST/GET/DELETE/template self-assignment, header-first error ordering, DTO/context rules, tombstones, client helpers, and activation tests together; keep the still-V1 implementation clearly labeled as cutover debt.
+
+## 2026-08-10 — Frozen Family-epoch integrity gate
+
+- An epochless legacy parent key cannot safely survive revoke/re-grant by restamping the old aggregate. Initialize retained-row authority only through one atomic empty-timeline baseline, quarantine unstamped rows when a timeline already exists, and make post-re-grant V1 creation authorize first and then require the epoch-qualified V2 contract without disclosing the old parent.
+
+## 2026-08-10 — Cadence ownership migration gate
+
+- Classify a compatibility row by its persisted recipient owner before applying Family access epochs. A Mother-owned row that a legacy route merely projected to Family cannot be stamped, relabeled, or cloned without fabricating recipient History; preserve it on Mother surfaces, exclude it from Family after cutover, and materialize any Family work prospectively with independent state.
+
+## 2026-08-10 — Implementation-plan replacement completeness
+
+- A refreshed plan that supersedes an older plan must map adopted base-spine invariants as well as the new addendum. A blanket final-phase instruction to run every normative verification row does not assign missing implementation work such as route removal, compatibility adapters, timezone authority, or audit lifecycle controls.
+
+## 2026-08-10 — Exercise history implementation
+
+- Nullable `OffsetDateTime` parameters in JPQL can remain untyped in PostgreSQL when used only in `:value IS NULL`; `COALESCE(:value, typed_column)` preserves optional-bound semantics while giving PostgreSQL a resolvable type. Prove both-null, from-only, to-only, and bounded cases on real PostgreSQL.
+- `TrimesterScope.ALL` is an exercise applicability scope, not the query wildcard. A specific trimester filter must include exact-scope and `ALL` exercises, while only a null request parameter means no filtering.
+- Account-scoped Flutter loads need all three guards: load generation, `AuthState.sessionGeneration`, and `userId`. Listen for session changes, clear rendered data immediately, reject late results, and make custom auth/service injection fail closed so test seams cannot mix credentials.
+- Material chips retain internal selection animations even after removing an explicit `AnimatedContainer`; honor `MediaQuery.disableAnimations` with `ChipAnimationStyle` and test the configured animation styles directly.
+- Pin live-upgrade tests to the migration under test rather than “latest”, then inject an invalid enum value and assert both the stable failure marker and transaction rollback. This keeps the test durable as later migrations are added and proves the fail-fast path.
+
+## 2026-08-11 — Recommendation BMI synchronization review
+
+- A deterministic replay key must still validate the stored observation's care-subject and metric ownership; otherwise a colliding identifier can silently suppress another user's health record.
+- A focused Maven run may need temporary network access even when the parent POM appears in `.m2`; record the environment failure separately from actual test failures.
+- On this repository, the code-review-graph pre-commit hook can hang behind a stale `next-index-*.lock`; only skip the hook after running graph review and focused tests independently, and commit an explicit file list.
+
+## 2026-08-11 — Checklist implementation-plan approval gate
+
+- A production pre-activation gate is not executable merely because roots remain Draft: the plan must define a bounded writer state transition for allowlisted validation, a separate general enablement before the scheduled boundary, and a scheduler fail-closed check on the bound configuration revision.
+- Family checklist authorization must be assigned as implementation work by stored `origin`: VIEW gates distribution/read and private user-created actions, while system-template COMPLETE/REOPEN additionally requires COMPLETE; retries still re-authorize the stored epoch.
+- Break-glass evidence is complete only when a failed secondary write denies access and successful secondary evidence is reconciled idempotently into the primary audit trail.
+- Administrative approval should update only plan metadata and retain the reviewed body hash; this preserves the exact independent-review boundary while making the lifecycle status explicit.
+- P0 brownfield inventory exposed a real contract gap that static design review alone could miss: Today GET still performs reconciliation/history writes and overdue checklist tasks remain actionable. Treat these as red-test blockers before designing the resolver/repair cutover.
+- The existing target-required V1 entity/approval surface, client-local multi-method dating, and legacy migration rehearsal fixtures must be classified as compatibility seams before any targetless V2 or server-dating implementation is claimed ready.
+- A green unit baseline does not clear the checklist cutover: the PostgreSQL baseline still exposed four existing authorization/audit fault-injection failures, while canonical Flyway passed and the Flutter subset timed out without a result. Record each as its own evidence state instead of collapsing them into one PASS/FAIL.
+- For accepted Family membership, invitation expiry is not a revocation signal; policy must gate pending acceptance only and use current VIEW/epoch after acceptance. Also, a fault-injection test that targets an audit action absent from the exercised lifecycle proves a fixture gap, not atomicity.
+
+## 2026-08-12 - Firebase phone authentication contract
+
+- Keep Firebase PHONE proof behind intent-specific register/login endpoints. A generic federated auto-create path silently bypasses registration fields, password policy, and the product rule that unknown phone numbers must not auto-register.
+- An SMS-verified Firebase token may link an existing CareBridge account only when the stored canonical phone was already verified; an optional profile phone is not an authentication factor and must require an authenticated linking/recovery flow.
+- Client validation must mirror the server's actual phone and password policy before sending an SMS. Otherwise the product can consume SMS quota and then deterministically reject the request.
+- Preserve the Firebase confirmation proof after a successful code exchange until the backend session exchange succeeds, and preserve the previous native challenge when a resend fails. These are distinct retry boundaries.
+- Flutter verification on this Windows workspace needs SDK/cache writes outside the sandbox; use an approved direct snapshot run with workspace-local `APPDATA` and record the resulting test evidence. A failed Maven rerun can be unrelated test-compilation drift, so distinguish it from auth test failures.
+
+## 2026-08-12 - Firebase CLI credential output
+
+- Never use `firebase login:list --json` when reporting or inspecting auth state: Firebase CLI 15.26.0 includes OAuth credential fields in the JSON response. Prefer plain `login:list`, and immediately log out affected accounts if sensitive fields are emitted.
+- Firebase CLI can select projects and deploy supported auth configuration, but Phone provider enablement and SMS-region policy are not exposed by the CLI workflow; those require Firebase Console/Identity Platform configuration after the correct project/account is confirmed.
+- When database trigger/migration semantics already implement the accepted-membership boundary but Java policy diverges, treat it as a cross-layer authorization split: preserve generic membership behavior and add a checklist-specific accepted-VIEW/epoch predicate instead of globally deleting expiry checks.
+
+## 2026-08-11 - Baby birth Growth projection
+
+- Deterministic Growth replay must validate every existing canonical row's subject, metric, source, group, and legacy identity before reuse; a stable UUID alone is not fail-closed idempotency.
+- For optional pediatric measurements, verify the one-row PostgreSQL projection as well as the two-row happy path, and assert the real serialized mobile payload rather than only the request object.
+
+## 2026-08-11 - Checklist P0 evidence continuation
+
+- Run embedded-Postgres integration classes in isolation when they share a static fixture initializer; a concurrent Maven invocation can produce a class-startup collision and must not be retained as test evidence.
+- Fault-injection tests must arm an audit action actually emitted by the exercised lifecycle. A Mother correction historyizes the old window without `CHECKLIST_CANCELLED`; targeting the real `CHECKLIST_ASSIGNED` boundary preserved the atomic-audit policy and yielded clean evidence.
+- The canonical reconciliation/outbox/quarantine tables are pre-retirement migration evidence, not proof of a post-finalizer repair queue. Record the missing durable retry/replay primitive as a P0 blocker rather than inventing a new table.
+
+## 2026-08-11 - Checklist P0 closure contract
+
+- A logical `SECURITY_*` stream inside the primary `audit_events` table cannot satisfy a normative independent break-glass sink requirement. Keep the secondary destination outside the primary persistence boundary with a distinct credential/failure path, fail closed only for break-glass reads when its write fails, and reconcile successful evidence by correlation.
+- When reusing an append-only audit table for retry evidence, freeze the exact JSON shape, sole writer, authorized replay query/order, authoritative-row success rule, legal-hold retention, and privileged purge path. Hash context and period identity instead of persisting raw period/date tokens or recommendation copy.
+
+## 2026-08-11 - Checklist P1/P2 legacy contract compatibility
+
+- Nullable V1/V2 discriminators need one explicit compatibility interpretation at every write-time check and contract-matching trigger: `NULL` is legacy V1, while only explicit `2` activates V2 targetless/period requirements. Relying on SQL three-valued logic makes the rule accidental and hides future regressions.
+- If a migration makes `correlation_id` mandatory for every `CHECKLIST_*` audit row, legacy generic audit callers must receive a generated correlation at the audit boundary; fixing only the migration leaves the first old template write as a production rollback.
+
+## 2026-08-12 - Firebase Console routing for Phone Auth
+
+- Firebase CLI 15.26.0 exposes only `auth:export` and `auth:import` under the `auth` namespace; it cannot enable the Phone provider or configure SMS region policy through an official command.
+- `firebase open auth` is not a supported Authentication shortcut in this CLI version and can be interpreted as a Realtime Database resource, producing a misleading database-initialization prompt. Never follow that prompt for Phone Auth; open the project overview or the official project-scoped Authentication Console URL instead.
+- CLI login state and browser Console login state are independent. Confirm the account/project with plain `login:list` and `projects:list`, then expect a separate browser sign-in before Console-only settings can be changed.
+
+- When Firebase Web SDK config, Authorized domains, Phone provider, and SMS region policy all match, `auth/invalid-app-credential` from an automated in-app browser points to reCAPTCHA rejection before SMS dispatch. Verify in a normal user browser; do not add unrelated domains or retry repeatedly from the automation harness.
+- On Flutter Web, `Failed to initialize reCAPTCHA Enterprise config. Triggering the reCAPTCHA v2 verification.` is a non-fatal Firebase Auth fallback, not proof that Phone Auth failed. Require a later `codeSent` event or an exact `verificationFailed` error code before changing Enterprise, billing, domains, or client code; backend refresh 401 and FCM Web token failures are independent streams.
+
+## 2026-08-12 - Pregnancy dating authority and checklist occurrence revisions
+
+- A resolved pregnancy tuple must be reused only when basis, positive revision, effective instant, active stage, and quarantine state all agree; raw LMP/EDD columns alone are compatibility data, not checklist authority.
+- Include the gestational dating revision in occurrence identity and current-scope comparison. Otherwise a dating correction that leaves the same calendar window can silently reuse the prior occurrence and keep stale Mother/Family work active.
+
+## 2026-08-12 - P4 lifecycle payload hardening
+
+- JSONB audit payloads are legacy/untrusted input: entity hydration must neutralize malformed enum/date/number/UUID values so history/timeline reads fail closed instead of throwing during `@PostLoad`.
+- Native PostgreSQL casts over audit payloads need a regex/CASE guard, including UUID projections; otherwise one malformed legacy row can make an entire timeline query fail.
+- Embedded migration tests may log Flyway errors while passing when the error is the deliberate fail-closed assertion; report that distinction explicitly in test evidence.
+
+## 2026-08-12 - Firebase Phone Auth callback lifecycle
+
+- On native FlutterFire, the `verifyPhoneNumber` Future can finish after callback registration, before `codeSent`, `verificationFailed`, or timeout. Keep the UI in a sending state until one of those callbacks establishes the real outcome; the setup Future is not SMS-dispatch evidence.
+- Native auto-verification can outlive its screen. Guard the backend-to-session persistence boundary as well as the widget callback, and block normal back navigation while a verified Firebase proof is being exchanged, so an abandoned flow cannot overwrite a later session.
+- Allocate Web Phone Auth request generations before awaiting `signInWithPhoneNumber`; otherwise an older completion can clear a newer `ConfirmationResult`. Preserve the prior challenge while a resend is pending or fails, and retire it only when the newer challenge succeeds.
+- Material `SegmentedButton` may replace the selected segment icon with a checkmark. Widget tests should assert stable method labels, values, and keys within the selector instead of the selected icon's rendered implementation detail.
+
+## 2026-08-12 - Checklist Family epoch and targetless V2 continuation
+
+- Bind checklist action authorization to the accepted membership epoch and re-check it after the action/idempotency locks; otherwise a revoke/re-grant race can replay an old command under a new grant.
+- Family checklist projections must use materialized FAMILY rows with the epoch snapshot; projecting writable Mother rows makes an old membership indistinguishable from a new grant.
+- Persist the checklist contract discriminator on every leaf, not only on the root. A targetless V2 root with an unmapped V1 leaf passes service validation but fails the database invariant at flush time.
+
+## 2026-08-12 - Targetless user-task adapter and verification
+
+- Keep the V1 target-bearing request as a compatibility adapter while routing new mobile-created tasks through an explicit `X-Checklist-Contract-Version: 2` header; namespace the V2 parent key so a V1 aggregate cannot receive V2 children.
+- If a Flutter service accepts injected request callbacks for tests, the V2 callback must fall back to that same injection instead of silently calling the real API; otherwise widget tests leave the process and hang on network/SDK state.
+- The Maven wrapper's PowerShell path can fail on a null reparse-point target in this Windows workspace. Use the already-installed Maven distribution directly for evidence, and keep Flutter test timeouts separate from formatter/analyzer evidence.
+
+## 2026-08-12 - Mobile/Web dating metadata UI release slice
+
+- Treat LMP and EDD as the only client dating authorities; remove legacy conception, gestational-age, and cycle-length controls instead of mapping them to a guessed EDD.
+- Optimistic dashboard reconciliation must preserve explicit server nulls for active pregnancy dating metadata; otherwise unresolved/quarantine can resurrect a stale week or Plan.
+- User-entered EDD is `SELF_REPORTED`/`ESTIMATED` unless a separately verified clinical source is present. Keep targetless V2 labels neutral across Today, History, and task detail.

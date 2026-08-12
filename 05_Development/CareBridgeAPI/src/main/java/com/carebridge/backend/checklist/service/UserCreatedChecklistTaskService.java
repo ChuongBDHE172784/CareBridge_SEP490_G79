@@ -11,6 +11,7 @@ import com.carebridge.backend.checklist.entity.ChecklistCategory;
 import com.carebridge.backend.checklist.key.ChecklistDistributionKeyFactory;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationMode;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
@@ -115,8 +116,21 @@ public class UserCreatedChecklistTaskService {
 
     @Transactional
     public ChecklistItemResponse create(AddChecklistItemRequest request, UUID actorUserId) {
+        return create(request, actorUserId, (short) 1);
+    }
+
+    /** Creates a user-owned task in the explicitly negotiated V1/V2 namespace. */
+    @Transactional
+    public ChecklistItemResponse create(
+            AddChecklistItemRequest request,
+            UUID actorUserId,
+            short contractVersion) {
         if (request == null || actorUserId == null) {
             throw invalid("CHECKLIST-001", "Checklist task request is required");
+        }
+        if (contractVersion != 1 && contractVersion != 2) {
+            throw invalid("CHECKLIST_CONTRACT_VERSION_UNSUPPORTED",
+                    "Unsupported checklist contract version");
         }
         if (request.careGroupId() == null
                 && (request.journeyId() == null) == (request.babyId() == null)) {
@@ -127,7 +141,8 @@ public class UserCreatedChecklistTaskService {
             throw invalid("CHECKLIST_CONTEXT_CONFLICT",
                     "Family checklist context is resolved from the care group");
         }
-        mutationPolicy.requireUserCreatedTarget(ChecklistOrigin.USER_CREATED, request.targetSubject());
+        mutationPolicy.requireUserCreatedTarget(
+                ChecklistOrigin.USER_CREATED, request.targetSubject(), contractVersion);
         if (request.clientTaskId() == null) {
             throw invalid("CHECKLIST_CLIENT_TASK_ID_REQUIRED", "clientTaskId is required");
         }
@@ -138,13 +153,14 @@ public class UserCreatedChecklistTaskService {
         ResolvedContext context = scope.context();
         String instanceKey = ChecklistDistributionKeyFactory.userCreatedInstanceKey(
                 actorUserId, scope.recipientRole().name(), scope.careGroupId(),
-                context.type().name(), context.id(), null, null);
+                context.type().name(), context.id(), null, null, contractVersion);
         String lifecycleKey = ChecklistDistributionKeyFactory.lifecycleScopeKey(
                 null, actorUserId, scope.recipientRole().name(), scope.careGroupId(),
                 context.type().name(), context.id());
         instanceRepository.acquireDistributionKeyLock(lifecycleKey);
         ChecklistInstance instance = instanceRepository.findByDistributionKey(instanceKey).orElse(null);
-        if (instance == null && scope.recipientRole() == ChecklistRecipientRole.MOTHER) {
+        if (contractVersion == 1
+                && instance == null && scope.recipientRole() == ChecklistRecipientRole.MOTHER) {
             List<ChecklistInstance> legacy = instanceRepository.findAllByLogicalPersonalIdentity(
                             actorUserId, ChecklistRecipientRole.MOTHER, context.type(), context.id(),
                             null, ChecklistOrigin.USER_CREATED)
@@ -171,14 +187,27 @@ public class UserCreatedChecklistTaskService {
                         .recipientUserId(actorUserId)
                         .recipientRole(scope.recipientRole())
                         .careGroupId(scope.careGroupId())
+                        .careGroupMemberId(scope.careGroupMemberId())
+                        .checklistAccessEpoch(scope.checklistAccessEpoch())
                         .careContextType(context.type())
                         .careContextId(context.id())
                         .contextOwnerUserId(scope.contextOwnerUserId())
                         .origin(ChecklistOrigin.USER_CREATED)
+                        .keyVersion(contractVersion == 2 ? "v2" : "v1")
+                        .checklistContractVersion(contractVersion == 2 ? (short) 2 : null)
+                        // V2 parents must carry the complete occurrence metadata
+                        // shape even for an unscheduled user-created task.  These
+                        // sentinel values identify the interactive, always-current
+                        // personal occurrence without changing the aggregate model.
+                        .periodKey(contractVersion == 2 ? "USER_CREATED" : null)
+                        .scheduleZoneId(contractVersion == 2 ? "UTC" : null)
+                        .materializationMode(contractVersion == 2
+                                ? ChecklistMaterializationMode.INTERACTIVE : null)
+                        .wasActionable(contractVersion == 2 ? Boolean.TRUE : null)
                         .status(ChecklistInstanceStatus.PENDING)
                         .build());
         } else {
-            instance = requireCanonicalParent(instance, actorUserId, scope);
+            instance = requireCanonicalParent(instance, actorUserId, scope, contractVersion);
         }
 
         ChecklistInstance parent = instance;
@@ -275,10 +304,12 @@ public class UserCreatedChecklistTaskService {
 
     private CreateScope resolveMotherScope(AddChecklistItemRequest request, UUID actorUserId) {
         return new CreateScope(
-                ChecklistRecipientRole.MOTHER,
-                null,
-                actorUserId,
-                resolveMotherContext(request, actorUserId));
+                 ChecklistRecipientRole.MOTHER,
+                 null,
+                 null,
+                 null,
+                 actorUserId,
+                 resolveMotherContext(request, actorUserId));
     }
 
     private CreateScope resolveFamilyScope(UUID careGroupId, UUID actorUserId) {
@@ -291,6 +322,13 @@ public class UserCreatedChecklistTaskService {
                 .filter(candidate -> candidate.getInviteStatus() == InviteStatus.ACCEPTED)
                 .filter(candidate -> candidate.getMemberRole() != GroupMemberRole.OWNER)
                 .orElseThrow(UserCreatedChecklistTaskService::contextUnavailable);
+        if (member.getId() == null || member.getChecklistAccessEpoch() == null) {
+            // P2 makes the membership binding part of the Family parent shape.
+            // A row without a durable access epoch cannot be projected safely;
+            // fail closed before the database trigger turns it into a generic
+            // integrity error.
+            throw contextUnavailable();
+        }
         if (!groupAuthorizationPolicy.hasPermission(careGroupId, actorUserId, PermissionFlag.CHECKLIST_VIEW)) {
             throw contextUnavailable();
         }
@@ -305,6 +343,8 @@ public class UserCreatedChecklistTaskService {
                 return new CreateScope(
                         ChecklistRecipientRole.FAMILY,
                         careGroupId,
+                        member.getId(),
+                        member.getChecklistAccessEpoch(),
                         group.getOwnerUserId(),
                         new ResolvedContext(ChecklistCareContextType.JOURNEY, group.getLinkedJourneyId()));
             }
@@ -319,6 +359,8 @@ public class UserCreatedChecklistTaskService {
                 return new CreateScope(
                         ChecklistRecipientRole.FAMILY,
                         careGroupId,
+                        member.getId(),
+                        member.getChecklistAccessEpoch(),
                         group.getOwnerUserId(),
                         new ResolvedContext(ChecklistCareContextType.BABY, group.getLinkedBabyProfileId()));
             }
@@ -331,6 +373,13 @@ public class UserCreatedChecklistTaskService {
             String taskKey,
             AddChecklistItemRequest request,
             UUID actorUserId) {
+        short contractVersion = instance.getChecklistContractVersion() == null
+                ? (short) 1
+                : instance.getChecklistContractVersion();
+        if (contractVersion != 1 && contractVersion != 2) {
+            throw invalid("CHECKLIST_CONTRACT_VERSION_UNSUPPORTED",
+                    "Unsupported checklist contract version");
+        }
         if (instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
             // Deleting the last user-created child cancels the aggregate. A later
             // new clientTaskId starts a fresh personal checklist epoch in place.
@@ -351,7 +400,9 @@ public class UserCreatedChecklistTaskService {
                 .displayOrder(request.itemOrder() == null ? 0 : request.itemOrder())
                 .required(Boolean.FALSE)
                 .category(request.category() == null ? ChecklistCategory.GENERAL : request.category())
-                .targetSubject(request.targetSubject())
+                .targetSubject(contractVersion == 2 ? null : request.targetSubject())
+                .keyVersion(contractVersion == 2 ? "v2" : "v1")
+                .checklistContractVersion(contractVersion == 2 ? (short) 2 : null)
                 .status(ChecklistTaskStatus.PENDING)
                 .build());
         auditService.log(AuditAction.CHECKLIST_ITEM_ADDED, actorUserId,
@@ -362,11 +413,18 @@ public class UserCreatedChecklistTaskService {
     private static ChecklistInstance requireCanonicalParent(
             ChecklistInstance instance,
             UUID actorUserId,
-            CreateScope scope) {
+            CreateScope scope,
+            short contractVersion) {
         ResolvedContext context = scope.context();
+        short persistedContractVersion = instance.getChecklistContractVersion() == null
+                ? (short) 1
+                : instance.getChecklistContractVersion();
         if (instance.getOrigin() != ChecklistOrigin.USER_CREATED
+                || persistedContractVersion != contractVersion
                 || instance.getRecipientRole() != scope.recipientRole()
                 || !java.util.Objects.equals(instance.getCareGroupId(), scope.careGroupId())
+                || !java.util.Objects.equals(instance.getCareGroupMemberId(), scope.careGroupMemberId())
+                || !java.util.Objects.equals(instance.getChecklistAccessEpoch(), scope.checklistAccessEpoch())
                 || !actorUserId.equals(instance.getRecipientUserId())
                 || !scope.contextOwnerUserId().equals(instance.getContextOwnerUserId())
                 || instance.getCareContextType() != context.type()
@@ -382,9 +440,14 @@ public class UserCreatedChecklistTaskService {
             AddChecklistItemRequest request,
             ChecklistInstance instance) {
         int displayOrder = request.itemOrder() == null ? 0 : request.itemOrder();
+        short contractVersion = instance.getChecklistContractVersion() == null
+                ? (short) 1
+                : instance.getChecklistContractVersion();
+        boolean targetMatches = contractVersion == 2
+                || request.targetSubject() == task.getTargetSubject();
         if (!instance.getId().equals(task.getChecklistInstanceId())
                 || !request.itemText().trim().equals(task.getTitleSnapshot())
-                || request.targetSubject() != task.getTargetSubject()
+                || !targetMatches
                 || (request.category() == null ? ChecklistCategory.GENERAL : request.category())
                         != task.getCategory()
                 || !Integer.valueOf(displayOrder).equals(task.getDisplayOrder())) {
@@ -405,7 +468,8 @@ public class UserCreatedChecklistTaskService {
                 task.getTemplateItemVersionId(), null, task.getRequired(), task.getTitleSnapshot(),
                 task.getCategory().name(),
                 task.getStatus() == ChecklistTaskStatus.COMPLETED, task.getCompletedAt(),
-                task.getDisplayOrder(), task.getCreatedAt(), task.getTargetSubject().name(),
+                task.getDisplayOrder(), task.getCreatedAt(),
+                task.getTargetSubject() == null ? null : task.getTargetSubject().name(),
                 instance.getOrigin().name());
     }
 
@@ -424,6 +488,8 @@ public class UserCreatedChecklistTaskService {
     private record CreateScope(
             ChecklistRecipientRole recipientRole,
             UUID careGroupId,
+            UUID careGroupMemberId,
+            Long checklistAccessEpoch,
             UUID contextOwnerUserId,
             ResolvedContext context) {
     }

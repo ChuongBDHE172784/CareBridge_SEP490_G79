@@ -18,11 +18,14 @@ import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.PregnancyOutcomeEvidenceRepository;
 import com.carebridge.backend.journey.service.IJourneyService;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
+import com.carebridge.backend.journey.service.GestationalDatingResolution;
+import com.carebridge.backend.journey.service.GestationalDatingResolver;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
@@ -49,6 +53,9 @@ public class JourneyServiceImpl implements IJourneyService {
     private final Clock clock;
     private final IJourneyTransitionService transitionService;
     private final PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository;
+    private final GestationalDatingResolver datingResolver;
+
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Autowired
     public JourneyServiceImpl(
@@ -58,7 +65,8 @@ public class JourneyServiceImpl implements IJourneyService {
             CareGroupMemberRepository careGroupMemberRepository,
             CareGroupRepository careGroupRepository,
             IJourneyTransitionService transitionService,
-            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository) {
+            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository,
+            GestationalDatingResolver datingResolver) {
         this(
                 journeyRepository,
                 userRepository,
@@ -66,10 +74,16 @@ public class JourneyServiceImpl implements IJourneyService {
                 careGroupMemberRepository,
                 careGroupRepository,
                 Clock.systemDefaultZone(),
-                transitionService,
-                outcomeEvidenceRepository);
+                requireTransitionService(transitionService),
+                outcomeEvidenceRepository,
+                datingResolver);
     }
 
+    /**
+     * @deprecated Test-only compatibility constructor. Production wiring must
+     * use the canonical transition service constructor above.
+     */
+    @Deprecated(forRemoval = true)
     public JourneyServiceImpl(
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
@@ -84,9 +98,15 @@ public class JourneyServiceImpl implements IJourneyService {
                 careGroupRepository,
                 Clock.systemDefaultZone(),
                 null,
-                null);
+                null,
+                new GestationalDatingResolver());
     }
 
+    /**
+     * @deprecated Test-only compatibility constructor. Production wiring must
+     * use the canonical transition service constructor above.
+     */
+    @Deprecated(forRemoval = true)
     public JourneyServiceImpl(
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
@@ -102,22 +122,35 @@ public class JourneyServiceImpl implements IJourneyService {
                 careGroupRepository,
                 clock,
                 null,
-                null);
+                null,
+                new GestationalDatingResolver());
     }
 
+    /**
+     * @deprecated Test-only compatibility constructor. Production wiring must
+     * use the canonical transition service constructor above.
+     */
+    @Deprecated(forRemoval = true)
     public JourneyServiceImpl(
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
             AuditService auditService) {
-        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), null, null);
+        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), null, null,
+                new GestationalDatingResolver());
     }
 
+    /**
+     * @deprecated Test-only compatibility constructor. Production wiring must
+     * use the canonical transition service constructor above.
+     */
+    @Deprecated(forRemoval = true)
     public JourneyServiceImpl(
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
             AuditService auditService,
             Clock clock) {
-        this(journeyRepository, userRepository, auditService, null, null, clock, null, null);
+        this(journeyRepository, userRepository, auditService, null, null, clock, null, null,
+                new GestationalDatingResolver());
     }
 
     public JourneyServiceImpl(
@@ -125,16 +158,24 @@ public class JourneyServiceImpl implements IJourneyService {
             UserRepository userRepository,
             AuditService auditService,
             IJourneyTransitionService transitionService) {
-        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(), transitionService, null);
+        this(journeyRepository, userRepository, auditService, null, null, Clock.systemDefaultZone(),
+                requireTransitionService(transitionService), null,
+                new GestationalDatingResolver());
     }
 
+    /**
+     * @deprecated Test-only compatibility constructor. Production wiring must
+     * use the canonical transition service constructor above.
+     */
+    @Deprecated(forRemoval = true)
     public JourneyServiceImpl(
             MotherJourneyRepository journeyRepository,
             UserRepository userRepository,
             AuditService auditService,
             Clock clock,
             PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository) {
-        this(journeyRepository, userRepository, auditService, null, null, clock, null, outcomeEvidenceRepository);
+        this(journeyRepository, userRepository, auditService, null, null, clock, null, outcomeEvidenceRepository,
+                new GestationalDatingResolver());
     }
 
     private JourneyServiceImpl(
@@ -145,7 +186,8 @@ public class JourneyServiceImpl implements IJourneyService {
             CareGroupRepository careGroupRepository,
             Clock clock,
             IJourneyTransitionService transitionService,
-            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository) {
+            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository,
+            GestationalDatingResolver datingResolver) {
         this.journeyRepository = journeyRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
@@ -154,6 +196,14 @@ public class JourneyServiceImpl implements IJourneyService {
         this.clock = clock;
         this.transitionService = transitionService;
         this.outcomeEvidenceRepository = outcomeEvidenceRepository;
+        this.datingResolver = datingResolver;
+    }
+
+    private static IJourneyTransitionService requireTransitionService(
+            IJourneyTransitionService transitionService) {
+        return Objects.requireNonNull(
+                transitionService,
+                "Canonical journey transition service is required for production wiring");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -207,6 +257,15 @@ public class JourneyServiceImpl implements IJourneyService {
         auditService.log(AuditAction.JOURNEY_CREATED, callerId,
                 "MotherJourney", saved.getId().toString(), "created");
 
+        GestationalDatingResolution dating = datingResolver == null
+                ? GestationalDatingResolution.unresolved(
+                        saved.getLastMenstrualDate(), saved.getEstimatedDueDate(), false)
+                : new GestationalDatingResolver().resolveUpdate(
+                        saved,
+                        new UpdateJourneyRequest(),
+                        GestationalDatingResolver.V1,
+                        LocalDate.now(clock.withZone(BUSINESS_ZONE)),
+                        false);
         return CreateJourneyResponse.builder()
                 .id(saved.getId())
                 .journeyType(saved.getJourneyType().name())
@@ -215,6 +274,16 @@ public class JourneyServiceImpl implements IJourneyService {
                 .lastMenstrualDate(saved.getLastMenstrualDate())
                 .estimatedDueDate(saved.getEstimatedDueDate())
                 .notes(saved.getNotes())
+                .gestationalDatingBasis(saved.getGestationalDatingBasis())
+                .gestationalDatingRevision(saved.getGestationalDatingRevision())
+                .gestationalDatingEffectiveAt(saved.getGestationalDatingEffectiveAt())
+                .gestationalDatingQuarantineReasonCode(
+                        saved.getGestationalDatingQuarantineReasonCode())
+                .canonicalLmp(dating.canonicalLmp())
+                .completedGestationalWeek(dating.resolved()
+                        ? dating.completedGestationalWeek() : null)
+                .sourceWeekNumber(dating.resolved() ? dating.sourceWeekNumber() : null)
+                .plan(dating.plan())
                 .createdAt(saved.getCreatedAt())
                 .build();
     }
@@ -353,27 +422,38 @@ public class JourneyServiceImpl implements IJourneyService {
         }
 
         MotherJourney journey = activeJourney.get();
-        LocalDate today = LocalDate.now(clock);
+        LocalDate today = LocalDate.now(clock.withZone(BUSINESS_ZONE));
 
         DashboardStatus dashboardStatus = resolveDashboardStatus(journey.getJourneyType());
 
         Integer pregnancyWeek = null;
         Integer trimester = null;
         Long daysUntilDue = null;
+        GestationalDatingBasis datingBasis = null;
+        Long datingRevision = null;
+        java.time.Instant datingEffectiveAt = null;
+        LocalDate canonicalLmp = null;
+        Integer completedGestationalWeek = null;
+        Integer sourceWeekNumber = null;
+        Integer plan = null;
 
-        if (journey.getEstimatedDueDate() != null) {
-            daysUntilDue = ChronoUnit.DAYS.between(today, journey.getEstimatedDueDate());
-        }
-
-        if (journey.getJourneyType() == JourneyType.PREGNANCY) {
-            if (journey.getLastMenstrualDate() != null) {
-                long daysSinceLmp = ChronoUnit.DAYS.between(journey.getLastMenstrualDate(), today);
-                pregnancyWeek = (int) (daysSinceLmp / 7);
-                trimester = calculateTrimester(pregnancyWeek);
-            } else if (daysUntilDue != null) {
-                long daysSinceLmp = 280 - daysUntilDue;
-                pregnancyWeek = (int) (daysSinceLmp / 7);
-                trimester = calculateTrimester(pregnancyWeek);
+        if (GestationalDatingResolver.hasResolvedAuthority(journey)) {
+            canonicalLmp = GestationalDatingResolver.canonicalLmp(
+                    journey.getGestationalDatingBasis(),
+                    journey.getLastMenstrualDate(),
+                    journey.getEstimatedDueDate());
+            if (canonicalLmp != null && !canonicalLmp.isAfter(today)) {
+                datingBasis = journey.getGestationalDatingBasis();
+                datingRevision = journey.getGestationalDatingRevision();
+                datingEffectiveAt = journey.getGestationalDatingEffectiveAt();
+                completedGestationalWeek = GestationalDatingResolver.completedGestationalWeek(
+                        canonicalLmp, today);
+                sourceWeekNumber = GestationalDatingResolver.sourceWeekNumber(completedGestationalWeek);
+                plan = GestationalDatingResolver.planForSourceWeek(sourceWeekNumber);
+                pregnancyWeek = completedGestationalWeek;
+                trimester = calculateTrimester(completedGestationalWeek);
+                daysUntilDue = ChronoUnit.DAYS.between(
+                        today, canonicalLmp.plusDays(GestationalDatingResolver.GESTATION_DAYS));
             }
         }
 
@@ -384,12 +464,21 @@ public class JourneyServiceImpl implements IJourneyService {
                 .pregnancyWeek(pregnancyWeek)
                 .trimester(trimester)
                 .daysUntilDue(daysUntilDue)
-                .estimatedDueDate(journey.getEstimatedDueDate())
-                .lastMenstrualDate(journey.getLastMenstrualDate())
+                .estimatedDueDate(datingBasis == null ? null : journey.getEstimatedDueDate())
+                .lastMenstrualDate(datingBasis == null ? null : journey.getLastMenstrualDate())
                 .startDate(journey.getStartDate())
                 .version(journey.getVersion())
                 .dateSource(journey.getDateSource())
                 .dateConfidence(journey.getDateConfidence())
+                .gestationalDatingBasis(datingBasis)
+                .gestationalDatingRevision(datingRevision)
+                .gestationalDatingEffectiveAt(datingEffectiveAt)
+                .gestationalDatingQuarantineReasonCode(
+                        journey.getGestationalDatingQuarantineReasonCode())
+                .canonicalLmp(canonicalLmp)
+                .completedGestationalWeek(completedGestationalWeek)
+                .sourceWeekNumber(sourceWeekNumber)
+                .plan(plan)
                 .pregnancyOutcome(journey.getPregnancyOutcome())
                 .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
                 .build();
@@ -416,6 +505,15 @@ public class JourneyServiceImpl implements IJourneyService {
     }
 
     private JourneyResponse toJourneyResponse(MotherJourney journey) {
+        GestationalDatingResolution dating = datingResolver == null
+                ? GestationalDatingResolution.unresolved(
+                        journey.getLastMenstrualDate(), journey.getEstimatedDueDate(), false)
+                : new GestationalDatingResolver().resolveUpdate(
+                        journey,
+                        new UpdateJourneyRequest(),
+                        GestationalDatingResolver.V1,
+                        LocalDate.now(clock.withZone(BUSINESS_ZONE)),
+                        false);
         return JourneyResponse.builder()
                 .journeyId(journey.getId())
                 .ownerUserId(journey.getOwnerUserId())
@@ -428,6 +526,16 @@ public class JourneyServiceImpl implements IJourneyService {
                 .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
                 .status(journey.getStatus().name())
                 .notes(journey.getNotes())
+                .gestationalDatingBasis(journey.getGestationalDatingBasis())
+                .gestationalDatingRevision(journey.getGestationalDatingRevision())
+                .gestationalDatingEffectiveAt(journey.getGestationalDatingEffectiveAt())
+                .gestationalDatingQuarantineReasonCode(
+                        journey.getGestationalDatingQuarantineReasonCode())
+                .canonicalLmp(dating.canonicalLmp())
+                .completedGestationalWeek(dating.resolved()
+                        ? dating.completedGestationalWeek() : null)
+                .sourceWeekNumber(dating.resolved() ? dating.sourceWeekNumber() : null)
+                .plan(dating.plan())
                 .createdAt(journey.getCreatedAt())
                 .updatedAt(journey.getUpdatedAt())
                 .build();

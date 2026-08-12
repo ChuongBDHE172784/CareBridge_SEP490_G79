@@ -9,22 +9,22 @@ import type {
   ForgotPasswordRequest,
   ForgotPasswordResponse,
   ExpertRegisterRequest,
+  RegisterRequest,
+  PhoneAuthRequest,
+  PhoneRegisterRequest,
+  FederatedAuthResponse,
 } from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import type { UserProfile } from '../models/user';
+import type { UserRole } from '../../../shared/auth/authStore';
 
 export async function registerExpert(request: Omit<ExpertRegisterRequest, 'role'>): Promise<OtpSendResponse> {
   const { data } = await apiClient.post<ApiResponse<OtpSendResponse>>('/api/v1/auth/register', {
     ...request,
-    phone: request.phone || undefined,
     role: 'EXPERT',
+    verificationMethod: 'EMAIL',
   });
   return data.data;
-}
-
-export interface FederatedAuthResponse extends AuthResponse {
-  newUser: boolean;
-  profileCompleted: boolean;
 }
 
 export async function federatedAuthenticate(idToken: string, deviceInfo = navigator.userAgent): Promise<FederatedAuthResponse> {
@@ -35,14 +35,42 @@ export async function federatedAuthenticate(idToken: string, deviceInfo = naviga
   return data.data;
 }
 
-// UC-03: Password login returns the canonical token-backed session.
-export async function login(request: LoginRequest): Promise<AuthResponse> {
-  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/login', request);
-  const auth = data.data;
+export async function registerUser(request: RegisterRequest): Promise<OtpSendResponse> {
+  const { data } = await apiClient.post<ApiResponse<OtpSendResponse>>('/api/v1/auth/register', {
+    ...request,
+  });
+  return data.data;
+}
+
+function requireCompleteAuthResponse<T extends AuthResponse>(auth: T): T {
   if (!auth?.accessToken?.trim() || !auth.refreshToken?.trim() || !auth.user?.id?.trim()) {
     throw new Error('Login response is incomplete');
   }
   return auth;
+}
+
+export async function registerWithPhone(
+  request: PhoneRegisterRequest,
+): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/phone/register', {
+    ...request,
+    deviceInfo: request.deviceInfo ?? navigator.userAgent,
+  });
+  return requireCompleteAuthResponse(data.data);
+}
+
+export async function loginWithPhone(request: PhoneAuthRequest): Promise<FederatedAuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<FederatedAuthResponse>>('/api/v1/auth/phone/login', {
+    ...request,
+    deviceInfo: request.deviceInfo ?? navigator.userAgent,
+  });
+  return requireCompleteAuthResponse(data.data);
+}
+
+// UC-03: Password login returns the canonical token-backed session.
+export async function login(request: LoginRequest): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/login', request);
+  return requireCompleteAuthResponse(data.data);
 }
 
 // UC-02: Verify OTP — completes login, returns tokens + user profile
@@ -55,7 +83,7 @@ export async function verifyOtp(request: VerifyOtpRequest): Promise<AuthResponse
     phone: user.phone ?? '',
     name: user.name,
     avatarUrl: user.avatarUrl,
-    role: user.role as ReturnType<typeof useAuthStore.getState>['user'] extends { role: infer R } ? R : never,
+    role: user.role,
   });
   return data.data;
 }
@@ -78,6 +106,11 @@ export async function fetchProfile(): Promise<UserProfile> {
   return data.data;
 }
 
+export async function selectRole(role: Extract<UserRole, 'MOTHER' | 'FAMILY' | 'EXPERT'>): Promise<UserProfile> {
+  const { data } = await apiClient.put<ApiResponse<UserProfile>>('/api/v1/auth/role', { role });
+  return data.data;
+}
+
 // UC-08: Update current user profile (avatarUrl, phone, displayName, etc.)
 export async function updateUserProfile(body: {
 	displayName?: string;
@@ -86,8 +119,11 @@ export async function updateUserProfile(body: {
 	dateOfBirth?: string;
 	area?: string;
 }): Promise<UserProfile> {
-	const { data } = await apiClient.patch<ApiResponse<UserProfile>>('/api/v1/profile', body);
-	return data.data;
+	await apiClient.patch<ApiResponse<unknown>>('/api/v1/profile', body);
+	// The profile aggregate returns a different DTO shape from the auth profile
+	// endpoint. Re-fetch the canonical auth profile so callers retain id, role,
+	// email, and verification flags after an edit.
+	return fetchProfile();
 }
 
 // UC-05: Forgot password

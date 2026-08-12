@@ -149,4 +149,30 @@ void main() {
       expect(vaccination['note'], 'keep');
     });
   });
+
+  group('RecommendationContentItem.fromJson reasonLabel localization', () {
+    test('localizes LIFECYCLE_FALLBACK to Vietnamese label', () {
+      final item = RecommendationContentItem.fromJson({
+        'rank': 1,
+        'selectionType': 'FALLBACK',
+        'reasonCode': 'LIFECYCLE_FALLBACK',
+        'reasonLabel': 'Useful for your current stage',
+        'content': {'id': 'art-1', 'title': 'Bài viết 1'},
+      });
+
+      expect(item.reasonLabel, 'Hữu ích cho giai đoạn hiện tại của bạn');
+    });
+
+    test('localizes PERSONALIZED_CONTEXT to Vietnamese label', () {
+      final item = RecommendationContentItem.fromJson({
+        'rank': 1,
+        'selectionType': 'TARGETED',
+        'reasonCode': 'PERSONALIZED_CONTEXT',
+        'reasonLabel': 'Selected for your current care context',
+        'content': {'id': 'art-2', 'title': 'Bài viết 2'},
+      });
+
+      expect(item.reasonLabel, 'Phù hợp với ngữ cảnh chăm sóc của bạn');
+    });
+  });
 }

@@ -2,9 +2,11 @@ package com.carebridge.backend.journey;
 
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import com.carebridge.backend.journey.entity.MotherJourney;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 /** Props-isolation factory for UC24 ViewMotherJourneyDashboard unit tests. */
@@ -30,6 +32,10 @@ public final class JourneyDashboardTestFactory {
                 .startDate(lmp)
                 .lastMenstrualDate(lmp)
                 .estimatedDueDate(lmp.plusDays(280)) // standard 40 weeks (280 days)
+                .gestationalDatingBasis(GestationalDatingBasis.LMP)
+                .gestationalDatingRevision(1L)
+                .gestationalDatingEffectiveAt(
+                        TODAY.atStartOfDay().toInstant(ZoneOffset.UTC))
                 .status(JourneyStatus.ACTIVE)
                 .build();
     }
@@ -43,6 +49,11 @@ public final class JourneyDashboardTestFactory {
                 .journeyType(JourneyType.PREGNANCY)
                 .startDate(lmp)
                 .lastMenstrualDate(lmp)
+                .estimatedDueDate(lmp.plusDays(280))
+                .gestationalDatingBasis(GestationalDatingBasis.LMP)
+                .gestationalDatingRevision(1L)
+                .gestationalDatingEffectiveAt(
+                        TODAY.atStartOfDay().toInstant(ZoneOffset.UTC))
                 .status(JourneyStatus.ACTIVE)
                 .build();
     }

@@ -33,6 +33,7 @@ EXPECTED_STATE_KEYS = {
     "targetEntitySource",
     "intent",
     "intentSource",
+    "confirmedConversationIntent",
     "stage",
     "contextResolutionStatus",
     "contextConflicts",
@@ -45,6 +46,8 @@ EXPECTED_STATE_KEYS = {
     "measurements",
     "dataConflicts",
     "answeredQuestionIds",
+    "askedQuestionIds",
+    "submittedOptionCodes",
     "unknownFields",
     "safetyScreenStatus",
     "contextDatasetStatus",
@@ -116,6 +119,7 @@ def test_initializer_uses_explicit_unresolved_fail_safe_defaults():
     assert state["targetEntitySource"] is ResolutionSource.NONE
     assert state["intent"] is IntentType.UNKNOWN
     assert state["intentSource"] is ResolutionSource.NONE
+    assert state["confirmedConversationIntent"] is IntentType.UNKNOWN
     assert state["stage"] is CareStage.UNKNOWN
     assert state["contextResolutionStatus"] is ContextResolutionStatus.INSUFFICIENT_CONTEXT
     assert state["possiblePregnancy"] == "UNKNOWN"
@@ -158,6 +162,8 @@ def test_states_do_not_share_mutable_containers():
         "measurements",
         "dataConflicts",
         "answeredQuestionIds",
+        "askedQuestionIds",
+        "submittedOptionCodes",
         "unknownFields",
         "pendingRiskStatuses",
         "missingRequiredFields",

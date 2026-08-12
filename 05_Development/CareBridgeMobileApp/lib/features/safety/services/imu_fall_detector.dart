@@ -5,6 +5,7 @@ enum FallDetectionPhase { idle, freeFall, impact }
 enum ImuDetectorDecisionReason {
   awaitingFreeFall,
   freeFallDetected,
+  freeFallTooShort,
   awaitingImpact,
   impactWindowExpired,
   jerkTooLow,
@@ -81,21 +82,45 @@ class ImuFallDetector {
   // mattress. Such a landing can have only a small rebound above gravity,
   // unlike a hard-floor impact, so the three-phase sequence remains required
   // while its free-fall, rebound and jerk limits are deliberately softer.
-  static const double freeFallThreshold = 6.5;
+  // iOS motion filtering can keep a genuine 50 cm low-g segment slightly
+  // above the ideal free-fall value. The 60 ms duration gate below still
+  // rejects the short low-g pulse produced by a 1 cm desk tap.
+  static const double freeFallThreshold = 7.2;
   static const double impactThreshold = 9.5;
+  static const double softLandingImpactThreshold = 8.5;
   static const double minimumJerk = 40.0;
+  // A soft landing can spread the acceleration change over several samples.
+  // Once the measured low-g phase is long enough to reject a 1 cm tap, use
+  // this softer jerk floor because iOS filtering may shorten the visible
+  // free-fall segment even when the physical fall is about 50 cm.
+  static const double minimumSoftFallJerk = 20.0;
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 2.0;
   static const double stationaryGyroscopeThreshold = 0.5;
+  static const double softLandingStationaryAccelerationTolerance = 2.8;
+  static const double softLandingStationaryGyroscopeThreshold = 0.9;
   static const double cancellationGyroscopeThreshold = 1.5;
   static const double strongMovementAccelerationDeviation = 6.0;
+  static const double softLandingCancellationGyroscopeThreshold = 2.5;
+  static const double softLandingStrongMovementAccelerationDeviation = 8.0;
   static const double minimumStationaryRatio = 0.8;
+  static const double minimumSoftLandingStationaryRatio = 0.6;
+  // A 1 cm lift produces only about 45 ms of free-fall. Three 50 Hz sample
+  // intervals filter that tap while tolerating iOS sensor filtering on a
+  // controlled 50 cm fall.
+  static const Duration minimumFreeFallDuration = Duration(milliseconds: 60);
+  static const Duration softFallQualificationDuration = Duration(
+    milliseconds: 60,
+  );
   static const Duration impactWindow = Duration(milliseconds: 1500);
   static const Duration impactSettlingGrace = Duration(milliseconds: 250);
   static const Duration maximumPostImpactSampleGap = Duration(
     milliseconds: 500,
   );
   static const Duration immobilityWindow = Duration(seconds: 1);
+  static const Duration softLandingImmobilityWindow = Duration(
+    milliseconds: 600,
+  );
   static const Duration maximumGyroscopeAge = Duration(milliseconds: 200);
   // The three-phase detector already rejects a continuing impact pulse. Keep
   // only a brief debounce so a user who has dismissed an alert can perform
@@ -193,7 +218,23 @@ class ImuFallDetector {
       return null;
     }
 
-    if (sample.accelerationMagnitude <= impactThreshold || previous == null) {
+    final freeFallDuration = sample.timestamp.difference(freeFallAt);
+    if (freeFallDuration < minimumFreeFallDuration) {
+      if (sample.accelerationMagnitude > impactThreshold) {
+        _resetCandidate();
+        _setDecision(ImuDetectorDecisionReason.freeFallTooShort);
+      } else {
+        _setDecision(ImuDetectorDecisionReason.awaitingImpact);
+      }
+      return null;
+    }
+
+    final impactThresholdForSequence =
+        freeFallDuration >= softFallQualificationDuration
+        ? softLandingImpactThreshold
+        : impactThreshold;
+    if (sample.accelerationMagnitude <= impactThresholdForSequence ||
+        previous == null) {
       _setDecision(ImuDetectorDecisionReason.awaitingImpact);
       return null;
     }
@@ -210,7 +251,10 @@ class ImuFallDetector {
     final jerk =
         (sample.accelerationMagnitude - previous.accelerationMagnitude).abs() /
         elapsedSeconds;
-    if (jerk < minimumJerk) {
+    final requiredJerk = freeFallDuration >= softFallQualificationDuration
+        ? minimumSoftFallJerk
+        : minimumJerk;
+    if (jerk < requiredJerk) {
       _setDecision(ImuDetectorDecisionReason.jerkTooLow);
       return null;
     }
@@ -267,20 +311,40 @@ class ImuFallDetector {
 
     final accelerationDeviation = (sample.accelerationMagnitude - gravity)
         .abs();
-    if (sample.gyroscopeMagnitude > cancellationGyroscopeThreshold ||
-        accelerationDeviation > strongMovementAccelerationDeviation) {
+    final freeFallAt = _freeFallAt;
+    final freeFallDuration = freeFallAt == null
+        ? Duration.zero
+        : impactStartedAt.difference(freeFallAt);
+    final isLongSoftFall = freeFallDuration >= softFallQualificationDuration;
+    final movementGyroscopeThreshold = isLongSoftFall
+        ? softLandingCancellationGyroscopeThreshold
+        : cancellationGyroscopeThreshold;
+    final movementAccelerationDeviation = isLongSoftFall
+        ? softLandingStrongMovementAccelerationDeviation
+        : strongMovementAccelerationDeviation;
+    if (sample.gyroscopeMagnitude > movementGyroscopeThreshold ||
+        accelerationDeviation > movementAccelerationDeviation) {
       _resetCandidate();
       _setDecision(ImuDetectorDecisionReason.excessiveMovement);
       return null;
     }
 
     _postImpactSamples++;
-    if (accelerationDeviation <= stationaryAccelerationTolerance &&
-        sample.gyroscopeMagnitude <= stationaryGyroscopeThreshold) {
+    final stationaryAccelerationLimit = isLongSoftFall
+        ? softLandingStationaryAccelerationTolerance
+        : stationaryAccelerationTolerance;
+    final stationaryGyroscopeLimit = isLongSoftFall
+        ? softLandingStationaryGyroscopeThreshold
+        : stationaryGyroscopeThreshold;
+    if (accelerationDeviation <= stationaryAccelerationLimit &&
+        sample.gyroscopeMagnitude <= stationaryGyroscopeLimit) {
       _stationaryPostImpactSamples++;
     }
 
-    if (sinceFirstImpact < immobilityWindow) {
+    final requiredImmobilityWindow = isLongSoftFall
+        ? softLandingImmobilityWindow
+        : immobilityWindow;
+    if (sinceFirstImpact < requiredImmobilityWindow) {
       _setDecision(ImuDetectorDecisionReason.awaitingImmobility);
       return null;
     }
@@ -289,7 +353,10 @@ class ImuFallDetector {
         ? 0.0
         : _stationaryPostImpactSamples / _postImpactSamples;
     _resetCandidate();
-    if (ratio < minimumStationaryRatio) {
+    final requiredStationaryRatio = isLongSoftFall
+        ? minimumSoftLandingStationaryRatio
+        : minimumStationaryRatio;
+    if (ratio < requiredStationaryRatio) {
       _setDecision(ImuDetectorDecisionReason.insufficientStationarySamples);
       return null;
     }
@@ -320,6 +387,18 @@ class ImuFallDetector {
     _previousSample = null;
     _cooldownUntil = null;
     _setDecision(ImuDetectorDecisionReason.reset);
+  }
+
+  void rearmAfterAlertResponse(DateTime respondedAt) {
+    _resetCandidate();
+    _previousSample = null;
+    final requestedCooldownUntil = respondedAt.toUtc().add(cooldown);
+    final currentCooldownUntil = _cooldownUntil;
+    if (currentCooldownUntil == null ||
+        requestedCooldownUntil.isAfter(currentCooldownUntil)) {
+      _cooldownUntil = requestedCooldownUntil;
+    }
+    _setDecision(ImuDetectorDecisionReason.cooldown);
   }
 
   void _resetCandidate() {

@@ -37,6 +37,28 @@ class _SuccessfulJourneyService extends JourneyService {
   ) async {}
 }
 
+class _CapturingJourneyService extends JourneyService {
+  CreateJourneyRequest? createdRequest;
+  UpdateJourneyRequest? updatedRequest;
+
+  @override
+  Future<CreateJourneyResponse> createJourney(
+    CreateJourneyRequest request,
+  ) async {
+    createdRequest = request;
+    throw ApiException(400, '{"error":"TEST_CAPTURE"}');
+  }
+
+  @override
+  Future<void> updateJourney(
+    String journeyId,
+    UpdateJourneyRequest request,
+  ) async {
+    updatedRequest = request;
+    throw ApiException(400, '{"error":"TEST_CAPTURE"}');
+  }
+}
+
 Future<void> _submitEdit(WidgetTester tester, ApiException error) async {
   return _submit(tester, error, isEditMode: true);
 }
@@ -60,10 +82,9 @@ Future<void> _submit(
 }
 
 Future<void> _advanceToSubmit(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key('dating-method-gestational-age')));
+  await tester.tap(find.byKey(const Key('dating-method-due-date')));
   await tester.pumpAndSettle();
-  await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
-  await tester.pumpAndSettle();
+  await _chooseCalendarDate(tester);
   await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
   await tester.pumpAndSettle();
   await tester.tap(find.widgetWithText(FilledButton, 'Tạo hành trình'));
@@ -72,7 +93,84 @@ Future<void> _advanceToSubmit(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _chooseCalendarDate(WidgetTester tester) async {
+  final today = DateTime.now().day.toString();
+  final day = find.text(today);
+  expect(day, findsWidgets);
+  await tester.tap(day.last);
+  await tester.pump();
+}
+
 void main() {
+  testWidgets('only canonical LMP and EDD dating choices are shown', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: JourneySetupScreen()));
+    await tester.pump();
+    expect(find.byKey(const Key('dating-method-lmp')), findsOneWidget);
+    expect(find.byKey(const Key('dating-method-due-date')), findsOneWidget);
+    expect(find.byKey(const Key('dating-method-conception')), findsNothing);
+    expect(
+      find.byKey(const Key('dating-method-gestational-age')),
+      findsNothing,
+    );
+    expect(find.textContaining('Sẽ quy đổi thành EDD.'), findsNothing);
+  });
+
+  testWidgets('EDD setup sends exactly one EDD date and dating basis', (
+    tester,
+  ) async {
+    final service = _CapturingJourneyService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: JourneySetupScreen(service: service, refreshSession: () async {}),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('dating-method-due-date')));
+    await tester.pumpAndSettle();
+    await _chooseCalendarDate(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Tạo hành trình'));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(service.createdRequest, isNotNull);
+    expect(service.createdRequest!.datingBasis, 'EDD');
+    expect(service.createdRequest!.estimatedDueDate, isNotNull);
+    expect(service.createdRequest!.lastMenstrualDate, isNull);
+    expect(service.createdRequest!.dateSource, 'SELF_REPORTED');
+    expect(service.createdRequest!.dateConfidence, 'ESTIMATED');
+  });
+
+  testWidgets('LMP setup sends exactly one LMP date and dating basis', (
+    tester,
+  ) async {
+    final service = _CapturingJourneyService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: JourneySetupScreen(service: service, refreshSession: () async {}),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('dating-method-lmp')));
+    await tester.pumpAndSettle();
+    await _chooseCalendarDate(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Tạo hành trình'));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(service.createdRequest, isNotNull);
+    expect(service.createdRequest!.datingBasis, 'LMP');
+    expect(service.createdRequest!.lastMenstrualDate, isNotNull);
+    expect(service.createdRequest!.estimatedDueDate, isNull);
+    expect(service.createdRequest!.dateSource, 'SELF_REPORTED');
+    expect(service.createdRequest!.dateConfidence, 'ESTIMATED');
+  });
+
   testWidgets('consent-invalid 409 shows neutral actionable guidance', (
     tester,
   ) async {

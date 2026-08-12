@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../core/network/api_client.dart';
 import '../models/imu_diagnostics_model.dart';
 import '../models/safety_config_model.dart';
 import '../services/safety_demo_mode.dart';
@@ -33,9 +34,12 @@ Future<void> dispatchSafetyCountdownResult({
 SafetyEvent? selectNextOpenSafetyEvent(
   Iterable<SafetyEvent> events, {
   required String excludingId,
+  Set<String> suppressedIds = const {},
 }) {
   for (final event in events) {
-    if (isPendingSafetyCountdown(event) && event.id != excludingId) {
+    if (isPendingSafetyCountdown(event) &&
+        event.id != excludingId &&
+        !suppressedIds.contains(event.id)) {
       return event;
     }
   }
@@ -44,6 +48,39 @@ SafetyEvent? selectNextOpenSafetyEvent(
 
 bool isPendingSafetyCountdown(SafetyEvent event) =>
     event.status == 'OPEN' || event.status == 'TEST_OPEN';
+
+bool shouldReleaseSafetyCountdownOwnership({
+  required String? activeEventId,
+  required String completedEventId,
+}) => activeEventId == completedEventId;
+
+bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {
+  if (first.id == second.id ||
+      first.eventType == 'SENSOR_SELF_TEST' ||
+      second.eventType == 'SENSOR_SELF_TEST') {
+    return false;
+  }
+  final firstAt = first.detectedAt;
+  final secondAt = second.detectedAt;
+  if (firstAt == null || secondAt == null) return false;
+  return firstAt.difference(secondAt).abs() <= const Duration(seconds: 10);
+}
+
+typedef ReportDuplicateFalsePositive =
+    Future<SafetyEvent> Function(String eventId, {String? note});
+
+Future<SafetyEvent> closeDuplicateFallEvent({
+  required SafetyEvent event,
+  required ReportDuplicateFalsePositive reportFalsePositive,
+  required Future<void> Function(SafetyEvent event) resolveEmergency,
+}) async {
+  final updated = await reportFalsePositive(
+    event.id,
+    note: 'Tự động gộp bản ghi trùng của cùng một lần phát hiện ngã.',
+  );
+  await resolveEmergency(updated);
+  return updated;
+}
 
 Future<void> dispatchSensorSelfTestCountdownResult({
   required SafetyCountdownResult? result,
@@ -149,7 +186,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   Timer? _demoGestureArmTimer;
   DateTime? _sensorSelfTestArmedAt;
   final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
+  final Set<String> _suppressedDuplicateEventIds = {};
+  final Set<String> _duplicateCleanupInFlight = {};
   String? _countdownEventId;
+  SafetyEvent? _countdownEvent;
   bool _loading = true;
   // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
   // streams; backend fall detection remains controlled by SafetyConfig.
@@ -258,14 +298,35 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           _events = events;
           _imuSensorActive = _foregroundCoordinator.isRunning;
         });
-        SafetyEvent? pending;
-        for (final event in events) {
-          if (isPendingSafetyCountdown(event)) {
-            pending = event;
-            break;
+        final active = _countdownEvent;
+        if (active != null) {
+          for (final event in events) {
+            if (event.id != active.id &&
+                isPendingSafetyCountdown(event) &&
+                isLikelyDuplicateFallEvent(active, event)) {
+              _suppressDuplicateEvent(event);
+            }
+          }
+        } else {
+          SafetyEvent? pending;
+          for (final event in events) {
+            if (isPendingSafetyCountdown(event) &&
+                !_suppressedDuplicateEventIds.contains(event.id)) {
+              pending = event;
+              break;
+            }
+          }
+          if (pending != null) {
+            for (final event in events) {
+              if (event.id != pending.id &&
+                  isPendingSafetyCountdown(event) &&
+                  isLikelyDuplicateFallEvent(pending, event)) {
+                _suppressDuplicateEvent(event);
+              }
+            }
+            unawaited(_showCountdown(pending));
           }
         }
-        if (pending != null) unawaited(_showCountdown(pending));
       }
     } catch (_) {
       if (mounted) {
@@ -286,11 +347,60 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    final active = _countdownEvent;
+    if (active != null && isLikelyDuplicateFallEvent(active, event)) {
+      _suppressDuplicateEvent(event);
+      setState(() {
+        _events = [event, ..._events.where((item) => item.id != event.id)];
+      });
+      return;
+    }
     _pendingRealEvents.enqueue(event);
     setState(() {
       _events = [event, ..._events.where((item) => item.id != event.id)];
     });
     unawaited(_showCountdown(event));
+  }
+
+  void _suppressDuplicateEvent(SafetyEvent event) {
+    _suppressedDuplicateEventIds.add(event.id);
+    _pendingRealEvents.remove(event.id);
+    if (_duplicateCleanupInFlight.add(event.id)) {
+      unawaited(_closeSuppressedDuplicateEvent(event));
+    }
+  }
+
+  Future<void> _closeSuppressedDuplicateEvent(SafetyEvent event) async {
+    try {
+      final updated = await closeDuplicateFallEvent(
+        event: event,
+        reportFalsePositive: _safetyService.reportFalsePositive,
+        resolveEmergency: _resolveEventEmergency,
+      );
+      if (mounted) {
+        setState(() {
+          _events = [
+            updated,
+            ..._events.where((item) => item.id != updated.id),
+          ];
+        });
+      }
+    } on ApiException catch (error) {
+      if (error.statusCode == 409 && error.errorCode == 'SAFETY-010') {
+        if (mounted) unawaited(_load());
+        return;
+      }
+      _restoreDuplicateAfterCleanupFailure(event);
+    } catch (_) {
+      _restoreDuplicateAfterCleanupFailure(event);
+    } finally {
+      _duplicateCleanupInFlight.remove(event.id);
+    }
+  }
+
+  void _restoreDuplicateAfterCleanupFailure(SafetyEvent event) {
+    _suppressedDuplicateEventIds.remove(event.id);
+    _pendingRealEvents.enqueue(event);
   }
 
   Future<void> _showCountdown(
@@ -306,6 +416,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       return;
     }
     _countdownEventId = event.id;
+    _countdownEvent = event;
     if (!simulated) _pendingRealEvents.remove(event.id);
     final result = await showModalBottomSheet<SafetyCountdownResult>(
       context: context,
@@ -323,6 +434,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         },
       ),
     );
+    _releaseCountdownOwnership(event.id);
     try {
       final isSensorSelfTest = event.eventType == 'SENSOR_SELF_TEST';
       if (isSensorSelfTest) {
@@ -365,6 +477,22 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         await _showDemoEmergencyEscalation();
       }
     } catch (error) {
+      if (error is ApiException &&
+          error.statusCode == 409 &&
+          error.errorCode == 'SAFETY-010') {
+        // Timeout escalation and the user's final safe tap may cross on the
+        // wire. The server has already recorded one terminal response; close
+        // the local flow and refresh instead of showing a raw conflict.
+        if (mounted) {
+          try {
+            await _load();
+          } catch (_) {
+            // The response was already persisted; a refresh failure must not
+            // turn the handled race back into a visible error.
+          }
+        }
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -374,14 +502,29 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       }
     } finally {
       if (!simulated && mounted) await _load();
-      _countdownEventId = null;
+      _releaseCountdownOwnership(event.id);
       if (mounted) {
         final next =
             _pendingRealEvents.takeNext(excludingId: event.id) ??
-            selectNextOpenSafetyEvent(_events, excludingId: event.id);
+            selectNextOpenSafetyEvent(
+              _events,
+              excludingId: event.id,
+              suppressedIds: _suppressedDuplicateEventIds,
+            );
         if (next != null) unawaited(_showCountdown(next));
       }
     }
+  }
+
+  void _releaseCountdownOwnership(String eventId) {
+    if (!shouldReleaseSafetyCountdownOwnership(
+      activeEventId: _countdownEventId,
+      completedEventId: eventId,
+    )) {
+      return;
+    }
+    _countdownEventId = null;
+    _countdownEvent = null;
   }
 
   Future<void> _showDemoEmergencyEscalation() async {
@@ -447,6 +590,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
+    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     final updated = await _safetyService.confirmSafetyCheck(
       event.id,
       note: note,
@@ -458,6 +602,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     SafetyEvent event, {
     String? note,
   }) async {
+    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     final updated = await _safetyService.reportFalsePositive(
       event.id,
       note: note,
@@ -999,7 +1144,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                         ? const Center(
                             child: Text(
                               'Chưa có sự kiện an toàn nào được ghi nhận.',
-                              style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _onSurfaceVariant,
+                              ),
                             ),
                           )
                         : ListView.builder(
