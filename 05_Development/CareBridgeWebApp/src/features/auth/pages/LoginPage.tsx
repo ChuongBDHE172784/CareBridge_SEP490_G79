@@ -1,177 +1,200 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowRight, Eye, EyeOff, LoaderCircle, Lock, Smartphone, User } from 'lucide-react';
-import {
-  clearPhoneVerification,
-  confirmPhoneVerificationCode,
-  googleIdToken,
-  sendPhoneVerificationCode,
-} from '../services/firebaseAuth';
-import { federatedAuthenticate, login, loginWithPhone } from '../services/authApi';
-import type { AuthResponse, FederatedAuthResponse } from '../models/auth';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { User, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from 'lucide-react';
+import { login } from '../services/authApi';
+import type { AuthResponse, LoginRequest } from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
 import logo from '../../../assets/logo.png';
 import { parseBlockedAccountError, saveBlockedAccountState } from '../models/blockedAccount';
 
-type LoginMethod = 'EMAIL' | 'PHONE';
-const COOLDOWN_SECONDS = 60;
-const VIETNAMESE_PHONE_PATTERN = /^\+84[35789]\d{8}$/;
+const loginSchema = z.object({
+  identifier: z.string().min(1, 'Vui lòng nhập email hoặc số điện thoại'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [method, setMethod] = useState<LoginMethod>('EMAIL');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState<'form' | 'code'>('form');
-  const [cooldown, setCooldown] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (cooldown <= 0) return undefined;
-    const timer = window.setInterval(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
-    return () => window.clearInterval(timer);
-  }, [cooldown]);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
-  useEffect(() => () => clearPhoneVerification(), []);
-
-  const completeLogin = (auth: AuthResponse | FederatedAuthResponse) => {
-    useAuthStore.getState().setTokens(auth.accessToken, auth.refreshToken);
-    const needsProfile = !auth.user.role
-      || ('profileCompleted' in auth && !auth.profileCompleted)
-      || ('newUser' in auth && auth.newUser);
-    if (needsProfile) {
-      useAuthStore.getState().setUser(null);
-      navigate('/account/profile', { replace: true });
-      return;
-    }
+  const completeLogin = (auth: AuthResponse) => {
+    const { accessToken, refreshToken, user } = auth;
+    useAuthStore.getState().setTokens(accessToken, refreshToken);
     useAuthStore.getState().setUser({
-      id: auth.user.id,
-      phone: auth.user.phone ?? '',
-      name: auth.user.name,
-      avatarUrl: auth.user.avatarUrl,
-      role: auth.user.role as ReturnType<typeof useAuthStore.getState>['user'] extends { role: infer R } ? R : never,
+      id: user.id,
+      phone: user.phone ?? '',
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      role: user.role as ReturnType<typeof useAuthStore.getState>['user'] extends { role: infer R } ? R : never,
     });
-    const role = auth.user.role;
-    navigate(role ? getDefaultRouteForRole(role as Parameters<typeof getDefaultRouteForRole>[0]) : '/account/profile', { replace: true });
+    navigate(getDefaultRouteForRole(user.role as Parameters<typeof getDefaultRouteForRole>[0]), { replace: true });
   };
 
-  const handleError = (err: unknown) => {
-    const error = err as { code?: string; response?: { status?: number; data?: { message?: string; error?: string } } };
-    const status = error.response?.status;
-    const blockedState = parseBlockedAccountError(err);
-    if (blockedState) { saveBlockedAccountState(blockedState); navigate('/account-blocked', { replace: true }); return; }
-    if (err instanceof Error && err.message === 'Login response is incomplete') setServerError('Phản hồi đăng nhập không hợp lệ. Vui lòng thử lại sau.');
-    else if (error.code === 'auth/invalid-verification-code') setServerError('Mã SMS không đúng. Vui lòng kiểm tra và nhập lại.');
-    else if (error.code === 'auth/code-expired' || error.code === 'auth/session-expired') setServerError('Mã SMS đã hết hạn. Vui lòng gửi lại mã mới.');
-    else if (error.code === 'auth/too-many-requests' || error.code === 'auth/quota-exceeded') setServerError('Bạn đã yêu cầu quá nhiều mã SMS. Vui lòng thử lại sau.');
-    else if (error.code === 'auth/invalid-phone-number') setServerError('Số điện thoại không hợp lệ. Hãy kiểm tra mã quốc gia và thử lại.');
-    else if (status === undefined) setServerError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.');
-    else if (status === 401) setServerError('Thông tin đăng nhập không chính xác. Vui lòng thử lại.');
-    else if (status === 429) setServerError('Bạn đã thử quá nhiều lần. Vui lòng thử lại sau ít phút.');
-    else setServerError(error.response?.data?.message ?? 'Đã xảy ra lỗi. Vui lòng thử lại sau.');
-  };
-
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
-    if (method === 'EMAIL') {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setServerError('Vui lòng nhập email hợp lệ.'); return; }
-      if (!password) { setServerError('Vui lòng nhập mật khẩu.'); return; }
-      setSubmitting(true);
-      try { completeLogin(await login({ email: email.trim(), password })); } catch (err) { handleError(err); } finally { setSubmitting(false); }
-      return;
-    }
-    if (!VIETNAMESE_PHONE_PATTERN.test(phone.trim())) { setServerError('Số điện thoại cần là số di động Việt Nam dạng +84xxxxxxxxx.'); return; }
-    setSubmitting(true);
-    try { await sendPhoneVerificationCode(phone.trim()); setCode(''); setCooldown(COOLDOWN_SECONDS); setStep('code'); }
-    catch (err) { handleError(err); }
-    finally { setSubmitting(false); }
-  };
-
-  const confirmCode = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!/^\d{6}$/.test(code)) { setServerError('Vui lòng nhập đủ 6 chữ số trong SMS.'); return; }
-    setSubmitting(true); setServerError(null);
-    try { completeLogin(await loginWithPhone({ idToken: await confirmPhoneVerificationCode(code) })); }
-    catch (err) { handleError(err); }
-    finally { setSubmitting(false); }
-  };
-
-  const resend = async () => {
-    if (cooldown > 0 || submitting) return;
-    setSubmitting(true); setServerError(null);
-    try { await sendPhoneVerificationCode(phone.trim()); setCooldown(COOLDOWN_SECONDS); setCode(''); }
-    catch { setServerError('Không thể gửi lại mã SMS. Vui lòng thử lại sau.'); }
-    finally { setSubmitting(false); }
-  };
-
-  const googleLogin = async () => {
-    setSubmitting(true); setServerError(null);
     try {
-      const result = await federatedAuthenticate(await googleIdToken());
-      completeLogin(result);
-    } catch (err) {
-      if (err instanceof Error && (err.message.includes('popup-closed') || err.message === 'AUTH_CANCELLED')) return;
-      handleError(err);
-    } finally { setSubmitting(false); }
+      const identifier = data.identifier.trim();
+      const request: LoginRequest = isEmail(identifier)
+        ? { email: identifier, password: data.password }
+        : { phone: identifier, password: data.password };
+
+      completeLogin(await login(request));
+    } catch (err: unknown) {
+      const error = err as { response?: { status?: number; data?: { message?: string; error?: string } } };
+      const status = error.response?.status;
+      const blockedState = parseBlockedAccountError(err);
+
+      if (blockedState) {
+        saveBlockedAccountState(blockedState);
+        navigate('/account-blocked', { replace: true });
+      } else if (err instanceof Error && err.message === 'Login response is incomplete') {
+        setServerError('Phản hồi đăng nhập không hợp lệ. Vui lòng thử lại sau.');
+      } else if (status === undefined) {
+        setServerError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.');
+      } else if (status === 401) {
+        setServerError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.');
+      } else if (status === 429) {
+        setServerError('Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau ít phút.');
+      } else if (status === 400) {
+        setServerError(error.response?.data?.message ?? 'Thông tin đăng nhập không hợp lệ. Vui lòng kiểm tra lại.');
+      } else {
+        setServerError('Đã xảy ra lỗi. Vui lòng thử lại sau.');
+      }
+    }
   };
+
+  const fieldError = errors.identifier?.message || errors.password?.message;
 
   return (
-    <div className="min-h-screen bg-[#F6F1EC] px-4 py-8 font-sans text-[#5A463F] sm:px-6">
-      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[480px] items-center">
-        <section className="w-full rounded-3xl border border-[rgba(214,194,189,0.3)] bg-white p-6 shadow-[0_18px_60px_rgba(132,81,67,0.10)] sm:p-10">
-          <div className="mb-8 flex flex-col items-center gap-3 text-center">
-            <img src={logo} alt="CareBridge" className="h-16 w-16 rounded-2xl object-cover shadow-sm" />
-            <h1 className="m-0 text-2xl font-semibold tracking-tight text-[#845143]">Đăng nhập CareBridge</h1>
-            <p className="m-0 text-sm leading-5 text-[#524440]">Truy cập không gian chăm sóc của bạn</p>
+    <div className="font-sans bg-[#F6F1EC] min-h-screen flex items-center justify-center relative overflow-hidden antialiased">
+      <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-surface-container-highest rounded-full blur-[100px] opacity-40 pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-[#f8ddd2] rounded-full blur-[120px] opacity-30 pointer-events-none" />
+
+      <main className="relative z-10 w-full max-w-[480px] p-6">
+        <div className="bg-white rounded-3xl p-12 shadow-[0_10px_40px_-10px_rgba(132,81,67,0.1)] border border-[rgba(214,194,189,0.3)] flex flex-col gap-8">
+          {/* Logo Header */}
+          <div className="text-center flex flex-col items-center gap-4">
+            <img src={logo} alt="CareBridge Logo" className="w-16 h-16 rounded-2xl object-cover shadow-sm" />
+            <div>
+              <h1 className="text-2xl font-semibold leading-8 text-primary tracking-tight m-0">CareBridge</h1>
+              <p className="text-sm font-normal leading-5 text-on-surface-variant mt-1 mb-0">Hệ thống quản lý y tế</p>
+            </div>
           </div>
 
-          {serverError && <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl bg-[#ffdad6] p-4 text-sm leading-5 text-[#93000a]"><AlertCircle size={20} className="mt-0.5 shrink-0" /><p className="m-0">{serverError}</p></div>}
-          <p role="status" aria-live="polite" className="sr-only">{submitting ? 'Đang xử lý' : ''}</p>
-          <div id="firebase-recaptcha" aria-hidden="true" />
+          {/* Error Banner */}
+          {(serverError || fieldError) && (
+            <div className="bg-[#ffdad6] text-[#93000a] p-4 rounded-xl flex items-start gap-3 text-sm leading-5">
+              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+              <p className="m-0">{serverError || fieldError}</p>
+            </div>
+          )}
+          <p role="status" aria-live="polite" className="sr-only">{serverError ?? ''}</p>
 
-          {step === 'form' ? <>
-            <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-[#f8eee9] p-1" role="group" aria-label="Phương thức đăng nhập">
-              <button type="button" aria-pressed={method === 'EMAIL'} className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#845143] ${method === 'EMAIL' ? 'bg-white text-[#845143] shadow-sm' : 'text-[#524440]'}`} onClick={() => { setMethod('EMAIL'); setServerError(null); }}>Email</button>
-              <button type="button" aria-label="Continue with phone" aria-pressed={method === 'PHONE'} className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#845143] ${method === 'PHONE' ? 'bg-white text-[#845143] shadow-sm' : 'text-[#524440]'}`} onClick={() => { setMethod('PHONE'); setServerError(null); }}>Số điện thoại</button>
+          {/* Login Form */}
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit(onSubmit)}>
+            <div className="flex flex-col gap-4">
+              {/* Email/Phone */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium leading-4 tracking-[0.05em] text-on-background uppercase" htmlFor="identifier">
+                  Email hoặc Số điện thoại
+                </label>
+                <div className="relative">
+                  <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
+                  <input
+                    id="identifier"
+                    type="text"
+                    className="w-full h-12 pl-11 pr-4 rounded-xl border border-outline-variant bg-white font-sans text-sm leading-5 text-on-background outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-1 focus:ring-primary"
+                    placeholder="Nhập email hoặc SĐT"
+                    autoComplete="username"
+                    {...register('identifier')}
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium leading-4 tracking-[0.05em] text-on-background uppercase" htmlFor="password">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    className="w-full h-12 pl-11 pr-11 rounded-xl border border-outline-variant bg-white font-sans text-sm leading-5 text-on-background outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-1 focus:ring-primary"
+                    placeholder="Nhập mật khẩu"
+                    autoComplete="current-password"
+                    {...register('password')}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none text-on-surface-variant cursor-pointer flex items-center justify-center p-0 transition-colors duration-200 hover:text-primary"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <form className="grid gap-5" onSubmit={submit} noValidate>
-              {method === 'EMAIL' ? <>
-                <Field id="identifier" label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" placeholder="email@example.com" required icon={<User size={20} aria-hidden="true" />} />
-                <div className="relative"><Field id="password" label="Mật khẩu" type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Nhập mật khẩu" required icon={<Lock size={20} aria-hidden="true" />} /><button type="button" className="absolute right-3 top-[2.2rem] flex min-h-10 min-w-10 items-center justify-center rounded-lg text-[#524440] hover:text-[#845143] focus:outline-none focus:ring-2 focus:ring-[#845143]" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>{showPassword ? <Eye size={20} /> : <EyeOff size={20} />}</button></div>
-              </> : <>
-                <Field id="phone-login-number" label="Số điện thoại" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" placeholder="+84901234567" required icon={<Smartphone size={20} aria-hidden="true" />} />
-                <p className="m-0 rounded-xl bg-[#f8eee9] p-3 text-sm leading-5 text-[#524440]">
-                  Nếu số điện thoại chưa có tài khoản, CareBridge sẽ tạo một tài khoản mới và yêu cầu bạn hoàn thiện hồ sơ.
-                </p>
-              </>}
-              <button type="submit" className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#C98C7B] px-5 text-base font-semibold text-white transition hover:bg-[#845143] focus:outline-none focus:ring-4 focus:ring-[#C98C7B]/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60" disabled={submitting}>{submitting ? <LoaderCircle className="animate-spin" size={20} aria-hidden="true" /> : <>{method === 'PHONE' ? 'Tiếp tục bằng số điện thoại' : 'Đăng nhập'}<ArrowRight size={20} aria-hidden="true" /></>}</button>
-            </form>
+            {/* Remember Me & Forgot */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-5 h-5 rounded border border-outline-variant accent-primary cursor-pointer" />
+                <span className="text-sm leading-5 text-on-surface-variant">Ghi nhớ tôi</span>
+              </label>
+              <a href="/forgot-password" className="text-sm leading-5 font-medium text-primary no-underline transition-colors duration-200 hover:text-primary-container">
+                Quên mật khẩu?
+              </a>
+            </div>
 
-            <div className="my-6 flex items-center gap-3 text-xs text-[#524440]/70"><span className="h-px flex-1 bg-[#d6c2bd]" /><span>hoặc</span><span className="h-px flex-1 bg-[#d6c2bd]" /></div>
-            <button type="button" aria-label="Continue with Google" onClick={googleLogin} disabled={submitting} className="min-h-12 w-full rounded-full border border-[#d6c2bd] bg-white px-5 text-sm font-semibold text-[#524440] transition hover:border-[#845143] focus:outline-none focus:ring-4 focus:ring-[#C98C7B]/20 disabled:opacity-60">Tiếp tục với Google</button>
-          </> : <form className="grid gap-5" onSubmit={confirmCode}>
-            <div className="rounded-xl bg-[#f8eee9] p-4 text-sm leading-6"><Smartphone size={20} className="mb-2 text-[#845143]" aria-hidden="true" /><p className="m-0">Nhập mã 6 chữ số đã gửi đến <strong>{phone}</strong>.</p></div>
-            <label className="grid gap-2 text-sm font-semibold" htmlFor="phone-login-code">Mã xác thực SMS<input id="phone-login-code" name="phoneCode" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} className="min-h-14 rounded-xl border border-[#d6c2bd] px-4 text-center text-2xl tracking-[0.45em] outline-none transition focus:border-[#845143] focus:ring-2 focus:ring-[#845143]" autoFocus /></label>
-            <button type="submit" className="min-h-12 rounded-full bg-[#C98C7B] px-5 text-base font-semibold text-white transition hover:bg-[#845143] focus:outline-none focus:ring-4 focus:ring-[#C98C7B]/30 disabled:cursor-not-allowed disabled:opacity-60" disabled={submitting || code.length !== 6}>{submitting ? 'Đang xác minh…' : 'Xác nhận và tiếp tục'}</button>
-            <div className="text-center text-sm text-[#524440]">{cooldown > 0 ? <>Gửi lại sau <strong>{cooldown}s</strong></> : <button type="button" className="font-semibold text-[#845143] underline focus:outline-none focus:ring-2 focus:ring-[#845143]" onClick={resend}>Gửi lại mã SMS</button>}</div>
-            <button type="button" className="text-sm font-medium text-[#845143] underline focus:outline-none focus:ring-2 focus:ring-[#845143]" onClick={() => { clearPhoneVerification(); setStep('form'); setCode(''); }}>Thay đổi số điện thoại</button>
-          </form>}
+            {/* Submit */}
+            <button
+              type="submit"
+              className="w-full h-12 bg-primary-container text-on-primary border-none rounded-full font-sans text-base font-semibold leading-5 cursor-pointer flex items-center justify-center gap-2 mt-2 transition-colors duration-200 hover:bg-primary disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Đang xử lý...' : 'Đăng nhập'}
+              {!isSubmitting && <ArrowRight size={20} />}
+            </button>
+          </form>
 
-          <p className="mt-8 text-center text-sm text-[#524440]">Chưa có tài khoản? <Link className="font-semibold text-[#845143] underline focus:outline-none focus:ring-2 focus:ring-[#845143]" to="/register">Đăng ký ngay</Link></p>
-        </section>
+          {/* Footer */}
+          <div className="text-center pt-4 border-t border-[rgba(214,194,189,0.3)]">
+            <p className="mb-3 mt-0 text-sm leading-5 text-on-surface-variant">
+              Bạn là bác sĩ/chuyên gia?{' '}
+              <a href="/expert/register" className="font-semibold text-primary no-underline hover:underline">
+                Đăng ký chuyên gia
+              </a>
+            </p>
+            <p className="text-sm leading-5 text-on-surface-variant m-0">
+              Cần trợ giúp?{' '}
+              <a href="#" className="text-primary font-medium no-underline hover:underline">
+                Hỗ trợ kỹ thuật
+              </a>
+            </p>
+          </div>
+        </div>
       </main>
     </div>
   );
-}
-
-function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; icon?: React.ReactNode }) {
-  const { label, icon, id, ...inputProps } = props;
-  return <label className="grid gap-2 text-sm font-semibold text-[#271812]" htmlFor={id}>{label}{props.required && <span aria-hidden="true"> *</span>}<span className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#524440]">{icon}</span><input id={id} {...inputProps} className="min-h-12 w-full rounded-xl border border-[#d6c2bd] bg-white px-4 pl-11 text-sm font-normal outline-none transition placeholder:text-[#524440]/60 focus:border-[#845143] focus:ring-2 focus:ring-[#845143]" /></span></label>;
 }
