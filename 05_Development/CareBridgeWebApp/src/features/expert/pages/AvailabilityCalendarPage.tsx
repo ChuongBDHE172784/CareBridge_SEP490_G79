@@ -296,7 +296,7 @@ export default function AvailabilityCalendarPage() {
           <div className="overflow-hidden">
             <div className="text-[26px] font-bold text-on-surface truncate">Trực tuyến</div>
             <div className="text-[13px] text-outline mt-0.5 truncate">Hình thức tư vấn</div>
-            <div className="text-[11px] text-on-surface-variant font-medium mt-0.5">ONLINE_CHAT</div>
+            <div className="text-[11px] text-on-surface-variant font-medium mt-0.5">Trò chuyện & Gọi thoại</div>
           </div>
         </div>
       </div>
