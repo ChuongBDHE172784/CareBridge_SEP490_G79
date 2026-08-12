@@ -152,7 +152,7 @@ function parseTextFileContent(
   topics: CommunityTopic[],
 ): ParsedImportRow[] {
   // Strip BOM if present
-  let cleanText = text.replace(/^\uFEFF/, '').trim();
+  const cleanText = text.replace(/^\uFEFF/, '').trim();
   if (!cleanText) return [];
 
   let matrix: string[][];
