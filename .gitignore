@@ -169,3 +169,7 @@ Exercise-Correction/
 # evidence attached to the Report5.3 sheet, not source, and some frames show
 # real account data from production.
 06_Testing/SystemTesting/evidence/
+
+# Dedicated Edge profile for System Test automation - holds a live Google session
+.browser-profiles/
+.mcp.json.bak
