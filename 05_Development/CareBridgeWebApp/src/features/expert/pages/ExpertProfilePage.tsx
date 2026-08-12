@@ -108,7 +108,9 @@ export default function ExpertProfilePage() {
         .then((res) => setTrackAsiaResults(res || []))
         .catch(() => setTrackAsiaResults([]))
         .finally(() => setSearchingHospitals(false));
-    }, 500);
+      // 250ms, not 500. Measured end to end the request itself costs ~300ms, so half a
+      // second of waiting before it even starts was most of what felt slow.
+    }, 250);
     return () => clearTimeout(timer);
   }, [trackAsiaQuery, settledWorkplace, form.workplaceProvinceId]);
 

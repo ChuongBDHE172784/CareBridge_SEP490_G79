@@ -43,6 +43,12 @@ public class TrackAsiaService {
 
     private record CacheEntry(Object data, long timestamp) {}
 
+    // Typing a name walks through its own prefixes, and several experts share the same
+    // few hospitals, so the same upstream query repeats constantly. Ten minutes is long
+    // enough to make that free and short enough that a new clinic still shows up.
+    private static final long HOSPITAL_CACHE_TTL_MS = 10 * 60 * 1000L;
+    private final Map<String, CacheEntry> hospitalCache = new ConcurrentHashMap<>();
+
     public TrackAsiaService() {
         this.objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.httpClient = HttpClient.newBuilder()
@@ -98,6 +104,13 @@ public class TrackAsiaService {
                 ? typed
                 : ("bệnh viện " + typed).trim();
         String effectiveQuery = province.isEmpty() ? named : named + " " + province;
+
+        CacheEntry cached = hospitalCache.get(effectiveQuery);
+        if (cached != null && System.currentTimeMillis() - cached.timestamp() < HOSPITAL_CACHE_TTL_MS) {
+            @SuppressWarnings("unchecked")
+            List<TrackAsiaPlaceDto> hit = (List<TrackAsiaPlaceDto>) cached.data();
+            return hit;
+        }
 
         try {
             // Place Text Search: the endpoint that answers "find me the hospital called
@@ -158,7 +171,9 @@ public class TrackAsiaService {
                 // front of one as a "street_address"; neither is somewhere you work.
                 // If nothing carries a health label, show the raw matches rather than an
                 // empty box - a thin list is still something the expert can judge.
-                return medical.isEmpty() ? results : medical;
+                List<TrackAsiaPlaceDto> answer = medical.isEmpty() ? results : medical;
+                hospitalCache.put(effectiveQuery, new CacheEntry(answer, System.currentTimeMillis()));
+                return answer;
             } else {
                 log.error("TrackAsia API error: HTTP {}", response.statusCode());
             }
