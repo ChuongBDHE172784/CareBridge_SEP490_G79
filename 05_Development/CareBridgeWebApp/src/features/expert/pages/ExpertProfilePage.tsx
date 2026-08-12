@@ -47,6 +47,10 @@ export default function ExpertProfilePage() {
   const [trackAsiaQuery, setTrackAsiaQuery] = useState('');
   const [trackAsiaResults, setTrackAsiaResults] = useState<any[]>([]);
   const [searchingHospitals, setSearchingHospitals] = useState(false);
+  // The last value that came from the profile or from picking a suggestion. Typing
+  // must not be compared against form.workplace any more - that now tracks the text
+  // as it is typed, so comparing the two would suppress every search.
+  const [settledWorkplace, setSettledWorkplace] = useState('');
 
   const load = async () => {
     try {
@@ -65,6 +69,7 @@ export default function ExpertProfilePage() {
         consultationScope: profileData.consultationScope ?? '',
       });
       setTrackAsiaQuery(profileData.workplace ?? '');
+      setSettledWorkplace(profileData.workplace ?? '');
     } catch (e: any) {
       setError(e.response?.data?.message ?? 'Không thể tải hồ sơ chuyên môn');
     } finally {
@@ -77,7 +82,7 @@ export default function ExpertProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (trackAsiaQuery.trim().length < 2 || trackAsiaQuery === form.workplace) {
+    if (trackAsiaQuery.trim().length < 2 || trackAsiaQuery === settledWorkplace) {
       setTrackAsiaResults([]);
       return;
     }
@@ -89,7 +94,7 @@ export default function ExpertProfilePage() {
         .finally(() => setSearchingHospitals(false));
     }, 500);
     return () => clearTimeout(timer);
-  }, [trackAsiaQuery, form.workplace]);
+  }, [trackAsiaQuery, settledWorkplace]);
 
   const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -297,7 +302,14 @@ export default function ExpertProfilePage() {
             <input
               className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary font-sans"
               value={trackAsiaQuery}
-              onChange={(e) => setTrackAsiaQuery(e.target.value)}
+              onChange={(e) => {
+                const typed = e.target.value;
+                setTrackAsiaQuery(typed);
+                // Keep what was typed as the value to save. Only picking a suggestion
+                // used to set form.workplace, so anyone who typed the hospital name and
+                // pressed update sent an empty string and saw the field come back blank.
+                setForm((prev) => ({ ...prev, workplace: typed }));
+              }}
               placeholder="Gõ tên bệnh viện/phòng khám (VD: Bệnh viện Từ Dũ, Bệnh viện Chợ Rẫy)..."
             />
             {searchingHospitals && (
@@ -315,6 +327,7 @@ export default function ExpertProfilePage() {
                     onClick={() => {
                       setForm({ ...form, workplace: r.name });
                       setTrackAsiaQuery(r.name);
+                      setSettledWorkplace(r.name);
                       setTrackAsiaResults([]);
                     }}
                   >

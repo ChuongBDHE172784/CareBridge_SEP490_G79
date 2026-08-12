@@ -26,7 +26,12 @@ public class TrackAsiaService {
     @Value("${TRACKASIA_API_KEY}")
     private String apiKey;
 
-    private static final String BASE_URL = "https://maps.trackasia.vn/api/v2";
+    // maps.trackasia.vn does not exist. It resolved only because the ISP answers
+    // NXDOMAIN with a landing page, so every hospital lookup failed at connect time
+    // and the catch below turned that into an empty result list - the box simply
+    // never suggested anything. The host that serves the API, and that the emergency
+    // map has been using all along, is maps.track-asia.com.
+    private static final String BASE_URL = "https://maps.track-asia.com/api/v2";
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -43,16 +48,25 @@ public class TrackAsiaService {
                 .build();
     }
 
+    private static String asString(Object value) {
+        return value instanceof String s ? s : null;
+    }
+
     public List<TrackAsiaPlaceDto> searchHospitals(String query) {
         if (query == null || query.trim().isEmpty()) {
             return List.of();
         }
         
         try {
+            // Place Text Search: the endpoint that answers "find me the hospital called
+            // X". The old call named a path (/search/autocomplete), a key parameter
+            // (api_key) and a query parameter (text) that this API does not have; with
+            // the right host it answers 404, and with the wrong one it never connects.
             String encodedQuery = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8);
-            String url = BASE_URL + "/search/autocomplete?api_key=" + apiKey 
-                    + "&text=" + encodedQuery 
-                    + "&new_admin=true"; // the prompt asked for new_admin=true
+            String url = BASE_URL + "/place/textsearch/json?key="
+                    + URLEncoder.encode(apiKey, StandardCharsets.UTF_8)
+                    + "&query=" + encodedQuery
+                    + "&new_admin=true";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -65,29 +79,32 @@ public class TrackAsiaService {
             if (response.statusCode() == 200) {
                 Map<String, Object> body = objectMapper.readValue(response.body(), new TypeReference<>() {});
                 List<TrackAsiaPlaceDto> results = new ArrayList<>();
-                if (body.get("features") instanceof List features) {
-                    for (Object fObj : features) {
-                        if (fObj instanceof Map fMap) {
-                            Map props = (Map) fMap.get("properties");
-                            Map geom = (Map) fMap.get("geometry");
-                            if (props != null && geom != null) {
-                                // Filter for hospitals or medical facilities
-                                String layer = (String) props.get("layer");
-                                if ("venue".equals(layer) || "address".equals(layer)) {
-                                    TrackAsiaPlaceDto dto = new TrackAsiaPlaceDto();
-                                    dto.setPlaceId((String) props.get("id"));
-                                    dto.setName((String) props.get("name"));
-                                    dto.setLabel((String) props.get("label"));
-                                    
-                                    List<Number> coords = (List<Number>) geom.get("coordinates");
-                                    if (coords != null && coords.size() >= 2) {
-                                        dto.setLongitude(coords.get(0).doubleValue());
-                                        dto.setLatitude(coords.get(1).doubleValue());
-                                    }
-                                    results.add(dto);
-                                }
+                // Place Text Search answers with a flat "results" array, not the GeoJSON
+                // "features" the old code walked, and the coordinates arrive as a named
+                // lat/lng pair rather than a [lng, lat] tuple.
+                if (body.get("results") instanceof List<?> places) {
+                    for (Object placeObj : places) {
+                        if (!(placeObj instanceof Map<?, ?> place)) {
+                            continue;
+                        }
+                        Object name = place.get("name");
+                        if (name == null) {
+                            continue;
+                        }
+                        TrackAsiaPlaceDto dto = new TrackAsiaPlaceDto();
+                        dto.setPlaceId(asString(place.get("place_id")));
+                        dto.setName(asString(name));
+                        dto.setLabel(asString(place.get("formatted_address")));
+                        if (place.get("geometry") instanceof Map<?, ?> geometry
+                                && geometry.get("location") instanceof Map<?, ?> location) {
+                            if (location.get("lat") instanceof Number lat) {
+                                dto.setLatitude(lat.doubleValue());
+                            }
+                            if (location.get("lng") instanceof Number lng) {
+                                dto.setLongitude(lng.doubleValue());
                             }
                         }
+                        results.add(dto);
                     }
                 }
                 return results;
