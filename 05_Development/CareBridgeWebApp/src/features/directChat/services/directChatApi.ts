@@ -33,14 +33,20 @@ export async function sendMessage(
   conversationId: string,
   clientMessageId: string,
   messageBody?: string,
-  messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT',
-  attachmentId?: string
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'LOCATION' = 'TEXT',
+  attachmentId?: string,
+  location?: { latitude: number; longitude: number; label?: string }
 ): Promise<TimelineItem> {
   const { data } = await apiClient.post(`/api/v1/direct-conversations/${conversationId}/messages`, {
     clientMessageId,
     ...(messageBody !== undefined ? { messageBody } : {}),
     messageType,
     ...(attachmentId ? { attachmentId } : {}),
+    ...(location ? {
+      locationLatitude: location.latitude,
+      locationLongitude: location.longitude,
+      ...(location.label ? { locationLabel: location.label } : {}),
+    } : {}),
   });
   return data.data;
 }

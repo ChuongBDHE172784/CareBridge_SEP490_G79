@@ -6,6 +6,7 @@ import { conversationSignalHub } from '../../../shared/integrations/firebaseReal
 import * as directChatApi from '../services/directChatApi';
 import { mergeTimelineItems, optimisticMessage, type TimelineItem } from '../models/timelineItem';
 import { useDirectCall } from '../calls/directCallContext';
+import LocationMessageBubble from './LocationMessageBubble';
 
 interface ChatPanelProps {
   conversationId: string;
@@ -487,6 +488,12 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
                         onPreview={(url, name) => setPreview({ url, name })}
                         onRecall={handleRecall}
                         onError={setError}
+                      />
+                    ) : item.messageType === 'LOCATION' && !item.recalledAt ? (
+                      <LocationMessageBubble
+                        item={item}
+                        isOwn={isOwn}
+                        onRecall={handleRecall}
                       />
                     ) : item.recalledAt ? (
                       <span className="italic text-on-surface-variant">Tin nhắn đã được thu hồi</span>

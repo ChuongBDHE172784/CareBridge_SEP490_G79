@@ -112,6 +112,40 @@ class DirectMessageServiceImplTest {
     }
 
     @Test
+    void sendLocation_persistsValidatedCoordinatesWithoutAttachment() {
+        SendDirectMessageRequest request = request("");
+        request.setMessageType("LOCATION");
+        request.setLocationLatitude(10.7769);
+        request.setLocationLongitude(106.7009);
+        request.setLocationLabel("Cổng bệnh viện");
+        when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation()));
+        when(messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
+                CONVERSATION_ID, MOTHER_ID, CLIENT_MESSAGE_ID)).thenReturn(Optional.empty());
+        when(messageWriter.insertIfAbsent(any())).thenReturn(true);
+
+        SendDirectMessageResult result = service.sendMessage(CONVERSATION_ID, MOTHER_ID, request);
+
+        assertThat(result.message().getMessageType()).isEqualTo("LOCATION");
+        assertThat(result.message().getLocationLatitude()).isEqualTo(10.7769);
+        assertThat(result.message().getLocationLongitude()).isEqualTo(106.7009);
+        assertThat(result.message().getLocationLabel()).isEqualTo("Cổng bệnh viện");
+        verify(uploadedFileRepository, never()).findByIdAndStatus(any(), any());
+    }
+
+    @Test
+    void sendLocation_rejectsOutOfRangeCoordinates() {
+        SendDirectMessageRequest request = request("");
+        request.setMessageType("LOCATION");
+        request.setLocationLatitude(91.0);
+        request.setLocationLongitude(106.7009);
+        when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation()));
+
+        assertThatThrownBy(() -> service.sendMessage(CONVERSATION_ID, MOTHER_ID, request))
+                .isInstanceOf(DirectChatException.class);
+        verify(messageWriter, never()).insertIfAbsent(any());
+    }
+
+    @Test
     void recallMessage_clearsPayloadAndSoftDeletesOwnedAttachment() {
         UUID messageId = UUID.randomUUID();
         UUID fileId = UUID.randomUUID();

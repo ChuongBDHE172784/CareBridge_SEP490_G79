@@ -55,6 +55,9 @@ class DirectChatService {
     String? messageBody,
     String messageType = 'TEXT',
     String? attachmentId,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationLabel,
   }) async {
     final response =
         await apiPost('/api/v1/direct-conversations/$conversationId/messages', {
@@ -62,6 +65,9 @@ class DirectChatService {
           'messageBody': ?messageBody,
           'messageType': messageType,
           'attachmentId': ?attachmentId,
+          'locationLatitude': ?locationLatitude,
+          'locationLongitude': ?locationLongitude,
+          'locationLabel': ?locationLabel,
         });
     return TimelineItem.fromJson(response['data'] as Map<String, dynamic>);
   }

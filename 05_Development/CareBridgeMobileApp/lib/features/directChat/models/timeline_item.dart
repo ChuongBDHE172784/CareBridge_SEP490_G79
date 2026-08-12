@@ -14,6 +14,9 @@ class TimelineItem {
   final String? messageType;
   final String? messageBody;
   final String? attachmentId;
+  final double? locationLatitude;
+  final double? locationLongitude;
+  final String? locationLabel;
   final DateTime? recalledAt;
   final DateTime? createdAt;
 
@@ -38,6 +41,9 @@ class TimelineItem {
     this.messageType,
     this.messageBody,
     this.attachmentId,
+    this.locationLatitude,
+    this.locationLongitude,
+    this.locationLabel,
     this.recalledAt,
     this.createdAt,
     this.callId,
@@ -60,6 +66,9 @@ class TimelineItem {
       messageType: json['messageType'] as String?,
       messageBody: json['messageBody'] as String?,
       attachmentId: json['attachmentId'] as String?,
+      locationLatitude: (json['locationLatitude'] as num?)?.toDouble(),
+      locationLongitude: (json['locationLongitude'] as num?)?.toDouble(),
+      locationLabel: json['locationLabel'] as String?,
       recalledAt: _parseDate(json['recalledAt']),
       createdAt: _parseDate(json['createdAt']),
       callId: json['callId'] as String?,
@@ -90,6 +99,26 @@ class TimelineItem {
     );
   }
 
+  factory TimelineItem.optimisticLocation({
+    required String clientMessageId,
+    required String senderUserId,
+    required double latitude,
+    required double longitude,
+    String? label,
+  }) {
+    return TimelineItem(
+      kind: 'MESSAGE',
+      clientMessageId: clientMessageId,
+      senderUserId: senderUserId,
+      messageType: 'LOCATION',
+      locationLatitude: latitude,
+      locationLongitude: longitude,
+      locationLabel: label,
+      createdAt: DateTime.now().toUtc(),
+      sendStatus: ChatSendStatus.sending,
+    );
+  }
+
   static DateTime? _parseDate(Object? value) =>
       value == null ? null : DateTime.parse(value as String).toUtc();
 
@@ -112,6 +141,11 @@ class TimelineItem {
       senderUserId: senderUserId,
       messageType: messageType,
       messageBody: messageBody,
+      attachmentId: attachmentId,
+      locationLatitude: locationLatitude,
+      locationLongitude: locationLongitude,
+      locationLabel: locationLabel,
+      recalledAt: recalledAt,
       createdAt: createdAt,
       callId: callId,
       callType: callType,

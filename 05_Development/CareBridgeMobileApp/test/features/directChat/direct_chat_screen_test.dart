@@ -12,6 +12,9 @@ const _conversationId = 'conv-1';
 const _messageId = 'message-latest';
 
 class _ScriptedDirectChatService extends DirectChatService {
+  _ScriptedDirectChatService({this.timelineItems});
+
+  final List<TimelineItem>? timelineItems;
   int markReadCallCount = 0;
   String? lastMarkReadConversationId;
   String? lastMarkReadMessageId;
@@ -34,17 +37,19 @@ class _ScriptedDirectChatService extends DirectChatService {
     String? before,
     int limit = 30,
   }) async => TimelinePage(
-    items: [
-      TimelineItem.fromJson({
-        'kind': 'MESSAGE',
-        'messageId': _messageId,
-        'clientMessageId': 'client-1',
-        'senderUserId': 'expert-1',
-        'messageType': 'TEXT',
-        'messageBody': 'Xin chào mẹ',
-        'createdAt': '2026-01-01T00:00:00Z',
-      }),
-    ],
+    items:
+        timelineItems ??
+        [
+          TimelineItem.fromJson({
+            'kind': 'MESSAGE',
+            'messageId': _messageId,
+            'clientMessageId': 'client-1',
+            'senderUserId': 'expert-1',
+            'messageType': 'TEXT',
+            'messageBody': 'Xin chào mẹ',
+            'createdAt': '2026-01-01T00:00:00Z',
+          }),
+        ],
     hasMoreNewer: false,
     hasMoreOlder: false,
   );
@@ -121,4 +126,35 @@ void main() {
       expect(find.text('2'), findsNothing); // badge cleared after reload
     },
   );
+
+  testWidgets('renders a shared location as a tappable navigation card', (
+    tester,
+  ) async {
+    DirectChatService.instance = _ScriptedDirectChatService(
+      timelineItems: [
+        TimelineItem.fromJson({
+          'kind': 'MESSAGE',
+          'messageId': 'location-message',
+          'clientMessageId': 'location-client',
+          'senderUserId': 'expert-1',
+          'messageType': 'LOCATION',
+          'locationLatitude': 10.7769,
+          'locationLongitude': 106.7009,
+          'locationLabel': 'Cổng bệnh viện',
+          'createdAt': '2026-08-12T08:00:00Z',
+        }),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DirectChatScreen(conversationId: _conversationId),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cổng bệnh viện'), findsOneWidget);
+    expect(find.text('Chạm để dẫn đường'), findsOneWidget);
+    expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
+  });
 }

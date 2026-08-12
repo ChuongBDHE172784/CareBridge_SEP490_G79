@@ -11,6 +11,9 @@ export interface TimelineItem {
   messageType?: string;
   messageBody?: string;
   attachmentId?: string;
+  locationLatitude?: number;
+  locationLongitude?: number;
+  locationLabel?: string;
   recalledAt?: string;
   createdAt?: string; // ISO instant
 
@@ -32,8 +35,11 @@ export function optimisticMessage(params: {
   clientMessageId: string;
   senderUserId: string;
   messageBody?: string;
-  messageType?: 'TEXT' | 'IMAGE' | 'FILE';
+  messageType?: 'TEXT' | 'IMAGE' | 'FILE' | 'LOCATION';
   attachmentId?: string;
+  locationLatitude?: number;
+  locationLongitude?: number;
+  locationLabel?: string;
 }): TimelineItem {
   return {
     kind: 'MESSAGE',
@@ -42,6 +48,9 @@ export function optimisticMessage(params: {
     messageType: params.messageType ?? 'TEXT',
     messageBody: params.messageBody,
     attachmentId: params.attachmentId,
+    locationLatitude: params.locationLatitude,
+    locationLongitude: params.locationLongitude,
+    locationLabel: params.locationLabel,
     createdAt: new Date().toISOString(),
     sendStatus: 'sending',
   };

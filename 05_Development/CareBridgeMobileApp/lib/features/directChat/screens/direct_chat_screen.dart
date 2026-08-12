@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mime/mime.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,7 @@ import 'package:universal_io/io.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import 'direct_chat_attachment_viewer_screen.dart';
+import 'direct_chat_location_navigation_screen.dart';
 import '../calls/conversation_signal_hub.dart';
 import '../calls/direct_call_host.dart';
 import '../models/timeline_item.dart';
@@ -280,7 +282,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           ],
         );
         final fileId = uploaded?['data']?['fileId'] as String?;
-        if (fileId == null) throw const FormatException('Không thể tải tệp lên');
+        if (fileId == null) {
+          throw const FormatException('Không thể tải tệp lên');
+        }
 
         final confirmed = await DirectChatService.instance.sendMessage(
           widget.conversationId,
@@ -358,6 +362,75 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       });
     } catch (e) {
       if (mounted) _showError('Không thể chọn tài liệu: $e');
+    }
+  }
+
+  Future<void> _shareCurrentLocation() async {
+    if (_sending || !_expertAvailable) return;
+    Navigator.of(context).pop();
+    setState(() => _sending = true);
+    String? optimisticClientMessageId;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw const FormatException('Hãy bật dịch vụ vị trí để chia sẻ.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
+        throw const FormatException(
+          'Quyền vị trí đã bị tắt. Hãy cấp lại trong Cài đặt.',
+        );
+      }
+      if (permission == LocationPermission.denied) {
+        throw const FormatException('Bạn chưa cấp quyền chia sẻ vị trí.');
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 8),
+      );
+      final clientMessageId = _uuid.v4();
+      optimisticClientMessageId = clientMessageId;
+      final currentUserId = AuthState.instance.userId ?? '';
+      final optimistic = TimelineItem.optimisticLocation(
+        clientMessageId: clientMessageId,
+        senderUserId: currentUserId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        label: 'Vị trí hiện tại',
+      );
+      if (mounted) {
+        setState(() => _items = mergeTimelineItems(_items, [optimistic]));
+      }
+      final confirmed = await DirectChatService.instance.sendMessage(
+        widget.conversationId,
+        clientMessageId: clientMessageId,
+        messageType: 'LOCATION',
+        locationLatitude: position.latitude,
+        locationLongitude: position.longitude,
+        locationLabel: 'Vị trí hiện tại',
+      );
+      if (mounted) {
+        setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+      }
+    } catch (error) {
+      if (mounted) {
+        if (optimisticClientMessageId != null) {
+          setState(() {
+            _items = _items
+                .where(
+                  (item) => item.clientMessageId != optimisticClientMessageId,
+                )
+                .toList(growable: false);
+          });
+        }
+        _showError(error.toString().replaceFirst('FormatException: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -604,7 +677,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     final isImage = attachment.kind == 'IMAGE';
     final sizeKb = (attachment.bytes.length / 1024).toStringAsFixed(1);
     final sizeMb = (attachment.bytes.length / (1024 * 1024)).toStringAsFixed(1);
-    final displaySize = attachment.bytes.length >= 1024 * 1024 ? '$sizeMb MB' : '$sizeKb KB';
+    final displaySize = attachment.bytes.length >= 1024 * 1024
+        ? '$sizeMb MB'
+        : '$sizeKb KB';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -740,7 +815,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                       Icons.photo_library_outlined,
                                       color: _primary,
                                     ),
-                                    title: const Text('Chọn từ thư viện', style: TextStyle(fontFamily: 'Lexend')),
+                                    title: const Text(
+                                      'Chọn từ thư viện',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
                                     onTap: () {
                                       Navigator.pop(sheetContext);
                                       _attachImage(ImageSource.gallery);
@@ -751,7 +829,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                       Icons.attach_file_rounded,
                                       color: _primary,
                                     ),
-                                    title: const Text('Chọn tài liệu', style: TextStyle(fontFamily: 'Lexend')),
+                                    title: const Text(
+                                      'Chọn tài liệu',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
                                     onTap: () {
                                       Navigator.pop(sheetContext);
                                       _attachDocument();
@@ -762,11 +843,32 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                       Icons.camera_alt_outlined,
                                       color: _primary,
                                     ),
-                                    title: const Text('Chụp ảnh', style: TextStyle(fontFamily: 'Lexend')),
+                                    title: const Text(
+                                      'Chụp ảnh',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
                                     onTap: () {
                                       Navigator.pop(sheetContext);
                                       _attachImage(ImageSource.camera);
                                     },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.location_on_outlined,
+                                      color: _primary,
+                                    ),
+                                    title: const Text(
+                                      'Chia sẻ vị trí hiện tại',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: const Text(
+                                      'Người nhận có thể bấm để dẫn đường',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    onTap: _shareCurrentLocation,
                                   ),
                                   const SizedBox(height: 12),
                                 ],
@@ -787,7 +889,11 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                       controller: _textController,
                       minLines: 1,
                       maxLines: 4,
-                      style: const TextStyle(fontFamily: 'Lexend', color: _onSurface, fontSize: 14),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _onSurface,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Nhập tin nhắn...',
                         hintStyle: TextStyle(
@@ -886,9 +992,22 @@ class _TimelineTile extends StatelessWidget {
                 ? onRecall
                 : null,
             onTap:
-                item.messageType != 'FILE' ||
-                    item.attachmentId == null ||
-                    item.recalledAt != null
+                item.messageType == 'LOCATION' &&
+                    item.locationLatitude != null &&
+                    item.locationLongitude != null &&
+                    item.recalledAt == null
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DirectChatLocationNavigationScreen(
+                        latitude: item.locationLatitude!,
+                        longitude: item.locationLongitude!,
+                        label: item.locationLabel,
+                      ),
+                    ),
+                  )
+                : item.messageType != 'FILE' ||
+                      item.attachmentId == null ||
+                      item.recalledAt != null
                 ? null
                 : () => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -930,7 +1049,9 @@ class _TimelineTile extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontStyle: FontStyle.italic,
-                        color: isOwnMessage ? Colors.white70 : _onSurfaceVariant,
+                        color: isOwnMessage
+                            ? Colors.white70
+                            : _onSurfaceVariant,
                         fontSize: 13,
                       ),
                     )
@@ -998,6 +1119,11 @@ class _TimelineTile extends StatelessWidget {
                         ],
                       ],
                     )
+                  : item.messageType == 'LOCATION'
+                  ? _LocationMessageCard(
+                      label: item.locationLabel,
+                      isOwnMessage: isOwnMessage,
+                    )
                   : Text(
                       item.messageBody ?? '',
                       style: TextStyle(
@@ -1014,7 +1140,11 @@ class _TimelineTile extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
               child: Text(
                 _formatTimestamp(item.createdAt),
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  color: _onSurfaceVariant,
+                ),
               ),
             ),
           if (failed)
@@ -1023,7 +1153,11 @@ class _TimelineTile extends StatelessWidget {
               icon: const Icon(Icons.refresh, size: 14, color: Colors.red),
               label: const Text(
                 'Gửi lại',
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Colors.red),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  color: Colors.red,
+                ),
               ),
             )
           else if (sending)
@@ -1031,7 +1165,11 @@ class _TimelineTile extends StatelessWidget {
               padding: EdgeInsets.only(bottom: 6),
               child: Text(
                 'Đang gửi...',
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  color: _onSurfaceVariant,
+                ),
               ),
             ),
         ],
@@ -1151,6 +1289,119 @@ class _TimelineTile extends StatelessWidget {
       }
     }
   }
+}
+
+class _LocationMessageCard extends StatelessWidget {
+  const _LocationMessageCard({required this.label, required this.isOwnMessage});
+
+  final String? label;
+  final bool isOwnMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isOwnMessage ? Colors.white : const Color(0xFF5A463F);
+    return SizedBox(
+      width: 230,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 104,
+            decoration: BoxDecoration(
+              color: isOwnMessage
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : const Color(0xFFF2EAE4),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _MapPatternPainter(
+                      color: isOwnMessage
+                          ? Colors.white.withValues(alpha: 0.16)
+                          : const Color(0xFFC98C7B).withValues(alpha: 0.2),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isOwnMessage
+                        ? Colors.white
+                        : const Color(0xFFC98C7B),
+                    shape: BoxShape.circle,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x245A463F),
+                        blurRadius: 16,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.location_on_rounded,
+                    color: isOwnMessage
+                        ? const Color(0xFFC98C7B)
+                        : Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label?.trim().isNotEmpty == true
+                ? label!.trim()
+                : 'Vị trí được chia sẻ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              color: foreground,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'Chạm để dẫn đường',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              color: foreground.withValues(alpha: 0.78),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapPatternPainter extends CustomPainter {
+  const _MapPatternPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    for (var x = -20.0; x < size.width + 20; x += 38) {
+      canvas.drawLine(Offset(x, 0), Offset(x + 28, size.height), paint);
+    }
+    for (var y = 18.0; y < size.height; y += 34) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y - 10), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MapPatternPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 /// Resolves a short-lived, participant-authorized URL and renders the image in
