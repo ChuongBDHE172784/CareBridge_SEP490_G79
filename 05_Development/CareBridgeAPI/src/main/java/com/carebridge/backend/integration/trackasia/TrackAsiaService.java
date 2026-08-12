@@ -53,16 +53,36 @@ public class TrackAsiaService {
     }
 
     public List<TrackAsiaPlaceDto> searchHospitals(String query) {
-        if (query == null || query.trim().isEmpty()) {
+        return searchHospitals(query, null);
+    }
+
+    /**
+     * Finds hospitals by name, optionally narrowed to one province.
+     *
+     * <p>TrackAsia has no province filter and no paging: Text Search returns at most 20
+     * results and Nearby Search at most 10, and neither honours page, limit or a page
+     * token - measured against the live API. Naming the province inside the query text is
+     * what actually moves the results into that province, so an expert in Đà Nẵng is
+     * offered hospitals in Đà Nẵng rather than the same national list every time.
+     */
+    public List<TrackAsiaPlaceDto> searchHospitals(String query, String provinceName) {
+        String typed = query == null ? "" : query.trim();
+        String province = provinceName == null ? "" : provinceName.trim();
+        if (typed.isEmpty() && province.isEmpty()) {
             return List.of();
         }
-        
+        // With no name typed yet, browse the province: "bệnh viện <tỉnh>" is what turns
+        // a province choice into a usable list to pick from.
+        String effectiveQuery = typed.isEmpty()
+                ? "bệnh viện " + province
+                : (province.isEmpty() ? typed : typed + " " + province);
+
         try {
             // Place Text Search: the endpoint that answers "find me the hospital called
             // X". The old call named a path (/search/autocomplete), a key parameter
             // (api_key) and a query parameter (text) that this API does not have; with
             // the right host it answers 404, and with the wrong one it never connects.
-            String encodedQuery = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8);
+            String encodedQuery = URLEncoder.encode(effectiveQuery, StandardCharsets.UTF_8);
             String url = BASE_URL + "/place/textsearch/json?key="
                     + URLEncoder.encode(apiKey, StandardCharsets.UTF_8)
                     + "&query=" + encodedQuery

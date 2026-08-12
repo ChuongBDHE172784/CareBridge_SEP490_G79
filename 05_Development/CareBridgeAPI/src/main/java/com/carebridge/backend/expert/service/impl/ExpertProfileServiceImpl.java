@@ -79,6 +79,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			profile.setProfessionalTitle(request.getProfessionalTitle());
 			profile.setExperienceYears(request.getExperienceYears());
 			profile.setWorkplace(request.getWorkplace());
+			profile.setWorkplaceProvinceId(request.getWorkplaceProvinceId());
 			profile.setConsultationScope(request.getConsultationScope());
 			if (request.getRatingAvg() != null) profile.setRatingAvg(request.getRatingAvg());
 			if (request.getConsultationFeeVnd() != null) profile.setConsultationFeeVnd(request.getConsultationFeeVnd());

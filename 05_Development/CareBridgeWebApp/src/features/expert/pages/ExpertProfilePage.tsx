@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMyProfile, updateMyProfile, searchTrackAsiaHospitals, uploadExpertAvatar } from '../services/expertApi';
+import { getMyProfile, updateMyProfile, searchTrackAsiaHospitals, uploadExpertAvatar, getProvinces } from '../services/expertApi';
 import { updateUserProfile } from '../../auth/services/authApi';
 import type { UserProfile } from '../../auth/models/user';
 
@@ -38,6 +38,7 @@ export default function ExpertProfilePage() {
     professionalTitle: '',
     experienceYears: '',
     workplace: '',
+    workplaceProvinceId: '',
     consultationScope: '',
   });
 
@@ -51,6 +52,7 @@ export default function ExpertProfilePage() {
   // must not be compared against form.workplace any more - that now tracks the text
   // as it is typed, so comparing the two would suppress every search.
   const [settledWorkplace, setSettledWorkplace] = useState('');
+  const [provinces, setProvinces] = useState<{ provinceId: string; name: string }[]>([]);
 
   const load = async () => {
     try {
@@ -66,6 +68,7 @@ export default function ExpertProfilePage() {
         professionalTitle: profileData.professionalTitle ?? '',
         experienceYears: profileData.experienceYears?.toString() ?? '',
         workplace: profileData.workplace ?? '',
+        workplaceProvinceId: profileData.workplaceProvinceId ?? '',
         consultationScope: profileData.consultationScope ?? '',
       });
       setTrackAsiaQuery(profileData.workplace ?? '');
@@ -82,19 +85,32 @@ export default function ExpertProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (trackAsiaQuery.trim().length < 2 || trackAsiaQuery === settledWorkplace) {
+    getProvinces()
+      .then((list) => setProvinces(list ?? []))
+      .catch(() => setProvinces([]));
+  }, []);
+
+  useEffect(() => {
+    const hasProvince = Boolean(form.workplaceProvinceId);
+    // A province on its own is a valid search: the server browses that province when no
+    // name has been typed, which is what turns the picker into a list to choose from.
+    if (!hasProvince && (trackAsiaQuery.trim().length < 2 || trackAsiaQuery === settledWorkplace)) {
+      setTrackAsiaResults([]);
+      return;
+    }
+    if (hasProvince && trackAsiaQuery === settledWorkplace && trackAsiaQuery.trim().length >= 2) {
       setTrackAsiaResults([]);
       return;
     }
     const timer = setTimeout(() => {
       setSearchingHospitals(true);
-      searchTrackAsiaHospitals(trackAsiaQuery)
+      searchTrackAsiaHospitals(trackAsiaQuery, form.workplaceProvinceId || undefined)
         .then((res) => setTrackAsiaResults(res || []))
         .catch(() => setTrackAsiaResults([]))
         .finally(() => setSearchingHospitals(false));
     }, 500);
     return () => clearTimeout(timer);
-  }, [trackAsiaQuery, settledWorkplace]);
+  }, [trackAsiaQuery, settledWorkplace, form.workplaceProvinceId]);
 
   const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,6 +148,7 @@ export default function ExpertProfilePage() {
         specialty: form.specialty,
         professionalTitle: form.professionalTitle,
         workplace: form.workplace,
+        workplaceProvinceId: form.workplaceProvinceId || undefined,
         consultationScope: form.consultationScope,
       };
       if (form.experienceYears) body.experienceYears = parseInt(form.experienceYears);
@@ -294,6 +311,28 @@ export default function ExpertProfilePage() {
             <span className="material-symbols-outlined text-primary text-xl">domain</span>
             Nơi công tác &amp; Cơ sở y tế
           </h2>
+
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
+              Tỉnh / Thành phố
+            </label>
+            <select
+              value={form.workplaceProvinceId}
+              onChange={(e) => {
+                setForm({ ...form, workplaceProvinceId: e.target.value });
+                setTrackAsiaResults([]);
+              }}
+              className="w-full p-3.5 rounded-xl border border-outline-variant bg-surface text-on-surface"
+            >
+              <option value="">— Chọn tỉnh/thành để xem bệnh viện —</option>
+              {provinces.map((p) => (
+                <option key={p.provinceId} value={p.provinceId}>{p.name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Chọn tỉnh/thành rồi bấm vào ô bên dưới để xem danh sách bệnh viện trong tỉnh đó.
+            </p>
+          </div>
 
           <div className="relative">
             <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
