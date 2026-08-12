@@ -40,6 +40,13 @@ public interface IFileService {
     UploadFileResponse uploadWithPurpose(MultipartFile file, UUID callerId,
                                           FileKind kind, FilePurpose purpose, FileAccessMode accessMode);
 
+    /**
+     * Classifies a file as IMAGE or DOCUMENT from its magic bytes, never its name or
+     * any caller-supplied hint. Callers use this instead of asking the client what it
+     * is sending: which storage a file lands in follows from the content alone.
+     */
+    FileKind detectKind(MultipartFile file);
+
     /** @throws com.carebridge.backend.common.exception.ResourceNotFoundException (FILE-404) if not found/deleted */
     ViewFileResponse viewFile(UUID fileId, UUID callerId);
 

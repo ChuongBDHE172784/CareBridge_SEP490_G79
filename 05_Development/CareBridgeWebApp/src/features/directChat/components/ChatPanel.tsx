@@ -37,6 +37,16 @@ function formatTimestamp(value?: string): string {
     : `${date.toLocaleDateString('vi-VN')} · ${time}`;
 }
 
+// Kept in step with what the API accepts. .txt is deliberately absent: the server has
+// no MIME rule for it and rejects it with a 415 the sender cannot act on. Documents and
+// spreadsheets alike are stored privately in R2; the server decides that, not this list.
+const DOCUMENT_ACCEPT =
+  '.pdf,.doc,.docx,.xls,.xlsx,' +
+  'application/pdf,application/msword,' +
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document,' +
+  'application/vnd.ms-excel,' +
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 async function downloadAttachment(url: string, name: string) {
   const response = await fetch(url);
   if (!response.ok) throw new Error('Download failed');
@@ -67,21 +77,51 @@ function AttachmentBubble({
   onError: (message: string) => void;
 }) {
   const [attachment, setAttachment] = useState<directChatApi.DirectChatAttachment | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     if (!item.messageId || !item.attachmentId || item.recalledAt) return;
     let disposed = false;
-    directChatApi.viewAttachment(conversationId, item.messageId)
-      .then((result) => !disposed && setAttachment(result))
-      .catch(() => !disposed && onError('Không thể tải tệp đính kèm.'));
+    setFailed(false);
+
+    // The first look-up can land before the message row the server just wrote is
+    // readable, and a single failure used to leave a spinner that never resolved -
+    // the file only appeared after a full page reload. Retry a couple of times with
+    // a short backoff, then offer the retry to the sender instead of spinning.
+    const attempt = (remaining: number, delayMs: number) => {
+      directChatApi.viewAttachment(conversationId, item.messageId!)
+        .then((result) => { if (!disposed) setAttachment(result); })
+        .catch(() => {
+          if (disposed) return;
+          if (remaining > 0) {
+            window.setTimeout(() => attempt(remaining - 1, delayMs * 2), delayMs);
+            return;
+          }
+          setFailed(true);
+          onError('Không thể tải tệp đính kèm.');
+        });
+    };
+    attempt(2, 600);
+
     return () => { disposed = true; };
-  }, [conversationId, item.attachmentId, item.messageId, item.recalledAt, onError]);
+  }, [conversationId, item.attachmentId, item.messageId, item.recalledAt, onError, reloadToken]);
 
   if (item.recalledAt) {
     return <span className="italic text-on-surface-variant">Tin nhắn đã được thu hồi</span>;
   }
   if (!attachment) {
-    return <span className="inline-flex min-w-36 items-center gap-2"><span className="material-symbols-outlined animate-spin">progress_activity</span>Đang tải tệp...</span>;
+    return failed ? (
+      <button
+        type="button"
+        onClick={() => setReloadToken((n) => n + 1)}
+        className="inline-flex min-w-36 items-center gap-2 underline"
+      >
+        <span className="material-symbols-outlined">refresh</span>Tải lại tệp
+      </button>
+    ) : (
+      <span className="inline-flex min-w-36 items-center gap-2"><span className="material-symbols-outlined animate-spin">progress_activity</span>Đang tải tệp...</span>
+    );
   }
   const download = async () => {
     try {
@@ -532,7 +572,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
             <input
               ref={documentInputRef}
               type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+              accept={DOCUMENT_ACCEPT}
               className="hidden"
               onChange={(e) => {
                 const file = e.currentTarget.files?.[0];

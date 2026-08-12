@@ -49,10 +49,15 @@ public class FileServiceImpl implements IFileService {
     );
 
     // DOCUMENT MIME types → R2
+    private static final String MIME_DOC = "application/msword";
+    private static final String MIME_DOCX =
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    private static final String MIME_XLS = "application/vnd.ms-excel";
+    private static final String MIME_XLSX =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
     private static final Set<String> DOCUMENT_MIME_TYPES = Set.of(
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "application/pdf", MIME_DOC, MIME_DOCX, MIME_XLS, MIME_XLSX
     );
 
     private static final Set<String> HEALTH_RECORD_MIME_TYPES = Set.of(
@@ -62,9 +67,7 @@ public class FileServiceImpl implements IFileService {
 
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
             "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif",
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "application/pdf", MIME_DOC, MIME_DOCX, MIME_XLS, MIME_XLSX
     );
 
     private final UploadedFileRepository fileRepository;
@@ -154,6 +157,16 @@ public class FileServiceImpl implements IFileService {
         }
 
         return uploadUsing(file, callerId, provider, kind, purpose, accessMode);
+    }
+
+    @Override
+    public FileKind detectKind(MultipartFile file) {
+        String mimeType = detectMimeType(file);
+        if (!ALLOWED_MIME_TYPES.contains(mimeType)) {
+            throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE-001",
+                    "Unsupported file type: " + mimeType);
+        }
+        return IMAGE_MIME_TYPES.contains(mimeType) ? FileKind.IMAGE : FileKind.DOCUMENT;
     }
 
     private String determineProvider(String mimeType) {
@@ -317,19 +330,26 @@ public class FileServiceImpl implements IFileService {
                 if (header.length >= 6
                         && header[0] == 0x47 && header[1] == 0x49
                         && header[2] == 0x46) return "image/gif";
-                // DOC (OLE Compound File): D0 CF 11 E0 A1 B1 1A E1
+                // OLE Compound File: D0 CF 11 E0 A1 B1 1A E1. Both .doc and .xls start
+                // this way, so the header alone cannot tell them apart - an Excel workbook
+                // used to be stored labelled as Word. Read the stream names in the OLE
+                // directory instead; a workbook always carries a "Workbook" stream.
                 if (header.length >= 8
                         && header[0] == (byte) 0xD0 && header[1] == (byte) 0xCF
                         && header[2] == 0x11 && header[3] == (byte) 0xE0
                         && header[4] == (byte) 0xA1 && header[5] == (byte) 0xB1
-                        && header[6] == 0x1A && header[7] == (byte) 0xE1) return "application/msword";
-                // DOCX (ZIP-based): PK 03 04 or PK 05 06 or PK 07 08
+                        && header[6] == 0x1A && header[7] == (byte) 0xE1) {
+                    return looksLikeOleWorkbook(header) ? MIME_XLS : MIME_DOC;
+                }
+                // OOXML (ZIP-based): PK 03 04. .docx and .xlsx are identical here too;
+                // the part names inside the archive are what separate them.
                 if (header.length >= 4
                         && header[0] == 0x50 && header[1] == 0x4B
                         && (header[2] == 0x03 || header[2] == 0x05 || header[2] == 0x07)
                         && header[3] == 0x04) {
-                    // Could be DOCX - would need deeper inspection of ZIP entries
-                    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                    String ooxml = detectOoxmlSubtype(header);
+                    if (ooxml != null) return ooxml;
+                    return MIME_DOCX;
                 }
             }
             String declared = file.getContentType();
@@ -337,6 +357,49 @@ public class FileServiceImpl implements IFileService {
         } catch (IOException e) {
             return "application/octet-stream";
         }
+    }
+
+    /**
+     * Reads the part names out of an OOXML package. Word puts its body under word/,
+     * Excel under xl/ - that is the only reliable difference between a .docx and an
+     * .xlsx, which are both plain ZIP archives with identical magic bytes.
+     */
+    private String detectOoxmlSubtype(byte[] bytes) {
+        try (java.util.zip.ZipInputStream zip =
+                     new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(bytes))) {
+            java.util.zip.ZipEntry entry;
+            int inspected = 0;
+            while ((entry = zip.getNextEntry()) != null && inspected++ < 64) {
+                String name = entry.getName();
+                if (name.startsWith("xl/")) return MIME_XLSX;
+                if (name.startsWith("word/")) return MIME_DOCX;
+            }
+        } catch (IOException | IllegalArgumentException e) {
+            // Not a readable archive - fall back to the caller's other checks.
+        }
+        return null;
+    }
+
+    /**
+     * An OLE compound file keeps its stream names as UTF-16LE inside the directory.
+     * A .xls always has a stream called "Workbook" (or "Book" on very old files);
+     * a .doc has "WordDocument". Scanning the raw bytes for those names avoids
+     * pulling in a full OLE parser for a single distinction.
+     */
+    private boolean looksLikeOleWorkbook(byte[] bytes) {
+        return containsUtf16(bytes, "Workbook") || containsUtf16(bytes, "Book");
+    }
+
+    private boolean containsUtf16(byte[] haystack, String needle) {
+        byte[] pattern = needle.getBytes(java.nio.charset.StandardCharsets.UTF_16LE);
+        outer:
+        for (int i = 0; i + pattern.length <= haystack.length; i++) {
+            for (int j = 0; j < pattern.length; j++) {
+                if (haystack[i + j] != pattern[j]) continue outer;
+            }
+            return true;
+        }
+        return false;
     }
 
     private String calculateChecksum(byte[] data) {
