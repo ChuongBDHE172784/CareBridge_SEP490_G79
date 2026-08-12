@@ -702,6 +702,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       _buildPregnancyOutcomeEntry(dashboard),
       const SizedBox(height: 16),
       _buildSetupSourceCard(dashboard),
+      if (dashboard.datingQuarantineReason != null) ...[
+        const SizedBox(height: 12),
+        _buildDatingQuarantineNotice(dashboard),
+      ],
       ..._buildMaternalHealthBlock(),
       if (_historyError != null) ...[
         const SizedBox(height: 24),
@@ -1897,9 +1901,82 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
             label: 'Ngày dự sinh',
             value: _formatDate(dashboard.estimatedDueDate),
           ),
+          if (dashboard.sourceWeekNumber != null) ...[
+            const SizedBox(height: 10),
+            _InfoRow(
+              key: const Key('mother-source-week-number'),
+              icon: Icons.view_week_rounded,
+              label: 'Tuần checklist',
+              value: 'Tuần ${dashboard.sourceWeekNumber}',
+            ),
+          ],
+          if (dashboard.plan != null) ...[
+            const SizedBox(height: 10),
+            _InfoRow(
+              key: const Key('mother-checklist-plan'),
+              icon: Icons.checklist_rounded,
+              label: 'Plan checklist',
+              value: 'Plan ${dashboard.plan}',
+            ),
+          ],
+          if (dashboard.datingBasis != null) ...[
+            const SizedBox(height: 10),
+            _InfoRow(
+              key: const Key('mother-dating-basis'),
+              icon: Icons.fact_check_outlined,
+              label: 'Căn cứ tính tuổi thai',
+              value: _datingBasisLabel(dashboard.datingBasis),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Widget _buildDatingQuarantineNotice(JourneyDashboard dashboard) {
+    return Semantics(
+      key: const Key('mother-dating-quarantine-notice'),
+      container: true,
+      label: 'Dữ liệu ngày thai kỳ cần được xác nhận lại.',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF4E5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE6C88B)),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline_rounded, color: Color(0xFF8A5A00)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Dữ liệu ngày thai kỳ cần được xác nhận lại. Checklist chỉ hiển thị sau khi hệ thống xác định được tuần thai phù hợp.',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  height: 1.45,
+                  color: Color(0xFF6E4A00),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _datingBasisLabel(String? basis) {
+    switch (basis?.toUpperCase()) {
+      case 'LMP':
+        return 'LMP';
+      case 'EDD':
+        return 'EDD';
+      default:
+        return basis ?? 'Chưa có';
+    }
   }
 
   Widget _buildMetricButtons() {
@@ -2343,6 +2420,7 @@ class _BabyPickerTile extends StatelessWidget {
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({
+    super.key,
     required this.icon,
     required this.label,
     required this.value,

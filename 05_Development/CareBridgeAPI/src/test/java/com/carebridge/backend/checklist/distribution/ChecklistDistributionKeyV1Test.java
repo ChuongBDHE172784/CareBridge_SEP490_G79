@@ -170,4 +170,35 @@ class ChecklistDistributionKeyV1Test {
                 "2026-07-30"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void pregnancyDatingRevisionIsPartOfProspectiveOccurrenceIdentity() {
+        String revisionOne = factoryInstanceKey(1L);
+        String revisionTwo = factoryInstanceKey(2L);
+
+        assertThat(revisionOne).isNotEqualTo(revisionTwo);
+        assertThatThrownBy(() -> com.carebridge.backend.checklist.key.ChecklistDistributionKeyFactory.instanceKey(
+                ChecklistDistributionTestFactory.TEMPLATE_VERSION_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                "MOTHER",
+                null,
+                "JOURNEY",
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                "NONE",
+                "NONE",
+                0L)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static String factoryInstanceKey(Long revision) {
+        return com.carebridge.backend.checklist.key.ChecklistDistributionKeyFactory.instanceKey(
+                ChecklistDistributionTestFactory.TEMPLATE_VERSION_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                "MOTHER",
+                null,
+                "JOURNEY",
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                "NONE",
+                "NONE",
+                revision);
+    }
 }

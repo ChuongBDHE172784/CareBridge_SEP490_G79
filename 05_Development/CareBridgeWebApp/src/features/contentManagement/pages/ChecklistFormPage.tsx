@@ -25,8 +25,8 @@ interface ItemRow {
   id?: string;
   itemText: string;
   description: string;
-  isRequired: boolean;
-  targetSubject: ChecklistTargetSubject;
+  isRequired: boolean | null;
+  targetSubject: ChecklistTargetSubject | null;
   supportFunction: ChecklistSupportFunction | '';
 }
 
@@ -44,14 +44,15 @@ const SUBSTAGE_OPTIONS: Partial<Record<ContentStage, ChecklistSubstage[]>> = {
 };
 
 const AUTHORABLE_STAGES: readonly ContentStage[] = STAGE_OPTIONS.map(({ value }) => value);
+const DEFAULT_CHECKLIST_CONTRACT_VERSION = 2;
 
-function newRow(): ItemRow {
+function newRow(targetless = false): ItemRow {
   return {
     key: crypto.randomUUID(),
     itemText: '',
     description: '',
-    isRequired: true,
-    targetSubject: 'MOTHER',
+    isRequired: targetless ? null : true,
+    targetSubject: targetless ? null : 'MOTHER',
     supportFunction: '',
   };
 }
@@ -64,11 +65,19 @@ export default function ChecklistFormPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [templateType, setTemplateType] = useState<ChecklistTemplateType>('MANDATORY');
+  // New recommendation content uses the targetless V2 contract by default.
+  // Existing drafts are normalized to their persisted contract on load so the
+  // legacy V1 compatibility surface remains available without ambiguity.
+  const [checklistContractVersion, setChecklistContractVersion] = useState<number>(
+    isEdit ? 1 : DEFAULT_CHECKLIST_CONTRACT_VERSION,
+  );
   const [recipientRoles, setRecipientRoles] = useState<ChecklistRecipientRole[]>(['MOTHER']);
   const [stage, setStage] = useState<ContentStage | ''>('');
   const [substage, setSubstage] = useState<ChecklistSubstage | null>(null);
   const [displayOrder, setDisplayOrder] = useState(0);
-  const [items, setItems] = useState<ItemRow[]>([newRow()]);
+  const [items, setItems] = useState<ItemRow[]>([
+    newRow(DEFAULT_CHECKLIST_CONTRACT_VERSION === 2),
+  ]);
   const [status, setStatus] = useState<ChecklistTemplateStatus>('DRAFT');
   const [isLoading, setIsLoading] = useState(isEdit);
   const [loadError, setLoadError] = useState('');
@@ -86,6 +95,8 @@ export default function ChecklistFormPage() {
       setName(data.name);
       setDescription(data.description ?? '');
       setTemplateType(data.templateType ?? 'MANDATORY');
+      const loadedContractVersion = data.checklistContractVersion === 2 ? 2 : 1;
+      setChecklistContractVersion(loadedContractVersion);
       const loadedRoles = data.recipientRoles ?? ['MOTHER'];
       const hasMotherRecipient = loadedRoles.includes('MOTHER');
       setRecipientRoles(loadedRoles);
@@ -103,11 +114,11 @@ export default function ChecklistFormPage() {
             id: item.id,
             itemText: item.itemText,
             description: item.description ?? '',
-            isRequired: item.isRequired,
-            targetSubject: item.targetSubject ?? 'MOTHER',
+            isRequired: loadedContractVersion === 2 ? null : (item.isRequired ?? true),
+            targetSubject: loadedContractVersion === 2 ? null : (item.targetSubject ?? 'MOTHER'),
             supportFunction: item.supportFunction ?? '',
           }))
-        : [newRow()]);
+        : [newRow(loadedContractVersion === 2)]);
     } catch {
       setLoadError('Không thể tải checklist để chỉnh sửa. Vui lòng thử lại hoặc kiểm tra quyền Content Admin.');
     } finally {
@@ -120,6 +131,7 @@ export default function ChecklistFormPage() {
   }, [isEdit, loadDetail]);
 
   const hasMotherRecipient = recipientRoles.includes('MOTHER');
+  const isTargetlessV2 = checklistContractVersion === 2;
   const sequenceEligible = templateType === 'MANDATORY'
     && recipientRoles.length === 1
     && recipientRoles[0] === 'MOTHER'
@@ -133,7 +145,9 @@ export default function ChecklistFormPage() {
     && recipientRoles.length > 0
     && (!hasMotherRecipient || (stage !== ''
       && (stage === 'PRE_PREGNANCY' || (substage !== null && substage.anchor !== 'NONE'))))
-    && items.filter((row) => row.itemText.trim()).every((row) => Boolean(row.targetSubject))
+    && items.filter((row) => row.itemText.trim()).every((row) => isTargetlessV2
+      ? row.targetSubject == null && row.isRequired == null
+      : row.targetSubject != null && row.isRequired != null)
     && (!sequenceEligible || (Number.isInteger(displayOrder) && displayOrder >= 0));
 
   const toggleRole = (role: ChecklistRecipientRole) => {
@@ -163,6 +177,18 @@ export default function ChecklistFormPage() {
     setItems((previous) => previous.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   };
 
+  const updateContractVersion = (value: string) => {
+    const nextVersion = value === '2' ? 2 : 1;
+    setChecklistContractVersion(nextVersion);
+    setItems((previous) => previous.map((row) => nextVersion === 2
+      ? { ...row, targetSubject: null, isRequired: null }
+      : {
+          ...row,
+          targetSubject: row.targetSubject ?? 'MOTHER',
+          isRequired: row.isRequired ?? true,
+        }));
+  };
+
   const buildItemsPayload = () => items
     .filter((row) => row.itemText.trim())
     .map((row, index) => {
@@ -171,8 +197,10 @@ export default function ChecklistFormPage() {
         ...(row.id ? { id: row.id } : {}),
         itemText: row.itemText.trim(),
         order: index + 1,
-        isRequired: row.isRequired,
-        targetSubject: row.targetSubject,
+        ...(isTargetlessV2 ? {} : {
+          isRequired: row.isRequired,
+          targetSubject: row.targetSubject,
+        }),
         ...(description ? { description } : {}),
         ...(row.supportFunction ? { supportFunction: row.supportFunction } : {}),
       };
@@ -189,6 +217,7 @@ export default function ChecklistFormPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         templateType,
+        checklistContractVersion,
         recipientRoles,
         stage: normalizedStage,
         substage: normalizedSubstage,
@@ -243,7 +272,16 @@ export default function ChecklistFormPage() {
             <h1 className="m-0 text-[26px] font-bold text-on-surface">{isEdit ? 'Chỉnh sửa Checklist' : 'Tạo Checklist mới'}</h1>
             {isEdit && versionNo !== null && <span className="inline-flex items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary">Version v{versionNo}</span>}
           </div>
-          <p className="mt-1 text-sm text-on-surface-variant">Thiết lập đúng người nhận, giai đoạn và đối tượng cho từng mục.</p>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            {isTargetlessV2
+              ? 'Checklist V2 chỉ lưu nội dung khuyến nghị; mục không có target hoặc trạng thái bắt buộc.'
+              : 'Thiết lập đúng người nhận, giai đoạn và đối tượng cho từng mục.'}
+          </p>
+          {isTargetlessV2 && (
+            <span role="status" className="mt-2 inline-flex rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary">
+              Hợp đồng V2 · Targetless recommendation
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-3">
           <button aria-label="Save draft" type="button" onClick={() => void submit('DRAFT')} disabled={!isValid || isImmutable || submitting !== null} className="inline-flex items-center gap-2 py-2.5 px-6 rounded-full border border-outline-variant bg-surface text-on-surface text-sm font-semibold hover:bg-surface-container-low cursor-pointer disabled:opacity-40">
@@ -281,6 +319,40 @@ export default function ChecklistFormPage() {
                 <input aria-label="Optional checklist" type="radio" name="templateType" value="OPTIONAL" disabled={isImmutable} checked={templateType === 'OPTIONAL'} onChange={() => setTemplateType('OPTIONAL')} className="mr-2 accent-primary" />
                 <span className="font-semibold text-on-surface">Không bắt buộc</span>
                 <p className="mt-1 text-xs text-on-surface-variant">Người dùng tự thêm từ tab Checklist trong “Nội dung & FAQ”.</p>
+              </label>
+            </div>
+          </section>
+
+          <section aria-label="Checklist contract" className={card}>
+            <div className="mb-5 flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Hợp đồng checklist</h2></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={`cursor-pointer rounded-2xl border p-4 ${isTargetlessV2 ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
+                <input
+                  aria-label="Recommendation-only V2 contract"
+                  type="radio"
+                  name="checklistContractVersion"
+                  value="2"
+                  disabled={isImmutable}
+                  checked={isTargetlessV2}
+                  onChange={(event) => updateContractVersion(event.target.value)}
+                  className="mr-2 accent-primary"
+                />
+                <span className="font-semibold text-on-surface">V2 · Khuyến nghị</span>
+                <p className="mt-1 text-xs text-on-surface-variant">Không chọn đối tượng hoặc trạng thái bắt buộc cho từng mục.</p>
+              </label>
+              <label className={`cursor-pointer rounded-2xl border p-4 ${!isTargetlessV2 ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
+                <input
+                  aria-label="Legacy V1 target-bearing contract"
+                  type="radio"
+                  name="checklistContractVersion"
+                  value="1"
+                  disabled={isImmutable}
+                  checked={!isTargetlessV2}
+                  onChange={(event) => updateContractVersion(event.target.value)}
+                  className="mr-2 accent-primary"
+                />
+                <span className="font-semibold text-on-surface">V1 · Tương thích</span>
+                <p className="mt-1 text-xs text-on-surface-variant">Giữ các trường target và bắt buộc cho nội dung cũ.</p>
               </label>
             </div>
           </section>
@@ -352,13 +424,15 @@ export default function ChecklistFormPage() {
           <section className={card}>
             <div className="mb-5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Danh sách mục</h2></div>
-              <button type="button" disabled={isImmutable} onClick={() => setItems((previous) => [...previous, newRow()])} className="inline-flex items-center gap-1.5 py-2 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-primary hover:bg-surface-container-low cursor-pointer disabled:opacity-40"><Plus size={16} /> Thêm mục</button>
+              <button type="button" disabled={isImmutable} onClick={() => setItems((previous) => [...previous, newRow(isTargetlessV2)])} className="inline-flex items-center gap-1.5 py-2 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-primary hover:bg-surface-container-low cursor-pointer disabled:opacity-40"><Plus size={16} /> Thêm mục</button>
             </div>
             <div className="grid gap-4">
               {items.map((row, index) => (
                 <div key={row.key} className="grid gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4 md:grid-cols-[minmax(0,1fr)_160px_auto] md:items-end">
                   <label className="grid gap-2 text-sm font-semibold text-on-surface">Mục {index + 1}<input aria-label={`Item ${index + 1} text`} disabled={isImmutable} value={row.itemText} onChange={(event) => updateItem(row.key, { itemText: event.target.value })} className={field} /></label>
-                  <label className="grid gap-2 text-sm font-semibold text-on-surface">Đối tượng<select aria-label={`Item ${index + 1} target`} disabled={isImmutable} value={row.targetSubject} onChange={(event) => updateItem(row.key, { targetSubject: event.target.value as ChecklistTargetSubject })} className={field}><option value="MOTHER">Mẹ</option><option value="BABY">Em bé</option></select></label>
+                  {!isTargetlessV2 && (
+                    <label className="grid gap-2 text-sm font-semibold text-on-surface">Đối tượng<select aria-label={`Item ${index + 1} target`} disabled={isImmutable} value={row.targetSubject ?? 'MOTHER'} onChange={(event) => updateItem(row.key, { targetSubject: event.target.value as ChecklistTargetSubject })} className={field}><option value="MOTHER">Mẹ</option><option value="BABY">Em bé</option></select></label>
+                  )}
                   <button aria-label={`Delete item ${index + 1}`} type="button" disabled={isImmutable || items.length === 1} onClick={() => setItems((previous) => previous.filter((item) => item.key !== row.key))} className="flex h-10 w-10 items-center justify-center rounded-xl border border-error-container text-error hover:bg-error-container/20 cursor-pointer disabled:opacity-30 self-end mb-0.5"><Trash2 size={18} /></button>
                   <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-3">Nội dung chi tiết
                     <textarea aria-label={`Nội dung chi tiết mục ${index + 1}`} disabled={isImmutable} value={row.description} onChange={(event) => updateItem(row.key, { description: event.target.value })} rows={3} className={`${field} py-3`} />
@@ -369,7 +443,9 @@ export default function ChecklistFormPage() {
                       {CHECKLIST_SUPPORT_FUNCTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
-                  <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-3"><input type="checkbox" disabled={isImmutable} checked={row.isRequired} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
+                  {!isTargetlessV2 && (
+                    <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-3"><input type="checkbox" disabled={isImmutable} checked={Boolean(row.isRequired)} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
+                  )}
                 </div>
               ))}
             </div>

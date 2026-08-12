@@ -57,8 +57,8 @@ describe('expert registration validation errors', () => {
     fireEvent.change(screen.getByLabelText('Email *'), {
       target: { value: 'expert@example.com' },
     });
-    fireEvent.change(screen.getByLabelText('Số điện thoại'), {
-      target: { value: '091234564287' },
+    fireEvent.change(screen.getByLabelText('Số điện thoại *'), {
+      target: { value: '+84912345678' },
     });
     fireEvent.change(screen.getByLabelText('Mật khẩu *'), {
       target: { value: 'Password1' },
@@ -77,7 +77,7 @@ describe('expert registration validation errors', () => {
     expect(screen.queryByText('Invalid request')).toBeNull();
 
     fireEvent.change(phoneInput!, {
-      target: { value: '0912345678' },
+      target: { value: '+84912345679' },
     });
     await waitFor(() => {
       expect(screen.queryByText('Invalid Vietnamese phone number')).toBeNull();

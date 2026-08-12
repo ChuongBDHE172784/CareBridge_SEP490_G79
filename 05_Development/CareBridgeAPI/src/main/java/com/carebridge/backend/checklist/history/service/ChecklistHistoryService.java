@@ -121,8 +121,10 @@ public class ChecklistHistoryService {
             int size) {
         int safePage = Math.max(0, page);
         int safeSize = clampSize(size);
-        LocalDate effectiveDate = LocalDate.ofInstant(clock.instant(), DEFAULT_ZONE);
-        reconciliationService.reconcile(ownerUserId, effectiveDate, DEFAULT_ZONE, UUID.randomUUID());
+        // History is a read projection.  Lifecycle closure and catch-up are
+        // performed by the app-independent repair job (and the outcome event
+        // listener); opening or date-browsing this endpoint must not create or
+        // mutate occurrences as a side effect.
 
         Page<ChecklistInstance> historyPage = instanceRepository.findOwnerHistory(
                 ownerUserId, targetSubject, PageRequest.of(safePage, safeSize));
@@ -146,9 +148,12 @@ public class ChecklistHistoryService {
         }
         int safePage = Math.max(0, page);
         int safeSize = clampSize(size);
-        Page<ChecklistInstance> historyPage = instanceRepository.findSharedHistory(
-                scope.ownerUserId(), scope.linkedJourneyId(), scope.linkedBabyProfileId(),
-                targetSubject, PageRequest.of(safePage, safeSize));
+        // Family History is recipient-owned and epoch-bound.  Do not project
+        // the Mother's historical rows into this scope: a later grant must not
+        // regain access to work created before the member's current VIEW epoch.
+        Page<ChecklistInstance> historyPage = instanceRepository.findFamilyHistory(
+                actorUserId, careGroupId, scope.ownerUserId(), scope.linkedJourneyId(),
+                scope.linkedBabyProfileId(), targetSubject, PageRequest.of(safePage, safeSize));
         CareGroupChecklistScope currentScope = scopeResolver.resolveViewForUpdate(actorUserId, careGroupId);
         if (currentScope == null
                 || !scope.ownerUserId().equals(currentScope.ownerUserId())

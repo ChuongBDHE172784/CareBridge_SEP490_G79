@@ -88,6 +88,12 @@ carebridge:
     connect-timeout-ms: ${EXERCISE_CORRECTION_CONNECT_TIMEOUT_MS:500}
     read-timeout-ms: ${EXERCISE_CORRECTION_READ_TIMEOUT_MS:1200}
   checklist:
+    repair:
+      enabled: ${CAREBRIDGE_CHECKLIST_REPAIR_ENABLED:true}
+      cron: ${CAREBRIDGE_CHECKLIST_REPAIR_CRON:0 */15 * * * *}
+      zone: ${CAREBRIDGE_CHECKLIST_REPAIR_ZONE:Asia/Ho_Chi_Minh}
+      catch-up-weeks: ${CAREBRIDGE_CHECKLIST_REPAIR_CATCH_UP_WEEKS:12}
+      max-journeys-per-run: ${CAREBRIDGE_CHECKLIST_REPAIR_MAX_JOURNEYS_PER_RUN:100}
     outbox-processing-delay-ms: ${CAREBRIDGE_CHECKLIST_OUTBOX_PROCESSING_DELAY_MS:2000}
     e2e:
       attestation-enabled: ${CAREBRIDGE_CHECKLIST_E2E_ATTESTATION_ENABLED:false}
@@ -119,6 +125,8 @@ carebridge:
     federated-enabled: ${AUTH_FEDERATED_ENABLED:true}
   firebase:
     project-id: ${FIREBASE_PROJECT_ID:}
+    auth:
+      enabled: ${CAREBRIDGE_FIREBASE_AUTH_ENABLED:false}
     auth-emulator-enabled: ${CAREBRIDGE_FIREBASE_AUTH_EMULATOR_ENABLED:false}
     auth-emulator-host: ${FIREBASE_AUTH_EMULATOR_HOST:}
     # UC-144D Direct Consult Chat & Call — Cloud Firestore signaling (ADR-DCC-004).

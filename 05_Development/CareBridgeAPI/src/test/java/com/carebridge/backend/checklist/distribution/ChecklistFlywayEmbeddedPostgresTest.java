@@ -1,6 +1,7 @@
 package com.carebridge.backend.checklist.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.carebridge.backend.testsupport.EmbeddedPostgresRoleFixture;
 
@@ -41,6 +42,16 @@ class ChecklistFlywayEmbeddedPostgresTest {
 
             try (Connection connection = postgres.getPostgresDatabase().getConnection();
                  var statement = connection.createStatement()) {
+                try (var currentVersion = statement.executeQuery("""
+                        select version
+                          from public.flyway_schema_history
+                         where success
+                         order by installed_rank desc
+                         limit 1
+                        """)) {
+                    assertThat(currentVersion.next()).isTrue();
+                    assertThat(currentVersion.getString(1)).isEqualTo("20260812130000");
+                }
                 try (var version = statement.executeQuery("show server_version")) {
                     assertThat(version.next()).isTrue();
                     assertThat(version.getString(1)).startsWith("18.1");
@@ -66,6 +77,86 @@ class ChecklistFlywayEmbeddedPostgresTest {
                                 .as("retirement catalog assertion %s", column)
                                 .isTrue();
                     }
+                }
+                try (var pregnancy = statement.executeQuery("""
+                        select count(*) filter (where entry_type = 'TEMPLATE_ROOT'
+                                                 and stage = 'PREGNANCY'
+                                                 and checklist_contract_version = 2) as roots,
+                               count(*) filter (where entry_type = 'TEMPLATE_ROOT'
+                                                  and stage = 'PREGNANCY'
+                                                  and checklist_contract_version = 2
+                                                  and target_subject is null
+                                                  and is_required is null) as targetless_roots,
+                               count(*) filter (where entry_type = 'CHECKLIST_ENTRY'
+                                                  and stage = 'PREGNANCY'
+                                                  and checklist_contract_version = 2) as leaves,
+                               count(*) filter (where entry_type = 'CHECKLIST_ENTRY'
+                                                  and stage = 'PREGNANCY'
+                                                  and checklist_contract_version = 2
+                                                  and target_subject is null
+                                                  and is_required is null) as targetless_leaves,
+                               count(*) filter (where entry_type = 'TEMPLATE_ROOT'
+                                                  and stage = 'PREGNANCY'
+                                                  and checklist_contract_version = 2
+                                                  and schedule_type = 'DAILY') as daily_roots,
+                               count(*) filter (where entry_type = 'TEMPLATE_ROOT'
+                                                 and stage = 'PREGNANCY'
+                                                 and checklist_contract_version = 2
+                                                 and content_status = 'DRAFT'
+                                                 and distribution_enabled = false
+                                                 and checklist_metadata_jsonb ->> 'provenanceStatus'
+                                                     = 'PENDING_CLINICAL_COPY_SIGN_OFF') as pending,
+                               min(eligibility_start_inclusive) filter (
+                                   where entry_type = 'TEMPLATE_ROOT'
+                                     and stage = 'PREGNANCY'
+                                     and checklist_contract_version = 2
+                                     and checklist_metadata_jsonb ->> 'plan' = '2') as plan_two_start
+                          from public.care_item_templates
+                        """)) {
+                    assertThat(pregnancy.next()).isTrue();
+                    assertThat(pregnancy.getInt("roots")).isEqualTo(16);
+                    assertThat(pregnancy.getInt("targetless_roots")).isEqualTo(16);
+                    assertThat(pregnancy.getInt("leaves")).isEqualTo(62);
+                    assertThat(pregnancy.getInt("targetless_leaves")).isEqualTo(62);
+                    assertThat(pregnancy.getInt("daily_roots")).isZero();
+                    assertThat(pregnancy.getInt("pending")).isEqualTo(16);
+                    assertThat(pregnancy.getInt("plan_two_start")).isEqualTo(20);
+                }
+                String rootId;
+                try (var root = statement.executeQuery("""
+                        select template_id
+                          from public.care_item_templates
+                         where entry_type = 'TEMPLATE_ROOT'
+                           and stage = 'PREGNANCY'
+                           and checklist_contract_version = 2
+                         order by template_id
+                         limit 1
+                        """)) {
+                    assertThat(root.next()).isTrue();
+                    rootId = root.getString(1);
+                }
+                String rootPredicate = " where template_id = '" + rootId + "'::uuid";
+                statement.executeUpdate(
+                        "update public.care_item_templates "
+                                + "set content_status = 'PENDING_REVIEW', "
+                                + "migration_review_required = false, "
+                                + "migration_reviewed_at = now(), "
+                                + "migration_reviewed_by = '10000000-0000-0000-0000-000000000001'::uuid, "
+                                + "distribution_enabled = false, approved_at = null, approved_by = null"
+                                + rootPredicate);
+                assertThatThrownBy(() -> statement.executeUpdate(
+                        "update public.care_item_templates "
+                                + "set content_status = 'APPROVED', distribution_enabled = true, "
+                                + "approved_at = now(), "
+                                + "approved_by = '10000000-0000-0000-0000-000000000001'::uuid"
+                                + rootPredicate))
+                        .hasMessageContaining("checklist_pregnancy_v2_provenance_activation_ck");
+                try (var stillPending = statement.executeQuery(
+                        "select content_status, distribution_enabled "
+                                + "from public.care_item_templates" + rootPredicate)) {
+                    assertThat(stillPending.next()).isTrue();
+                    assertThat(stillPending.getString("content_status")).isEqualTo("PENDING_REVIEW");
+                    assertThat(stillPending.getBoolean("distribution_enabled")).isFalse();
                 }
             }
         }

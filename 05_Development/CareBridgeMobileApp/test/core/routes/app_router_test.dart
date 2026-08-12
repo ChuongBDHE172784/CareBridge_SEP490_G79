@@ -21,6 +21,18 @@ void main() {
   });
 
   group('expert onboarding redirect', () {
+    test('roleless phone authentication enters role selection', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: '',
+        location: '/auth-landing',
+      );
+
+      expect(redirect, '/role-selection');
+    });
+
     test('authenticated experts enter the onboarding gate after auth', () {
       final redirect = resolveAppRedirect(
         isAuthenticated: true,

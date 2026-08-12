@@ -6,16 +6,18 @@ import '../../../../core/network/api_client.dart';
 import '../services/auth_service.dart';
 
 /// CB-003 — Verify OTP (UC-02)
-/// Shared screen for both login and register flows.
-/// Calls POST /api/v1/auth/verify-otp → stores tokens in AuthState → main.dart routes to MainShell.
+/// Verifies the email OTP issued by the CareBridge registration endpoint.
+/// Firebase SMS verification uses a dedicated phone verification screen.
 class OtpVerificationScreen extends StatefulWidget {
   final String identifier;
   final bool isEmail;
+  final AuthService? authService;
 
   const OtpVerificationScreen({
     super.key,
     required this.identifier,
     required this.isEmail,
+    this.authService,
   });
 
   @override
@@ -48,6 +50,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   String? _errorMessage;
   int _resendCountdown = _resendCooldownSeconds;
   Timer? _countdownTimer;
+
+  AuthService get _service => widget.authService ?? AuthService.instance;
 
   @override
   void initState() {
@@ -129,6 +133,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   Future<void> _verify() async {
+    if (_isLoading) return;
     final otp = _otpValue;
     if (otp.length < _otpLength) {
       setState(() => _errorMessage = 'Vui lòng nhập đủ 6 số.');
@@ -141,15 +146,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     });
 
     try {
-      await AuthService.instance.verifyOtp(
+      await _service.verifyOtp(
         email: widget.isEmail ? widget.identifier : null,
         phone: !widget.isEmail ? widget.identifier : null,
         otp: otp,
+        shouldPersistSession: () => mounted,
       );
       // AuthState.setTokens() calls notifyListeners() → main.dart switches to MainShell
       if (!mounted) return;
       context.go('/auth-landing');
     } on ApiException catch (e) {
+      if (!mounted) return;
       String msg;
       if (e.statusCode == 400) {
         msg = 'Mã xác thực không hợp lệ hoặc đã hết hạn.';
@@ -164,6 +171,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       }
       if (mounted) _focusNodes[0].requestFocus();
     } catch (_) {
+      if (!mounted) return;
       setState(() => _errorMessage = 'Không thể kết nối đến máy chủ.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -174,10 +182,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (_resendCountdown > 0 || _isResending) return;
     setState(() => _isResending = true);
     try {
-      await AuthService.instance.resendOtp(
+      await _service.resendOtp(
         email: widget.isEmail ? widget.identifier : null,
         phone: !widget.isEmail ? widget.identifier : null,
       );
+      if (!mounted) return;
       _startCountdown();
       for (final c in _cellCtrls) {
         c.clear();
@@ -185,6 +194,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (mounted) _focusNodes[0].requestFocus();
       setState(() => _errorMessage = null);
     } catch (_) {
+      if (!mounted) return;
       setState(() => _errorMessage = 'Không thể gửi lại mã. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _isResending = false);

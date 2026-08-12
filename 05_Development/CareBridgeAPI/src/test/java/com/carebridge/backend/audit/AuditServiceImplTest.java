@@ -162,6 +162,18 @@ class AuditServiceImplTest {
     }
 
     @Test
+    void genericChecklistAuditSynthesizesCorrelationForLegacyCallers() {
+        UUID userId = UUID.randomUUID();
+
+        auditService.log(AuditAction.CHECKLIST_TEMPLATE_CREATED, userId,
+                "ChecklistTemplate", UUID.randomUUID().toString(), Map.of("version", 1));
+
+        ArgumentCaptor<AuditLog> captor = forClass(AuditLog.class);
+        verify(auditLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getCorrelationId()).isNotNull();
+    }
+
+    @Test
     void genericLogCannotBypassRequiredAuditValidation() {
         assertThatThrownBy(() -> auditService.log(
                 AuditAction.CARE_TASK_STATUS_UPDATED,

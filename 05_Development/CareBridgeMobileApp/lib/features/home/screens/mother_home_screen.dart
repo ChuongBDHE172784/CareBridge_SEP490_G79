@@ -71,7 +71,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     fontSize: 18,
     fontWeight: FontWeight.w700,
     color: _onSurface,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   );
 
   final _journeyService = JourneyService();
@@ -355,6 +355,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       backgroundColor: _canvas,
       body: RefreshIndicator(
         color: _primaryContainer,
+        backgroundColor: _surface,
         onRefresh: _load,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -374,22 +375,22 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     _buildDashboardLoadingState()
                   else ...[
                     _buildJourneyCard(),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 26),
                     _buildDiscoverSection(),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 26),
                     _buildAlertCard(),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 26),
                     _buildQuickActions(),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 26),
                   ],
                   _buildTasksSection(),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 26),
                   _buildRecommendationSection(),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ]),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 104)),
+            const SliverToBoxAdapter(child: SizedBox(height: 108)),
           ],
         ),
       ),
@@ -409,23 +410,37 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF2EAE4),
-          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFFFBF4EE),
+          borderRadius: BorderRadius.circular(22),
           border: const Border(
-            left: BorderSide(color: Color(0xFFC98C7B), width: 4),
+            left: BorderSide(color: _primaryContainer, width: 4),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: _primary.withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.info_outline_rounded, color: Color(0xFF845143)),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.info_outline_rounded, color: _primary, size: 20),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
                 style: const TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   height: 1.45,
                   color: Color(0xFF5A463F),
@@ -442,39 +457,66 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 10, 16, 0),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
         child: Row(
           children: [
-            AppUserAvatar(
-              avatarUrl: _userAvatarUrl,
-              radius: 22,
-              backgroundColor: _surfaceContainerHigh,
-              border: Border.all(color: _surfaceContainerHighest),
-              onTap: () => context.push('/profile'),
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _primary.withValues(alpha: 0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: AppUserAvatar(
+                avatarUrl: _userAvatarUrl,
+                radius: 23,
+                backgroundColor: _surfaceContainerHigh,
+                border: Border.all(color: _surfaceContainerHighest, width: 1.5),
+                onTap: () => context.push('/profile'),
+              ),
             ),
-            const SizedBox(width: 12),
-            const Expanded(
+            const SizedBox(width: 14),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'CareBridge',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _primary,
-                      letterSpacing: 0.8,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: const BoxDecoration(
+                          color: _primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const Text(
+                        'CareBridge',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _primary,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 2),
-                  Text(
+                  const SizedBox(height: 2),
+                  const Text(
                     'Không gian của mẹ',
                     style: TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       color: _onSurface,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
@@ -483,11 +525,18 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             Stack(
               clipBehavior: Clip.none,
               children: [
-                DecoratedBox(
+                Container(
                   decoration: BoxDecoration(
                     color: _surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _surfaceContainerHighest),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _surfaceContainerHighest.withValues(alpha: 0.9)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primary.withValues(alpha: 0.07),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: IconButton(
                     tooltip: 'Thông báo',
@@ -512,15 +561,15 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                 ),
                 if (_hasUnread)
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 6,
+                    right: 6,
                     child: Container(
-                      width: 9,
-                      height: 9,
+                      width: 10,
+                      height: 10,
                       decoration: BoxDecoration(
                         color: _error,
                         shape: BoxShape.circle,
-                        border: Border.all(color: _surface, width: 1.5),
+                        border: Border.all(color: _surface, width: 2),
                       ),
                     ),
                   ),
@@ -537,12 +586,12 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Chào Mẹ,', style: _sectionTitleStyle),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         const Text(
           'Hôm nay mẹ và bé cảm thấy thế nào?',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 15,
+            fontSize: 14,
             color: _onSurfaceVariant,
             height: 1.4,
           ),
@@ -554,22 +603,29 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   Widget _buildDashboardLoadingState() {
     return Container(
       key: const Key('mother-home-dashboard-loading'),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: _surface,
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: _surfaceContainerHighest),
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SkeletonLine(width: 118, height: 14),
+          _SkeletonLine(width: 120, height: 14),
           SizedBox(height: 16),
-          _SkeletonLine(width: 152, height: 30),
+          _SkeletonLine(width: 160, height: 32),
           SizedBox(height: 12),
           _SkeletonLine(width: double.infinity, height: 14),
           SizedBox(height: 8),
-          _SkeletonLine(width: 210, height: 14),
+          _SkeletonLine(width: 220, height: 14),
           SizedBox(height: 22),
           _SkeletonLine(width: double.infinity, height: 8),
         ],
@@ -584,22 +640,33 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       child: SizedBox.square(
         key: const Key('mother-emergency-map-fab'),
         dimension: 64,
-        child: Material(
-          color: _error,
-          elevation: 6,
-          shadowColor: const Color(0x55000000),
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            key: const Key('mother-emergency-map-action'),
-            customBorder: const CircleBorder(),
-            onTap: () =>
-                context.push('/emergency/map?mode=manual&stage=PREGNANCY'),
-            child: const Center(
-              child: Icon(
-                Icons.local_hospital_outlined,
-                color: Colors.white,
-                size: 30,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: _error.withValues(alpha: 0.38),
+                blurRadius: 18,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: _error,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: const Key('mother-emergency-map-action'),
+              customBorder: const CircleBorder(),
+              onTap: () =>
+                  context.push('/emergency/map?mode=manual&stage=PREGNANCY'),
+              child: const Center(
+                child: Icon(
+                  Icons.local_hospital_outlined,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
             ),
           ),
@@ -676,11 +743,11 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     final progressValue = progress.clamp(0.0, 1.0).toDouble();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      padding: const EdgeInsets.fromLTRB(22, 22, 20, 20),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: _surfaceContainerHighest),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _surfaceContainerHighest.withValues(alpha: 0.8)),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -688,8 +755,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF845143).withAlpha(18),
-            blurRadius: 24,
+            color: _primary.withValues(alpha: 0.10),
+            blurRadius: 26,
             offset: const Offset(0, 10),
           ),
         ],
@@ -701,16 +768,24 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Hành trình thai kỳ',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _primary,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    'Hành trình thai kỳ',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Text(
                   title,
                   style: const TextStyle(
@@ -718,7 +793,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                     color: _onSurface,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.6,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -733,20 +808,22 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     height: 1.45,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Icon(Icons.spa_outlined, size: 17, color: _primary),
+                    const Icon(Icons.spa_outlined, size: 16, color: _primary),
                     const SizedBox(width: 6),
-                    Text(
-                      week != null
-                          ? 'Tiếp tục theo dõi mỗi ngày'
-                          : 'Đang đồng hành cùng mẹ',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: _primary,
+                    Expanded(
+                      child: Text(
+                        week != null
+                            ? 'Tiếp tục theo dõi mỗi ngày'
+                            : 'Đang đồng hành cùng mẹ',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _primary,
+                        ),
                       ),
                     ),
                   ],
@@ -754,7 +831,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Semantics(
             label:
                 'Tiến độ hành trình ${(progressValue * 100).round()} phần trăm',
@@ -768,7 +845,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     dimension: 92,
                     child: CircularProgressIndicator(
                       value: progressValue,
-                      strokeWidth: 9,
+                      strokeWidth: 8.5,
+                      strokeCap: StrokeCap.round,
                       backgroundColor: _surfaceContainerHighest,
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         _primaryContainer,
@@ -782,9 +860,10 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                         '${(progressValue * 100).round()}%',
                         style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 19,
+                          fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: _onSurface,
+                          letterSpacing: -0.5,
                         ),
                       ),
                       const Text(
@@ -792,6 +871,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 11,
+                          fontWeight: FontWeight.w500,
                           color: _onSurfaceVariant,
                         ),
                       ),
@@ -808,11 +888,18 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
 
   Widget _buildNoJourneyCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: _surface,
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: _surfaceContainerHighest),
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -824,7 +911,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
               color: _surfaceContainerHigh,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.route_outlined, color: _primary),
+            child: const Icon(Icons.route_outlined, color: _primary, size: 26),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -857,112 +944,133 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     return Semantics(
       button: true,
       label: 'Lịch hẹn tiếp theo',
-      child: Material(
-        color: _surface,
-        borderRadius: BorderRadius.circular(22),
-        child: InkWell(
-          key: const Key('mother-home-next-appointment-card'),
-          borderRadius: BorderRadius.circular(22),
-          onTap: () async {
-            await context.push('/appointments/calendar');
-            if (mounted) await _load();
-          },
-          child: Ink(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: _surfaceContainerHighest),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _primary.withValues(alpha: 0.07),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: _surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Icon(
-                        Icons.calendar_month_outlined,
-                        color: _primary,
-                        size: 23,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Lịch hẹn tiếp theo',
-                            style: _sectionTitleStyle,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            appointment?.title ??
-                                'Chưa có lịch khám sắp tới (Chạm để xem hoặc tạo mới)',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 13,
-                              color: _onSurfaceVariant,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(
-                      Icons.arrow_outward_rounded,
-                      color: _onSurfaceVariant,
-                      size: 19,
-                    ),
-                  ],
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: _surfaceContainerHighest,
-                  ),
-                ),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.schedule_outlined,
-                      size: 17,
-                      color: _primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        appointment != null
-                            ? [
-                                _formatDateTime(appointment.scheduledAt),
-                                if (appointment.location != null)
-                                  appointment.location!,
-                              ].join(' • ')
-                            : 'Quản lý danh sách lịch hẹn',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          color: _onSurfaceVariant,
+          ],
+        ),
+        child: Material(
+          color: _surface,
+          borderRadius: BorderRadius.circular(24),
+          child: InkWell(
+            key: const Key('mother-home-next-appointment-card'),
+            borderRadius: BorderRadius.circular(24),
+            onTap: () async {
+              await context.push('/appointments/calendar');
+              if (mounted) await _load();
+            },
+            child: Ink(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: _surfaceContainerHighest.withValues(alpha: 0.9)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: _surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _surfaceContainerHighest),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_outlined,
+                          color: _primary,
+                          size: 23,
                         ),
                       ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Lịch hẹn tiếp theo',
+                              style: _sectionTitleStyle,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              appointment?.title ??
+                                  'Chưa có lịch khám sắp tới (Chạm để xem hoặc tạo mới)',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                color: _onSurfaceVariant,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: _surfaceContainerLow,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.arrow_outward_rounded,
+                          color: _primary,
+                          size: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: _surfaceContainerHighest,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule_outlined,
+                        size: 17,
+                        color: _primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          appointment != null
+                              ? [
+                                  _formatDateTime(appointment.scheduledAt),
+                                  if (appointment.location != null)
+                                    appointment.location!,
+                                ].join(' • ')
+                              : 'Quản lý danh sách lịch hẹn',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -975,7 +1083,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Ghi chú nhanh', style: _sectionTitleStyle),
-        const SizedBox(height: 5),
+        const SizedBox(height: 4),
         const Text(
           'Ghi lại những điều quan trọng trong ngày',
           style: TextStyle(
@@ -1155,58 +1263,70 @@ class _QuickAction extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Ghi chú $label',
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          child: Ink(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _MotherHomeScreenState._surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _MotherHomeScreenState._surfaceContainerHighest,
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: _MotherHomeScreenState._primary.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _MotherHomeScreenState._surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 22,
-                    color: _MotherHomeScreenState._primary,
-                  ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Ink(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _MotherHomeScreenState._surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _MotherHomeScreenState._surfaceContainerHighest.withValues(alpha: 0.9),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _MotherHomeScreenState._onSurface,
-                      height: 1.25,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _MotherHomeScreenState._surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 22,
+                      color: _MotherHomeScreenState._primary,
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.add_rounded,
-                  size: 19,
-                  color: _MotherHomeScreenState._primary,
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _MotherHomeScreenState._onSurface,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.add_rounded,
+                    size: 19,
+                    color: _MotherHomeScreenState._primary,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1231,36 +1351,62 @@ class _DiscoveryAction extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            decoration: BoxDecoration(
-              color: _MotherHomeScreenState._surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: _MotherHomeScreenState._primary.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-            child: Column(
-              children: [
-                Icon(icon, color: _MotherHomeScreenState._primary, size: 23),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: _MotherHomeScreenState._onSurfaceVariant,
-                    height: 1.25,
-                  ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+              decoration: BoxDecoration(
+                color: _MotherHomeScreenState._surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _MotherHomeScreenState._surfaceContainerHighest.withValues(alpha: 0.6),
                 ),
-              ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _MotherHomeScreenState._surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      icon,
+                      color: _MotherHomeScreenState._primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _MotherHomeScreenState._onSurfaceVariant,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

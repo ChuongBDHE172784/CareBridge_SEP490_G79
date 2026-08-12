@@ -12,6 +12,7 @@ import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
+import com.carebridge.backend.baby.service.BabyBirthGrowthSynchronizer;
 import com.carebridge.backend.baby.service.IBabyService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.vaccination.service.IVaccinationBookService;
@@ -32,6 +33,7 @@ public class BabyServiceImpl implements IBabyService {
     private final BabyAccessPolicy accessPolicy;
     private final AuditService auditService;
     private final IVaccinationBookService vaccinationBookService;
+    private final BabyBirthGrowthSynchronizer babyBirthGrowthSynchronizer;
 
     @Override
     public CreateBabyProfileResponse createBabyProfile(CreateBabyProfileRequest request, UUID callerId) {
@@ -46,6 +48,11 @@ public class BabyServiceImpl implements IBabyService {
                 .build();
 
         BabyProfile saved = babyRepository.save(profile);
+
+        // Project the optional birth measurements into the canonical Growth history before
+        // any success audit is emitted. The surrounding transaction also covers vaccination
+        // initialization, so a failed projection cannot leave a partial baby profile behind.
+        babyBirthGrowthSynchronizer.synchronize(saved);
 
         // MF-03: a newly registered baby gets the whole expected vaccination book straight
         // away, projected from the catalogue onto the birth date. Same transaction as the

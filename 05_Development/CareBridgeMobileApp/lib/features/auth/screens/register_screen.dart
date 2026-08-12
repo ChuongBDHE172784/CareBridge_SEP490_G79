@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/api_client.dart';
 import '../models/federated_auth_failure.dart';
+import '../models/registration_draft.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_ui.dart';
 import 'login_screen.dart';
-import 'otp_verification_screen.dart';
-import 'role_selection_screen.dart';
+import 'registration_verification_method_screen.dart';
 
 /// CB-002 — Register Account (UC-01)
-/// Collects name, email/phone, password → calls POST /api/v1/auth/register → navigates to OTP screen.
+/// Collects both contacts and account details before the user chooses Email or
+/// Firebase SMS verification on the next screen.
 class RegisterScreen extends StatefulWidget {
   final bool isExpert;
   final Future<void> Function()? onGoogleSignIn;
@@ -29,7 +29,8 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _nameCtrl = TextEditingController();
-  final _identifierCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 
@@ -43,20 +44,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _identifierCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
     super.dispose();
   }
 
-  bool get _isEmailInput => _identifierCtrl.text.contains('@');
+  bool get _hasValidEmail =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailCtrl.text.trim());
 
-  bool get _hasValidEmail => RegExp(
-    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-  ).hasMatch(_identifierCtrl.text.trim());
+  bool get _hasValidPhone =>
+      RegExp(r'^\+84[35789]\d{8}$').hasMatch(_phoneCtrl.text.trim());
 
   bool get _hasMinLength => _passwordCtrl.text.length >= 8;
   bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(_passwordCtrl.text);
+  bool get _hasLowercase => RegExp(r'[a-z]').hasMatch(_passwordCtrl.text);
+  bool get _hasDigit => RegExp(r'\d').hasMatch(_passwordCtrl.text);
   bool get _hasSpecialChar =>
       RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
 
@@ -64,18 +68,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_isLoading) return;
 
     final name = _nameCtrl.text.trim();
-    final identifier = _identifierCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
     final password = _passwordCtrl.text;
     final confirmPassword = _confirmPasswordCtrl.text;
 
-    if (name.isEmpty || identifier.isEmpty || password.isEmpty) {
+    if (name.isEmpty ||
+        email.isEmpty ||
+        phone.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
       setState(() => _errorMessage = 'Vui lòng nhập đầy đủ thông tin.');
       return;
     }
-    if (widget.isExpert && !_hasValidEmail) {
+    if (!_hasValidEmail) {
+      setState(() => _errorMessage = 'Email không đúng định dạng.');
+      return;
+    }
+    if (!_hasValidPhone) {
       setState(
         () => _errorMessage =
-            'Tài khoản chuyên gia cần đăng ký bằng địa chỉ email hợp lệ.',
+            'Số điện thoại cần là số di động Việt Nam dạng +84xxxxxxxxx.',
       );
       return;
     }
@@ -87,7 +100,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _confirmPasswordError = 'Mật khẩu không khớp');
       return;
     }
-    if (!_hasMinLength || !_hasSpecialChar || !_hasUppercase) {
+    if (!_hasMinLength ||
+        !_hasSpecialChar ||
+        !_hasUppercase ||
+        !_hasLowercase ||
+        !_hasDigit) {
       setState(() => _errorMessage = 'Mật khẩu chưa đáp ứng yêu cầu.');
       return;
     }
@@ -102,42 +119,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _confirmPasswordError = null;
     });
 
+    final draft = RegistrationDraft(
+      name: name,
+      email: email,
+      phone: phone,
+      password: password,
+      role: widget.isExpert ? 'EXPERT' : null,
+    );
+    RegistrationDraftStore.set(draft);
     try {
-      await (widget.authService ?? AuthService.instance).register(
-        name: name,
-        email: _isEmailInput ? identifier : null,
-        phone: !_isEmailInput ? identifier : null,
-        password: password,
-        role: widget.isExpert ? 'EXPERT' : null,
-      );
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OtpVerificationScreen(
-            identifier: identifier,
-            isEmail: _isEmailInput,
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => RegistrationVerificationMethodScreen(
+            authService: widget.authService ?? AuthService.instance,
           ),
         ),
       );
-    } on ApiException catch (e) {
-      String msg;
-      if (e.errorCode == 'AUTH_ACCOUNT_EXISTS' || e.statusCode == 409) {
-        msg = widget.isExpert
-            ? 'Email này đã được đăng ký.'
-            : 'Tài khoản đã tồn tại';
-      } else if (e.statusCode == 400) {
-        msg = 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.';
-      } else {
-        msg = 'Đăng ký thất bại. Vui lòng thử lại sau.';
-      }
-      if (!mounted) return;
-      setState(() => _errorMessage = msg);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _errorMessage = 'Không thể kết nối đến máy chủ.');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -226,10 +227,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 18),
           AuthTextField(
-            controller: _identifierCtrl,
-            label: widget.isExpert ? 'Email' : 'Email hoặc Số điện thoại',
-            hint: widget.isExpert ? 'bacsi@example.com' : '09xx xxx xxx',
+            key: const Key('register-email-field'),
+            controller: _emailCtrl,
+            label: 'Email',
+            hint: widget.isExpert ? 'bacsi@example.com' : 'ban@example.com',
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 18),
+          AuthTextField(
+            key: const Key('register-phone-field'),
+            controller: _phoneCtrl,
+            label: 'Số điện thoại',
+            hint: '+84912345678',
+            keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 18),
@@ -314,6 +325,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _buildCheckItem('Ít nhất 8 ký tự', _hasMinLength),
           const SizedBox(height: 7),
           _buildCheckItem('Chứa chữ cái viết hoa', _hasUppercase),
+          const SizedBox(height: 7),
+          _buildCheckItem('Chứa chữ cái viết thường', _hasLowercase),
+          const SizedBox(height: 7),
+          _buildCheckItem('Chứa ít nhất một chữ số', _hasDigit),
           const SizedBox(height: 7),
           _buildCheckItem(
             'Chứa ký tự đặc biệt (@, #, ký hiệu, ...)',
@@ -419,69 +434,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Future<void> _federatedPhoneRegistration() async {
-    if (_isLoading) return;
-    final phone = _identifierCtrl.text.trim();
-    if (phone.isEmpty) {
-      setState(
-        () =>
-            _errorMessage = 'Enter a phone number including the country code.',
-      );
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      final verificationId = await AuthService.instance.beginPhoneVerification(
-        phone,
-      );
-      if (!mounted) return;
-      final code = await _requestSmsCode();
-      if (code == null || code.isEmpty) return;
-      await AuthService.instance.confirmPhoneVerification(verificationId, code);
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _errorMessage = 'Unable to verify this phone number.');
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<String?> _requestSmsCode() async {
-    final controller = TextEditingController();
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Enter SMS code'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Verify'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    return value;
-  }
-
   Future<void> _federatedGoogleRegistration() async {
     if (_isLoading) return;
     setState(() {
@@ -493,7 +445,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (callback != null) {
         await callback();
       } else {
-        await AuthService.instance.federatedGoogle();
+        await (widget.authService ?? AuthService.instance).federatedGoogle();
       }
       if (mounted) context.go('/auth-landing');
     } on FederatedSignInException catch (error) {
@@ -515,34 +467,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         const AuthDivider(label: 'hoặc đăng ký nhanh'),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _buildFederatedIconButton(
-                key: const Key('federated-google-register'),
-                tooltip: 'Đăng ký với Google',
-                onPressed: _isLoading ? null : _federatedGoogleRegistration,
-                child: const Text(
-                  'G',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AuthPalette.accentDeep,
-                  ),
-                ),
-              ),
+        _buildFederatedIconButton(
+          key: const Key('federated-google-register'),
+          tooltip: 'Đăng ký với Google',
+          onPressed: _isLoading ? null : _federatedGoogleRegistration,
+          child: const Text(
+            'G',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AuthPalette.accentDeep,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildFederatedIconButton(
-                key: const Key('federated-phone-register'),
-                tooltip: 'Đăng ký với số điện thoại',
-                onPressed: _isLoading ? null : _federatedPhoneRegistration,
-                child: const Icon(Icons.phone_rounded, size: 21),
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );

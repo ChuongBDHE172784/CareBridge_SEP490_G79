@@ -28,6 +28,9 @@ import com.carebridge.backend.journey.repository.MotherJourneyTransitionReposito
 import com.carebridge.backend.journey.repository.PregnancyOutcomeEvidenceRepository;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.journey.service.IJourneyOnboardingService;
+import com.carebridge.backend.journey.service.GestationalDatingResolution;
+import com.carebridge.backend.journey.service.GestationalDatingResolver;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.rbac.Role;
 import org.springframework.context.ApplicationEventPublisher;
@@ -70,6 +73,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     private final ApplicationEventPublisher eventPublisher;
     private final IJourneyOnboardingService onboardingService;
     private final Clock clock;
+    private final GestationalDatingResolver datingResolver;
 
     @Autowired
     public JourneyTransitionServiceImpl(
@@ -82,7 +86,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             ApplicationEventPublisher eventPublisher,
             IJourneyOnboardingService onboardingService) {
         this(journeyRepository, transitionRepository, outcomeRepository, userRepository, auditService,
-                transitionPolicy, eventPublisher, onboardingService, Clock.systemUTC());
+                transitionPolicy, eventPublisher, onboardingService, Clock.systemUTC(),
+                new GestationalDatingResolver());
     }
 
     public JourneyTransitionServiceImpl(
@@ -95,7 +100,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             IJourneyOnboardingService onboardingService,
             Clock clock) {
         this(journeyRepository, transitionRepository, null, userRepository, auditService,
-                transitionPolicy, eventPublisher, onboardingService, clock);
+                transitionPolicy, eventPublisher, onboardingService, clock,
+                new GestationalDatingResolver());
     }
 
     public JourneyTransitionServiceImpl(
@@ -108,6 +114,22 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             ApplicationEventPublisher eventPublisher,
             IJourneyOnboardingService onboardingService,
             Clock clock) {
+        this(journeyRepository, transitionRepository, outcomeRepository, userRepository, auditService,
+                transitionPolicy, eventPublisher, onboardingService, clock,
+                new GestationalDatingResolver());
+    }
+
+    public JourneyTransitionServiceImpl(
+            MotherJourneyRepository journeyRepository,
+            MotherJourneyTransitionRepository transitionRepository,
+            PregnancyOutcomeEvidenceRepository outcomeRepository,
+            UserRepository userRepository,
+            AuditService auditService,
+            JourneyTransitionPolicy transitionPolicy,
+            ApplicationEventPublisher eventPublisher,
+            IJourneyOnboardingService onboardingService,
+            Clock clock,
+            GestationalDatingResolver datingResolver) {
         this.journeyRepository = journeyRepository;
         this.transitionRepository = transitionRepository;
         this.outcomeRepository = outcomeRepository;
@@ -117,6 +139,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         this.eventPublisher = eventPublisher;
         this.onboardingService = onboardingService;
         this.clock = clock;
+        this.datingResolver = datingResolver;
     }
 
     @Override
@@ -177,6 +200,9 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
         JourneyType fromStage = current.getJourneyType();
         LocalDate oldDeliveryDate = current.getDeliveryDate();
+        GestationalDatingBasis oldDatingBasis = current.getGestationalDatingBasis();
+        Long oldDatingRevision = current.getGestationalDatingRevision();
+        Instant serverRecordedAt = Instant.now(clock);
         JourneyType targetStage = transitionPolicy.outcomeTargetStage(
                 current.getJourneyType(), request.getOutcomeType(), request.isCorrection());
         boolean transitionsToPostpartum = targetStage == JourneyType.POSTPARTUM
@@ -190,6 +216,14 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             current.setDeliveryDate(request.getOutcomeDate());
         } else {
             current.setDeliveryDate(null);
+        }
+        if (transitionsToPostpartum) {
+            // The current row is no longer pregnancy-eligible after an
+            // authoritative outcome. The immutable transition spine retains
+            // the prior revision for repair/history reconstruction.
+            current.setGestationalDatingBasis(null);
+            current.setGestationalDatingRevision(null);
+            current.setGestationalDatingEffectiveAt(null);
         }
 
         MotherJourney saved;
@@ -239,10 +273,13 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 request.getOutcomeDate());
         addIfChanged(changes, "journeyType", fromStage, saved.getJourneyType());
         addIfChanged(changes, "deliveryDate", oldDeliveryDate, saved.getDeliveryDate());
+        addIfChanged(changes, "gestationalDatingBasis", oldDatingBasis, saved.getGestationalDatingBasis());
+        addIfChanged(changes, "gestationalDatingRevision", oldDatingRevision, saved.getGestationalDatingRevision());
 
         JourneyTransitionType eventType = previous.isPresent()
                 ? JourneyTransitionType.OUTCOME_CORRECTED
                 : JourneyTransitionType.OUTCOME_RECORDED;
+        UUID correlationId = UUID.randomUUID();
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(journeyId)
                 .ownerUserId(ownerId)
@@ -254,6 +291,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .reason(request.getReason().trim())
                 .actorUserId(ownerId)
                 .effectiveAt(request.getEffectiveAt())
+                .recordedAt(serverRecordedAt)
+                .correlationId(correlationId)
                 .journeyVersion(saved.getVersion())
                 .build();
         transition = transitionRepository.saveAndFlush(transition);
@@ -275,8 +314,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 saved.getJourneyType(),
                 saved.getStatus(),
                 saved.getVersion(),
-                Instant.now(clock),
-                UUID.randomUUID()));
+                serverRecordedAt,
+                transition.getCorrelationId()));
         return toOutcomeResponse(evidence, saved, transition.getId());
     }
 
@@ -295,18 +334,25 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
         onboardingService.ensureEligible(callerId);
 
+        int contractVersion = contractVersion(request.getChecklistContractVersion());
+        LocalDate serverToday = LocalDate.now(clock.withZone(CAREBRIDGE_BUSINESS_ZONE));
+        GestationalDatingResolution dating = datingResolver.resolveCreate(
+                request, contractVersion, serverToday);
+        // Resolve stage applicability before postpartum provenance validation so
+        // date-bearing non-pregnancy requests fail with the dating contract code.
         validateDirectPostpartumCreate(request);
         transitionPolicy.validateCreate(request);
-        Instant effectiveAt = effectiveAtOrNow(request.getEffectiveAt());
+        Instant requestEffectiveAt = effectiveAtOrNow(request.getEffectiveAt());
+        Instant recordedAt = Instant.now(clock);
+        Instant datingEffectiveAt = dating.resolved() ? recordedAt : null;
         if (journeyRepository.existsByOwnerUserIdAndStatusAndJourneyTypeIn(
                 callerId, JourneyStatus.ACTIVE, JourneyTransitionPolicy.CANONICAL_STAGES)) {
             throw canonicalConflict();
         }
 
-        LocalDate estimatedDueDate = request.getEstimatedDueDate();
-        if (request.getLastMenstrualDate() != null && estimatedDueDate == null) {
-            estimatedDueDate = request.getLastMenstrualDate().plusDays(280);
-        }
+        Long datingRevision = dating.resolved()
+                ? nextDatingRevision(null)
+                : null;
 
         UUID careSubjectId = ensureMotherCareSubject(callerId);
         MotherJourney current = MotherJourney.builder()
@@ -314,12 +360,15 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .careSubjectId(careSubjectId)
                 .journeyType(request.getJourneyType())
                 .startDate(request.getStartDate())
-                .lastMenstrualDate(request.getLastMenstrualDate())
-                .estimatedDueDate(estimatedDueDate)
+                .lastMenstrualDate(dating.lastMenstrualDate())
+                .estimatedDueDate(dating.estimatedDueDate())
                 .notes(request.getNotes())
                 .status(JourneyStatus.ACTIVE)
                 .dateSource(request.getDateSource())
                 .dateConfidence(request.getDateConfidence())
+                .gestationalDatingBasis(dating.basis())
+                .gestationalDatingRevision(datingRevision)
+                .gestationalDatingEffectiveAt(datingEffectiveAt)
                 .build();
 
         MotherJourney saved;
@@ -338,8 +387,11 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         addChange(changes, "startDate", null, saved.getStartDate());
         addChange(changes, "lastMenstrualDate", null, saved.getLastMenstrualDate());
         addChange(changes, "estimatedDueDate", null, saved.getEstimatedDueDate());
+        addChange(changes, "gestationalDatingBasis", null, saved.getGestationalDatingBasis());
+        addChange(changes, "canonicalLmp", null, dating.canonicalLmp());
         addChange(changes, "status", null, saved.getStatus());
 
+        UUID correlationId = UUID.randomUUID();
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(saved.getId())
                 .ownerUserId(callerId)
@@ -348,9 +400,17 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .changes(changes)
                 .source(sourceOrUnknown(request.getDateSource()))
                 .confidence(request.getDateConfidence())
-                .reason(request.getChangeReason())
+                .reason(dating.resolved()
+                        ? "GESTATIONAL_DATING_INITIALIZED"
+                        : request.getChangeReason())
                 .actorUserId(callerId)
-                .effectiveAt(effectiveAt)
+                .effectiveAt(dating.resolved() ? datingEffectiveAt : requestEffectiveAt)
+                .recordedAt(recordedAt)
+                .correlationId(correlationId)
+                .gestationalDatingBasis(dating.basis())
+                .gestationalDatingRevision(datingRevision)
+                .canonicalLmp(dating.canonicalLmp())
+                .inferredSource(false)
                 .journeyVersion(saved.getVersion())
                 .build();
         transitionRepository.saveAndFlush(transition);
@@ -368,8 +428,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 saved.getJourneyType(),
                 saved.getStatus(),
                 saved.getVersion(),
-                Instant.now(clock),
-                UUID.randomUUID()));
+                recordedAt,
+                correlationId));
         return toCreateResponse(saved);
     }
 
@@ -427,19 +487,6 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                     "JOURNEY-014",
                     "Status ARCHIVED can only be set by the system");
         }
-        if ("COMPLETED".equalsIgnoreCase(request.getStatus())
-                && request.getDeliveryDate() == null
-                && current.getDeliveryDate() == null
-                && (current.getPregnancyOutcome() == null
-                        || current.getPregnancyOutcome() == PregnancyOutcomeType.LIVE_BIRTH)) {
-            throw new BusinessException(
-                    HttpStatus.BAD_REQUEST,
-                    "JOURNEY-013",
-                    "deliveryDate is required when completing a journey");
-        }
-        transitionPolicy.validateUpdate(current.getJourneyType(), request);
-        Instant effectiveAt = effectiveAtOrNow(request.getEffectiveAt());
-
         JourneyType fromStage = current.getJourneyType();
         JourneyStatus fromStatus = current.getStatus();
         LocalDate oldLmp = current.getLastMenstrualDate();
@@ -450,13 +497,73 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         String oldNotes = current.getNotes();
         JourneyDateSource oldSource = current.getDateSource();
         JourneyDateConfidence oldConfidence = current.getDateConfidence();
-        boolean startsNewPregnancyEpoch = fromStage == JourneyType.POSTPARTUM
+        GestationalDatingBasis oldDatingBasis = current.getGestationalDatingBasis();
+        Long oldDatingRevision = current.getGestationalDatingRevision();
+        Instant oldDatingEffectiveAt = current.getGestationalDatingEffectiveAt();
+        LocalDate oldCanonicalLmp = GestationalDatingResolver.canonicalLmp(
+                oldDatingBasis, oldLmp, oldEdd);
+        boolean enteringPregnancyEpoch = fromStage != JourneyType.PREGNANCY
                 && request.getJourneyType() == JourneyType.PREGNANCY;
-        if (startsNewPregnancyEpoch && "COMPLETED".equalsIgnoreCase(request.getStatus())) {
+        boolean completingPregnancy = fromStage == JourneyType.PREGNANCY
+                && "COMPLETED".equalsIgnoreCase(request.getStatus());
+        if (enteringPregnancyEpoch && "COMPLETED".equalsIgnoreCase(request.getStatus())) {
             throw new BusinessException(
                     HttpStatus.BAD_REQUEST,
                     "JOURNEY_NEW_EPOCH_MUST_REMAIN_ACTIVE",
                     "A new pregnancy epoch must remain active");
+        }
+
+        int contractVersion = contractVersion(request.getChecklistContractVersion());
+        LocalDate serverToday = LocalDate.now(clock.withZone(CAREBRIDGE_BUSINESS_ZONE));
+        GestationalDatingResolution dating = datingResolver.resolveUpdate(
+                current,
+                request,
+                contractVersion,
+                serverToday,
+                enteringPregnancyEpoch
+                        || (fromStage != JourneyType.PREGNANCY
+                        && request.getJourneyType() == JourneyType.PREGNANCY));
+        transitionPolicy.validateUpdate(current.getJourneyType(), request);
+        if ("COMPLETED".equalsIgnoreCase(request.getStatus())
+                && request.getDeliveryDate() == null
+                && current.getDeliveryDate() == null
+                && (current.getPregnancyOutcome() == null
+                        || current.getPregnancyOutcome() == PregnancyOutcomeType.LIVE_BIRTH)) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "JOURNEY-013",
+                    "deliveryDate is required when completing a journey");
+        }
+        boolean datingAuthorityChanged = dating.datingScope()
+                && (enteringPregnancyEpoch
+                || !dating.semanticNoOp()
+                || current.getGestationalDatingBasis() == null && dating.resolved());
+        Long datingRevision = dating.resolved()
+                ? (datingAuthorityChanged
+                ? nextDatingRevision(current.getId())
+                : current.getGestationalDatingRevision())
+                : null;
+        Instant requestEffectiveAt = effectiveAtOrNow(request.getEffectiveAt());
+        Instant recordedAt = Instant.now(clock);
+        Instant datingEffectiveAt = datingAuthorityChanged ? recordedAt : null;
+
+        // An unchanged canonical anchor is an idempotent authority no-op.  It
+        // must not consume a Journey version or append an audit transition.
+        boolean onlyAuthorityNoOp = dating.semanticNoOp()
+                && (request.getJourneyType() == null
+                || request.getJourneyType() == current.getJourneyType())
+                && (request.getNotes() == null
+                || Objects.equals(request.getNotes(), current.getNotes()))
+                && (request.getDeliveryDate() == null
+                || Objects.equals(request.getDeliveryDate(), current.getDeliveryDate()))
+                && request.getStatus() == null
+                && (request.getDateSource() == null
+                || request.getDateSource() == current.getDateSource())
+                && (request.getDateConfidence() == null
+                || request.getDateConfidence() == current.getDateConfidence())
+                && request.getChangeReason() == null;
+        if (onlyAuthorityNoOp) {
+            return toJourneyResponse(current);
         }
 
         if (request.getJourneyType() != null) {
@@ -465,33 +572,50 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         if (request.getNotes() != null) {
             current.setNotes(request.getNotes());
         }
-        if (request.getLastMenstrualDate() != null) {
-            current.setLastMenstrualDate(request.getLastMenstrualDate());
-            current.setEstimatedDueDate(request.getEstimatedDueDate() != null
-                    ? request.getEstimatedDueDate()
-                    : request.getLastMenstrualDate().plusDays(280));
-        } else if (request.getEstimatedDueDate() != null) {
-            current.setEstimatedDueDate(request.getEstimatedDueDate());
-            current.setLastMenstrualDate(null);
+        if (dating.datingScope()) {
+            current.setLastMenstrualDate(dating.lastMenstrualDate());
+            current.setEstimatedDueDate(dating.estimatedDueDate());
+            current.setGestationalDatingBasis(dating.basis());
+            current.setGestationalDatingRevision(datingRevision);
+            current.setGestationalDatingEffectiveAt(datingAuthorityChanged && dating.resolved()
+                    ? datingEffectiveAt
+                    : (dating.resolved() ? oldDatingEffectiveAt : null));
+            current.setGestationalDatingQuarantineReasonCode(null);
         }
         if (request.getDeliveryDate() != null) {
             current.setDeliveryDate(request.getDeliveryDate());
         }
-        if (request.getDateSource() != null) {
-            current.setDateSource(request.getDateSource());
-        }
-        if (request.getDateConfidence() != null) {
-            current.setDateConfidence(request.getDateConfidence());
+        if (enteringPregnancyEpoch) {
+            // Provenance belongs to the pregnancy epoch. A new epoch must not
+            // inherit the prior one; resolved epochs take only the new request
+            // values and unresolved epochs remain provenance-free.
+            current.setDateSource(dating.resolved() ? request.getDateSource() : null);
+            current.setDateConfidence(dating.resolved() ? request.getDateConfidence() : null);
+        } else {
+            if (request.getDateSource() != null) {
+                current.setDateSource(request.getDateSource());
+            }
+            if (request.getDateConfidence() != null) {
+                current.setDateConfidence(request.getDateConfidence());
+            }
         }
         if ("COMPLETED".equalsIgnoreCase(request.getStatus())) {
             current.setStatus(JourneyStatus.COMPLETED);
         }
-        if (startsNewPregnancyEpoch) {
+        if (enteringPregnancyEpoch) {
             // The existing journey remains the canonical identity, while this stage change
             // opens a fresh pregnancy epoch. Historical outcome evidence is append-only.
             current.setPregnancyOutcome(null);
             current.setPregnancyOutcomeDate(null);
             current.setDeliveryDate(null);
+        }
+        if (completingPregnancy) {
+            // COMPLETED is a terminal lifecycle boundary. Keep historical raw
+            // source dates for audit/history, but remove the active authority
+            // so no current Plan/week can be projected after exit.
+            current.setGestationalDatingBasis(null);
+            current.setGestationalDatingRevision(null);
+            current.setGestationalDatingEffectiveAt(null);
         }
 
         boolean notesChanged = !Objects.equals(oldNotes, current.getNotes());
@@ -504,6 +628,9 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 || !Objects.equals(oldPregnancyOutcomeDate, current.getPregnancyOutcomeDate())
                 || !Objects.equals(oldSource, current.getDateSource())
                 || !Objects.equals(oldConfidence, current.getDateConfidence())
+                || !Objects.equals(oldDatingBasis, current.getGestationalDatingBasis())
+                || !Objects.equals(oldDatingRevision, current.getGestationalDatingRevision())
+                || !Objects.equals(oldDatingEffectiveAt, current.getGestationalDatingEffectiveAt())
                 || notesChanged;
         if (!entityChanged) {
             throw new BusinessException(
@@ -523,6 +650,11 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         addIfChanged(changes, "journeyType", fromStage, saved.getJourneyType());
         addIfChanged(changes, "lastMenstrualDate", oldLmp, saved.getLastMenstrualDate());
         addIfChanged(changes, "estimatedDueDate", oldEdd, saved.getEstimatedDueDate());
+        addIfChanged(changes, "gestationalDatingBasis", oldDatingBasis, saved.getGestationalDatingBasis());
+        addIfChanged(changes, "gestationalDatingRevision", oldDatingRevision, saved.getGestationalDatingRevision());
+        if (datingAuthorityChanged) {
+            addIfChanged(changes, "canonicalLmp", oldCanonicalLmp, dating.canonicalLmp());
+        }
         addIfChanged(changes, "deliveryDate", oldDelivery, saved.getDeliveryDate());
         addIfChanged(changes, "pregnancyOutcome", oldPregnancyOutcome, saved.getPregnancyOutcome());
         addIfChanged(
@@ -541,6 +673,17 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 saved.getStatus(),
                 changes,
                 notesChanged);
+        boolean datingCorrection = datingAuthorityChanged
+                && oldDatingBasis != null
+                && dating.resolved()
+                && (!Objects.equals(oldCanonicalLmp, dating.canonicalLmp())
+                || oldDatingBasis != dating.basis());
+        if (enteringPregnancyEpoch) {
+            eventType = JourneyTransitionType.PREGNANCY_EPOCH_STARTED;
+        } else if (datingCorrection) {
+            eventType = JourneyTransitionType.DATING_CORRECTED;
+        }
+        UUID correlationId = UUID.randomUUID();
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(saved.getId())
                 .ownerUserId(ownerId)
@@ -548,7 +691,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .fromStage(fromStage)
                 .toStage(saved.getJourneyType())
                 .changes(changes)
-                .source(startsNewPregnancyEpoch
+                .source(enteringPregnancyEpoch
                         ? JourneyDateSource.SYSTEM_DERIVED
                         : sourceOrUnknown(
                                 request.getDateSource() != null
@@ -558,11 +701,27 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                         request.getDateConfidence() != null
                                 ? request.getDateConfidence()
                                 : saved.getDateConfidence())
-                .reason(startsNewPregnancyEpoch
+                .reason(enteringPregnancyEpoch
+                        ? fromStage == JourneyType.POSTPARTUM
                         ? "POSTPARTUM_NEW_PREGNANCY_EPOCH"
+                        : "PREGNANCY_EPOCH_STARTED"
+                        : datingCorrection
+                        ? "DATING_CORRECTED"
+                        : datingAuthorityChanged
+                        ? "GESTATIONAL_DATING_INITIALIZED"
                         : request.getChangeReason())
                 .actorUserId(ownerId)
-                .effectiveAt(effectiveAt)
+                .effectiveAt(datingAuthorityChanged && dating.resolved()
+                        ? datingEffectiveAt
+                        : enteringPregnancyEpoch ? recordedAt : requestEffectiveAt)
+                .recordedAt(recordedAt)
+                .correlationId(correlationId)
+                .gestationalDatingBasis(datingAuthorityChanged ? dating.basis() : null)
+                .gestationalDatingRevision(datingAuthorityChanged ? datingRevision : null)
+                .canonicalLmp(datingAuthorityChanged ? dating.canonicalLmp() : null)
+                .inferredSource(datingAuthorityChanged ? false : null)
+                .pregnancyEpochStarted(enteringPregnancyEpoch)
+                .supersedesDatingRevision(datingCorrection ? oldDatingRevision : null)
                 .journeyVersion(saved.getVersion())
                 .build();
         transitionRepository.saveAndFlush(transition);
@@ -584,8 +743,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 saved.getJourneyType(),
                 saved.getStatus(),
                 saved.getVersion(),
-                Instant.now(clock),
-                UUID.randomUUID()));
+                recordedAt,
+                correlationId));
         return toJourneyResponse(saved);
     }
 
@@ -609,6 +768,13 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     }
 
     private MotherJourney ownedJourney(UUID ownerId, UUID journeyId) {
+        // Serialize dating/lifecycle mutations on the existing canonical row.
+        // The fallback keeps the read-only Mockito/unit seam and preserves the
+        // indistinguishable 404/403 behavior for an owner mismatch.
+        var locked = journeyRepository.findByIdAndOwnerUserIdForUpdate(journeyId, ownerId);
+        if (locked.isPresent()) {
+            return locked.get();
+        }
         MotherJourney journey = journeyRepository.findById(journeyId)
                 .orElseThrow(() -> new BusinessException(
                         HttpStatus.NOT_FOUND, "JOURNEY-010", "Journey not found: " + journeyId));
@@ -683,6 +849,26 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         return effectiveAt;
     }
 
+    private int contractVersion(Integer requested) {
+        int version = requested == null ? GestationalDatingResolver.V1 : requested;
+        if (version != GestationalDatingResolver.V1
+                && version != GestationalDatingResolver.V2) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "CHECKLIST_CONTRACT_VERSION_UNSUPPORTED",
+                    "Unsupported checklist contract version");
+        }
+        return version;
+    }
+
+    private long nextDatingRevision(UUID journeyId) {
+        if (journeyId == null) {
+            return 1L;
+        }
+        Long maximum = transitionRepository.findMaxGestationalDatingRevision(journeyId);
+        return (maximum == null ? 0L : maximum) + 1L;
+    }
+
     private void validateRequestedStatus(String status) {
         if (status == null
                 || "ACTIVE".equalsIgnoreCase(status)
@@ -701,7 +887,10 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 || field.equals("estimatedDueDate")
                 || field.equals("deliveryDate")
                 || field.equals("dateSource")
-                || field.equals("dateConfidence");
+                || field.equals("dateConfidence")
+                || field.equals("gestationalDatingBasis")
+                || field.equals("gestationalDatingRevision")
+                || field.equals("canonicalLmp");
     }
 
     private java.util.Optional<PregnancyOutcomeEvidence> previousOutcomeInCurrentPregnancyEpoch(
@@ -826,6 +1015,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     }
 
     private CreateJourneyResponse toCreateResponse(MotherJourney journey) {
+        GestationalDatingResolution dating = responseDating(journey);
         return CreateJourneyResponse.builder()
                 .id(journey.getId())
                 .journeyType(journey.getJourneyType().name())
@@ -837,11 +1027,22 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .version(journey.getVersion())
                 .dateSource(journey.getDateSource())
                 .dateConfidence(journey.getDateConfidence())
+                .gestationalDatingBasis(journey.getGestationalDatingBasis())
+                .gestationalDatingRevision(journey.getGestationalDatingRevision())
+                .gestationalDatingEffectiveAt(journey.getGestationalDatingEffectiveAt())
+                .gestationalDatingQuarantineReasonCode(
+                        journey.getGestationalDatingQuarantineReasonCode())
+                .canonicalLmp(dating.canonicalLmp())
+                .completedGestationalWeek(dating.resolved()
+                        ? dating.completedGestationalWeek() : null)
+                .sourceWeekNumber(dating.resolved() ? dating.sourceWeekNumber() : null)
+                .plan(dating.plan())
                 .createdAt(journey.getCreatedAt())
                 .build();
     }
 
     private JourneyResponse toJourneyResponse(MotherJourney journey) {
+        GestationalDatingResolution dating = responseDating(journey);
         return JourneyResponse.builder()
                 .journeyId(journey.getId())
                 .ownerUserId(journey.getOwnerUserId())
@@ -857,9 +1058,48 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .version(journey.getVersion())
                 .dateSource(journey.getDateSource())
                 .dateConfidence(journey.getDateConfidence())
+                .gestationalDatingBasis(journey.getGestationalDatingBasis())
+                .gestationalDatingRevision(journey.getGestationalDatingRevision())
+                .gestationalDatingEffectiveAt(journey.getGestationalDatingEffectiveAt())
+                .gestationalDatingQuarantineReasonCode(
+                        journey.getGestationalDatingQuarantineReasonCode())
+                .canonicalLmp(dating.canonicalLmp())
+                .completedGestationalWeek(dating.resolved()
+                        ? dating.completedGestationalWeek() : null)
+                .sourceWeekNumber(dating.resolved() ? dating.sourceWeekNumber() : null)
+                .plan(dating.plan())
                 .createdAt(journey.getCreatedAt())
                 .updatedAt(journey.getUpdatedAt())
                 .build();
+    }
+
+    private GestationalDatingResolution responseDating(MotherJourney journey) {
+        if (!GestationalDatingResolver.hasResolvedAuthority(journey)) {
+            return GestationalDatingResolution.unresolved(
+                    journey.getLastMenstrualDate(), journey.getEstimatedDueDate(), false);
+        }
+        LocalDate today = LocalDate.now(clock.withZone(CAREBRIDGE_BUSINESS_ZONE));
+        LocalDate canonical = GestationalDatingResolver.canonicalLmp(
+                journey.getGestationalDatingBasis(),
+                journey.getLastMenstrualDate(),
+                journey.getEstimatedDueDate());
+        if (canonical == null || canonical.isAfter(today)) {
+            return GestationalDatingResolution.unresolved(
+                    journey.getLastMenstrualDate(), journey.getEstimatedDueDate(), false);
+        }
+        int completed = GestationalDatingResolver.completedGestationalWeek(canonical, today);
+        int source = GestationalDatingResolver.sourceWeekNumber(completed);
+        return new GestationalDatingResolution(
+                journey.getGestationalDatingBasis(),
+                journey.getLastMenstrualDate(),
+                journey.getEstimatedDueDate(),
+                canonical,
+                true,
+                true,
+                false,
+                completed,
+                source,
+                GestationalDatingResolver.planForSourceWeek(source));
     }
 
     private JourneyTransitionResponse toTransitionResponse(MotherJourneyTransition transition) {
@@ -875,6 +1115,9 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .effectiveAt(transition.getEffectiveAt())
                 .recordedAt(transition.getRecordedAt())
                 .journeyVersion(transition.getJourneyVersion())
+                .gestationalDatingBasis(transition.getGestationalDatingBasis())
+                .gestationalDatingRevision(transition.getGestationalDatingRevision())
+                .canonicalLmp(transition.getCanonicalLmp())
                 .build();
     }
 }

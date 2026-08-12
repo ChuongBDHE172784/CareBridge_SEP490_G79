@@ -226,7 +226,9 @@ class TodayTask {
   String get targetLabel => switch (target) {
     TodayTaskTarget.baby => 'Baby',
     TodayTaskTarget.mother => 'My care',
-    TodayTaskTarget.unknown => 'My care',
+    // V2 checklist tasks intentionally have no target subject.  Keep that
+    // state neutral instead of presenting it as a mother-targeted task.
+    TodayTaskTarget.unknown => isChecklist ? 'Khuyến nghị' : 'My care',
   };
 
   String get statusLabel => switch (taskStatus) {

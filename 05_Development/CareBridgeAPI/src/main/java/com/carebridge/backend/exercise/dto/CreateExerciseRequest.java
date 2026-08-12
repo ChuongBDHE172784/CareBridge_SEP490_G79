@@ -39,5 +39,5 @@ public class CreateExerciseRequest {
     private String safetyWarning;
 
     @NotNull
-    private Boolean supportsPostureAnalysis;
+    private Boolean supportsPostureAnalysis = Boolean.FALSE;
 }

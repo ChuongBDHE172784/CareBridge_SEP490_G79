@@ -45,13 +45,14 @@ public class AdminChecklistTemplateController {
     public ResponseEntity<ApiResponse<Page<AdminChecklistTemplateDetailResponse>>> list(
             @RequestParam(required = false) ChecklistTemplateStatus status,
             @RequestParam(required = false) ContentStage stage,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         if (page < 0 || size < 1 || size > 50) {
             throw ContentException.validationFailed("size", "must be between 1 and 50");
         }
         return ResponseEntity.ok(ApiResponse.success(
-                adminChecklistTemplateService.list(status, stage, PageRequest.of(page, size)),
+                adminChecklistTemplateService.list(status, stage, keyword, PageRequest.of(page, size)),
                 "Checklist template workspace loaded"));
     }
 

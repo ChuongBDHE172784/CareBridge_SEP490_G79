@@ -36,6 +36,16 @@ class JourneyDashboardReconciler {
     required bool pendingSync,
   }) {
     if (fallback == null) return false;
+    // An active pregnancy response is authoritative even when dating is
+    // unresolved or quarantined. Never resurrect a cached source week/Plan
+    // after the server has fail-closed the dating result.
+    if (dashboard.hasActiveJourney &&
+        dashboard.isPregnancy &&
+        (dashboard.datingQuarantineReason != null ||
+            dashboard.sourceWeekNumber == null ||
+            dashboard.plan == null)) {
+      return false;
+    }
     if (pendingSync) {
       if (!dashboard.hasActiveJourney) return true;
       if (dashboard.journeyId == fallback.journeyId &&
@@ -86,8 +96,8 @@ class JourneyService {
     JourneyDashboardCacheWriter? dashboardCacheWriterOverride,
     Future<void> Function()? clearOptimisticDashboardOverride,
     String? Function()? currentUserIdProvider,
-  }) : _apiPost = apiPostOverride ?? apiPost,
-       _apiPut = apiPutOverride ?? apiPut,
+  }) : _apiPost = apiPostOverride ?? _postJourneyV2,
+       _apiPut = apiPutOverride ?? _putJourneyV2,
        _dashboardCacheWriter =
            dashboardCacheWriterOverride ?? _saveOptimisticDashboard,
        _clearOptimisticDashboard =
@@ -109,6 +119,24 @@ class JourneyService {
   static const _optimisticDashboardKeyPrefix =
       'cb_journey_optimistic_dashboard';
   static final ValueNotifier<int> dashboardRevision = ValueNotifier<int>(0);
+
+  static Future<dynamic> _postJourneyV2(
+    String path,
+    Map<String, dynamic> body,
+  ) => apiPost(
+    path,
+    body,
+    extraHeaders: const {'X-Checklist-Contract-Version': '2'},
+  );
+
+  static Future<dynamic> _putJourneyV2(
+    String path,
+    Map<String, dynamic> body,
+  ) => apiPut(
+    path,
+    body,
+    extraHeaders: const {'X-Checklist-Contract-Version': '2'},
+  );
 
   static JourneyDashboard? _optimisticDashboard;
   static String? _optimisticDashboardUserId;
@@ -186,6 +214,12 @@ class JourneyService {
             version: response.version,
             dateSource: response.dateSource ?? request.dateSource,
             dateConfidence: response.dateConfidence ?? request.dateConfidence,
+            datingBasis: response.datingBasis ?? request.datingBasis,
+            canonicalLmp: _parseDate(response.canonicalLmp),
+            completedGestationalWeek: response.completedGestationalWeek,
+            sourceWeekNumber: response.sourceWeekNumber,
+            plan: response.plan,
+            datingQuarantineReason: response.datingQuarantineReason,
           ),
           pendingSync: true,
           expectedUserId: requestUserId,
@@ -335,6 +369,12 @@ class JourneyService {
           startDate: prior?.startDate,
           dateSource: prior?.dateSource,
           dateConfidence: prior?.dateConfidence,
+          datingBasis: prior?.datingBasis,
+          canonicalLmp: prior?.canonicalLmp,
+          completedGestationalWeek: prior?.completedGestationalWeek,
+          sourceWeekNumber: prior?.sourceWeekNumber,
+          plan: prior?.plan,
+          datingQuarantineReason: prior?.datingQuarantineReason,
           pregnancyOutcome: result.outcomeType,
           pregnancyOutcomeDate: result.outcomeDate,
         ),
@@ -398,6 +438,22 @@ class JourneyService {
             dateSource: body?['dateSource'] as String? ?? request.dateSource,
             dateConfidence:
                 body?['dateConfidence'] as String? ?? request.dateConfidence,
+            datingBasis:
+                (body?['datingBasis'] ?? body?['gestationalDatingBasis'])
+                    ?.toString() ??
+                request.datingBasis,
+            canonicalLmp: _parseDate(
+              (body?['canonicalLmp'] ?? body?['canonicalLMP']) as String?,
+            ),
+            completedGestationalWeek:
+                (body?['completedGestationalWeek'] as num?)?.toInt(),
+            sourceWeekNumber: (body?['sourceWeekNumber'] as num?)?.toInt(),
+            plan: (body?['plan'] as num?)?.toInt(),
+            datingQuarantineReason:
+                (body?['datingQuarantineReason'] ??
+                        body?['gestationalDatingQuarantineReasonCode'] ??
+                        body?['gestationalDatingQuarantineReason'])
+                    ?.toString(),
           ),
           pendingSync: true,
           expectedUserId: requestUserId,
@@ -482,19 +538,59 @@ class JourneyService {
       status: useFallbackPregnancyStage
           ? fallback.status
           : dashboard.status ?? fallback.status,
-      pregnancyWeek: dashboard.pregnancyWeek ?? fallback.pregnancyWeek,
-      trimester: dashboard.trimester ?? fallback.trimester,
-      daysUntilDue: dashboard.daysUntilDue ?? fallback.daysUntilDue,
-      estimatedDueDate: preferFallback
-          ? fallback.estimatedDueDate ?? dashboard.estimatedDueDate
-          : dashboard.estimatedDueDate ?? fallback.estimatedDueDate,
-      lastMenstrualDate: preferFallback
-          ? fallback.lastMenstrualDate
-          : dashboard.lastMenstrualDate ?? fallback.lastMenstrualDate,
+      pregnancyWeek: dashboard.hasActiveJourney
+          ? dashboard.pregnancyWeek
+          : dashboard.pregnancyWeek ?? fallback.pregnancyWeek,
+      // Dating metadata is server-owned. For an active journey, preserve
+      // explicit nulls from the response so unresolved/quarantined dating
+      // cannot display a stale cached Plan. A pending no-journey response may
+      // still use the optimistic create result until the next authoritative
+      // dashboard read succeeds.
+      completedGestationalWeek: dashboard.hasActiveJourney
+          ? dashboard.completedGestationalWeek
+          : dashboard.completedGestationalWeek ?? fallback.completedGestationalWeek,
+      sourceWeekNumber: dashboard.hasActiveJourney
+          ? dashboard.sourceWeekNumber
+          : dashboard.sourceWeekNumber ?? fallback.sourceWeekNumber,
+      plan: dashboard.hasActiveJourney
+          ? dashboard.plan
+          : dashboard.plan ?? fallback.plan,
+      trimester: dashboard.hasActiveJourney
+          ? dashboard.trimester
+          : dashboard.trimester ?? fallback.trimester,
+      daysUntilDue: dashboard.hasActiveJourney
+          ? dashboard.daysUntilDue
+          : dashboard.daysUntilDue ?? fallback.daysUntilDue,
+      estimatedDueDate: dashboard.hasActiveJourney
+          ? dashboard.estimatedDueDate
+          : preferFallback
+              ? fallback.estimatedDueDate ?? dashboard.estimatedDueDate
+              : dashboard.estimatedDueDate ?? fallback.estimatedDueDate,
+      lastMenstrualDate: dashboard.hasActiveJourney
+          ? dashboard.lastMenstrualDate
+          : preferFallback
+              ? fallback.lastMenstrualDate
+              : dashboard.lastMenstrualDate ?? fallback.lastMenstrualDate,
       startDate: dashboard.startDate ?? fallback.startDate,
       version: dashboard.version ?? fallback.version,
       dateSource: dashboard.dateSource ?? fallback.dateSource,
       dateConfidence: dashboard.dateConfidence ?? fallback.dateConfidence,
+      datingBasis: dashboard.hasActiveJourney
+          ? dashboard.datingBasis
+          : dashboard.datingBasis ?? fallback.datingBasis,
+      datingQuarantineReason: dashboard.hasActiveJourney
+          ? dashboard.datingQuarantineReason
+          : dashboard.datingQuarantineReason ?? fallback.datingQuarantineReason,
+      canonicalLmp: dashboard.hasActiveJourney
+          ? dashboard.canonicalLmp
+          : dashboard.canonicalLmp ?? fallback.canonicalLmp,
+      gestationalDatingRevision: dashboard.hasActiveJourney
+          ? dashboard.gestationalDatingRevision
+          : dashboard.gestationalDatingRevision ?? fallback.gestationalDatingRevision,
+      gestationalDatingEffectiveAt: dashboard.hasActiveJourney
+          ? dashboard.gestationalDatingEffectiveAt
+          : dashboard.gestationalDatingEffectiveAt ??
+              fallback.gestationalDatingEffectiveAt,
       pregnancyOutcome: dashboard.pregnancyOutcome ?? fallback.pregnancyOutcome,
       pregnancyOutcomeDate:
           dashboard.pregnancyOutcomeDate ?? fallback.pregnancyOutcomeDate,
@@ -521,6 +617,9 @@ class JourneyService {
         'journeyType': dashboard.journeyType,
         'status': dashboard.status,
         'pregnancyWeek': dashboard.pregnancyWeek,
+        'completedGestationalWeek': dashboard.completedGestationalWeek,
+        'sourceWeekNumber': dashboard.sourceWeekNumber,
+        'plan': dashboard.plan,
         'trimester': dashboard.trimester,
         'daysUntilDue': dashboard.daysUntilDue,
         'estimatedDueDate': _formatDate(dashboard.estimatedDueDate),
@@ -529,6 +628,12 @@ class JourneyService {
         'version': dashboard.version,
         'dateSource': dashboard.dateSource,
         'dateConfidence': dashboard.dateConfidence,
+        'datingBasis': dashboard.datingBasis,
+        'datingQuarantineReason': dashboard.datingQuarantineReason,
+        'canonicalLmp': _formatDate(dashboard.canonicalLmp),
+        'gestationalDatingRevision': dashboard.gestationalDatingRevision,
+        'gestationalDatingEffectiveAt':
+            dashboard.gestationalDatingEffectiveAt?.toUtc().toIso8601String(),
         'pregnancyOutcome': dashboard.pregnancyOutcome?.apiValue,
         'pregnancyOutcomeDate': _formatDate(dashboard.pregnancyOutcomeDate),
         'pendingSync': pendingSync,
@@ -559,6 +664,10 @@ class JourneyService {
         journeyType: data['journeyType'] as String?,
         status: data['status'] as String?,
         pregnancyWeek: (data['pregnancyWeek'] as num?)?.toInt(),
+        completedGestationalWeek:
+            (data['completedGestationalWeek'] as num?)?.toInt(),
+        sourceWeekNumber: (data['sourceWeekNumber'] as num?)?.toInt(),
+        plan: (data['plan'] as num?)?.toInt(),
         trimester: (data['trimester'] as num?)?.toInt(),
         daysUntilDue: (data['daysUntilDue'] as num?)?.toInt(),
         estimatedDueDate: _parseDate(data['estimatedDueDate'] as String?),
@@ -567,6 +676,13 @@ class JourneyService {
         version: (data['version'] as num?)?.toInt(),
         dateSource: data['dateSource'] as String?,
         dateConfidence: data['dateConfidence'] as String?,
+        datingBasis: data['datingBasis'] as String?,
+        datingQuarantineReason: data['datingQuarantineReason'] as String?,
+        canonicalLmp: _parseDate(data['canonicalLmp'] as String?),
+        gestationalDatingRevision:
+            (data['gestationalDatingRevision'] as num?)?.toInt(),
+        gestationalDatingEffectiveAt:
+            _parseDate(data['gestationalDatingEffectiveAt'] as String?),
         pregnancyOutcome: data['pregnancyOutcome'] == null
             ? null
             : PregnancyOutcome.fromApiValue(data['pregnancyOutcome'] as String),

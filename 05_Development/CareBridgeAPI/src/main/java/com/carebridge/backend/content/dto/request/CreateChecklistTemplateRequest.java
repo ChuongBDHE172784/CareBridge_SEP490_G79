@@ -14,6 +14,8 @@ public record CreateChecklistTemplateRequest(
         @JsonAlias("title") @NotBlank @Size(max = 200) String name,
         @Size(max = 2000) String description,
         ChecklistTemplateType templateType,
+        /** 1 = legacy target-bearing authoring; 2 = recommendation-only targetless authoring. */
+        Short checklistContractVersion,
         Set<ChecklistRecipientRole> recipientRoles,
         ContentStage stage,
         @Valid ChecklistSubstageRequest substage,
@@ -29,7 +31,7 @@ public record CreateChecklistTemplateRequest(
             ContentStage stage,
             ChecklistSubstageRequest substage,
             List<ChecklistItemRequest> items) {
-        this(name, description, ChecklistTemplateType.MANDATORY, recipientRoles, stage, substage, items, 0);
+        this(name, description, ChecklistTemplateType.MANDATORY, null, recipientRoles, stage, substage, items, 0);
     }
 
     /** Legacy constructor retained for existing callers while V2 metadata is adopted. */
@@ -38,10 +40,24 @@ public record CreateChecklistTemplateRequest(
             String description,
             ContentStage stage,
             List<ChecklistItemRequest> items) {
-        this(name, description, ChecklistTemplateType.MANDATORY,
+        this(name, description, ChecklistTemplateType.MANDATORY, null,
                 Set.of(ChecklistRecipientRole.MOTHER), stage, null, items, 0);
     }
 
+    public CreateChecklistTemplateRequest(
+            String name,
+            String description,
+            ChecklistTemplateType templateType,
+            Short checklistContractVersion,
+            Set<ChecklistRecipientRole> recipientRoles,
+            ContentStage stage,
+            ChecklistSubstageRequest substage,
+            List<ChecklistItemRequest> items) {
+        this(name, description, templateType, checklistContractVersion,
+                recipientRoles, stage, substage, items, 0);
+    }
+
+    /** Compatibility constructor retaining the pre-contract-version argument order. */
     public CreateChecklistTemplateRequest(
             String name,
             String description,
@@ -50,6 +66,19 @@ public record CreateChecklistTemplateRequest(
             ContentStage stage,
             ChecklistSubstageRequest substage,
             List<ChecklistItemRequest> items) {
-        this(name, description, templateType, recipientRoles, stage, substage, items, 0);
+        this(name, description, templateType, null, recipientRoles, stage, substage, items, 0);
+    }
+
+    /** Compatibility constructor retaining the pre-contract-version argument order. */
+    public CreateChecklistTemplateRequest(
+            String name,
+            String description,
+            ChecklistTemplateType templateType,
+            Set<ChecklistRecipientRole> recipientRoles,
+            ContentStage stage,
+            ChecklistSubstageRequest substage,
+            List<ChecklistItemRequest> items,
+            Integer displayOrder) {
+        this(name, description, templateType, null, recipientRoles, stage, substage, items, displayOrder);
     }
 }

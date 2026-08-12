@@ -70,6 +70,22 @@ void main() {
     expect(task.targetLabel, 'My care');
   });
 
+  test('uses a neutral label for targetless V2 checklist tasks', () {
+    final task = TodayTask.fromJson({
+      'taskKind': 'CHECKLIST',
+      'taskId': 'v2-targetless-1',
+      'title': 'Duy trì thói quen hằng ngày',
+      'origin': 'USER_CREATED',
+      'targetSubject': null,
+      'status': 'PENDING',
+      'timeBucket': 'TODAY',
+      'allowedActions': ['COMPLETE'],
+    });
+
+    expect(task.target, TodayTaskTarget.unknown);
+    expect(task.targetLabel, 'Khuyến nghị');
+  });
+
   test('parses completed checklist reopen action', () {
     final task = TodayTask.fromJson({
       'taskKind': 'CHECKLIST',
@@ -115,7 +131,7 @@ void main() {
       'APPOINTMENTS': '/appointments/calendar',
       'REMINDERS': '/reminder-schedules',
       'JOURNEY': '/mother-home?tab=1',
-      'BABY_CARE': '/baby-care-hub',
+      'BABY_CARE': '/babies',
       'EXPERT_CONSULTATION': '/experts',
       'CONTENT_LIBRARY': '/content',
       'AI_TRIAGE': '/triage/intake',

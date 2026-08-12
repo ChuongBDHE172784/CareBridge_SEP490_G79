@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -134,7 +135,13 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         if (careGroupId == null) {
             return authorizeForUpdate(actorUserId, task);
         }
-        return authorize(actorUserId, task.taskId(), careGroupId);
+        AuthorizedTask refreshed = authorize(actorUserId, task.taskId(), careGroupId);
+        if (task.authorizationAccessEpoch() != null
+                && !Objects.equals(task.authorizationAccessEpoch(),
+                        refreshed.authorizationAccessEpoch())) {
+            throw notFound();
+        }
+        return refreshed;
     }
 
     private AuthorizedTask authorizeScoped(
@@ -151,10 +158,14 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         if (!permitted) {
             throw notFound();
         }
+        Long authorizationAccessEpoch = careGroupId == null
+                ? null
+                : accessPolicy.currentAccessEpoch(careGroupId, actorUserId);
         Set<TaskAction> actions = EnumSet.noneOf(TaskAction.class);
         if (instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
             return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
-                    ChecklistInstanceStatus.CANCELLED.name(), actions, careGroupId);
+                    ChecklistInstanceStatus.CANCELLED.name(), actions, careGroupId,
+                    authorizationAccessEpoch);
         }
         if (task.getStatus() == ChecklistTaskStatus.PENDING
                 || task.getStatus() == ChecklistTaskStatus.IN_PROGRESS) {
@@ -163,7 +174,7 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
             actions.add(TaskAction.REOPEN);
         }
         return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
-                task.getStatus().name(), actions, careGroupId);
+                task.getStatus().name(), actions, careGroupId, authorizationAccessEpoch);
     }
 
     @Override
@@ -181,6 +192,13 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
                     ? accessPolicy.canComplete(instance, actorUserId)
                     : accessPolicy.canComplete(
                             instance, actorUserId, authorized.authorizationCareGroupId()))) {
+            throw notFound();
+        }
+        if (authorized.authorizationCareGroupId() != null
+                && authorized.authorizationAccessEpoch() != null
+                && !Objects.equals(authorized.authorizationAccessEpoch(),
+                        accessPolicy.currentAccessEpoch(
+                                authorized.authorizationCareGroupId(), actorUserId))) {
             throw notFound();
         }
         String previousStatus = task.getStatus().name();
@@ -275,7 +293,11 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
     }
 
     private boolean isHistoricalOrStale(ChecklistInstance instance) {
-        if (instance.getHistoricalAt() != null) {
+        // CATCH_UP rows are persisted as non-actionable evidence even when a
+        // malformed/legacy row has not yet received its historical timestamp.
+        // Keep the action boundary fail-closed on the durable flag as well as
+        // on the normal History marker.
+        if (instance.getHistoricalAt() != null || Boolean.FALSE.equals(instance.getWasActionable())) {
             return true;
         }
         if (currentScopePolicy == null || !currentScopePolicy.isHistoryManaged(instance)) {

@@ -5,15 +5,19 @@ import '../models/posture_event_model.dart';
 class ExerciseService {
   static final ExerciseService instance = ExerciseService._();
 
-  ExerciseService._() : _post = _defaultPost;
+  ExerciseService._() : _get = _defaultGet, _post = _defaultPost;
 
   /// Test seam for request-contract tests without changing the shared client.
   ExerciseService.forTesting({
-    required Future<dynamic> Function(String path, Map<String, dynamic> body)
-    post,
-  }) : _post = post;
+    Future<dynamic> Function(String path)? get,
+    Future<dynamic> Function(String path, Map<String, dynamic> body)? post,
+  }) : _get = get ?? _defaultGet,
+       _post = post ?? _defaultPost;
 
+  final Future<dynamic> Function(String path) _get;
   final Future<dynamic> Function(String path, Map<String, dynamic> body) _post;
+
+  static Future<dynamic> _defaultGet(String path) => apiGet(path);
 
   static Future<dynamic> _defaultPost(String path, Map<String, dynamic> body) =>
       apiPost(path, body);
@@ -141,12 +145,27 @@ class ExerciseService {
     if (trimesterScope != null && trimesterScope.isNotEmpty) {
       path += '&trimesterScope=$trimesterScope';
     }
-    final res = await apiGet(path);
-    final data = res['data'] as Map<String, dynamic>?;
-    if (data == null) return [];
-    final content = data['content'] as List<dynamic>? ?? [];
-    return content
-        .map((e) => ExerciseHistoryItem.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final response = await _get(path);
+    if (response is! Map<String, dynamic>) {
+      throw const FormatException('Exercise history response is malformed');
+    }
+
+    final data = response['data'];
+    final List<dynamic> content;
+    if (data is List<dynamic>) {
+      content = data;
+    } else if (data is Map<String, dynamic> &&
+        data['content'] is List<dynamic>) {
+      content = data['content'] as List<dynamic>;
+    } else {
+      throw const FormatException('Exercise history data is malformed');
+    }
+
+    return content.map((item) {
+      if (item is! Map<String, dynamic>) {
+        throw const FormatException('Exercise history item is malformed');
+      }
+      return ExerciseHistoryItem.fromJson(item);
+    }).toList();
   }
 }

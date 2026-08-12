@@ -12,6 +12,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +50,14 @@ public class MotherJourneyTransition {
     @Transient private JourneyType fromStage;
     @Transient private JourneyType toStage;
     @Transient private Map<String, Object> changes;
+    @Transient private GestationalDatingBasis gestationalDatingBasis;
+    @Transient private Long gestationalDatingRevision;
+    @Transient private LocalDate canonicalLmp;
+    @Transient private Boolean inferredSource;
+    /** Legacy V1 compatibility object may retain STAGE_CHANGED in memory while
+     * the canonical persisted payload is typed as an epoch event. */
+    @Transient private Boolean pregnancyEpochStarted;
+    @Transient private Long supersedesDatingRevision;
 
     @Builder.Default
     @Column(name = "resource_type", length = 100, updatable = false)
@@ -62,6 +72,9 @@ public class MotherJourneyTransition {
 
     @Column(name = "actor_user_id")
     private UUID actorUserId;
+
+    @Column(name = "correlation_id", updatable = false)
+    private UUID correlationId;
 
     @Column(name = "occurred_at", nullable = false)
     private Instant effectiveAt;
@@ -107,8 +120,11 @@ public class MotherJourneyTransition {
         resourceId = journeyId;
         if (actorUserId == null) actorUserId = ownerUserId;
         if (ownerUserId == null) ownerUserId = actorUserId;
+        if (correlationId == null) correlationId = UUID.randomUUID();
         Map<String, Object> value = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
-        value.put("eventType", eventType == null ? null : eventType.name());
+        value.put("eventType", Boolean.TRUE.equals(pregnancyEpochStarted)
+                ? JourneyTransitionType.PREGNANCY_EPOCH_STARTED.name()
+                : eventType == null ? null : eventType.name());
         value.put("fromStage", fromStage == null ? null : fromStage.name());
         value.put("toStage", toStage == null ? null : toStage.name());
         value.put("changes", changes == null ? Map.of() : changes);
@@ -116,6 +132,19 @@ public class MotherJourneyTransition {
         value.put("source", source == null ? null : source.name());
         value.put("confidence", confidence == null ? null : confidence.name());
         value.put("reason", reason);
+        if (gestationalDatingRevision != null || Boolean.TRUE.equals(pregnancyEpochStarted)) {
+            value.put("gestationalDatingRevision", gestationalDatingRevision);
+            value.put("basis", gestationalDatingBasis == null
+                    ? null : gestationalDatingBasis.name());
+            value.put("canonicalLmp", canonicalLmp == null ? null : canonicalLmp.toString());
+            value.put("effectiveFrom", effectiveAt == null ? null : effectiveAt.toString());
+            if (supersedesDatingRevision != null) {
+                value.put("supersedesDatingRevision", supersedesDatingRevision);
+            }
+        }
+        if (inferredSource != null) value.put("inferredSource", inferredSource);
+        if (recordedAt != null) value.put("recordedAt", recordedAt.toString());
+        value.put("correlationId", correlationId.toString());
         payload = value;
     }
 
@@ -133,11 +162,21 @@ public class MotherJourneyTransition {
         Object changed = payload.get("changes");
         changes = changed instanceof Map<?, ?> map ? new LinkedHashMap<>((Map<String, Object>) map) : new LinkedHashMap<>();
         Object version = payload.get("journeyVersion");
-        if (version instanceof Number number) journeyVersion = number.longValue();
-        else if (version != null) journeyVersion = Long.parseLong(version.toString());
+        journeyVersion = longValue(version);
         source = enumValue(JourneyDateSource.class, payload.get("source"));
         confidence = enumValue(JourneyDateConfidence.class, payload.get("confidence"));
         reason = payload.get("reason") == null ? null : payload.get("reason").toString();
+        Object datingRevision = payload.get("gestationalDatingRevision");
+        gestationalDatingRevision = nullableLongValue(datingRevision);
+        gestationalDatingBasis = enumValue(GestationalDatingBasis.class, payload.get("basis"));
+        Object lmp = payload.get("canonicalLmp");
+        canonicalLmp = localDateValue(lmp);
+        Object inferred = payload.get("inferredSource");
+        inferredSource = inferred == null ? null : Boolean.valueOf(inferred.toString());
+        Object supersedes = payload.get("supersedesDatingRevision");
+        supersedesDatingRevision = nullableLongValue(supersedes);
+        Object correlation = payload.get("correlationId");
+        if (correlationId == null) correlationId = uuidValue(correlation);
         if (eventType == null) eventType = inferMigratedEventType();
     }
 
@@ -148,7 +187,50 @@ public class MotherJourneyTransition {
     }
 
     private <E extends Enum<E>> E enumValue(Class<E> type, Object value) {
-        return value == null || value.toString().isBlank() ? null : Enum.valueOf(type, value.toString());
+        if (value == null || value.toString().isBlank()) return null;
+        try {
+            return Enum.valueOf(type, value.toString());
+        } catch (IllegalArgumentException exception) {
+            // Legacy/migrated payloads are untrusted input.  Keep the event
+            // readable and let callers fail closed on the missing projection.
+            return null;
+        }
+    }
+
+    private long longValue(Object value) {
+        if (value == null) return 0L;
+        try {
+            long parsed = value instanceof Number number
+                    ? number.longValue()
+                    : Long.parseLong(value.toString().trim());
+            return parsed < 0 ? 0L : parsed;
+        } catch (ArithmeticException | NumberFormatException exception) {
+            return 0L;
+        }
+    }
+
+    private Long nullableLongValue(Object value) {
+        if (value == null) return null;
+        long parsed = longValue(value);
+        return parsed == 0L && !"0".equals(value.toString().trim()) ? null : parsed;
+    }
+
+    private LocalDate localDateValue(Object value) {
+        if (value == null || value.toString().isBlank()) return null;
+        try {
+            return LocalDate.parse(value.toString());
+        } catch (DateTimeParseException exception) {
+            return null;
+        }
+    }
+
+    private UUID uuidValue(Object value) {
+        if (value == null || value.toString().isBlank()) return null;
+        try {
+            return UUID.fromString(value.toString());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private JourneyTransitionType inferMigratedEventType() {

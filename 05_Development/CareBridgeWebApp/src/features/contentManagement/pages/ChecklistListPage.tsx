@@ -16,6 +16,7 @@ import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { nextSortDirection, sortRows } from '../utils/tableSorting';
+import { checklistCadenceLabel, checklistWindowLabel } from './checklistApprovalPresentation';
 
 const PAGE_SIZE = 10;
 
@@ -42,13 +43,13 @@ function statusBadgeClass(status: ChecklistTemplateStatus, returned: boolean): s
 type ChecklistListRow = AdminChecklistTemplateDetail & Pick<Partial<AdminChecklistTemplate>, 'itemCount'>;
 
 const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ' : 'Gia đình');
-const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
+const targetLabel = (target: 'MOTHER' | 'BABY' | null | undefined) => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
 const warmBadge = 'inline-flex shrink-0 items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary';
 
 function getChecklistTargetIcon(checklist: {
   name?: string;
   stage?: string | null;
-  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' }>;
+  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' | null }>;
 }): 'child_care' | 'pregnant_woman' {
   const hasBabyItem = checklist.items?.some((i) => i.targetSubject === 'BABY');
   const isBabyStage = checklist.stage === 'BABY_CARE';
@@ -346,7 +347,14 @@ export default function ChecklistListPage() {
                           <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${stageBadgeClass(checklist.stage)}`}>
                             {checklist.stage ? STAGE_LABELS[checklist.stage] : 'Không áp dụng'}
                           </span>
-                          <span className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs text-on-surface-variant font-medium">{checklist.substage?.code ?? 'Không có cửa sổ'}</span>
+                          <span className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs text-on-surface-variant font-medium">
+                            {checklistWindowLabel(checklist)}
+                          </span>
+                          {checklist.planNumber != null && (
+                            <span className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs text-on-surface-variant font-medium">
+                              Plan {checklist.planNumber} · {checklist.section ?? 'chung'} · {checklistCadenceLabel(checklist.scheduleType, checklist.materializationPolicy)}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 px-2">
@@ -356,6 +364,7 @@ export default function ChecklistListPage() {
                         </div>
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {(checklist.items ?? []).slice().sort((a, b) => a.order - b.order).map((item) => (
+                            checklist.checklistContractVersion === 2 ? null : (
                             <span
                               key={item.id}
                               aria-label={`Mục ${item.order}: ${targetLabel(item.targetSubject)}`}
@@ -363,6 +372,7 @@ export default function ChecklistListPage() {
                             >
                               Mục {item.order} · {targetLabel(item.targetSubject)}
                             </span>
+                            )
                           ))}
                         </div>
                       </td>

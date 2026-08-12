@@ -32,27 +32,18 @@ class JourneySetupScreen extends StatefulWidget {
   State<JourneySetupScreen> createState() => _JourneySetupScreenState();
 }
 
-enum _SetupStep {
-  method,
-  lmpDate,
-  conceptionDate,
-  gestationalAge,
-  dueDate,
-  cycleLength,
-  dueDateResult,
-  loading,
-}
+enum _SetupStep { method, lmpDate, dueDate, dueDateResult, loading }
 
-enum _DatingMethod { lmp, conception, gestationalAge, dueDate }
+enum _DatingMethod { lmp, dueDate }
 
 class _JourneySetupScreenState extends State<JourneySetupScreen> {
-  static const _primary = Color(0xFFC98C7B);
-  static const _primaryDark = Color(0xFF845143);
-  static const _canvas = Color(0xFFF6F1EC);
+  static const _primary = Color(0xFF845143);
+  static const _primaryAccent = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFFFF8F6);
   static const _surface = Colors.white;
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF6B5850);
+  static const _borderNormal = Color(0xFFE8DDD6);
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 
@@ -63,12 +54,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   _SetupStep _step = _SetupStep.method;
   _DatingMethod? _selectedMethod;
   DateTime? _lmpDate;
-  DateTime? _conceptionDate;
   DateTime? _dueDate;
-  int _gestationalWeeks = 4;
-  int _gestationalDays = 0;
-  int _cycleLength = 28;
-  bool _cycleUnknown = false;
   bool _loading = false;
   bool _allowRoutePop = false;
   String? _error;
@@ -79,12 +65,21 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     _service = widget.service ?? JourneyService();
   }
 
-  String get _dateSource => _selectedMethod == _DatingMethod.dueDate
-      ? 'CLINICIAN_CONFIRMED'
-      : 'SELF_REPORTED';
+  // The form is completed by the account holder. An EDD entered here is not
+  // evidence of clinician confirmation, so preserve user-reported provenance
+  // until a separately verified clinical source is supplied by the server.
+  String get _dateSource => 'SELF_REPORTED';
 
-  String get _dateConfidence =>
-      _selectedMethod == _DatingMethod.dueDate ? 'CONFIRMED' : 'ESTIMATED';
+  String get _dateConfidence => 'ESTIMATED';
+
+  /// The backend accepts only a server-owned LMP or EDD authority.  Legacy
+  /// wizard methods still calculate an EDD for compatibility, so they map to
+  /// the EDD shape rather than sending a fabricated LMP.
+  String get _datingBasis => switch (_selectedMethod) {
+    _DatingMethod.lmp => 'LMP',
+    _DatingMethod.dueDate => 'EDD',
+    null => '',
+  };
 
   String get _changeReason {
     if (widget.isPrePregnancyTransition) return 'PREGNANCY_CONFIRMED';
@@ -97,23 +92,14 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     return DateTime(now.year, now.month, now.day);
   }
 
-  int get _effectiveCycleLength => _cycleUnknown ? 28 : _cycleLength;
-
-  int get _enteredGestationalAgeDays =>
-      (_gestationalWeeks * 7) + _gestationalDays;
-
   DateTime? get _calculatedDueDate {
     switch (_selectedMethod) {
       case _DatingMethod.lmp:
         final lmp = _lmpDate;
         if (lmp == null) return null;
-        return lmp.add(Duration(days: 280 + (_effectiveCycleLength - 28)));
-      case _DatingMethod.conception:
-        final conception = _conceptionDate;
-        if (conception == null) return null;
-        return conception.add(const Duration(days: 266));
-      case _DatingMethod.gestationalAge:
-        return _today.add(Duration(days: 280 - _enteredGestationalAgeDays));
+        // Informational preview only. The server is authoritative and uses
+        // LMP + 280 days for checklist dating resolution.
+        return lmp.add(const Duration(days: 280));
       case _DatingMethod.dueDate:
         return _dueDate;
       case null:
@@ -137,14 +123,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         return _selectedMethod != null;
       case _SetupStep.lmpDate:
         return _lmpDate != null;
-      case _SetupStep.conceptionDate:
-        return _conceptionDate != null;
       case _SetupStep.dueDate:
         return _dueDate != null;
-      case _SetupStep.gestationalAge:
-        return _enteredGestationalAgeDays > 0 &&
-            _enteredGestationalAgeDays <= 294;
-      case _SetupStep.cycleLength:
       case _SetupStep.dueDateResult:
         return true;
       case _SetupStep.loading:
@@ -159,12 +139,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       case _SetupStep.method:
         return 1;
       case _SetupStep.lmpDate:
-      case _SetupStep.conceptionDate:
-      case _SetupStep.gestationalAge:
       case _SetupStep.dueDate:
         return 2;
-      case _SetupStep.cycleLength:
-        return 3;
       case _SetupStep.dueDateResult:
       case _SetupStep.loading:
         return _totalProgressSteps;
@@ -188,17 +164,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     final parts = <String>[
       'Setup source: ${_selectedMethod?.name ?? 'unknown'}',
     ];
-    if (_selectedMethod == _DatingMethod.lmp) {
-      parts.add('Cycle length: ${_cycleUnknown ? 'unknown' : _cycleLength}');
-    }
     if (_lmpDate != null) parts.add('LMP: ${_formatApiDate(_lmpDate!)}');
-    if (_conceptionDate != null) {
-      parts.add('Conception: ${_formatApiDate(_conceptionDate!)}');
-    }
     if (_dueDate != null) parts.add('Doctor EDD: ${_formatApiDate(_dueDate!)}');
-    if (_selectedMethod == _DatingMethod.gestationalAge) {
-      parts.add('Gestational age: ${_gestationalWeeks}w${_gestationalDays}d');
-    }
     return parts.join('; ');
   }
 
@@ -221,18 +188,9 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       _error = null;
       if (method != _DatingMethod.lmp) {
         _lmpDate = null;
-        _cycleLength = 28;
-        _cycleUnknown = false;
-      }
-      if (method != _DatingMethod.conception) {
-        _conceptionDate = null;
       }
       if (method != _DatingMethod.dueDate) {
         _dueDate = null;
-      }
-      if (method != _DatingMethod.gestationalAge) {
-        _gestationalWeeks = 4;
-        _gestationalDays = 0;
       }
     });
   }
@@ -268,22 +226,14 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         switch (_selectedMethod) {
           case _DatingMethod.lmp:
             _goTo(_SetupStep.lmpDate);
-          case _DatingMethod.conception:
-            _goTo(_SetupStep.conceptionDate);
-          case _DatingMethod.gestationalAge:
-            _goTo(_SetupStep.gestationalAge);
           case _DatingMethod.dueDate:
             _goTo(_SetupStep.dueDate);
           case null:
             break;
         }
       case _SetupStep.lmpDate:
-        _goTo(_SetupStep.cycleLength);
-      case _SetupStep.conceptionDate:
-      case _SetupStep.gestationalAge:
-      case _SetupStep.dueDate:
         _goTo(_SetupStep.dueDateResult);
-      case _SetupStep.cycleLength:
+      case _SetupStep.dueDate:
         _goTo(_SetupStep.dueDateResult);
       case _SetupStep.dueDateResult:
         unawaited(_submitJourney());
@@ -298,6 +248,11 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     final lastMenstrualDate =
         _selectedMethod == _DatingMethod.lmp && _lmpDate != null
         ? _formatApiDate(_lmpDate!)
+        : null;
+    // V2 accepts exactly one dating authority. LMP sends only LMP; EDD sends
+    // only EDD. The server remains authoritative for week and plan resolution.
+    final estimatedDueDate = _datingBasis == 'EDD'
+        ? _formatApiDate(dueDate)
         : null;
     final journeyId = widget.journeyId;
     final isUpdate = widget.isEditMode && journeyId != null;
@@ -316,7 +271,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           UpdateJourneyRequest(
             journeyType: JourneyType.pregnancy,
             lastMenstrualDate: lastMenstrualDate,
-            estimatedDueDate: _formatApiDate(dueDate),
+            estimatedDueDate: estimatedDueDate,
+            datingBasis: _datingBasis,
             dateSource: _dateSource,
             dateConfidence: _dateConfidence,
             changeReason: _changeReason,
@@ -329,7 +285,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             journeyType: JourneyType.pregnancy,
             startDate: _formatApiDate(_today),
             lastMenstrualDate: lastMenstrualDate,
-            estimatedDueDate: _formatApiDate(dueDate),
+            estimatedDueDate: estimatedDueDate,
+            datingBasis: _datingBasis,
             dateSource: _dateSource,
             dateConfidence: _dateConfidence,
             changeReason: _changeReason,
@@ -437,7 +394,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     key: ValueKey(_step),
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                     child: _buildStepContent(),
                   ),
                 ),
@@ -452,7 +409,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
   Widget _buildTopBar() {
     return SizedBox(
-      height: 56,
+      height: 52,
       child: Row(
         children: [
           const SizedBox(width: 8),
@@ -460,7 +417,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             onPressed: _loading ? null : _handleBack,
             tooltip: 'Quay lại',
             icon: const Icon(Icons.arrow_back_rounded),
-            color: _text,
+            color: _textDark,
           ),
           Expanded(
             child: Text(
@@ -473,7 +430,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.1,
-                color: _muted,
+                color: _primaryAccent,
               ),
             ),
           ),
@@ -485,15 +442,15 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
   Widget _buildProgressBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 4),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(99),
         child: Stack(
           children: [
-            Container(height: 8, color: _border.withAlpha(150)),
+            Container(height: 6, color: _borderNormal.withValues(alpha: 0.6)),
             FractionallySizedBox(
               widthFactor: _progress,
-              child: Container(height: 8, color: _primary),
+              child: Container(height: 6, color: _primary),
             ),
           ],
         ),
@@ -513,26 +470,17 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           lastDate: _today,
           onChanged: (date) => setState(() => _lmpDate = date),
         );
-      case _SetupStep.conceptionDate:
-        return _buildDateStep(
-          title: 'Ngày thụ thai',
-          selectedDate: _conceptionDate,
-          firstDate: _today.subtract(const Duration(days: 280)),
-          lastDate: _today,
-          onChanged: (date) => setState(() => _conceptionDate = date),
-        );
-      case _SetupStep.gestationalAge:
-        return _buildGestationalAgeStep();
       case _SetupStep.dueDate:
         return _buildDateStep(
           title: 'Ngày sinh dự kiến',
           selectedDate: _dueDate,
           firstDate: _today.subtract(const Duration(days: 14)),
-          lastDate: _today.add(const Duration(days: 294)),
+          // The server rejects an EDD more than 280 days ahead because its
+          // canonical LMP would be in the future. Keep the picker inside the
+          // same accepted dating range.
+          lastDate: _today.add(const Duration(days: 280)),
           onChanged: (date) => setState(() => _dueDate = date),
         );
-      case _SetupStep.cycleLength:
-        return _buildCycleLengthStep();
       case _SetupStep.dueDateResult:
         return _buildDueDateResultStep();
       case _SetupStep.loading:
@@ -545,49 +493,49 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
+          'Chọn một trong hai nguồn chuẩn để hệ thống tính tuần thai và chọn checklist.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            height: 1.4,
+            color: _textMuted,
+          ),
+        ),
+        const SizedBox(height: 14),
+        const Text(
           'Hãy xác định thời gian mang thai của bạn. Bạn đã biết gì rồi?',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 30,
+            fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: _primaryDark,
+            color: _textDark,
             height: 1.22,
+            letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 34),
+        const SizedBox(height: 20),
         _MethodCard(
           key: const Key('dating-method-lmp'),
+          badge: 'PHỔ BIẾN NHẤT',
           title: 'Tôi nhớ ngày đầu tiên của chu kỳ',
           subtitle: 'CareBridge sẽ tính dự sinh từ kỳ kinh cuối.',
           icon: Icons.event_note_rounded,
+          accentColor: const Color(0xFFE8927C),
+          selectedBg: const Color(0xFFFAF2EF),
           selected: _selectedMethod == _DatingMethod.lmp,
           onTap: () => _selectMethod(_DatingMethod.lmp),
         ),
-        const SizedBox(height: 14),
-        _MethodCard(
-          key: const Key('dating-method-conception'),
-          title: 'Tôi có thể chỉ định ngày thụ thai',
-          subtitle: 'Phù hợp khi bạn nhớ mốc rụng trứng hoặc IVF.',
-          icon: Icons.favorite_rounded,
-          selected: _selectedMethod == _DatingMethod.conception,
-          onTap: () => _selectMethod(_DatingMethod.conception),
-        ),
-        const SizedBox(height: 14),
-        _MethodCard(
-          key: const Key('dating-method-gestational-age'),
-          title: 'Tôi đã biết thời gian sản khoa của mình',
-          subtitle: 'Nhập số tuần và số ngày thai hiện tại.',
-          icon: Icons.timeline_rounded,
-          selected: _selectedMethod == _DatingMethod.gestationalAge,
-          onTap: () => _selectMethod(_DatingMethod.gestationalAge),
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _MethodCard(
           key: const Key('dating-method-due-date'),
-          title: 'Bác sĩ đã nói cho tôi ngày dự sinh dự kiến',
-          subtitle: 'Dùng ngày dự sinh đã được tư vấn.',
+          badge: 'EDD',
+          title: 'Tôi biết ngày dự sinh (EDD)',
+          subtitle: 'Nhập ngày dự sinh để hệ thống tính tuần thai.',
           icon: Icons.medical_information_rounded,
+          accentColor: const Color(0xFF4A8B88),
+          selectedBg: const Color(0xFFEFF7F6),
           selected: _selectedMethod == _DatingMethod.dueDate,
           onTap: () => _selectMethod(_DatingMethod.dueDate),
         ),
@@ -611,34 +559,34 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 30,
+            fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: _primaryDark,
+            color: _textDark,
             height: 1.22,
           ),
         ),
-        const SizedBox(height: 34),
+        const SizedBox(height: 20),
         Container(
           decoration: BoxDecoration(
             color: _surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: _border.withAlpha(180)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _borderNormal.withValues(alpha: 0.8)),
             boxShadow: [
               BoxShadow(
-                color: _text.withAlpha(16),
-                blurRadius: 32,
-                offset: const Offset(0, 14),
+                color: const Color(0xFF5A463F).withValues(alpha: 0.06),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(12, 18, 12, 12),
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
           child: Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
                 primary: _primary,
                 onPrimary: Colors.white,
                 surface: _surface,
-                onSurface: _text,
+                onSurface: _textDark,
               ),
             ),
             child: CalendarDatePicker(
@@ -649,146 +597,12 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         _InfoPill(
           icon: Icons.calendar_today_rounded,
           text: selectedDate == null
               ? 'Chọn một ngày để tiếp tục'
               : 'Đã chọn ${_formatDisplayDate(selectedDate)}',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGestationalAgeStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'Thai kỳ',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 34,
-            fontWeight: FontWeight.w800,
-            color: _primaryDark,
-          ),
-        ),
-        const SizedBox(height: 42),
-        Container(
-          height: 220,
-          decoration: BoxDecoration(
-            color: _surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: _border.withAlpha(180)),
-            boxShadow: [
-              BoxShadow(
-                color: _text.withAlpha(16),
-                blurRadius: 32,
-                offset: const Offset(0, 14),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _NumberWheel(
-                  min: 0,
-                  max: 42,
-                  value: _gestationalWeeks,
-                  label: 'tuần',
-                  onChanged: (value) =>
-                      setState(() => _gestationalWeeks = value),
-                ),
-              ),
-              Container(width: 1, height: 160, color: _border),
-              Expanded(
-                child: _NumberWheel(
-                  min: 0,
-                  max: 6,
-                  value: _gestationalDays,
-                  label: 'ngày',
-                  onChanged: (value) =>
-                      setState(() => _gestationalDays = value),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        _InfoPill(
-          icon: Icons.timeline_rounded,
-          text:
-              'Tuổi thai hiện tại: $_gestationalWeeks tuần và $_gestationalDays ngày',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCycleLengthStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'Chu kỳ kinh trung bình',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 30,
-            fontWeight: FontWeight.w800,
-            color: _primaryDark,
-            height: 1.22,
-          ),
-        ),
-        const SizedBox(height: 36),
-        Container(
-          height: 220,
-          decoration: BoxDecoration(
-            color: _surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: _border.withAlpha(180)),
-            boxShadow: [
-              BoxShadow(
-                color: _text.withAlpha(16),
-                blurRadius: 32,
-                offset: const Offset(0, 14),
-              ),
-            ],
-          ),
-          child: _NumberWheel(
-            min: 21,
-            max: 35,
-            value: _cycleLength,
-            label: 'ngày',
-            onChanged: (value) => setState(() {
-              _cycleLength = value;
-              _cycleUnknown = false;
-            }),
-          ),
-        ),
-        const SizedBox(height: 20),
-        TextButton(
-          onPressed: () {
-            setState(() => _cycleUnknown = true);
-            _goTo(_SetupStep.dueDateResult);
-          },
-          child: const Text(
-            'KHÔNG BIẾT',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-              color: _primary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        _InfoPill(
-          icon: Icons.lightbulb_rounded,
-          text: _cycleUnknown
-              ? 'CareBridge sẽ dùng chu kỳ chuẩn 28 ngày'
-              : 'Chu kỳ trung bình: $_cycleLength ngày',
         ),
       ],
     );
@@ -809,64 +623,69 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 30,
+            fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: _primaryDark,
+            color: _textDark,
             height: 1.22,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
         const Text(
           'Bạn đang mang thai',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: _muted,
+            color: _textMuted,
             height: 1.4,
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         Container(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+          padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
           decoration: BoxDecoration(
             color: _surface,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: _border.withAlpha(180)),
+            border: Border.all(
+              color: _primaryAccent.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
-                color: _text.withAlpha(16),
-                blurRadius: 32,
-                offset: const Offset(0, 14),
+                color: _primaryAccent.withValues(alpha: 0.15),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: _primary.withAlpha(30),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.child_care_rounded,
-                  color: _primary,
-                  size: 38,
+              Center(
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: _primaryAccent.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.child_care_rounded,
+                    color: _primary,
+                    size: 34,
+                  ),
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
                   style: const TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: _text,
+                    color: _textDark,
                     height: 1.25,
                   ),
                   children: [
@@ -874,7 +693,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                       text: '$obstetricWeeks tuần ',
                       style: const TextStyle(
                         color: _primary,
-                        fontSize: 34,
+                        fontSize: 32,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -882,13 +701,13 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 20),
               _ResultMetric(
                 icon: Icons.timeline_rounded,
                 label: 'Tuổi thai nhi',
                 value: '$fetalWeeks tuần $fetalDays ngày',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _ResultMetric(
                 icon: Icons.event_available_rounded,
                 label: 'Ngày dự sinh',
@@ -899,8 +718,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        _InsightCard(
+        const SizedBox(height: 18),
+        const _InsightCard(
           icon: Icons.verified_rounded,
           text:
               'CareBridge sẽ dùng mốc này để cá nhân hóa nội dung theo tuần thai.',
@@ -930,7 +749,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                         value: value,
                         strokeWidth: 14,
                         strokeCap: StrokeCap.round,
-                        backgroundColor: _border,
+                        backgroundColor: _borderNormal.withValues(alpha: 0.6),
                         color: _primary,
                       ),
                     ),
@@ -956,7 +775,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
               fontFamily: 'Lexend',
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: _text,
+              color: _textDark,
               height: 1.3,
             ),
           ),
@@ -970,11 +789,18 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: _canvas,
-          border: Border(top: BorderSide(color: _border)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5A463F).withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -6),
+            ),
+          ],
+          border: const Border(top: BorderSide(color: Color(0xFFE8DDD6))),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -986,24 +812,39 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                 child: ExcludeSemantics(
                   child: Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 12,
+                      vertical: 10,
                     ),
                     decoration: BoxDecoration(
                       color: _errorBg,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 14,
-                        color: _errorText,
-                        height: 1.4,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _errorText.withValues(alpha: 0.2),
                       ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: _errorText,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: _errorText,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -1023,19 +864,22 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
             ],
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 52,
               child: FilledButton(
                 onPressed: _canContinue ? _handleContinue : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: _primary.withAlpha(115),
-                  shape: const StadiumBorder(),
-                  elevation: 0,
+                  disabledBackgroundColor: _primary.withValues(alpha: 0.40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(26),
+                  ),
+                  elevation: _canContinue ? 4 : 0,
+                  shadowColor: _primary.withValues(alpha: 0.35),
                 ),
                 child: Text(
                   _step == _SetupStep.dueDateResult
@@ -1060,105 +904,173 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 class _MethodCard extends StatelessWidget {
   const _MethodCard({
     super.key,
+    this.authorityHint,
+    required this.badge,
     required this.title,
     required this.subtitle,
     required this.icon,
+    required this.accentColor,
+    required this.selectedBg,
     required this.selected,
     required this.onTap,
   });
 
+  final String badge;
+  final String? authorityHint;
   final String title;
   final String subtitle;
   final IconData icon;
+  final Color accentColor;
+  final Color selectedBg;
   final bool selected;
   final VoidCallback onTap;
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF7A6860);
+  static const _borderNormal = Color(0xFFE8DDD6);
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       selected: selected,
       button: true,
-      label: '$title. $subtitle',
+      label: [
+        title,
+        subtitle,
+        if (authorityHint != null) authorityHint!,
+      ].join('. '),
       onTap: onTap,
       child: ExcludeSemantics(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: selected ? _surfaceLow : _surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: selected ? _primary : _border, width: 2),
+            color: selected ? selectedBg : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? accentColor
+                  : _borderNormal.withValues(alpha: 0.8),
+              width: selected ? 2.2 : 1.2,
+            ),
             boxShadow: [
               BoxShadow(
-                color: _text.withAlpha(14),
-                blurRadius: 26,
-                offset: const Offset(0, 12),
+                color: selected
+                    ? accentColor.withValues(alpha: 0.16)
+                    : const Color(0xFF5A463F).withValues(alpha: 0.04),
+                blurRadius: selected ? 20 : 12,
+                offset: Offset(0, selected ? 8 : 4),
               ),
             ],
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             child: InkWell(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               onTap: onTap,
+              splashColor: accentColor.withValues(alpha: 0.12),
+              highlightColor: accentColor.withValues(alpha: 0.06),
               child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: selected ? _primary : _surfaceLow,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        icon,
-                        color: selected ? Colors.white : _primary,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: _text,
-                              height: 1.35,
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? accentColor
+                                : accentColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: selected ? Colors.white : accentColor,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: accentColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  badge,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.6,
+                                    color: accentColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textDark,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: selected ? accentColor : Colors.transparent,
+                            border: Border.all(
+                              color: selected
+                                  ? accentColor
+                                  : _borderNormal.withValues(alpha: 0.9),
+                              width: selected ? 0 : 2,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 13,
-                              color: _muted,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
+                          child: selected
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                )
+                              : null,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 160),
-                      opacity: selected ? 1 : 0,
-                      child: const Icon(
-                        Icons.check_circle_rounded,
-                        color: _primary,
+                    const SizedBox(height: 8),
+                    Text(
+                      [
+                        subtitle,
+                        if (authorityHint != null) authorityHint!,
+                      ].join(' '),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        color: _textMuted,
+                        height: 1.4,
                       ),
                     ),
                   ],
@@ -1187,10 +1099,10 @@ class _NumberWheel extends StatelessWidget {
   final String label;
   final ValueChanged<int> onChanged;
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _primary = Color(0xFF845143);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF7A6860);
+  static const _surfaceLow = Color(0xFFFAF2EF);
 
   @override
   Widget build(BuildContext context) {
@@ -1202,12 +1114,18 @@ class _NumberWheel extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Container(height: 58, color: _surfaceLow),
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: _surfaceLow,
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
         CupertinoPicker(
           scrollController: FixedExtentScrollController(
             initialItem: initialItem,
           ),
-          itemExtent: 58,
+          itemExtent: 52,
           magnification: 1.12,
           squeeze: 1.05,
           useMagnifier: true,
@@ -1220,8 +1138,8 @@ class _NumberWheel extends StatelessWidget {
                     text: TextSpan(
                       style: const TextStyle(
                         fontFamily: 'Lexend',
-                        color: _muted,
-                        fontSize: 28,
+                        color: _textMuted,
+                        fontSize: 26,
                         fontWeight: FontWeight.w700,
                       ),
                       children: [
@@ -1230,16 +1148,16 @@ class _NumberWheel extends StatelessWidget {
                           style: TextStyle(
                             color: item == value
                                 ? _primary
-                                : _text.withAlpha(145),
-                            fontSize: item == value ? 34 : 28,
+                                : _textDark.withValues(alpha: 0.55),
+                            fontSize: item == value ? 32 : 26,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         TextSpan(
                           text: ' $label',
                           style: TextStyle(
-                            color: item == value ? _primary : _muted,
-                            fontSize: item == value ? 15 : 13,
+                            color: item == value ? _primary : _textMuted,
+                            fontSize: item == value ? 14 : 12,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1261,31 +1179,32 @@ class _InfoPill extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _primary = Color(0xFFC98C7B);
+  static const _surfaceLow = Color(0xFFFAF2EF);
+  static const _textDark = Color(0xFF2E211C);
+  static const _primary = Color(0xFF845143);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: _surfaceLow,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _primary.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: _primary, size: 18),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _text,
+                fontWeight: FontWeight.w600,
+                color: _textDark,
                 height: 1.3,
               ),
             ),
@@ -1307,24 +1226,25 @@ class _ResultMetric extends StatelessWidget {
   final String label;
   final String value;
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
+  static const _primary = Color(0xFF845143);
+  static const _surfaceLow = Color(0xFFFAF2EF);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF7A6860);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: _surfaceLow,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
@@ -1340,19 +1260,19 @@ class _ResultMetric extends StatelessWidget {
                   label,
                   style: const TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _textMuted,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   value,
                   style: const TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 17,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: _text,
+                    color: _textDark,
                     height: 1.25,
                   ),
                 ),
@@ -1372,49 +1292,49 @@ class _InsightCard extends StatelessWidget {
   final String text;
 
   static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _primary = Color(0xFFC98C7B);
-  static const _border = Color(0xFFE8DDD6);
+  static const _surfaceLow = Color(0xFFFAF2EF);
+  static const _textDark = Color(0xFF2E211C);
+  static const _primary = Color(0xFF845143);
+  static const _borderNormal = Color(0xFFE8DDD6);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 26, 20, 20),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _border.withAlpha(180)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderNormal.withValues(alpha: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: _text.withAlpha(15),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: const Color(0xFF5A463F).withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 46,
+            height: 46,
             decoration: const BoxDecoration(
               color: _surfaceLow,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: _primary, size: 26),
+            child: Icon(icon, color: _primary, size: 24),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
             text,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: _text,
-              height: 1.55,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _textDark,
+              height: 1.45,
             ),
           ),
         ],

@@ -9,15 +9,36 @@ import 'package:untitled/features/auth/screens/login_screen.dart';
 
 void main() {
   testWidgets(
-    'FED-LOGIN-TC-007-MOB exposes Google and phone sign-in controls',
+    'FED-LOGIN-TC-007-MOB exposes Google and Email/SMS login methods',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      final methodSelector = find.byKey(const Key('login-verification-method'));
       expect(find.byKey(const Key('federated-google-login')), findsOneWidget);
-      expect(find.byKey(const Key('federated-phone-login')), findsOneWidget);
+      expect(methodSelector, findsOneWidget);
+      expect(
+        find.descendant(
+          of: methodSelector,
+          matching: find.byKey(const Key('federated-phone-login')),
+        ),
+        findsOneWidget,
+      );
       expect(find.byTooltip('Tiếp tục với Google'), findsOneWidget);
-      expect(find.byTooltip('Tiếp tục với số điện thoại'), findsOneWidget);
       expect(find.text('G'), findsOneWidget);
-      expect(find.byIcon(Icons.phone_rounded), findsOneWidget);
+      expect(
+        find.descendant(of: methodSelector, matching: find.text('Email')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: methodSelector, matching: find.text('SMS')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: methodSelector,
+          matching: find.byIcon(Icons.sms_outlined),
+        ),
+        findsOneWidget,
+      );
     },
   );
 

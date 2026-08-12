@@ -421,6 +421,7 @@ Future<dynamic> apiPost(
   String? token,
   String? expectedAccountId,
   http.Client? client,
+  Map<String, String>? extraHeaders,
 }) async {
   final auth = AuthState.instance;
   final requestToken = token ?? auth.accessToken;
@@ -439,12 +440,12 @@ Future<dynamic> apiPost(
   var response = client == null
       ? await http.post(
           uri,
-          headers: _headers(token: token),
+          headers: _headers(token: token, extraHeaders: extraHeaders),
           body: encoded,
         )
       : await client.post(
           uri,
-          headers: _headers(token: token),
+          headers: _headers(token: token, extraHeaders: extraHeaders),
           body: encoded,
         );
   if (response.statusCode != 401 && response.statusCode != 403) {
@@ -454,8 +455,16 @@ Future<dynamic> apiPost(
     response,
     token,
     () => client == null
-        ? http.post(uri, headers: _headers(), body: encoded)
-        : client.post(uri, headers: _headers(), body: encoded),
+        ? http.post(
+            uri,
+            headers: _headers(extraHeaders: extraHeaders),
+            body: encoded,
+          )
+        : client.post(
+            uri,
+            headers: _headers(extraHeaders: extraHeaders),
+            body: encoded,
+          ),
     expectedSession,
   );
   if (response.statusCode != 403) {
@@ -490,6 +499,7 @@ Future<dynamic> apiPut(
   String path,
   Map<String, dynamic> body, {
   String? token,
+  Map<String, String>? extraHeaders,
 }) async {
   final auth = AuthState.instance;
   final requestToken = token ?? auth.accessToken;
@@ -503,7 +513,7 @@ Future<dynamic> apiPut(
   final encoded = jsonEncode(body);
   var response = await http.put(
     uri,
-    headers: _headers(token: token),
+    headers: _headers(token: token, extraHeaders: extraHeaders),
     body: encoded,
   );
   if (response.statusCode != 401) {
@@ -512,7 +522,11 @@ Future<dynamic> apiPut(
   response = await _handleUnauthorized(
     response,
     token,
-    () => http.put(uri, headers: _headers(), body: encoded),
+    () => http.put(
+      uri,
+      headers: _headers(extraHeaders: extraHeaders),
+      body: encoded,
+    ),
     requestSession,
   );
   _ensureSessionStillCurrent(requestSession);

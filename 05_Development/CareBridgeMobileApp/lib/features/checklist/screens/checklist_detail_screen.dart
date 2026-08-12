@@ -80,6 +80,24 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
         nameLower.contains('sơ sinh');
   }
 
+  bool get _isTargetlessV2 => widget.template.checklistContractVersion == 2;
+
+  String? get _windowLabel {
+    final start = widget.template.eligibilityStartInclusive;
+    final end = widget.template.eligibilityEndInclusive;
+    if (start == null || end == null) return null;
+    return end >= 2000000000 ? 'Tuần $start+' : 'Tuần $start–$end';
+  }
+
+  String? get _cadenceLabel {
+    final type = widget.template.scheduleType;
+    final policy = widget.template.materializationPolicy;
+    if (type == 'WEEKLY' || policy == 'EACH_WEEK') return 'Theo tuần';
+    if (type == 'DAILY' || policy == 'EACH_DAY') return 'Theo ngày';
+    if (type == 'SET' || policy == 'ONCE_PER_WINDOW') return 'Theo bộ';
+    return null;
+  }
+
   Future<void> _handleAddTemplate() async {
     if (!_assignmentContext.canAssign || _isAdding || _allAdded) return;
 
@@ -299,11 +317,17 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
                         ),
                         if (template.templateType.isNotEmpty)
                           _buildBadge(
-                            template.templateType == 'MANDATORY'
+                            _isTargetlessV2
+                                ? 'Nội dung khuyến nghị'
+                                : template.templateType == 'MANDATORY'
                                 ? 'Bắt buộc'
                                 : 'Khuyến nghị',
-                            isHighlight: template.templateType == 'MANDATORY',
+                            isHighlight: !_isTargetlessV2 && template.templateType == 'MANDATORY',
                           ),
+                        if (template.planNumber != null)
+                          _buildBadge('Plan ${template.planNumber} · ${template.section ?? 'chung'}'),
+                        if (_windowLabel != null) _buildBadge(_windowLabel!),
+                        if (_cadenceLabel != null) _buildBadge(_cadenceLabel!),
                       ],
                     ),
                   ],
@@ -446,14 +470,16 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 15,
-                    fontWeight: item.isRequired
+                    fontWeight: item.isRequired == true
                         ? FontWeight.w600
                         : FontWeight.w400,
                     color: isImported ? _subtle : _muted,
                     decoration: isImported ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                trailing: item.isRequired
+                trailing: _isTargetlessV2
+                    ? _buildBadge('Khuyến nghị')
+                    : item.isRequired == true
                     ? Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,

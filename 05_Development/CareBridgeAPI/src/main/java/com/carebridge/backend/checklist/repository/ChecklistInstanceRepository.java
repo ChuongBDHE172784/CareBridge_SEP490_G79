@@ -160,6 +160,95 @@ public interface ChecklistInstanceRepository extends JpaRepository<ChecklistInst
             @Param("targetSubject") ChecklistTargetSubject targetSubject,
             Pageable pageable);
 
+    /** Historical Family occurrences bound to the actor's current VIEW epoch. */
+    @Query(value = """
+            select instance from ChecklistInstance instance
+             where instance.contextOwnerUserId = :ownerUserId
+               and instance.recipientUserId = :actorUserId
+               and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.FAMILY
+               and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+               and instance.careGroupId = :careGroupId
+               and instance.careGroupMemberId is not null
+               and instance.checklistAccessEpoch = (
+                    select member.checklistAccessEpoch from
+                        com.carebridge.backend.family.entity.CareGroupMember member
+                     where member.id = instance.careGroupMemberId
+                       and member.careGroupId = :careGroupId
+                       and member.userId = :actorUserId
+                       and member.inviteStatus =
+                           com.carebridge.backend.family.entity.InviteStatus.ACCEPTED
+               )
+               and instance.historicalAt is not null
+               and ((:journeyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.JOURNEY
+                     and instance.careContextId = :journeyId)
+                    or (:babyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.BABY
+                     and instance.careContextId = :babyId))
+               and instance.templateVersionId is not null
+               and exists (
+                    select template.id from ChecklistTemplate template
+                     where template.templateVersionId = instance.templateVersionId
+                       and template.status = com.carebridge.backend.content.entity.ChecklistTemplateStatus.APPROVED
+                       and template.recipientScope in (
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.FAMILY,
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+               )
+               and (:targetSubject is null or exists (
+                    select task.id from ChecklistTaskInstance task
+                     where task.checklistInstanceId = instance.id
+                       and task.targetSubject = :targetSubject
+               ))
+             order by instance.historicalAt desc, instance.updatedAt desc, instance.id desc
+            """,
+            countQuery = """
+            select count(instance) from ChecklistInstance instance
+             where instance.contextOwnerUserId = :ownerUserId
+               and instance.recipientUserId = :actorUserId
+               and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.FAMILY
+               and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+               and instance.careGroupId = :careGroupId
+               and instance.careGroupMemberId is not null
+               and instance.checklistAccessEpoch = (
+                    select member.checklistAccessEpoch from
+                        com.carebridge.backend.family.entity.CareGroupMember member
+                     where member.id = instance.careGroupMemberId
+                       and member.careGroupId = :careGroupId
+                       and member.userId = :actorUserId
+                       and member.inviteStatus =
+                           com.carebridge.backend.family.entity.InviteStatus.ACCEPTED
+               )
+               and instance.historicalAt is not null
+               and ((:journeyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.JOURNEY
+                     and instance.careContextId = :journeyId)
+                    or (:babyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.BABY
+                     and instance.careContextId = :babyId))
+               and instance.templateVersionId is not null
+               and exists (
+                    select template.id from ChecklistTemplate template
+                     where template.templateVersionId = instance.templateVersionId
+                       and template.status = com.carebridge.backend.content.entity.ChecklistTemplateStatus.APPROVED
+                       and template.recipientScope in (
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.FAMILY,
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+               )
+               and (:targetSubject is null or exists (
+                    select task.id from ChecklistTaskInstance task
+                     where task.checklistInstanceId = instance.id
+                       and task.targetSubject = :targetSubject
+               ))
+            """)
+    Page<ChecklistInstance> findFamilyHistory(
+            @Param("actorUserId") UUID actorUserId,
+            @Param("careGroupId") UUID careGroupId,
+            @Param("ownerUserId") UUID ownerUserId,
+            @Param("journeyId") UUID journeyId,
+            @Param("babyId") UUID babyId,
+            @Param("targetSubject") ChecklistTargetSubject targetSubject,
+            Pageable pageable);
+
     List<ChecklistInstance>
             findAllByRecipientUserIdAndRecipientRoleAndCareGroupIdAndCareContextTypeAndCareContextIdAndTemplateVersionId(
                     UUID recipientUserId,

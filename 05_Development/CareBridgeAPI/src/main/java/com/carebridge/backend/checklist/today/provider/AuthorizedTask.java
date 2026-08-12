@@ -11,7 +11,19 @@ public record AuthorizedTask(
         UUID instanceId,
         String status,
         Set<TaskAction> allowedActions,
-        UUID authorizationCareGroupId) {
+        UUID authorizationCareGroupId,
+        Long authorizationAccessEpoch) {
+
+    public AuthorizedTask(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            String status,
+            Set<TaskAction> allowedActions,
+            UUID authorizationCareGroupId) {
+        this(taskKind, taskId, instanceId, status, allowedActions,
+                authorizationCareGroupId, null);
+    }
 
     public AuthorizedTask(
             TaskKind taskKind,
@@ -19,6 +31,6 @@ public record AuthorizedTask(
             UUID instanceId,
             String status,
             Set<TaskAction> allowedActions) {
-        this(taskKind, taskId, instanceId, status, allowedActions, null);
+        this(taskKind, taskId, instanceId, status, allowedActions, null, null);
     }
 }

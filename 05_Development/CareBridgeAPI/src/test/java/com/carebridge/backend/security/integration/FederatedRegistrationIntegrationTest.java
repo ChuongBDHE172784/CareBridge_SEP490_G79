@@ -2,8 +2,9 @@ package com.carebridge.backend.security.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.AbstractEmbeddedPostgresIntegrationTest;
 import com.carebridge.backend.security.dto.request.FederatedAuthRequest;
+import com.carebridge.backend.security.dto.request.PhoneLoginRequest;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.entity.UserIdentity;
 import com.carebridge.backend.security.exception.FederatedAuthException;
@@ -20,7 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** RED PostgreSQL contracts for federated account creation and identity uniqueness. */
-class FederatedRegistrationIntegrationTest extends AbstractPostgresIntegrationTest {
+class FederatedRegistrationIntegrationTest extends AbstractEmbeddedPostgresIntegrationTest {
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private FederatedAuthService service;
@@ -37,7 +38,7 @@ class FederatedRegistrationIntegrationTest extends AbstractPostgresIntegrationTe
         when(verifier.verify("unique-subject-token")).thenReturn(new VerifiedFederatedIdentity(
                 FederatedProvider.PHONE, "unique-subject-1", null, "+84901110003",
                 "Unique Mother", false, true));
-        service.authenticate(new FederatedAuthRequest("unique-subject-token", "JUnit"));
+        service.loginPhone(new PhoneLoginRequest("unique-subject-token", "JUnit"));
 
         User other = users.save(User.builder().email("unique.subject.other@example.com")
                 .name("Other Owner").accountStatus("ACTIVE").emailVerified(true)

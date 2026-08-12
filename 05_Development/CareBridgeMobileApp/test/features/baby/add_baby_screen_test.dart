@@ -49,6 +49,17 @@ void main() {
     expect(find.byKey(const Key('add-baby-defer')), findsNothing);
   });
 
+  testWidgets('gender options do not contain "Chưa biết" and default to Nam', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: AddBabyScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chưa biết'), findsNothing);
+    expect(find.text('Nam'), findsOneWidget);
+    expect(find.text('Nữ'), findsOneWidget);
+  });
+
   testWidgets('live-birth create is single-submit and returns to Journey', (
     tester,
   ) async {
@@ -66,6 +77,34 @@ void main() {
     expect(service.createCalls, 1);
     completion.complete({'id': 'baby-1'});
     await tester.pumpAndSettle();
+    expect(find.text('journey'), findsOneWidget);
+  });
+
+  testWidgets('birth measurements stay in the single baby-create request', (
+    tester,
+  ) async {
+    final service = _FakeBabyService((_) async => {'id': 'baby-1'});
+    final router = _routerFor(service: service);
+    addTearDown(router.dispose);
+
+    await _pumpValidLiveBirthForm(tester, router);
+    await tester.ensureVisible(find.byKey(const Key('add-baby-birth-weight')));
+    await tester.enterText(
+      find.byKey(const Key('add-baby-birth-weight')),
+      '3.5',
+    );
+    await tester.ensureVisible(find.byKey(const Key('add-baby-birth-length')));
+    await tester.enterText(
+      find.byKey(const Key('add-baby-birth-length')),
+      '49',
+    );
+    await tester.ensureVisible(find.byKey(const Key('add-baby-submit')));
+    await tester.tap(find.byKey(const Key('add-baby-submit')));
+    await tester.pumpAndSettle();
+
+    expect(service.createCalls, 1);
+    expect(service.requests.single.birthWeightKg, 3.5);
+    expect(service.requests.single.birthLengthCm, 49);
     expect(find.text('journey'), findsOneWidget);
   });
 
@@ -180,9 +219,11 @@ void main() {
   test('BabyService forwards the frozen token and expected account', () async {
     String? receivedToken;
     String? receivedAccountId;
+    Map<String, dynamic>? receivedBody;
     final service = BabyService(
       post: (path, body, {token, expectedAccountId}) async {
         expect(path, '/api/v1/babies');
+        receivedBody = body;
         receivedToken = token;
         receivedAccountId = expectedAccountId;
         return {
@@ -195,7 +236,9 @@ void main() {
       const CreateBabyRequest(
         nickname: 'Baby Bean',
         birthDate: '2026-07-29',
-        gender: BabyGender.unknown,
+        gender: BabyGender.male,
+        birthWeightKg: 3.5,
+        birthLengthCm: 49,
       ),
       token: 'access-a',
       expectedAccountId: 'account-a',
@@ -203,6 +246,13 @@ void main() {
 
     expect(receivedToken, 'access-a');
     expect(receivedAccountId, 'account-a');
+    expect(receivedBody, {
+      'nickname': 'Baby Bean',
+      'birthDate': '2026-07-29',
+      'gender': 'MALE',
+      'birthWeightKg': 3.5,
+      'birthLengthCm': 49.0,
+    });
   });
 }
 
@@ -257,6 +307,7 @@ class _FakeBabyService extends BabyService {
   final Future<Map<String, dynamic>> Function(CreateBabyRequest request)
   _create;
   int createCalls = 0;
+  final List<CreateBabyRequest> requests = [];
   final List<String?> tokens = [];
   final List<String?> expectedAccountIds = [];
 
@@ -267,6 +318,7 @@ class _FakeBabyService extends BabyService {
     String? expectedAccountId,
   }) {
     createCalls++;
+    requests.add(request);
     tokens.add(token);
     expectedAccountIds.add(expectedAccountId);
     return _create(request);

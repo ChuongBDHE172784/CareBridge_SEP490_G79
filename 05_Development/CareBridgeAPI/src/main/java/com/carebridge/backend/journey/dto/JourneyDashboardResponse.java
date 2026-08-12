@@ -4,6 +4,8 @@ import com.carebridge.backend.journey.entity.DashboardStatus;
 import com.carebridge.backend.journey.entity.JourneyDateConfidence;
 import com.carebridge.backend.journey.entity.JourneyDateSource;
 import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
+import java.time.Instant;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
@@ -47,6 +49,16 @@ public class JourneyDashboardResponse {
     private JourneyDateSource dateSource;
 
     private JourneyDateConfidence dateConfidence;
+
+    private GestationalDatingBasis gestationalDatingBasis;
+    private Long gestationalDatingRevision;
+    private Instant gestationalDatingEffectiveAt;
+    /** Non-null when dating input is quarantined pending confirmation. */
+    private String gestationalDatingQuarantineReasonCode;
+    private LocalDate canonicalLmp;
+    private Integer completedGestationalWeek;
+    private Integer sourceWeekNumber;
+    private Integer plan;
 
     private PregnancyOutcomeType pregnancyOutcome;
 

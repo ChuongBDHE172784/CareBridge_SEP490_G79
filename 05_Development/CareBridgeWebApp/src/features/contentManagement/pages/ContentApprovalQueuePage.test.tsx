@@ -66,4 +66,25 @@ describe('ContentApprovalQueuePage sequence context', () => {
     expect(screen.getByText(/B.*chu.*i 2/)).toBeTruthy();
     expect(screen.getByText(/Không áp dụng chuỗi PRE_PREGNANCY/)).toBeTruthy();
   });
+
+  it('blocks the generic publish action while Pregnancy V2 provenance is pending', async () => {
+    harness.fetchAdminChecklists.mockResolvedValue({
+      content: [
+        {
+          id: 'pregnancy-v2', name: 'WHO Plan 1', stage: 'PREGNANCY', status: 'PENDING_REVIEW',
+          description: '', templateType: 'MANDATORY', checklistContractVersion: 2,
+          provenanceStatus: 'PENDING_CLINICAL_COPY_SIGN_OFF', versionNo: 1,
+          updatedAt: null, itemCount: 5, displayOrder: null, recipientRoles: ['MOTHER'],
+        },
+      ],
+      number: 0, size: 50, totalElements: 1, totalPages: 1,
+    });
+
+    render(<ContentApprovalQueuePage />);
+
+    expect(await screen.findByText('WHO Plan 1')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Xu/ })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('status').textContent).toMatch(/sign-off/);
+    expect(harness.decideChecklistTemplate).not.toHaveBeenCalled();
+  });
 });

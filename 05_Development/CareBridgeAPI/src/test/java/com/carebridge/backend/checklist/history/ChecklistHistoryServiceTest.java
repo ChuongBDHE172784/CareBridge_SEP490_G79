@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
@@ -69,6 +71,7 @@ class ChecklistHistoryServiceTest {
         assertThat(response.items().getFirst().checklistInstanceId()).isEqualTo(active.getId());
         assertThat(response.totalElements()).isEqualTo(1);
         assertThat(response.totalPages()).isEqualTo(1);
+        verify(reconciliation, never()).reconcile(any(), any(), any(), any());
     }
 
     private static ChecklistInstance instance(UUID id, UUID versionId) {

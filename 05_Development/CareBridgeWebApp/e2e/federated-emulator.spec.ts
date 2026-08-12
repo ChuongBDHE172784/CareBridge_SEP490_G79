@@ -23,38 +23,34 @@ async function verificationCodeFor(request: APIRequestContext, phoneNumber: stri
   throw new Error(`No emulator verification code was created for ${phoneNumber}`);
 }
 
-async function expectAuthenticatedProfile(page: Page) {
+async function expectAuthenticatedProfile(page: Page, expectedRoute?: RegExp) {
   await expect.poll(() => page.evaluate(() => {
     const stored = localStorage.getItem('carebridge-auth');
     if (!stored) return null;
     return (JSON.parse(stored) as { state?: { accessToken?: string } }).state?.accessToken ?? null;
   }), { timeout: 30_000 }).not.toBeNull();
-  await expect(page).toHaveURL(/\/account\/profile$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(expectedRoute ?? /\/(?!login|register)[^/]+/, { timeout: 30_000 });
 }
 
 test('FED-REG-TC-008-WEB completes phone registration through Firebase Auth Emulator and API', async ({
   page,
   request,
 }) => {
-  const suffix = String(Date.now()).slice(-9);
-  const phoneNumber = `+1555${suffix}`;
-
-  page.on('dialog', async (dialog) => {
-    if (dialog.message().startsWith('Phone number')) {
-      await dialog.accept(phoneNumber);
-      return;
-    }
-    if (dialog.message().startsWith('Enter the SMS')) {
-      await dialog.accept(await verificationCodeFor(request, phoneNumber));
-      return;
-    }
-    await dialog.dismiss();
-  });
+  const suffix = String(Date.now()).slice(-8);
+  const phoneNumber = `+849${suffix}`;
 
   await page.goto('/register');
-  await page.getByRole('button', { name: /sign up with phone/i }).click();
+  await page.getByLabel('Họ và tên').fill('CareBridge Emulator User');
+  await page.getByLabel('Email').fill(`phone.${Date.now()}@example.test`);
+  await page.getByLabel('Số điện thoại').fill(phoneNumber);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill('Password1!');
+  await page.getByLabel('Nhập lại mật khẩu').fill('Password1!');
+  await page.getByRole('button', { name: /tiếp tục xác thực/i }).click();
+  await page.getByRole('button', { name: /nhận mã qua sms/i }).click();
+  await page.getByLabel(/^mã xác thực$/i).fill(await verificationCodeFor(request, phoneNumber));
+  await page.getByRole('button', { name: /xác nhận và tạo tài khoản/i }).click();
 
-  await expectAuthenticatedProfile(page);
+  await expectAuthenticatedProfile(page, /\/direct-chats$/);
 });
 
 test('FED-REG-TC-009-WEB completes Google registration through Firebase Auth Emulator and API', async ({

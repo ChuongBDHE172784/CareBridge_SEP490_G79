@@ -9,6 +9,8 @@ import com.carebridge.backend.security.dto.request.ForgotPasswordRequest;
 import com.carebridge.backend.security.dto.request.FederatedAuthRequest;
 import com.carebridge.backend.security.dto.request.LinkGoogleIdentityRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
+import com.carebridge.backend.security.dto.request.PhoneLoginRequest;
+import com.carebridge.backend.security.dto.request.PhoneRegisterRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
 import com.carebridge.backend.security.dto.request.ResendOtpRequest;
@@ -65,6 +67,29 @@ public class AuthController {
         FederatedAuthResponse response = federatedAuthService.authenticate(request);
         HttpStatus status = response.newUser() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(ApiResponse.success(response, "Authentication successful"));
+    }
+
+    @PostMapping("/phone/register")
+    @Operation(
+        summary = "Register with a Firebase-verified phone number",
+        description = "Accepts a Firebase ID token issued after SMS verification and creates an active CareBridge account and session."
+    )
+    public ResponseEntity<ApiResponse<FederatedAuthResponse>> registerPhone(
+            @Valid @RequestBody PhoneRegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                federatedAuthService.registerPhone(request), "Phone registration successful"));
+    }
+
+    @PostMapping("/phone/login")
+    @Operation(
+        summary = "Login with a Firebase-verified phone number",
+        description = "Accepts a Firebase Phone Auth ID token, creates a minimal account when the verified phone is new, and returns a CareBridge session."
+    )
+    public ResponseEntity<ApiResponse<FederatedAuthResponse>> loginPhone(
+            @Valid @RequestBody PhoneLoginRequest request) {
+        FederatedAuthResponse response = federatedAuthService.loginPhone(request);
+        HttpStatus status = response.newUser() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(ApiResponse.success(response, "Phone authentication successful"));
     }
 
     @GetMapping("/identities/google")

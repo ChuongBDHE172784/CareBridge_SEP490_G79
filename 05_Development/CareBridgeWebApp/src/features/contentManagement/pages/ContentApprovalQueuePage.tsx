@@ -33,6 +33,8 @@ type QueueEntry = {
   detail: string;
   displayOrder?: number | null;
   recipientRoles?: AdminChecklistTemplate['recipientRoles'];
+  checklistContractVersion?: number | null;
+  provenanceStatus?: string | null;
   submittedAt: string | null;
   searchText: string;
 };
@@ -81,9 +83,19 @@ function toChecklistEntry(item: AdminChecklistTemplate): QueueEntry {
     detail,
     displayOrder: item.displayOrder,
     recipientRoles: item.recipientRoles,
+    checklistContractVersion: item.checklistContractVersion,
+    provenanceStatus: item.provenanceStatus,
     submittedAt: item.updatedAt,
-    searchText: [item.name, typeLabel, stageLabel, detail, item.description, recipientLabel].join(' ').toLowerCase(),
+    searchText: [item.name, typeLabel, stageLabel, detail, item.description, recipientLabel,
+      item.provenanceStatus ?? ''].join(' ').toLowerCase(),
   };
+}
+
+function isPregnancyV2PendingProvenance(entry: QueueEntry): boolean {
+  return entry.kind === 'CHECKLIST'
+    && entry.stage === 'PREGNANCY'
+    && entry.checklistContractVersion === 2
+    && entry.provenanceStatus !== 'SIGNED_OFF';
 }
 
 function formatDateTime(iso: string | null): string {
@@ -396,13 +408,21 @@ export default function ContentApprovalQueuePage() {
                               </button>
                               <button
                                 type="button"
-                                disabled={working === workingKey}
+                                disabled={working === workingKey || isPregnancyV2PendingProvenance(entry)}
                                 onClick={() => openDecision(entry, 'APPROVE')}
+                                title={isPregnancyV2PendingProvenance(entry)
+                                  ? 'Chưa thể xuất bản: cần sign-off clinical/content'
+                                  : undefined}
                                 className="h-8 py-1 px-4 rounded-full bg-primary text-on-primary border-0 text-xs font-semibold cursor-pointer flex items-center gap-1 hover:bg-primary/90 disabled:opacity-50"
                               >
                                 <span className="material-symbols-outlined text-base">publish</span>
                                 Xuất bản
                               </button>
+                              {isPregnancyV2PendingProvenance(entry) && (
+                                <span role="status" className="max-w-[180px] text-right text-[11px] font-medium text-amber-700">
+                                  Chờ sign-off clinical/content
+                                </span>
+                              )}
                               <button
                                 type="button"
                                 disabled={working === workingKey}

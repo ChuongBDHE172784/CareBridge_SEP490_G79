@@ -140,7 +140,8 @@ class ChecklistBusinessAuditAtomicityPostgresTest extends AbstractEmbeddedPostgr
                 List.of(new ChecklistDistributionItem(
                         template.itemId(), "CHK-038 pending task", 1, true,
                         ChecklistTargetSubject.MOTHER, ChecklistAnchorType.LMP, 0)),
-                UUID.randomUUID());
+                 UUID.randomUUID(),
+                 1L);
 
         ChecklistDistributionResult seeded = distributionService.distribute(initialCommand);
         assertThat(seeded.createdInstances()).isEqualTo(1);
@@ -341,9 +342,14 @@ class ChecklistBusinessAuditAtomicityPostgresTest extends AbstractEmbeddedPostgr
 
     private void armFault(Fault fault, Mutation mutation, AtomicLong mutationTransactionId) {
         AuditAction targetAction = mutation == Mutation.DISTRIBUTE_OR_CANCEL
-                ? AuditAction.CHECKLIST_CANCELLED
+                // The hermetic fixture uses a Mother recipient. Lifecycle correction historyizes
+                // the old Mother window without emitting CHECKLIST_CANCELLED; the corrected
+                // window then creates a new instance and task, whose second required audit is
+                // CHECKLIST_ASSIGNED. Target that actual audit boundary so the test proves
+                // rollback of the prior DISTRIBUTED audit plus all business rows.
+                ? AuditAction.CHECKLIST_ASSIGNED
                 : AuditAction.CHECKLIST_COMPLETED;
-        int targetedAuditCall = mutation == Mutation.DISTRIBUTE_OR_CANCEL ? 2 : 1;
+        int targetedAuditCall = 1;
         AtomicInteger matchingCalls = new AtomicInteger();
 
         switch (fault) {
@@ -356,7 +362,7 @@ class ChecklistBusinessAuditAtomicityPostgresTest extends AbstractEmbeddedPostgr
                 return invocation.callRealMethod();
             }).when(auditEligibilityPolicy).shouldAudit(any(AuditAction.class));
             case DTO_SERIALIZATION -> dtoSerializationFault.arm(
-                    mutation == Mutation.DISTRIBUTE_OR_CANCEL ? 3 : 1,
+                    mutation == Mutation.DISTRIBUTE_OR_CANCEL ? 2 : 1,
                     () -> captureMutationTransaction(mutationTransactionId));
             case AUDIT_PERSISTENCE -> auditPersistenceFault.arm(
                     targetAction,
@@ -401,7 +407,8 @@ class ChecklistBusinessAuditAtomicityPostgresTest extends AbstractEmbeddedPostgr
                 initialCommand.timezone(),
                 initialCommand.recipients(),
                 initialCommand.items(),
-                UUID.randomUUID());
+                 UUID.randomUUID(),
+                 initialCommand.gestationalDatingRevision());
     }
 
     private Observation observeInIndependentTransaction() {

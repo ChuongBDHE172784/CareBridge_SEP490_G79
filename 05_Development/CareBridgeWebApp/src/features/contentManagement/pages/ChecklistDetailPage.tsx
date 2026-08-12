@@ -10,7 +10,14 @@ import {
 } from '../services/contentApi';
 import type { AdminChecklistTemplateDetail, ChecklistSupportFunction } from '../models/content';
 import { CHECKLIST_STATUS_LABELS, CHECKLIST_SUPPORT_FUNCTION_OPTIONS, STAGE_LABELS } from '../models/content';
-import { checklistCoexistenceGuidance, checklistRecipientLabel, checklistSequenceLabel } from './checklistApprovalPresentation';
+import {
+  checklistCadenceLabel,
+  checklistCoexistenceGuidance,
+  checklistProvenanceStatusLabel,
+  checklistRecipientLabel,
+  checklistSequenceLabel,
+  checklistWindowLabel,
+} from './checklistApprovalPresentation';
 import { useAuth } from '../../../shared/auth/useAuth';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
@@ -31,7 +38,7 @@ const supportFunctionLabel = (value?: ChecklistSupportFunction | null) => (
 function getChecklistTargetIcon(checklist: {
   name?: string;
   stage?: string | null;
-  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' }>;
+  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' | null }>;
 }): 'child_care' | 'pregnant_woman' {
   const hasBabyItem = checklist.items?.some((i) => i.targetSubject === 'BABY');
   const isBabyStage = checklist.stage === 'BABY_CARE';
@@ -85,6 +92,7 @@ export default function ChecklistDetailPage() {
       await updateChecklistTemplate(detail.id, {
         name: detail.name,
         templateType: detail.templateType,
+        checklistContractVersion: detail.checklistContractVersion ?? null,
         description: detail.description,
         recipientRoles: detail.recipientRoles ?? ['MOTHER'],
         stage: detail.stage,
@@ -186,6 +194,8 @@ export default function ChecklistDetailPage() {
   }
 
   const editable = detail.status === 'DRAFT' || detail.status === 'PENDING_REVIEW';
+  const isTargetlessV2 = detail.checklistContractVersion === 2;
+  const provenanceSignedOff = detail.provenance?.provenanceStatus === 'SIGNED_OFF';
 
   return (
     <main data-testid="checklist-detail-page" className="min-h-screen bg-background p-8 font-sans">
@@ -234,6 +244,12 @@ export default function ChecklistDetailPage() {
               </div>
             </div>
             <div>
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">HỢP ĐỒNG</div>
+              <div className="text-sm font-medium text-on-surface">
+                {isTargetlessV2 ? 'V2 · Khuyến nghị targetless' : 'V1 · Tương thích target'}
+              </div>
+            </div>
+            <div>
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">SỐ MỤC</div>
               <div className="text-sm font-medium text-on-surface">{detail.items.length} mục</div>
             </div>
@@ -257,9 +273,39 @@ export default function ChecklistDetailPage() {
             </div>
             <div>
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">CỬA SỔ VÒNG ĐỜI</div>
-              <span className={warmBadge}>{detail.substage?.code ?? 'Không áp dụng'}</span>
+              <span className={warmBadge}>{checklistWindowLabel(detail)}</span>
             </div>
+            {detail.planNumber != null && (
+              <div>
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">NHỊP CHECKLIST</div>
+                <div className="text-sm font-medium text-on-surface">
+                  Plan {detail.planNumber} · {detail.section ?? 'chung'} · {checklistCadenceLabel(detail.scheduleType, detail.materializationPolicy)}
+                </div>
+            </div>
+            )}
           </div>
+
+          {(detail.checklistQuarantineReasonCode || detail.migrationReviewRequired || detail.provenance) && (
+            <section aria-label="Trạng thái dữ liệu checklist" className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-950">
+                <span aria-hidden="true" className="material-symbols-outlined text-lg">{detail.checklistQuarantineReasonCode ? 'lock' : 'fact_check'}</span>
+                {detail.checklistQuarantineReasonCode ? 'Đang cách ly' : 'Trạng thái provenance'}
+              </div>
+              {detail.checklistQuarantineReasonCode && <p className="mb-2 text-sm text-amber-900">Lý do: {detail.checklistQuarantineReasonCode}</p>}
+              {detail.migrationReviewRequired && <p className="mb-2 text-sm text-amber-900">Phiên bản nhập cần được rà soát trước khi phân phối.</p>}
+              {!detail.migrationReviewRequired && detail.migrationReviewedAt != null && !provenanceSignedOff && (
+                <p className="mb-2 text-sm text-amber-900">Đã rà soát kỹ thuật nhưng chưa có sign-off clinical/content; chưa thể kích hoạt.</p>
+              )}
+              {detail.provenance && (
+                <dl className="grid grid-cols-1 gap-2 text-xs text-amber-950 sm:grid-cols-2">
+                  <div><dt className="font-semibold">Nguồn</dt><dd className="break-words">{detail.provenance.sourceArtifactPath ?? 'Chưa có'}</dd></div>
+                  <div><dt className="font-semibold">Sign-off</dt><dd>{checklistProvenanceStatusLabel(detail.provenance.provenanceStatus)}</dd></div>
+                  <div><dt className="font-semibold">Import batch</dt><dd className="break-words">{detail.provenance.importBatchId ?? 'Chưa có'}</dd></div>
+                  <div><dt className="font-semibold">Manifest hash</dt><dd className="break-words">{detail.provenance.renderedManifestHash ?? 'Chưa có'}</dd></div>
+                </dl>
+              )}
+            </section>
+          )}
 
           {detail.stage === 'PRE_PREGNANCY' && detail.templateType === 'MANDATORY' && (
             <div role="note" className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -287,13 +333,17 @@ export default function ChecklistDetailPage() {
               <ul className="flex flex-col gap-2.5 p-0 m-0 list-none">
                 {[...detail.items].sort((a, b) => a.order - b.order).map(item => (
                   <li key={item.id} className="flex items-start gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4">
-                    <span className="material-symbols-outlined mt-0.5 text-xl text-primary">
-                      {item.isRequired ? 'check_box' : 'check_box_outline_blank'}
-                    </span>
+                    {!isTargetlessV2 && (
+                      <span className="material-symbols-outlined mt-0.5 text-xl text-primary">
+                        {item.isRequired ? 'check_box' : 'check_box_outline_blank'}
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1 break-words">
                       <div className="text-sm font-semibold text-on-surface">{item.itemText}</div>
                       <div className="mt-0.5 text-xs text-outline">
-                        Thứ tự: {item.order} · {item.isRequired ? 'Bắt buộc' : 'Không bắt buộc'}
+                        {isTargetlessV2
+                          ? `Thứ tự: ${item.order} · Nội dung khuyến nghị`
+                          : `Thứ tự: ${item.order} · ${item.isRequired ? 'Bắt buộc' : 'Không bắt buộc'}`}
                       </div>
                       {item.description && (
                         <div className="mt-3 rounded-xl border border-surface-container-highest bg-background/70 p-3">
@@ -302,12 +352,14 @@ export default function ChecklistDetailPage() {
                         </div>
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span
-                          aria-label={`Đối tượng mục ${item.order}: ${targetLabel(item.targetSubject)}`}
-                          className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs font-medium text-primary"
-                        >
-                          {targetLabel(item.targetSubject)}
-                        </span>
+                        {!isTargetlessV2 && item.targetSubject && (
+                          <span
+                            aria-label={`Đối tượng mục ${item.order}: ${targetLabel(item.targetSubject)}`}
+                            className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs font-medium text-primary"
+                          >
+                            {targetLabel(item.targetSubject)}
+                          </span>
+                        )}
                         <span
                           aria-label={`Chức năng hỗ trợ mục ${item.order}: ${supportFunctionLabel(item.supportFunction)}`}
                           className="inline-flex items-center rounded-full border border-outline-variant bg-surface px-2.5 py-0.5 text-xs font-medium text-on-surface-variant"
@@ -403,7 +455,7 @@ export default function ChecklistDetailPage() {
               {versionAction === 'review' ? 'Đang xác nhận...' : 'Xác nhận rà soát dữ liệu nhập cũ'}
             </button>
           )}
-          {canReview && !detail.migrationReviewRequired && detail.migrationReviewedAt != null && !detail.distributionEnabled
+          {canReview && !detail.migrationReviewRequired && detail.migrationReviewedAt != null && provenanceSignedOff && !detail.distributionEnabled
             && detail.status === 'PENDING_REVIEW' && (
             <button
               aria-label="Activate reviewed version"

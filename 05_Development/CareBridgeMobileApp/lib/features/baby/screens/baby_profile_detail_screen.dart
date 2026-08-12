@@ -441,12 +441,6 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     if (mounted) await _refreshAfterReturn();
   }
 
-  Future<void> _openCareHub() async {
-    final babyId = Uri.encodeComponent(widget.babyId);
-    await context.push('/baby-care-hub?babyId=$babyId');
-    if (mounted) await _refreshAfterReturn();
-  }
-
   Future<void> _openAddMilestone() async {
     await context.push('/babies/${widget.babyId}/milestones/add');
     if (mounted) {
@@ -924,17 +918,6 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            key: const Key('baby-care-hub'),
-            onPressed: _openCareHub,
-            icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
-            label: const Text('Tổng quan chăm sóc'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _primary,
-              side: const BorderSide(color: _outlineVariant),
-            ),
           ),
         ],
       ),
@@ -1713,12 +1696,57 @@ class _TrendChartPainter extends CustomPainter {
     // Draw line
     canvas.drawPath(path, linePaint);
 
-    // Draw dots
+    // Draw dots and value labels
     final dotPaint = Paint()
       ..color = const Color(0xFF845143)
       ..style = PaintingStyle.fill;
-    for (final p in points) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i];
+      final weight = weights[i];
       canvas.drawCircle(p, p == points.last ? 5 : 3, dotPaint);
+
+      final valStr = '${weight % 1 == 0 ? weight.toInt() : weight.toStringAsFixed(1)} kg';
+      textPainter.text = TextSpan(
+        text: valStr,
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF845143),
+        ),
+      );
+      textPainter.layout();
+
+      final labelWidth = textPainter.width + 8;
+      final labelHeight = textPainter.height + 2;
+      final labelX = (p.dx - labelWidth / 2).clamp(
+        4.0,
+        size.width - labelWidth - 4.0,
+      );
+      final isTopHalf = p.dy < size.height / 2;
+      final labelY = isTopHalf
+          ? (p.dy + 6).clamp(2.0, size.height - labelHeight - 2.0)
+          : (p.dy - labelHeight - 6).clamp(2.0, size.height - labelHeight - 2.0);
+
+      final bgRRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(labelX, labelY, labelWidth, labelHeight),
+        const Radius.circular(5),
+      );
+      canvas.drawRRect(
+        bgRRect,
+        Paint()..color = const Color(0xFFFFFDFB),
+      );
+      canvas.drawRRect(
+        bgRRect,
+        Paint()
+          ..color = const Color(0xFFC98C7B).withValues(alpha: 0.4)
+          ..strokeWidth = 1
+          ..style = PaintingStyle.stroke,
+      );
+
+      textPainter.paint(canvas, Offset(labelX + 4, labelY + 1));
     }
   }
 

@@ -13,6 +13,7 @@ import com.carebridge.backend.exercise.entity.TrimesterScope;
 import com.carebridge.backend.exercise.exception.ExerciseNotFoundException;
 import com.carebridge.backend.exercise.exception.InvalidExerciseStateException;
 import com.carebridge.backend.exercise.mapper.ExerciseMapper;
+import com.carebridge.backend.exercise.policy.ExercisePublishReadinessPolicy;
 import com.carebridge.backend.exercise.repository.ExerciseRepository;
 import com.carebridge.backend.exercise.service.IAdminExerciseService;
 import java.util.LinkedHashMap;
@@ -30,6 +31,7 @@ public class AdminExerciseServiceImpl implements IAdminExerciseService {
     private final ExerciseRepository exerciseRepository;
     private final ExerciseMapper exerciseMapper;
     private final AuditService auditService;
+    private final ExercisePublishReadinessPolicy publishReadinessPolicy;
 
     @Override
     @Transactional
@@ -84,6 +86,8 @@ public class AdminExerciseServiceImpl implements IAdminExerciseService {
             // Idempotent no-op.
             return exerciseMapper.toAdminResponse(entity);
         }
+
+        publishReadinessPolicy.verifyReady(entity);
 
         entity.setStatus(ExerciseStatus.PUBLISHED);
         entity.setUpdatedAt(java.time.OffsetDateTime.now());

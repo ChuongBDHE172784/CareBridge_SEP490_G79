@@ -1,13 +1,79 @@
+import axios from 'axios';
 import apiClient from '../../../shared/api/apiClient';
 import type { ApiResponse } from '../../auth/models/user';
 import type {
   AdminExercise,
+  AdminExerciseFieldErrors,
   AdminExerciseForm,
+  AdminExerciseFormField,
+  AdminExerciseRequestError,
   DifficultyLevel,
   ExerciseStatus,
   PaginatedResponse,
   TrimesterScope,
 } from '../models/adminExercise';
+
+interface BackendErrorDetail {
+  field?: unknown;
+  message?: unknown;
+}
+
+interface BackendErrorResponse {
+  error?: unknown;
+  message?: unknown;
+  details?: unknown;
+}
+
+function isBackendErrorDetail(value: unknown): value is BackendErrorDetail {
+  return typeof value === 'object' && value !== null;
+}
+
+const formFields = new Set<AdminExerciseFormField>([
+  'title',
+  'description',
+  'trimesterScope',
+  'difficultyLevel',
+  'durationMinutes',
+  'instructionContent',
+  'mediaUrl',
+  'safetyWarning',
+  'supportsPostureAnalysis',
+]);
+
+function isFormField(value: unknown): value is AdminExerciseFormField {
+  return typeof value === 'string' && formFields.has(value as AdminExerciseFormField);
+}
+
+export function toAdminExerciseRequestError(error: unknown): AdminExerciseRequestError {
+  const fallbackMessage = 'Không thể lưu bài tập. Vui lòng kiểm tra thông tin và thử lại.';
+  if (!axios.isAxiosError<BackendErrorResponse>(error)) {
+    return { message: fallbackMessage, fieldErrors: {} };
+  }
+
+  const payload = error.response?.data;
+  const code = typeof payload?.error === 'string' && payload.error.trim()
+    ? payload.error.trim()
+    : undefined;
+  const backendMessage = typeof payload?.message === 'string' && payload.message.trim()
+    ? payload.message.trim()
+    : fallbackMessage;
+  const fieldErrors: AdminExerciseFieldErrors = {};
+
+  if (Array.isArray(payload?.details)) {
+    for (const detail of payload.details) {
+      if (!isBackendErrorDetail(detail)) continue;
+      if (isFormField(detail.field) && typeof detail.message === 'string' && detail.message.trim()) {
+        fieldErrors[detail.field] = detail.message.trim();
+      }
+    }
+  }
+
+  return {
+    code,
+    message: code ? `[${code}] ${backendMessage}` : backendMessage,
+    fieldErrors,
+  };
+}
 
 export async function fetchAdminExercises(params: {
   status?: ExerciseStatus;

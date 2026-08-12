@@ -171,6 +171,13 @@ class ChecklistTemplate {
   final String stage;
   final String description;
   final String templateType;
+  final int? checklistContractVersion;
+  final int? planNumber;
+  final String? section;
+  final String? scheduleType;
+  final String? materializationPolicy;
+  final int? eligibilityStartInclusive;
+  final int? eligibilityEndInclusive;
   final List<ChecklistItem> items;
 
   ChecklistTemplate({
@@ -179,6 +186,13 @@ class ChecklistTemplate {
     required this.stage,
     required this.description,
     this.templateType = 'OPTIONAL',
+    this.checklistContractVersion,
+    this.planNumber,
+    this.section,
+    this.scheduleType,
+    this.materializationPolicy,
+    this.eligibilityStartInclusive,
+    this.eligibilityEndInclusive,
     required this.items,
   });
 
@@ -189,6 +203,16 @@ class ChecklistTemplate {
         stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
         description: json['description'] as String? ?? '',
         templateType: json['templateType'] as String? ?? 'OPTIONAL',
+        checklistContractVersion:
+            (json['checklistContractVersion'] as num?)?.toInt(),
+        planNumber: (json['planNumber'] as num?)?.toInt(),
+        section: json['section'] as String?,
+        scheduleType: json['scheduleType'] as String?,
+        materializationPolicy: json['materializationPolicy'] as String?,
+        eligibilityStartInclusive:
+            (json['eligibilityStartInclusive'] as num?)?.toInt(),
+        eligibilityEndInclusive:
+            (json['eligibilityEndInclusive'] as num?)?.toInt(),
         items: (json['items'] as List? ?? [])
             .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -199,19 +223,22 @@ class ChecklistItem {
   final String id;
   final String itemText;
   final int order;
-  final bool isRequired;
+  final bool? isRequired;
+  final String? targetSubject;
 
   ChecklistItem({
     required this.id,
     required this.itemText,
     required this.order,
     required this.isRequired,
+    this.targetSubject,
   });
 
   factory ChecklistItem.fromJson(Map<String, dynamic> json) => ChecklistItem(
     id: json['id'] as String,
     itemText: json['itemText'] as String,
     order: json['order'] as int? ?? 0,
-    isRequired: json['isRequired'] as bool? ?? false,
+    isRequired: json['isRequired'] as bool?,
+    targetSubject: json['targetSubject'] as String?,
   );
 }

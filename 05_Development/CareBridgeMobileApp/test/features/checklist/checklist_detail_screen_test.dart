@@ -100,6 +100,43 @@ void main() {
     );
   });
 
+  testWidgets('renders V2 recommendations without requiredness semantics', (
+    WidgetTester tester,
+  ) async {
+    final v2 = ChecklistTemplate(
+      id: 'tmpl-v2',
+      name: 'WHO Plan 2',
+      stage: 'PREGNANCY',
+      description: 'Nội dung khuyến nghị',
+      templateType: 'MANDATORY',
+      checklistContractVersion: 2,
+      planNumber: 2,
+      section: 'WEEKLY',
+      scheduleType: 'WEEKLY',
+      materializationPolicy: 'EACH_WEEK',
+      eligibilityStartInclusive: 20,
+      eligibilityEndInclusive: 24,
+      items: [
+        ChecklistItem(
+          id: 'v2-item',
+          itemText: 'Duy trì hành vi hằng ngày',
+          order: 1,
+          isRequired: null,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: ChecklistDetailScreen(template: v2, journeyId: 'journey-123'),
+    ));
+
+    expect(find.text('Nội dung khuyến nghị'), findsOneWidget);
+    expect(find.text('Plan 2 · WEEKLY'), findsOneWidget);
+    expect(find.text('Tuần 20–24'), findsOneWidget);
+    expect(find.text('Theo tuần'), findsWidgets);
+    expect(find.text('Cần thiết'), findsNothing);
+  });
+
   testWidgets(
     'shows warning and disables button if journey is required but missing',
     (WidgetTester tester) async {

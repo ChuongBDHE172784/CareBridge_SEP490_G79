@@ -107,9 +107,7 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
         // A user can have an old REVOKED/EXPIRED invite alongside a later ACCEPTED
         // membership. Authorization must always resolve the active membership first.
         return list.stream()
-                .filter(member -> member.getInviteStatus() == InviteStatus.ACCEPTED
-                        && (member.getInviteExpiresAt() == null
-                        || !member.getInviteExpiresAt().isBefore(Instant.now())))
+                .filter(member -> member.getInviteStatus() == InviteStatus.ACCEPTED)
                 .findFirst()
                 .or(() -> list.stream().findFirst());
     }

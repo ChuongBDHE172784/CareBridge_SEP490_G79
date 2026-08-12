@@ -199,6 +199,22 @@ public class ContentException extends RuntimeException {
                 HttpStatus.BAD_REQUEST);
     }
 
+    /** V2 recommendation leaves must not accept a legacy MOTHER/BABY target. */
+    public static ContentException itemTargetUnsupported() {
+        return new ContentException(
+                "ITEM_TARGET_UNSUPPORTED",
+                "V2 recommendation checklist items cannot define a target subject",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    /** Requiredness is a V1 authoring concern; V2 leaves are advisory copy only. */
+    public static ContentException itemRequirednessUnsupported() {
+        return new ContentException(
+                "ITEM_REQUIREDNESS_UNSUPPORTED",
+                "V2 recommendation checklist items cannot define requiredness",
+                HttpStatus.BAD_REQUEST);
+    }
+
     public static ContentException versionImmutable() {
         return new ContentException(
                 "VERSION_IMMUTABLE",
@@ -210,6 +226,18 @@ public class ContentException extends RuntimeException {
         return new ContentException(
                 "MIGRATION_REVIEW_REQUIRED",
                 "Migrated checklist template must be explicitly reviewed before activation",
+                HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Imported pregnancy recommendation copy is not distributable until its
+     * clinical/copy provenance has an explicit sign-off.  This is deliberately
+     * separate from the technical migration-review state above.
+     */
+    public static ContentException checklistProvenanceSignOffRequired() {
+        return new ContentException(
+                "CHECKLIST_PROVENANCE_SIGN_OFF_REQUIRED",
+                "Pregnancy checklist provenance must be explicitly signed off before activation",
                 HttpStatus.CONFLICT);
     }
 
