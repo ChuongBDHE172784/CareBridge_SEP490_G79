@@ -118,7 +118,9 @@ class ChecklistHistoryItem {
     }
   }
 
-  String get subjectLabel => targetSubject?.label ?? 'Mẹ & bé';
+  /// V2 checklist leaves are targetless.  Keep their history label neutral;
+  /// the legacy fallback "Mẹ & bé" implied a target that is not present.
+  String get subjectLabel => targetSubject?.label ?? 'Khuyến nghị';
 
   factory ChecklistHistoryItem.fromJson(Map<String, dynamic> json) {
     final rawTasks = json['tasks'] as List? ?? const [];

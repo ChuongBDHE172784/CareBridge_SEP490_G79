@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:untitled/core/routes/app_router.dart';
 import 'package:untitled/features/auth/models/federated_auth_failure.dart';
 import 'package:untitled/features/auth/screens/register_screen.dart';
+import 'package:untitled/features/auth/screens/registration_verification_method_screen.dart';
+import 'package:untitled/features/auth/services/auth_service.dart';
 
 void main() {
   test('canonical dispatcher preserves an existing linked mother account', () {
@@ -21,18 +23,21 @@ void main() {
   });
 
   testWidgets(
-    'FED-REG-TC-007-MOB exposes Google and phone registration controls',
+    'registration form requires both contacts and keeps Google quick sign-up',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
       expect(
         find.byKey(const Key('federated-google-register')),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('federated-phone-register')), findsOneWidget);
+      expect(find.byKey(const Key('register-email-field')), findsOneWidget);
+      expect(find.byKey(const Key('register-phone-field')), findsOneWidget);
+      expect(
+        find.byKey(const Key('register-verification-method')),
+        findsNothing,
+      );
       expect(find.byTooltip('Đăng ký với Google'), findsOneWidget);
-      expect(find.byTooltip('Đăng ký với số điện thoại'), findsOneWidget);
       expect(find.text('G'), findsOneWidget);
-      expect(find.byIcon(Icons.phone_rounded), findsOneWidget);
     },
   );
 
@@ -43,25 +48,34 @@ void main() {
         const MaterialApp(home: RegisterScreen(isExpert: true)),
       );
 
-      expect(find.text('Email'), findsOneWidget);
-      expect(find.text('Email hoặc Số điện thoại'), findsNothing);
       expect(find.byKey(const Key('federated-google-register')), findsNothing);
-      expect(find.byKey(const Key('federated-phone-register')), findsNothing);
+      expect(find.byKey(const Key('register-email-field')), findsOneWidget);
+      expect(find.byKey(const Key('register-phone-field')), findsOneWidget);
       expect(find.text('bacsi@example.com'), findsOneWidget);
 
       final fields = find.byType(TextField);
       await tester.enterText(fields.at(0), 'Bác sĩ Test');
-      await tester.enterText(fields.at(1), '0901234567');
-      await tester.enterText(fields.at(2), 'Password@1');
-      await tester.tap(find.text('Tạo tài khoản'));
-      await tester.pump();
+      await tester.enterText(fields.at(1), 'expert@example.com');
+      await tester.enterText(fields.at(2), '+84912345678');
+      await tester.enterText(fields.at(3), 'Password@1');
+      await tester.enterText(fields.at(4), 'Password@1');
+      final checkbox = find.byType(Checkbox);
+      await tester.ensureVisible(checkbox);
+      await tester.tap(checkbox);
+      final submit = find.widgetWithText(FilledButton, 'Tạo tài khoản');
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
 
+      expect(find.byType(RegistrationVerificationMethodScreen), findsOneWidget);
       expect(
-        find.text(
-          'Tài khoản chuyên gia cần đăng ký bằng địa chỉ email hợp lệ.',
-        ),
+        find.text('Tài khoản chuyên gia được xác minh bằng email.'),
         findsOneWidget,
       );
+      final selector = tester.widget<SegmentedButton<AuthVerificationMethod>>(
+        find.byKey(const Key('registration-verification-method')),
+      );
+      expect(selector.segments.last.enabled, isFalse);
     },
   );
 

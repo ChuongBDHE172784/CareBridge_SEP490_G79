@@ -53,10 +53,12 @@ public class MetricObservationValidator {
         if ("BMI".equals(metricCode)) {
             BigDecimal weightKg = contextNumber(context, "weightKg");
             BigDecimal heightCm = contextNumber(context, "heightCm");
+            requireAtMostOneFractionalDigit(weightKg, "Weight must have at most one fractional digit");
+            requireAtMostOneFractionalDigit(heightCm, "Height must have at most one fractional digit");
             requireRange(weightKg, new BigDecimal("20"), new BigDecimal("300"),
                     "Weight must be between 20 and 300 kg");
-            requireRange(heightCm, new BigDecimal("100"), new BigDecimal("230"),
-                    "Height must be between 100 and 230 cm");
+            requireRange(heightCm, new BigDecimal("100"), new BigDecimal("250"),
+                    "Height must be between 100 and 250 cm");
             BigDecimal heightMeters = heightCm.movePointLeft(2);
             primary = weightKg.divide(heightMeters.multiply(heightMeters), 2, RoundingMode.HALF_UP);
             context.put("weightKg", weightKg.setScale(2, RoundingMode.HALF_UP));
@@ -218,7 +220,11 @@ public class MetricObservationValidator {
         Object value = context == null ? null : context.get(key);
         if (value == null) reject("METRIC-039", key + " is required for BMI");
         try {
-            return new BigDecimal(value.toString());
+            String text = value.toString();
+            if (text.contains("e") || text.contains("E")) {
+                reject("METRIC-039", key + " must be a plain decimal number");
+            }
+            return new BigDecimal(text);
         } catch (NumberFormatException exception) {
             reject("METRIC-039", key + " must be numeric");
             return null;
@@ -227,6 +233,12 @@ public class MetricObservationValidator {
 
     private void requireRange(BigDecimal value, BigDecimal min, BigDecimal max, String message) {
         if (value == null || value.compareTo(min) < 0 || value.compareTo(max) > 0) {
+            reject("METRIC-039", message);
+        }
+    }
+
+    private void requireAtMostOneFractionalDigit(BigDecimal value, String message) {
+        if (value.scale() > 1) {
             reject("METRIC-039", message);
         }
     }

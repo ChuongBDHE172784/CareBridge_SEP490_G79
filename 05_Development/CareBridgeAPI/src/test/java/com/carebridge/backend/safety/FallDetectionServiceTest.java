@@ -198,6 +198,20 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void confirmSafetyCheck_shouldMarkSensorSelfTestEventSafe() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setEventType(SafetyEventType.SENSOR_SELF_TEST);
+        event.setStatus(SafetyEventStatus.TEST_OPEN);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.confirmSafetyCheck(USER_ID, event.getId(), "Diễn tập safe");
+
+        assertThat(result.getStatus()).isEqualTo("CONFIRMED_SAFE");
+        assertThat(event.getResponseType()).isEqualTo("I_AM_OK");
+    }
+
+    @Test
     void reportFalsePositive_shouldMarkEventFalsePositive() {
         SafetyEvent event = makeSafetyEvent();
         when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
@@ -221,6 +235,41 @@ class FallDetectionServiceTest {
 
         assertThat(result.getStatus()).isEqualTo("FALSE_POSITIVE");
         assertThat(event.getResponseType()).isEqualTo("FALSE_POSITIVE");
+    }
+
+    @Test
+    void confirmSafetyCheck_shouldOverrideNeedHelpAndReturnEmergencySession() {
+        SafetyEvent event = makeSafetyEvent();
+        UUID emergencySessionId = UUID.randomUUID();
+        event.setResponseType("NEED_HELP");
+        event.setStatus(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        event.setEmergencySessionId(emergencySessionId);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.confirmSafetyCheck(
+                USER_ID, event.getId(), "User confirmed safe after escalation started");
+
+        assertThat(result.getStatus()).isEqualTo("CONFIRMED_SAFE");
+        assertThat(result.getEmergencySessionId()).isEqualTo(emergencySessionId);
+        assertThat(event.getResponseType()).isEqualTo("I_AM_OK");
+        assertThat(event.getResolvedAt()).isNotNull();
+    }
+
+    @Test
+    void reportFalsePositive_shouldOverrideNeedHelpForSuppressedDuplicate() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("NEED_HELP");
+        event.setStatus(SafetyEventStatus.ESCALATION_REQUESTED);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.reportFalsePositive(
+                USER_ID, event.getId(), "Automatically merged duplicate fall event");
+
+        assertThat(result.getStatus()).isEqualTo("FALSE_POSITIVE");
+        assertThat(event.getResponseType()).isEqualTo("FALSE_POSITIVE");
+        assertThat(event.getResolvedAt()).isNotNull();
     }
 
     @Test
@@ -259,6 +308,34 @@ class FallDetectionServiceTest {
         assertThatThrownBy(() -> fallDetectionService.sendEmergencyAlert(USER_ID, event.getId()))
                 .isInstanceOf(SafetyException.class)
                 .hasMessageContaining("cannot trigger emergency alerts");
+
+        verify(emergencyService, never()).openFlow(any(), any());
+        verify(responseRepository, never()).insert(any());
+    }
+
+    @Test
+    void sendEmergencyAlert_afterSafeResponseIsIdempotent() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("I_AM_OK");
+        event.setStatus(SafetyEventStatus.CONFIRMED_SAFE);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        verify(emergencyService, never()).openFlow(any(), any());
+        verify(responseRepository, never()).insert(any());
+    }
+
+    @Test
+    void sendEmergencyAlert_afterFalsePositiveResponseIsIdempotent() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("FALSE_POSITIVE");
+        event.setStatus(SafetyEventStatus.FALSE_POSITIVE);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
 
         verify(emergencyService, never()).openFlow(any(), any());
         verify(responseRepository, never()).insert(any());
@@ -444,6 +521,27 @@ class FallDetectionServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getEventType()).isEqualTo("SUSPECTED_FALL");
         verify(algorithmService, never()).analyze(any(), anyString());
+    }
+
+    @Test
+    void processImuData_recentVerifiedFallReusesEventInsteadOfOpeningDuplicateCountdown() {
+        ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
+        SafetyEvent recent = makeSafetyEvent();
+        recent.setImuSessionId(session.getId());
+        recent.setDetectedAt(Instant.now().minusSeconds(3));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString()))
+                .thenReturn(Optional.empty());
+        when(safetyEventRepository.findFirstByImuSessionIdAndResponseTypeIsNullAndDetectedAtAfterOrderByDetectedAtDesc(
+                eq(session.getId()), any())).thenReturn(Optional.of(recent));
+
+        SafetyEventResponse result = fallDetectionService.processImuData(USER_ID,
+                new ImuDataPayload(9.6, 0, 0, 0.2, 0, 0, Instant.now(),
+                        "second-peak", null, null, true));
+
+        assertThat(result.getId()).isEqualTo(recent.getId());
+        verify(safetyEventRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
     }
 
     @Test

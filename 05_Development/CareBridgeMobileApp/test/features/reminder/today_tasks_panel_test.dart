@@ -221,6 +221,62 @@ void main() {
   });
 
   testWidgets(
+    'renders targetless V2 checklist with neutral recommendation copy',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        final envelope = {
+          'asOf': '2026-08-03T01:00:00Z',
+          'zoneId': 'Asia/Ho_Chi_Minh',
+          'horizonDays': 7,
+          'sections': {
+            'overdue': <Map<String, dynamic>>[],
+            'today': [
+              {
+                'taskKind': 'CHECKLIST',
+                'taskId': 'v2-targetless-today',
+                'title': 'Duy trì thói quen hằng ngày',
+                'origin': 'USER_CREATED',
+                'targetSubject': null,
+                'status': 'PENDING',
+                'timeBucket': 'TODAY',
+                'allowedActions': ['COMPLETE'],
+                'dueAt': '2026-08-03T08:00:00Z',
+              },
+            ],
+            'upcoming': <Map<String, dynamic>>[],
+            'unscheduled': <Map<String, dynamic>>[],
+          },
+          'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
+          'correlationId': 'v2-targetless-copy',
+        };
+
+        await tester.pumpWidget(
+          _wrap(
+            TodayTasksPanel(service: _service(() async => {'data': envelope})),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.checklist_rounded), findsOneWidget);
+        final card = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              (widget.properties.label ?? '').contains(
+                'Duy trì thói quen hằng ngày',
+              ),
+        );
+        expect(card, findsOneWidget);
+        final label = tester.getSemantics(card).getSemanticsData().label;
+        expect(label, contains('Khuyến nghị'));
+        expect(label, isNot(contains('My care')));
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
+
+  testWidgets(
     'renders direct-context mandatory and user-created tasks together',
     (tester) async {
       final envelope = {

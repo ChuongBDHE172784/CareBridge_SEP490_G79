@@ -140,6 +140,8 @@ class _ExpertIdentityCaptureScreenState
         ),
         title: const Text('Xác minh danh tính'),
         backgroundColor: Colors.transparent,
+        foregroundColor: const Color(0xFF2C221E),
+        surfaceTintColor: Colors.transparent,
       ),
       body: SafeArea(
         child: ListView(

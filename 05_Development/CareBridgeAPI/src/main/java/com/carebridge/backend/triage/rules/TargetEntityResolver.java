@@ -114,6 +114,10 @@ public class TargetEntityResolver {
 
         LinkedHashSet<String> motherHits = new LinkedHashSet<>();
         LinkedHashSet<String> babyHits = new LinkedHashSet<>();
+        // Mother evidence strong enough to mean "a second patient", rather than narrator
+        // voice: a pregnancy/postpartum phrase, or a pronoun in a clause that also reports a
+        // symptom. This is intentionally tracked separately from all mother surface hits.
+        LinkedHashSet<String> motherPatientEvidence = new LinkedHashSet<>();
 
         for (String clause : clauses(message)) {
             List<String> babyPossessive = containsAny(clause,
@@ -131,16 +135,29 @@ public class TargetEntityResolver {
                     indicators.get("mother").get("strongIndicators"));
             if (!motherStrong.isEmpty()) {
                 motherHits.addAll(motherStrong);
+                motherPatientEvidence.addAll(motherStrong);
                 continue;
             }
             List<String> motherSubject = containsAny(clause,
                     indicators.get("mother").get("possessiveOrSubject"));
             if (!motherSubject.isEmpty() && !thirdParty) {
                 motherHits.addAll(motherSubject);
+                if (clauseReportsSymptom(clause, indicators)) {
+                    motherPatientEvidence.addAll(motherSubject);
+                }
             }
         }
 
         if (!motherHits.isEmpty() && !babyHits.isEmpty()) {
+            if (motherPatientEvidence.isEmpty()) {
+                // The mother appears only as the person telling the story: "em lo quá, bé bỏ
+                // bú", "bé nóng người nhưng nhà em không có nhiệt kế". The asymmetry is
+                // deliberate: any symptom marker in the mother's clause keeps CONFLICTED, so
+                // a real maternal complaint is never silently dropped.
+                return new TargetResolution(TargetEntity.BABY,
+                        ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE,
+                        List.copyOf(babyHits), List.of());
+            }
             List<String> conflict = new ArrayList<>(motherHits);
             conflict.addAll(babyHits);
             return new TargetResolution(TargetEntity.CONFLICTED,
@@ -156,6 +173,22 @@ public class TargetEntityResolver {
         }
         return new TargetResolution(TargetEntity.UNKNOWN, ResolutionSource.NONE,
                 List.of(), List.of());
+    }
+
+    /**
+     * Whether a mother-subject clause describes a bodily state rather than narrator voice.
+     *
+     * <p>This helper is used only to disambiguate a first-person pronoun when the message also
+     * contains baby evidence; it never creates a target on its own. A contract copy without
+     * the marker group retains the older, more conservative interpretation.
+     */
+    static boolean clauseReportsSymptom(String clause, JsonNode indicators) {
+        JsonNode markers = indicators.get("symptomOrConditionMarkers");
+        if (markers == null || !markers.isObject()) {
+            return true;
+        }
+        JsonNode phrases = markers.get("phrases");
+        return phrases != null && !containsAny(clause, phrases).isEmpty();
     }
 
     private static TargetEntity fromClarification(String answer) {

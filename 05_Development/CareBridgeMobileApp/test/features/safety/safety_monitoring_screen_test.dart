@@ -39,6 +39,17 @@ void main() {
     expect(safeWrites, 1);
   });
 
+  test('sensor rehearsal routes safe action to onSafe', () async {
+    var safeCalled = false;
+    await dispatchSensorSelfTestCountdownResult(
+      result: const SafetyCountdownResult.safe(),
+      onSafe: () async => safeCalled = true,
+      onFalsePositive: (_, _) async {},
+      onComplete: (_) async {},
+    );
+    expect(safeCalled, isTrue);
+  });
+
   test('sensor rehearsal routes help to safe test completion only', () async {
     var emergencyWrites = 0;
     String? completedOutcome;
@@ -111,6 +122,88 @@ void main() {
 
     expect(next, same(realEvent));
   });
+
+  test('a completed countdown cannot release a newer countdown owner', () {
+    expect(
+      shouldReleaseSafetyCountdownOwnership(
+        activeEventId: 'fall-2',
+        completedEventId: 'fall-1',
+      ),
+      isFalse,
+    );
+    expect(
+      shouldReleaseSafetyCountdownOwnership(
+        activeEventId: 'fall-1',
+        completedEventId: 'fall-1',
+      ),
+      isTrue,
+    );
+  });
+
+  test('suppresses a second event produced by the same physical fall', () {
+    final first = SafetyEvent(
+      id: 'fall-1',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 9,
+      status: 'OPEN',
+      detectedAt: DateTime.utc(2026, 8, 11, 10),
+    );
+    final duplicate = SafetyEvent(
+      id: 'fall-2',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 10,
+      status: 'OPEN',
+      detectedAt: DateTime.utc(2026, 8, 11, 10, 0, 7),
+    );
+
+    expect(isLikelyDuplicateFallEvent(first, duplicate), isTrue);
+    expect(
+      selectNextOpenSafetyEvent(
+        [duplicate],
+        excludingId: first.id,
+        suppressedIds: {duplicate.id},
+      ),
+      isNull,
+    );
+  });
+
+  test(
+    'closes a suppressed duplicate and resolves its emergency session',
+    () async {
+      const duplicate = SafetyEvent(
+        id: 'fall-duplicate',
+        eventType: 'SUSPECTED_FALL',
+        magnitude: 10,
+        status: 'OPEN',
+      );
+      const closed = SafetyEvent(
+        id: 'fall-duplicate',
+        eventType: 'SUSPECTED_FALL',
+        magnitude: 10,
+        status: 'FALSE_POSITIVE',
+        responseType: 'FALSE_POSITIVE',
+        emergencySessionId: 'emergency-1',
+      );
+      String? reportedEventId;
+      String? reportedNote;
+      SafetyEvent? resolvedEvent;
+
+      final result = await closeDuplicateFallEvent(
+        event: duplicate,
+        reportFalsePositive: (eventId, {note}) async {
+          reportedEventId = eventId;
+          reportedNote = note;
+          return closed;
+        },
+        resolveEmergency: (event) async => resolvedEvent = event,
+      );
+
+      expect(result, same(closed));
+      expect(reportedEventId, duplicate.id);
+      expect(reportedNote, contains('gộp bản ghi trùng'));
+      expect(resolvedEvent, same(closed));
+    },
+  );
 
   test(
     'dedicated queue preserves a real event across API list replacement',

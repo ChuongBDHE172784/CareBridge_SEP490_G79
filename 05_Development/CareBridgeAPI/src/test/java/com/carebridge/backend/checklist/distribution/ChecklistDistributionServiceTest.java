@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -18,8 +19,11 @@ import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationMode;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
 import com.carebridge.backend.checklist.key.ChecklistDistributionKeyFactory;
@@ -274,6 +278,29 @@ class ChecklistDistributionServiceTest {
     }
 
     @Test
+    void datingRevisionSupersedesSameCalendarWindow() {
+        var command = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)),
+                ChecklistDistributionTestFactory.CARE_GROUP_ID);
+        var prior = matchingInstance(command, UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+        prior.setGestationalDatingRevision(2L);
+        when(instances.findAllByLogicalPersonalIdentity(
+                any(), any(), any(), any(), any(), any())).thenReturn(List.of(prior));
+        when(instances.findForUpdateById(prior.getId())).thenReturn(Optional.of(prior));
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.empty());
+        when(tasks.findByTaskKey(any())).thenReturn(Optional.empty());
+
+        var result = service.distribute(command);
+
+        assertThat(result.cancelledInstances()).isOne();
+        assertThat(prior.getHistoricalAt()).isNotNull();
+        assertThat(result.createdInstances()).isOne();
+    }
+
+    @Test
     void lifecycleScopeLockIsAcquiredBeforeObsoleteWindowDiscovery() {
         var command = command(ChecklistCareContextType.JOURNEY,
                 ChecklistDistributionTestFactory.CONTEXT_ID,
@@ -439,6 +466,125 @@ class ChecklistDistributionServiceTest {
     }
 
     @Test
+    void catchUpCreatesClosedHistoryAndNeverLeavesAnActionableTask() {
+        var command = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)),
+                null).withCadence(catchUpCadence("W:G:0000:2026-01-01"));
+        List<ChecklistTaskInstance> persistedTasks = new java.util.ArrayList<>();
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.empty());
+        when(instances.findAllByLogicalPersonalIdentity(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+        when(tasks.findByTaskKey(any())).thenReturn(Optional.empty());
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(any()))
+                .thenAnswer(invocation -> persistedTasks.stream().toList());
+        doAnswer(invocation -> {
+            ChecklistTaskInstance task = invocation.getArgument(0, ChecklistTaskInstance.class);
+            if (!persistedTasks.contains(task)) {
+                persistedTasks.add(task);
+            }
+            if (task.getId() == null) task.setId(UUID.randomUUID());
+            return task;
+        }).when(tasks).save(org.mockito.ArgumentMatchers.any(ChecklistTaskInstance.class));
+
+        var result = service.distributeDetailed(command).total();
+
+        assertThat(result.createdInstances()).isOne();
+        assertThat(result.createdTasks()).isEqualTo(2);
+        verify(instances, times(2)).save(any());
+        verify(instances, times(2)).save(argThat(instance ->
+                instance.getMaterializationMode() == ChecklistMaterializationMode.CATCH_UP
+                        && Boolean.FALSE.equals(instance.getWasActionable())
+                        && instance.getHistoricalAt() != null
+                        && "CADENCE_PERIOD_CLOSED".equals(instance.getHistoryReasonCode())
+                        && instance.getStatus() == ChecklistInstanceStatus.CANCELLED));
+        assertThat(persistedTasks).allMatch(task -> task.getStatus() == ChecklistTaskStatus.CANCELLED
+                && "CADENCE_PERIOD_CLOSED".equals(task.getActionReasonCode()));
+    }
+
+    @Test
+    void catchUpClosesExistingInteractiveOccurrenceInsteadOfCreatingConflict() {
+        var command = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)),
+                null).withCadence(catchUpCadence("W:G:0000:2026-01-01"));
+        ChecklistInstance existing = matchingInstance(command, ChecklistDistributionTestFactory.INSTANCE_ID);
+        existing.setPeriodKey(command.cadence().periodKey());
+        existing.setScheduleZoneId("UTC");
+        existing.setChecklistContractVersion((short) 2);
+        existing.setMaterializationMode(ChecklistMaterializationMode.INTERACTIVE);
+        existing.setWasActionable(Boolean.TRUE);
+        ChecklistTaskInstance task = ChecklistTaskInstance.builder()
+                .id(UUID.randomUUID())
+                .checklistInstanceId(existing.getId())
+                .taskKey("c".repeat(64))
+                .status(ChecklistTaskStatus.PENDING)
+                .titleSnapshot("Task")
+                .build();
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.of(existing));
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(existing.getId()))
+                .thenReturn(List.of(task));
+
+        var result = service.distributeDetailed(command).total();
+
+        assertThat(result.conflicts()).isZero();
+        assertThat(existing.getHistoricalAt()).isEqualTo(clock.instant());
+        assertThat(existing.getHistoryReasonCode()).isEqualTo("CADENCE_PERIOD_CLOSED");
+        assertThat(existing.getStatus()).isEqualTo(ChecklistInstanceStatus.CANCELLED);
+        assertThat(task.getStatus()).isEqualTo(ChecklistTaskStatus.CANCELLED);
+        assertThat(task.getActionReasonCode()).isEqualTo("CADENCE_PERIOD_CLOSED");
+    }
+
+    @Test
+    void catchUpPreservesCompletedEvidenceWhileClosingOccurrenceInHistory() {
+        var command = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)),
+                null).withCadence(catchUpCadence("W:G:0000:2026-01-01"));
+        ChecklistInstance existing = matchingInstance(command, ChecklistDistributionTestFactory.INSTANCE_ID);
+        existing.setPeriodKey(command.cadence().periodKey());
+        existing.setScheduleZoneId("UTC");
+        existing.setChecklistContractVersion((short) 2);
+        existing.setMaterializationMode(ChecklistMaterializationMode.INTERACTIVE);
+        existing.setWasActionable(Boolean.TRUE);
+        existing.setStatus(ChecklistInstanceStatus.COMPLETED);
+        existing.setCompletedAt(clock.instant().minusSeconds(60));
+        ChecklistTaskInstance task = ChecklistTaskInstance.builder()
+                .id(UUID.randomUUID())
+                .checklistInstanceId(existing.getId())
+                .taskKey("d".repeat(64))
+                .status(ChecklistTaskStatus.COMPLETED)
+                .completedAt(clock.instant().minusSeconds(60))
+                .titleSnapshot("Task")
+                .build();
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.of(existing));
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(existing.getId()))
+                .thenReturn(List.of(task));
+
+        service.distributeDetailed(command);
+
+        assertThat(existing.getStatus()).isEqualTo(ChecklistInstanceStatus.COMPLETED);
+        assertThat(existing.getCompletedAt()).isEqualTo(clock.instant().minusSeconds(60));
+        assertThat(existing.getCancelledAt()).isNull();
+        assertThat(existing.getHistoricalAt()).isEqualTo(clock.instant());
+        assertThat(task.getStatus()).isEqualTo(ChecklistTaskStatus.COMPLETED);
+    }
+
+    private static ChecklistCadenceMetadata catchUpCadence(String periodKey) {
+        return ChecklistCadenceMetadata.interactive(
+                ChecklistScheduleType.WEEKLY,
+                ChecklistMaterializationPolicy.EACH_WEEK,
+                periodKey,
+                ZoneId.of("UTC")).catchUp();
+    }
+
+    @Test
     void familyPermissionTruthTableIsDefaultDenyForReadAndAction() {
         var policy = new ChecklistFamilyPermissionPolicy();
 
@@ -490,7 +636,8 @@ class ChecklistDistributionServiceTest {
                         new ChecklistDistributionItem(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
                                 "Task B", 2, false, ChecklistTargetSubject.MOTHER,
                                 ChecklistAnchorType.LMP, 1)),
-                UUID.fromString("12345678-1234-1234-1234-123456789abc"));
+                 UUID.fromString("12345678-1234-1234-1234-123456789abc"),
+                 1L);
     }
 
     private static ChecklistInstance matchingInstance(ChecklistDistributionCommand command, UUID id) {
@@ -506,6 +653,7 @@ class ChecklistDistributionServiceTest {
                 .careContextId(command.contextId())
                 .contextOwnerUserId(command.contextOwnerUserId())
                 .origin(com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE)
+                .gestationalDatingRevision(command.gestationalDatingRevision())
                 .windowStart(LocalDate.of(2026, 1, 1))
                 .windowEnd(LocalDate.of(2026, 1, 8))
                 .status(ChecklistInstanceStatus.PENDING)

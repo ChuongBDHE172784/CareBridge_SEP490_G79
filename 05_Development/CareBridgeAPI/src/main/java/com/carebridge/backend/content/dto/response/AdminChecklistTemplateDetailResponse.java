@@ -1,6 +1,11 @@
 package com.carebridge.backend.content.dto.response;
 
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
+import com.carebridge.backend.checklist.model.ChecklistScheduleEndMode;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentStage;
@@ -35,10 +40,24 @@ public class AdminChecklistTemplateDetailResponse {
     private Boolean migrationReviewRequired;
     private Boolean distributionEnabled;
     private ChecklistTemplateType templateType;
+    private Short checklistContractVersion;
+    /** Optional cadence/provenance projection; null means legacy/unmapped. */
+    private Integer planNumber;
+    private String section;
+    private ChecklistScheduleType scheduleType;
+    private ChecklistMaterializationPolicy materializationPolicy;
+    private String scheduleGroupKey;
+    private ChecklistCareContextType scheduleContextType;
+    private ChecklistScheduleEndMode scheduleEndMode;
+    private ChecklistWeekBoundaryRule weekBoundaryRule;
+    private Integer eligibilityStartInclusive;
+    private Integer eligibilityEndInclusive;
+    private String checklistQuarantineReasonCode;
     private Instant approvedAt;
     private UUID approvedBy;
     private Instant migrationReviewedAt;
     private UUID migrationReviewedBy;
+    private ChecklistProvenanceResponse provenance;
     private List<ChecklistItemResponse> items;
     private ReviewFeedbackResponse latestReviewFeedback;
 }

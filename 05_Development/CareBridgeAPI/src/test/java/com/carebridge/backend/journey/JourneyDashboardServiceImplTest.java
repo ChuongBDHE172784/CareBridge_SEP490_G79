@@ -73,10 +73,39 @@ class JourneyDashboardServiceImplTest {
         assertThat(dashboard.getEstimatedDueDate()).isNotNull();
     }
 
+    @Test
+    void getDashboard_malformedDatingTupleDoesNotProjectPlanOrDueDate() {
+        var journey = JourneyDashboardTestFactory.makePregnancyJourney(20);
+        journey.setGestationalDatingEffectiveAt(null);
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
+                .thenReturn(Optional.of(journey));
+
+        JourneyDashboardResponse dashboard = journeyService.getDashboard(
+                JourneyDashboardTestFactory.MOTHER_ID);
+
+        assertThat(dashboard.getPregnancyWeek()).isNull();
+        assertThat(dashboard.getPlan()).isNull();
+        assertThat(dashboard.getDaysUntilDue()).isNull();
+        assertThat(dashboard.getEstimatedDueDate()).isNull();
+    }
+
     /** TC-024-002: Active POSTPARTUM journey → ACTIVE_POSTPARTUM, no pregnancy metrics. */
     @Test
     void getDashboard_activePostpartum_returnsPostpartumStatus() {
         var journey = JourneyDashboardTestFactory.makePostpartumJourney();
+        // A completed pregnancy may retain legacy source dates in the row;
+        // dashboard projections must still fail closed after lifecycle exit.
+        journey.setLastMenstrualDate(JourneyDashboardTestFactory.TODAY.minusWeeks(40));
+        journey.setEstimatedDueDate(JourneyDashboardTestFactory.TODAY.plusDays(1));
+        journey.setGestationalDatingBasis(com.carebridge.backend.journey.entity.GestationalDatingBasis.LMP);
+        journey.setGestationalDatingRevision(3L);
+        journey.setGestationalDatingEffectiveAt(
+                JourneyDashboardTestFactory.TODAY.atStartOfDay().toInstant(java.time.ZoneOffset.UTC));
+        journey.setPregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH);
+        journey.setPregnancyOutcomeDate(journey.getDeliveryDate());
         when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
                 JourneyDashboardTestFactory.MOTHER_ID,
                 JourneyStatus.ACTIVE,
@@ -88,6 +117,12 @@ class JourneyDashboardServiceImplTest {
         assertThat(dashboard.getStatus()).isEqualTo(DashboardStatus.ACTIVE_POSTPARTUM);
         assertThat(dashboard.getPregnancyWeek()).isNull();
         assertThat(dashboard.getTrimester()).isNull();
+        assertThat(dashboard.getPlan()).isNull();
+        assertThat(dashboard.getCompletedGestationalWeek()).isNull();
+        assertThat(dashboard.getSourceWeekNumber()).isNull();
+        assertThat(dashboard.getEstimatedDueDate()).isNull();
+        assertThat(dashboard.getLastMenstrualDate()).isNull();
+        assertThat(dashboard.getDaysUntilDue()).isNull();
     }
 
     @Test

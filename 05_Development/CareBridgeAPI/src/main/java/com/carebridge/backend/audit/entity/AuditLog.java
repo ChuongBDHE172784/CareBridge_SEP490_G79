@@ -130,7 +130,9 @@ public class AuditLog {
 
     @PrePersist
     void prepareCanonicalEvent() {
-        eventOrigin = "AUDIT_LOG";
+        if (eventOrigin == null || eventOrigin.isBlank()) {
+            eventOrigin = "AUDIT_LOG";
+        }
     }
 
     @PreUpdate

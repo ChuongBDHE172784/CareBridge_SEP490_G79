@@ -33,6 +33,16 @@ def stage_context_resolver(state: Mapping[str, object]) -> dict[str, object]:
         baby_age_months=_optional_int(state.get("babyAgeMonths")),
         gestational_week=_optional_int(state.get("gestationalWeek")),
         postpartum_day=_optional_int(state.get("postpartumDay")),
+        latest_user_message=(
+            state.get("latestUserMessage")
+            if type(state.get("latestUserMessage")) is str
+            else None
+        ),
+        submitted_option_codes=(
+            state.get("submittedOptionCodes")
+            if type(state.get("submittedOptionCodes")) is list
+            else None
+        ),
     )
     if (
         resolution.stage is CareStage.UNKNOWN

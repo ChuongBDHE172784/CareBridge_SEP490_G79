@@ -98,12 +98,18 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new ValidationException("IAM-114-002: at least one of enabled/locked must be provided");
         }
 
-        User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("IAM-114-003: User not found"));
+        User target = userRepository.findByIdForUpdate(targetUserId)
+                .orElseGet(() -> userRepository.findById(targetUserId)
+                        .orElseThrow(() -> new ResourceNotFoundException("IAM-114-003: User not found")));
 
         if (Boolean.TRUE.equals(request.getLocked())
                 && (request.getReason() == null || request.getReason().isBlank())) {
             throw new ValidationException("IAM-114-005: lock reason is required");
+        }
+
+        if (Boolean.TRUE.equals(request.getEnabled())
+                && "DEACTIVATED".equalsIgnoreCase(target.getAccountStatus())) {
+            throw new ValidationException("IAM-114-006: deactivated accounts require the account reactivation workflow");
         }
 
         boolean previousEnabled = target.isEnabled();
@@ -116,6 +122,17 @@ public class AdminUserServiceImpl implements AdminUserService {
         UUID auditedLockEpisodeId = target.getLockEpisodeId();
         if (request.getEnabled() != null) {
             target.setEnabled(request.getEnabled());
+            // A pending registration is intentionally disabled until its OTP is
+            // verified. If an administrator disables it in that window, preserve
+            // that administrative decision in accountStatus so a previously
+            // issued OTP cannot reactivate the account behind the admin's back.
+            if (!request.getEnabled()
+                    && "PENDING_ACTIVATION".equalsIgnoreCase(target.getAccountStatus())) {
+                target.setAccountStatus("DISABLED");
+            } else if (request.getEnabled()
+                    && "DISABLED".equalsIgnoreCase(target.getAccountStatus())) {
+                target.setAccountStatus("PENDING_ACTIVATION");
+            }
             if (!request.getEnabled()) userSessionRepository.revokeAllByUserId(targetUserId, now);
         }
         if (request.getLocked() != null) {

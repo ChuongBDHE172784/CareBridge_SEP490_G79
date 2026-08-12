@@ -4,12 +4,18 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../directChat/services/direct_chat_service.dart';
 import '../../consultation/screens/consultation_request_form_screen.dart';
-import 'package:intl/intl.dart';
+import '../models/expert_availability_slot.dart';
+import '../services/expert_availability_service.dart';
 
 class ExpertPublicProfileScreen extends StatefulWidget {
   final String expertProfileId;
+  final ExpertAvailabilityService? availabilityService;
 
-  const ExpertPublicProfileScreen({super.key, required this.expertProfileId});
+  const ExpertPublicProfileScreen({
+    super.key,
+    required this.expertProfileId,
+    this.availabilityService,
+  });
 
   @override
   State<ExpertPublicProfileScreen> createState() =>
@@ -28,6 +34,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
 
   late Future<Map<String, dynamic>> _future;
+  late Future<List<ExpertAvailabilitySlot>> _availabilityFuture;
   int _generation = 0;
   late String? _accountId;
   bool _accountChanged = false;
@@ -38,6 +45,9 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     _accountId = AuthState.instance.userId;
     AuthState.instance.addListener(_handleAuthChanged);
     _future = _loadProfile();
+    _availabilityFuture =
+        (widget.availabilityService ?? ExpertAvailabilityService.instance)
+            .getPublicAvailability(widget.expertProfileId);
   }
 
   @override
@@ -85,14 +95,6 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
       }
     }
     return profile;
-  }
-
-  String _formatCurrency(dynamic amount) {
-    if (amount == null) return 'Miễn phí';
-    final number = double.tryParse(amount.toString()) ?? 0;
-    if (number == 0) return 'Miễn phí';
-    final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
-    return format.format(number);
   }
 
   Future<void> _openChat(String? conversationId) async {
@@ -176,7 +178,6 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 final workplace = profile['workplace'] as String?;
                 final experienceYears = profile['experienceYears']?.toString();
                 final ratingAvg = profile['ratingAvg']?.toString();
-                final consultationFee = profile['consultationFeeVnd'];
                 final consultationScope =
                     profile['consultationScope'] as String?;
                 final isVerified = profile['verificationStatus'] == 'APPROVED';
@@ -280,6 +281,9 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      _buildAvailabilityCard(),
+                      const SizedBox(height: 16),
+
                       // Details Card
                       Container(
                         width: double.infinity,
@@ -310,12 +314,6 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                               Icons.local_hospital_outlined,
                               'Nơi công tác',
                               workplace ?? 'Đang cập nhật',
-                            ),
-                            const SizedBox(height: 12),
-                            _buildInfoRow(
-                              Icons.monetization_on_outlined,
-                              'Phí tư vấn',
-                              _formatCurrency(consultationFee),
                             ),
                           ],
                         ),
@@ -383,8 +381,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     required String? conversationId,
     required String expertDisplayName,
   }) {
-    final hasConversation =
-        conversationId != null && conversationId.isNotEmpty;
+    final hasConversation = conversationId != null && conversationId.isNotEmpty;
 
     if (hasConversation) {
       return SizedBox(
@@ -434,6 +431,177 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
       ),
     );
   }
+
+  Widget _buildAvailabilityCard() {
+    return Container(
+      key: const Key('expert-public-availability'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F5A463F),
+            blurRadius: 24,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Color(0xFFF8EEE9),
+                child: Icon(Icons.calendar_month_rounded, color: _primary),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Lịch tư vấn sắp tới',
+                      style: TextStyle(
+                        color: _onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Chọn ca phù hợp khi gửi yêu cầu tư vấn',
+                      style: TextStyle(color: _onSurfaceVariant, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FutureBuilder<List<ExpertAvailabilitySlot>>(
+            future: _availabilityFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+              if (snapshot.hasError) {
+                return _availabilityMessage(
+                  Icons.cloud_off_rounded,
+                  'Chưa thể tải lịch. Bạn vẫn có thể gửi yêu cầu và chọn thời gian sau.',
+                );
+              }
+              final grouped = groupAvailabilityByLocalDate(
+                snapshot.data ?? const [],
+              );
+              if (grouped.isEmpty) {
+                return _availabilityMessage(
+                  Icons.event_busy_rounded,
+                  'Chuyên gia chưa công bố ca tư vấn sắp tới.',
+                );
+              }
+              final entries = grouped.entries.take(7).toList();
+              return Column(
+                children: entries.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 82,
+                          child: Text(
+                            _formatAvailabilityDate(entry.key),
+                            style: const TextStyle(
+                              color: _onSurface,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: entry.value.map((slot) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8EEE9),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                                child: Text(
+                                  _formatSlotTime(slot),
+                                  style: const TextStyle(
+                                    color: _primary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _availabilityMessage(IconData icon, String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8EEE9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: _primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: _onSurfaceVariant, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatAvailabilityDate(DateTime date) {
+    final today = DateTime.now();
+    final tomorrow = today.add(const Duration(days: 1));
+    if (_sameLocalDate(date, today)) return 'Hôm nay';
+    if (_sameLocalDate(date, tomorrow)) return 'Ngày mai';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+  }
+
+  String _formatSlotTime(ExpertAvailabilitySlot slot) =>
+      '${slot.startAt.hour.toString().padLeft(2, '0')}:00–'
+      '${slot.endAt.hour.toString().padLeft(2, '0')}:00';
+
+  bool _sameLocalDate(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   Widget _buildStatColumn({
     required IconData icon,

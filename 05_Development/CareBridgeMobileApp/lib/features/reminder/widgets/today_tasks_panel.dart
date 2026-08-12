@@ -1000,13 +1000,18 @@ class _TodayTaskCard extends StatelessWidget {
         allowDelete &&
         task.isChecklist &&
         task.origin == TodayTaskOrigin.userCreated;
+    final targetless =
+        task.isChecklist && task.target == TodayTaskTarget.unknown;
 
     return Semantics(
       container: true,
       explicitChildNodes: true,
       selected: isCompleted,
-      label:
-          'Xem chi tiết ${task.title}, ${task.originLabel}, ${task.targetLabel}, ${task.statusLabel}',
+      // A V2 task has no target subject.  Do not announce the legacy
+      // user-created "My care" origin as if it were the task target.
+      label: targetless
+          ? 'Xem chi tiết ${task.title}, ${task.targetLabel}, ${task.statusLabel}'
+          : 'Xem chi tiết ${task.title}, ${task.originLabel}, ${task.targetLabel}, ${task.statusLabel}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1062,9 +1067,16 @@ class _TodayTaskCard extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              task.target == TodayTaskTarget.baby
-                                  ? Icons.child_care_rounded
-                                  : Icons.pregnant_woman_rounded,
+                              switch (task.target) {
+                                TodayTaskTarget.baby =>
+                                  Icons.child_care_rounded,
+                                TodayTaskTarget.mother =>
+                                  Icons.pregnant_woman_rounded,
+                                TodayTaskTarget.unknown =>
+                                  task.isChecklist
+                                      ? Icons.checklist_rounded
+                                      : Icons.pregnant_woman_rounded,
+                              },
                               color: isCompleted
                                   ? const Color(0xFF9C857C)
                                   : const Color(0xFFC98C7B),

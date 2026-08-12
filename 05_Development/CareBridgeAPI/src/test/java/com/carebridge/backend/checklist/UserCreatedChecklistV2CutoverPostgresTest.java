@@ -162,6 +162,40 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
     }
 
     @Test
+    void explicitV2HeaderCreatesTargetlessParentAndChild() throws Exception {
+        UUID clientTaskId = UUID.randomUUID();
+        String body = """
+                {"journeyId":"%s","itemText":"Theo dõi huyết áp", "category":"GENERAL",
+                 "itemOrder":1,"clientTaskId":"%s"}
+                """.formatted(journeyId, clientTaskId);
+
+        String response = mockMvc.perform(post("/api/v1/user-checklist-items")
+                        .with(csrf()).with(user(motherId.toString()).roles("MOTHER"))
+                        .header("X-Checklist-Contract-Version", "2")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.origin").value("USER_CREATED"))
+                .andExpect(jsonPath("$.data.targetSubject").value(org.hamcrest.Matchers.nullValue()))
+                .andReturn().getResponse().getContentAsString();
+
+        UUID taskId = UUID.fromString(com.fasterxml.jackson.databind.json.JsonMapper.builder().build()
+                .readTree(response).path("data").path("itemId").asText());
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from checklist_instances where recipient_user_id=? "
+                        + "and checklist_contract_version=2 and key_version='v2'",
+                Long.class, motherId)).isOne();
+        assertThat(jdbcTemplate.queryForObject(
+                "select period_key || ':' || schedule_zone_id || ':' || materialization_mode "
+                        + "|| ':' || was_actionable from checklist_instances "
+                        + "where recipient_user_id=? and checklist_contract_version=2",
+                String.class, motherId)).isEqualTo("USER_CREATED:UTC:INTERACTIVE:true");
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from checklist_task_instances where checklist_task_instance_id=? "
+                        + "and checklist_contract_version=2 and target_subject is null",
+                Long.class, taskId)).isOne();
+    }
+
+    @Test
     void explicitTargetIsRequiredAndRetiredCompatibilityMutationsAreGone() throws Exception {
         String missingTarget = "{\"journeyId\":\"%s\",\"itemText\":\"No target\",\"clientTaskId\":\"%s\"}"
                 .formatted(journeyId, UUID.randomUUID());

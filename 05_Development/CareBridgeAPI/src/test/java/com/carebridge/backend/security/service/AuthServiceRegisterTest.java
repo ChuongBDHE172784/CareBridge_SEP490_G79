@@ -3,6 +3,7 @@ package com.carebridge.backend.security.service;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
+import com.carebridge.backend.security.dto.request.VerificationMethod;
 import com.carebridge.backend.security.dto.request.SelectRoleRequest;
 import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
@@ -121,7 +122,38 @@ class AuthServiceRegisterTest {
         req.setPhone(phone);
         req.setPassword(password);
         req.setRole(role);
+        req.setVerificationMethod(VerificationMethod.EMAIL);
         return req;
+    }
+
+    @Test
+    @DisplayName("Explicit EMAIL verification keeps phone as profile data and sends only email OTP")
+    void register_explicitEmailChannel_doesNotSendSms() {
+        AuthenticationPolicy policy = mock(AuthenticationPolicy.class);
+        AuthServiceImpl svc = newUnitAuthService(policy);
+        when(passwordComplexityPolicyMock.isComplexEnough(anyString())).thenReturn(true);
+        when(policy.resolveSelfRegistrationRole(Role.MOTHER)).thenReturn(Role.MOTHER);
+        when(userRepositoryMock.existsByEmail(anyString())).thenReturn(false);
+        when(userRepositoryMock.existsByPhone(anyString())).thenReturn(false);
+        when(passwordEncoderMock.encode(anyString())).thenReturn("$2a$12$hashedvalue");
+        when(userRepositoryMock.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            if (u.getId() == null) u.setId(UUID.randomUUID());
+            return u;
+        });
+        when(otpRepoMock.save(any(OtpVerification.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RegisterRequest request = registerRequest(
+                "selected@example.com", "0901111026", "MyP@ssw0rd123", Role.MOTHER);
+        request.setVerificationMethod(VerificationMethod.EMAIL);
+        svc.register(request);
+
+        verify(emailService).sendOtpVerificationEmail(eq("selected@example.com"), anyString(), anyInt());
+        verifyNoInteractions(smsService);
+        ArgumentCaptor<OtpVerification> otpCaptor = ArgumentCaptor.forClass(OtpVerification.class);
+        verify(otpRepoMock).save(otpCaptor.capture());
+        assertThat(otpCaptor.getValue().getEmail()).isEqualTo("selected@example.com");
+        assertThat(otpCaptor.getValue().getPhone()).isNull();
     }
 
     private SelectRoleRequest selectRoleRequest(Role role) {
@@ -237,7 +269,7 @@ class AuthServiceRegisterTest {
         when(userRepositoryMock.existsByPhone("+84912345678")).thenReturn(true);
 
         assertThatThrownBy(() -> svc.register(
-                registerRequest(null, "0912345678", "MyP@ssw0rd123", Role.MOTHER)))
+                registerRequest("new@example.com", "0912345678", "MyP@ssw0rd123", Role.MOTHER)))
                 .isInstanceOf(AccountAlreadyExistsException.class)
                 .satisfies(error -> {
                     AccountAlreadyExistsException exception = (AccountAlreadyExistsException) error;
@@ -454,9 +486,20 @@ class AuthServiceRegisterTest {
     @Test
     @DisplayName("AUTH-TC-005b: Null role is allowed so onboarding can assign it later")
     void registerDto_nullRole_allowed() {
-        RegisterRequest req = registerRequest("valid@test.com", null, "MyP@ssw0rd123", null);
+        RegisterRequest req = registerRequest("valid@test.com", "0901111026", "MyP@ssw0rd123", null);
         Set<ConstraintViolation<RegisterRequest>> violations = beanValidator().validate(req);
         assertThat(hasViolationOn(violations, "role")).isFalse();
+    }
+
+    @Test
+    void registerDto_emailAndPhone_areBothRequired() {
+        RegisterRequest missingPhone = registerRequest(
+                "valid@test.com", null, "MyP@ssw0rd123", Role.MOTHER);
+        RegisterRequest missingEmail = registerRequest(
+                null, "0901111026", "MyP@ssw0rd123", Role.MOTHER);
+
+        assertThat(hasViolationOn(beanValidator().validate(missingPhone), "phone")).isTrue();
+        assertThat(hasViolationOn(beanValidator().validate(missingEmail), "email")).isTrue();
     }
 
     @Test

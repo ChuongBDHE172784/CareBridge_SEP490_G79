@@ -13,7 +13,8 @@ import '../../features/checklist/screens/checklist_history_screen.dart';
 import '../../features/checklist/screens/checklist_detail_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
-import '../../features/home/screens/family_member_home_screen.dart';
+import '../../features/home/screens/family_home_shell.dart';
+import '../../features/notification/screens/notification_center_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 import '../../features/journey/screens/postpartum_recovery_setup_screen.dart';
@@ -66,7 +67,6 @@ import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
-import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
@@ -109,7 +109,7 @@ import '../../features/consultation/screens/triage_expert_handoff_screen.dart';
 Widget _buildHomeForRole(String? role, {required int initialIndex}) {
   switch ((role ?? '').trim().toUpperCase()) {
     case 'FAMILY':
-      return const FamilyMemberHomeScreen();
+      return FamilyHomeShell(initialIndex: initialIndex);
     case 'EXPERT':
       return const ExpertHomeShell();
     case 'MOTHER':
@@ -413,6 +413,10 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationCenterScreen(),
+    ),
+    GoRoute(
       path: '/mother-home',
       builder: (context, state) {
         final tabParam = state.uri.queryParameters['tab'];
@@ -699,11 +703,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/babies',
       builder: (context, state) => const BabyProfilesScreen(),
-    ),
-    GoRoute(
-      path: '/baby-care-hub',
-      builder: (context, state) =>
-          BabyCareHubScreen(initialBabyId: state.uri.queryParameters['babyId']),
     ),
     GoRoute(
       path: '/babies/add',

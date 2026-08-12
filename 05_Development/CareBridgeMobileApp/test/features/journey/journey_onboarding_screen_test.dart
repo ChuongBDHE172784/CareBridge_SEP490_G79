@@ -135,8 +135,6 @@ Future<GoRouter> _pumpScreen(
         builder: (_, _) =>
             const Scaffold(body: Text('home-route', key: Key('home-route'))),
       ),
-      // Creating a journey now hands the user to the personalisation questionnaire, carrying
-      // the stage in `extra`, instead of dropping them back on Home.
       GoRoute(
         path: '/recommendation-profile',
         builder: (_, state) => Scaffold(
@@ -166,13 +164,6 @@ Future<void> _selectStageWithConsent(
   String stageKey,
 ) async {
   await _tapStage(tester, stageKey);
-  final preference = find.byKey(const Key('preference-NUTRITION'));
-  await tester.ensureVisible(preference);
-  await tester.tap(preference);
-  final consent = find.byKey(const Key('lifecycle-consent'));
-  await tester.ensureVisible(consent);
-  await tester.tap(consent);
-  await tester.pump();
 }
 
 Future<void> _tapStage(WidgetTester tester, String key) async {
@@ -200,7 +191,6 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('mother-stage-pregnant')));
     await tester.tap(find.byKey(const Key('mother-stage-pregnant')));
     await tester.pump();
-    expect(find.byKey(const Key('lifecycle-consent')), findsNothing);
     expect(service.submissions, isEmpty);
 
     status.complete(
@@ -212,10 +202,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     await _tapStage(tester, 'mother-stage-pregnant');
-    expect(find.byKey(const Key('lifecycle-consent')), findsOneWidget);
+    expect(find.byKey(const Key('mother-stage-continue')), findsOneWidget);
   });
 
-  testWidgets('consolidated screen keeps stage and consent unselected', (
+  testWidgets('consolidated screen keeps stage selection clean without preference card', (
     tester,
   ) async {
     final router = await _pumpScreen(
@@ -226,45 +216,9 @@ void main() {
     addTearDown(router.dispose);
 
     expect(find.byKey(const Key('lifecycle-consent')), findsNothing);
+    expect(find.byKey(const Key('preference-NUTRITION')), findsNothing);
     await _tapStage(tester, 'mother-stage-pregnant');
-
-    final consent = tester.widget<CheckboxListTile>(
-      find.byKey(const Key('lifecycle-consent')),
-    );
-    expect(consent.value, isFalse);
-    expect(find.byKey(const Key('preference-NUTRITION')), findsOneWidget);
-  });
-
-  testWidgets('missing preference and consent produce no API mutation', (
-    tester,
-  ) async {
-    final service = _FakeOnboardingService();
-    final router = await _pumpScreen(
-      tester,
-      onboarding: service,
-      drafts: _FakeDraftStorage(),
-    );
-    addTearDown(router.dispose);
-
-    await _tapStage(tester, 'mother-stage-pregnant');
-    await tester.tap(find.byKey(const Key('mother-stage-continue')));
-    await tester.pump();
-    expect(
-      find.text('Vui lòng chọn ít nhất một nội dung hỗ trợ.'),
-      findsOneWidget,
-    );
-    expect(service.submissions, isEmpty);
-
-    final preference = find.byKey(const Key('preference-NUTRITION'));
-    await tester.ensureVisible(preference);
-    await tester.tap(preference);
-    await tester.tap(find.byKey(const Key('mother-stage-continue')));
-    await tester.pump();
-    expect(
-      find.text('Vui lòng đọc và đồng ý trước khi tiếp tục.'),
-      findsOneWidget,
-    );
-    expect(service.submissions, isEmpty);
+    expect(find.byKey(const Key('lifecycle-consent')), findsNothing);
   });
 
   testWidgets('valid selection submits onboarding before pregnant route', (
@@ -289,9 +243,6 @@ void main() {
       service.submissions.single.lifecycleGoal,
       LifecycleGoal.currentlyPregnant,
     );
-    expect(service.submissions.single.preferences, [
-      SupportPreference.nutrition,
-    ]);
     expect(service.submissions.single.consentAccepted, isTrue);
     expect(drafts.clearCalls, 1);
   });
@@ -324,7 +275,7 @@ void main() {
     expect(find.byKey(const Key('pregnant-route')), findsOneWidget);
   });
 
-  testWidgets('restored draft keeps stage, preferences, and submission id', (
+  testWidgets('restored draft keeps stage and submission id', (
     tester,
   ) async {
     const submissionId = '00000000-0000-4000-8000-000000006200';
@@ -344,20 +295,6 @@ void main() {
     );
     addTearDown(router.dispose);
 
-    expect(
-      tester
-          .widget<FilterChip>(find.byKey(const Key('preference-NUTRITION')))
-          .selected,
-      isTrue,
-    );
-    expect(
-      tester
-          .widget<CheckboxListTile>(find.byKey(const Key('lifecycle-consent')))
-          .value,
-      isFalse,
-    );
-    await tester.ensureVisible(find.byKey(const Key('lifecycle-consent')));
-    await tester.tap(find.byKey(const Key('lifecycle-consent')));
     await tester.tap(find.byKey(const Key('mother-stage-continue')));
     await tester.pumpAndSettle();
 
@@ -395,7 +332,6 @@ void main() {
     addTearDown(router.dispose);
 
     await _tapStage(tester, 'mother-stage-postpartum');
-    expect(find.byKey(const Key('lifecycle-consent')), findsNothing);
     await tester.tap(find.byKey(const Key('mother-stage-continue')));
     await tester.pumpAndSettle();
 
@@ -487,7 +423,6 @@ void main() {
     addTearDown(router.dispose);
 
     await _tapStage(tester, 'mother-stage-baby-care');
-    expect(find.byKey(const Key('lifecycle-consent')), findsNothing);
     await tester.tap(find.byKey(const Key('mother-stage-continue')));
     await tester.pumpAndSettle();
 

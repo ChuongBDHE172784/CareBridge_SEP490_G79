@@ -1,8 +1,13 @@
 package com.carebridge.backend.content.entity;
 
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
+import com.carebridge.backend.checklist.model.ChecklistScheduleEndMode;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,8 +25,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "care_item_templates")
@@ -73,6 +80,44 @@ public class ChecklistTemplate {
     @Column(name = "eligibility_end_inclusive")
     private Integer eligibilityEndInclusive;
 
+    /** Root-owned cadence declaration. Checklist items never map these columns. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "schedule_type", length = 20)
+    private ChecklistScheduleType scheduleType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "materialization_policy", length = 30)
+    private ChecklistMaterializationPolicy materializationPolicy;
+
+    @Column(name = "schedule_group_key", length = 120)
+    private String scheduleGroupKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "schedule_context_type", length = 10)
+    private ChecklistCareContextType scheduleContextType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "schedule_end_mode", length = 20)
+    private ChecklistScheduleEndMode scheduleEndMode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "week_boundary_rule", length = 30)
+    private ChecklistWeekBoundaryRule weekBoundaryRule;
+
+    @Column(name = "checklist_contract_version")
+    private Short checklistContractVersion;
+
+    /** Canonical root copy/provenance metadata (CHECKLIST_METADATA_V1). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "checklist_metadata_jsonb", columnDefinition = "jsonb")
+    private String checklistMetadataJson;
+
+    @Column(name = "checklist_metadata_hash", length = 128)
+    private String checklistMetadataHash;
+
+    @Column(name = "checklist_quarantine_reason_code", length = 80)
+    private String checklistQuarantineReasonCode;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "stage", length = 30)
     private ContentStage stage;
@@ -100,6 +145,12 @@ public class ChecklistTemplate {
 
     @Column(name = "approved_by")
     private UUID approvedBy;
+
+    @Column(name = "effective_from")
+    private Instant effectiveFrom;
+
+    @Column(name = "effective_to")
+    private Instant effectiveTo;
 
     @Column(name = "migration_reviewed_at")
     private Instant migrationReviewedAt;

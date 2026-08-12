@@ -21,6 +21,8 @@ import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.notification.service.ContentReviewNotificationService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,6 +54,7 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
     private final ContentReviewNotificationService contentReviewNotificationService;
     private final ChecklistItemRepository checklistItemRepository;
     private final ChecklistInstanceRepository checklistInstanceRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -77,6 +80,11 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
             throw ContentException.migrationReviewRequired();
         }
         if (approving && template.getMigrationReviewedAt() != null) {
+            // A technically reviewed Pregnancy V2 import still requires the
+            // explicit provenance/copy sign-off before any generic approve path
+            // can attempt to persist APPROVED. Keep the stable provenance error
+            // ahead of the database CHECK gate.
+            requirePregnancyImportedProvenance(template);
             throw ContentException.migrationReviewRequired();
         }
 
@@ -141,7 +149,8 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         if (!Boolean.TRUE.equals(template.getMigrationReviewRequired())) {
             throw ContentException.checklistTemplateInvalidStatusTransition();
         }
-        if (template.getStatus() != ChecklistTemplateStatus.PENDING_REVIEW) {
+        if (template.getStatus() != ChecklistTemplateStatus.DRAFT
+                && template.getStatus() != ChecklistTemplateStatus.PENDING_REVIEW) {
             throw ContentException.checklistTemplateNotPendingReview();
         }
         validateAuthoringContract(template);
@@ -149,14 +158,14 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         ChecklistTemplateStatus previousStatus = template.getStatus();
         template.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
         template.setMigrationReviewRequired(false);
-        template.setMigrationReviewedAt(Instant.now());
+        Instant reviewedAt = Instant.now();
+        template.setMigrationReviewedAt(reviewedAt);
         template.setMigrationReviewedBy(adminUserId);
         template.setDistributionEnabled(false);
         template.setApprovedAt(null);
         template.setApprovedBy(null);
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
-        Instant reviewedAt = Instant.now();
         writeDecisionAudit(saved, adminUserId, "MIGRATION_REVIEW_COMPLETED", UUID.randomUUID());
         return new ChecklistTemplateDecisionResponse(
                 saved.getId(), previousStatus, saved.getStatus(), adminUserId, null, reviewedAt);
@@ -184,6 +193,7 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         if (template.getStatus() != ChecklistTemplateStatus.PENDING_REVIEW) {
             throw ContentException.checklistTemplateNotPendingReview();
         }
+        requirePregnancyImportedProvenance(template);
         prepareSequenceApproval(template);
         validateAuthoringContract(template);
 
@@ -232,10 +242,32 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         if (scope == null) {
             throw ContentException.templateRoleRequired();
         }
-        if (template.getId() == null || checklistItemRepository
-                .findByTemplate_IdOrderByOrder(template.getId()).stream()
-                .anyMatch(item -> item.getTargetSubject() == null)) {
-            throw ContentException.itemTargetRequired();
+        Short contractVersion = normalizeContractVersion(template.getChecklistContractVersion());
+        if (template.getId() == null) {
+            throw ContentException.checklistTemplateInvalidStatusTransition();
+        }
+        for (var item : checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId())) {
+            if (!java.util.Objects.equals(
+                    normalizeContractVersion(item.getChecklistContractVersion()), contractVersion)) {
+                throw ContentException.validationFailed(
+                        "items", "leaf contract version must match checklistContractVersion");
+            }
+            if (contractVersion == 2) {
+                if (item.getTargetSubject() != null) {
+                    throw ContentException.itemTargetUnsupported();
+                }
+                if (item.getIsRequired() != null) {
+                    throw ContentException.itemRequirednessUnsupported();
+                }
+            } else {
+                if (item.getTargetSubject() == null) {
+                    throw ContentException.itemTargetRequired();
+                }
+                if (item.getIsRequired() == null) {
+                    throw ContentException.validationFailed(
+                            "isRequired", "must be provided for contract version 1");
+                }
+            }
         }
 
         if (scope == ChecklistRecipientScope.FAMILY) {
@@ -276,7 +308,7 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                     || template.getTemplateType() != ChecklistTemplateType.MANDATORY)) {
             throw ContentException.substageStageMismatch();
         }
-        if (isPositiveSequenceTemplate(template)) {
+        if (contractVersion != 2 && isPositiveSequenceTemplate(template)) {
             boolean hasRequired = checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).stream()
                     .anyMatch(item -> Boolean.TRUE.equals(item.getIsRequired()));
             if (!hasRequired) {
@@ -285,6 +317,49 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                         REQUIRED_ITEM_MISSING);
             }
         }
+    }
+
+    private static Short normalizeContractVersion(Short requestedVersion) {
+        short resolved = requestedVersion == null ? 1 : requestedVersion;
+        if (resolved != 1 && resolved != 2) {
+            throw ContentException.validationFailed(
+                    "checklistContractVersion", "must be 1 or 2");
+        }
+        return resolved;
+    }
+
+    /**
+     * Pregnancy V2 imports are recommendation copy, so technical migration
+     * review is intentionally not treated as clinical/copy sign-off.  Keep the
+     * activation boundary fail-closed when metadata is absent, malformed, or
+     * still carries the seed's pending provenance status.
+     */
+    private void requirePregnancyImportedProvenance(ChecklistTemplate template) {
+        if (template.getStage() != ContentStage.PREGNANCY
+                || normalizeContractVersion(template.getChecklistContractVersion()) != 2) {
+            return;
+        }
+        String metadataJson = template.getChecklistMetadataJson();
+        if (metadataJson == null || metadataJson.isBlank()) {
+            throw ContentException.checklistProvenanceSignOffRequired();
+        }
+        try {
+            ObjectMapper mapper = objectMapper == null ? new ObjectMapper() : objectMapper;
+            JsonNode metadata = mapper.readTree(metadataJson);
+            if (metadata == null || !metadata.isObject()
+                    || !isText(metadata.get("schema"), "CHECKLIST_METADATA_V1")
+                    || !isText(metadata.get("provenanceStatus"), "SIGNED_OFF")) {
+                throw ContentException.checklistProvenanceSignOffRequired();
+            }
+        } catch (ContentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw ContentException.checklistProvenanceSignOffRequired();
+        }
+    }
+
+    private static boolean isText(JsonNode node, String expected) {
+        return node != null && node.isTextual() && expected.equals(node.asText());
     }
 
     /**

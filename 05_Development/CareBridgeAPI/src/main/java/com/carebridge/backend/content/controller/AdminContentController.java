@@ -106,6 +106,16 @@ public class AdminContentController {
                 .body(ApiResponse.success(response, "Content created successfully"));
     }
 
+    @PostMapping("/import-batch")
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
+    public ResponseEntity<ApiResponse<com.carebridge.backend.content.dto.response.BulkImportResponse>> importContentBatch(
+            @Valid @RequestBody com.carebridge.backend.content.dto.request.BulkImportContentRequest request,
+            Principal principal) {
+        java.util.UUID authorUserId = SecurityUtils.requireCurrentUserId(principal);
+        com.carebridge.backend.content.dto.response.BulkImportResponse response = adminContentService.importContentBatch(request, authorUserId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Import batch processed successfully"));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CONTENT_ADMIN')")
     public ResponseEntity<ApiResponse<UpdateContentResponse>> updateContent(

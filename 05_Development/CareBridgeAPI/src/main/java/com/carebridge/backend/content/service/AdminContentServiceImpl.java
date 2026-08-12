@@ -27,6 +27,12 @@ import com.carebridge.backend.recommendation.service.RecommendationMetadataPolic
 import java.security.Principal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -34,12 +40,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentVersionSnapshotResponse;
-import java.util.List;
-import java.util.Set;
-import java.util.LinkedHashSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
@@ -298,5 +300,145 @@ public class AdminContentServiceImpl implements AdminContentService {
 
         return new HideContentResponse(
                 saved.getId(), previousStatus, saved.getStatus(), request.reason(), adminUserId, hiddenAt);
+    }
+
+    @Override
+    @Transactional
+    public com.carebridge.backend.content.dto.response.BulkImportResponse importContentBatch(
+            com.carebridge.backend.content.dto.request.BulkImportContentRequest request, UUID authorUserId) {
+        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
+            return com.carebridge.backend.content.dto.response.BulkImportResponse.builder()
+                    .totalRows(0)
+                    .successCount(0)
+                    .failedCount(0)
+                    .errors(List.of("Danh sách bài viết import không được để trống."))
+                    .createdIds(List.of())
+                    .build();
+        }
+
+        List<CommunityTopic> allTopics = communityTopicRepository.findAll();
+        Map<String, UUID> topicNameMap = new HashMap<>();
+        for (CommunityTopic t : allTopics) {
+            if (t.getName() != null) {
+                topicNameMap.put(t.getName().toLowerCase().trim(), t.getId());
+            }
+            topicNameMap.put(t.getId().toString(), t.getId());
+        }
+
+        List<String> errors = new ArrayList<>();
+        List<ContentItem> itemsToSave = new ArrayList<>();
+        List<UUID> createdIds = new ArrayList<>();
+        Set<String> processedTitlesInBatch = new HashSet<>();
+
+        for (com.carebridge.backend.content.dto.request.BulkImportContentRequest.BulkImportItemRequest itemReq : request.getItems()) {
+            int rowIdx = itemReq.getRowIndex() > 0 ? itemReq.getRowIndex() : (itemsToSave.size() + errors.size() + 1);
+            String rawTitle = itemReq.getTitle() != null ? itemReq.getTitle().trim() : "";
+            String rawBody = itemReq.getBody() != null ? itemReq.getBody().trim() : "";
+            String rawStage = itemReq.getStage() != null ? itemReq.getStage().trim() : "";
+
+            if (rawTitle.isEmpty()) {
+                errors.add("Dòng " + rowIdx + ": Tiêu đề không được để trống.");
+                continue;
+            }
+
+            if (rawBody.isEmpty()) {
+                errors.add("Dòng " + rowIdx + ": Nội dung không được để trống.");
+                continue;
+            }
+
+            ContentStage stage = parseContentStage(rawStage);
+            if (stage == null) {
+                errors.add("Dòng " + rowIdx + ": Giai đoạn không hợp lệ. Phải là PRE_PREGNANCY, PREGNANCY hoặc POSTPARTUM.");
+                continue;
+            }
+
+            // Check duplicate in batch
+            String batchKey = rawTitle.toLowerCase() + "||" + stage + "||" + request.getType();
+            if (processedTitlesInBatch.contains(batchKey)) {
+                errors.add("Dòng " + rowIdx + ": Tiêu đề \"" + rawTitle + "\" bị trùng lặp trong file import.");
+                continue;
+            }
+
+            // Check duplicate in DB
+            if (contentRepository.findByTitleIgnoreCaseAndStageAndType(rawTitle, stage, request.getType()).isPresent()) {
+                errors.add("Dòng " + rowIdx + ": Tiêu đề \"" + rawTitle + "\" đã tồn tại trong hệ thống.");
+                continue;
+            }
+
+            // Unescape HTML entities if CSV parser escaped them once (e.g., &lt;h2&gt; -> <h2>)
+            if (rawBody.contains("&lt;") || rawBody.contains("&gt;")) {
+                rawBody = org.springframework.web.util.HtmlUtils.htmlUnescape(rawBody);
+            }
+
+            String sanitizedBody = htmlContentSanitizer.sanitize(rawBody);
+
+            UUID topicId = itemReq.getTopicId();
+            if (topicId == null && itemReq.getCategoryName() != null && !itemReq.getCategoryName().isBlank()) {
+                topicId = topicNameMap.get(itemReq.getCategoryName().toLowerCase().trim());
+            }
+            if (topicId != null && !communityTopicRepository.existsById(topicId)) {
+                topicId = null; // if category specified does not exist, do not map to wrong category
+            }
+
+            ContentItem entity = new ContentItem();
+            entity.setTitle(rawTitle);
+            entity.setBody(sanitizedBody);
+            entity.setSummary(itemReq.getSummary() != null ? itemReq.getSummary().trim() : null);
+            entity.setType(request.getType());
+            entity.setStage(stage);
+            entity.setStatus(ContentStatus.DRAFT);
+            entity.setAuthorUserId(authorUserId);
+            entity.setTopicId(topicId);
+            entity.setVersionNo(1);
+            entity.setCreatedAt(Instant.now());
+            entity.setUpdatedAt(Instant.now());
+
+            if (itemReq.getSourceLabel() != null && !itemReq.getSourceLabel().isBlank()) {
+                String srcTitle = itemReq.getSourceLabel().trim();
+                String srcUrl = itemReq.getSourceUrl() != null && !itemReq.getSourceUrl().isBlank() ? itemReq.getSourceUrl().trim() : null;
+                String srcPub = itemReq.getSourcePublisher() != null && !itemReq.getSourcePublisher().isBlank() ? itemReq.getSourcePublisher().trim() : null;
+                entity.setSourceLabel(srcTitle);
+                entity.getSources().add(new ContentSource(srcTitle, srcUrl, srcPub));
+            }
+
+            itemsToSave.add(entity);
+            processedTitlesInBatch.add(batchKey);
+        }
+
+        if (errors.isEmpty() && !itemsToSave.isEmpty()) {
+            List<ContentItem> savedList = contentRepository.saveAll(itemsToSave);
+            for (ContentItem saved : savedList) {
+                createdIds.add(saved.getId());
+                auditService.log(AuditAction.CONTENT_CREATED, authorUserId,
+                        "ContentItem", saved.getId().toString(), snapshotOf(saved));
+            }
+        }
+
+        return com.carebridge.backend.content.dto.response.BulkImportResponse.builder()
+                .totalRows(request.getItems().size())
+                .successCount(createdIds.size())
+                .failedCount(request.getItems().size() - createdIds.size())
+                .errors(errors)
+                .createdIds(createdIds)
+                .build();
+    }
+
+    private ContentStage parseContentStage(String rawStage) {
+        if (rawStage == null || rawStage.isBlank()) return null;
+        String s = rawStage.toUpperCase().replaceAll("\\s+", "_");
+        if (s.equals("PRE_PREGNANCY") || s.equals("CHUẨN_BỊ_MANG_THAI") || s.equals("CHUA_BI_MANG_THAI")) {
+            return ContentStage.PRE_PREGNANCY;
+        }
+        if (s.equals("PREGNANCY") || s.equals("MANG_THAI")) {
+            return ContentStage.PREGNANCY;
+        }
+        if (s.equals("POSTPARTUM") || s.equals("SAU_SINH")) {
+            return ContentStage.POSTPARTUM;
+        }
+        try {
+            return ContentStage.valueOf(s);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

@@ -79,8 +79,15 @@ public class ChecklistTaskInstance {
     private ChecklistCategory category = ChecklistCategory.GENERAL;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "target_subject", nullable = false, length = 10)
+    @Column(name = "target_subject", nullable = true, length = 10)
     private ChecklistTargetSubject targetSubject;
+
+    /** Child contract discriminator; must equal the parent contract version. */
+    @Column(name = "checklist_contract_version")
+    private Short checklistContractVersion;
+
+    @Column(name = "checklist_quarantine_reason_code", length = 80)
+    private String checklistQuarantineReasonCode;
 
     @Column(name = "due_at")
     private Instant dueAt;

@@ -77,7 +77,7 @@ class TodayTaskSupportFunction {
   static const babyCare = TodayTaskSupportFunction(
     code: TodayTaskSupportFunctionCode.babyCare,
     label: 'Chăm sóc bé',
-    route: '/baby-care-hub',
+    route: '/babies',
   );
   static const expertConsultation = TodayTaskSupportFunction(
     code: TodayTaskSupportFunctionCode.expertConsultation,

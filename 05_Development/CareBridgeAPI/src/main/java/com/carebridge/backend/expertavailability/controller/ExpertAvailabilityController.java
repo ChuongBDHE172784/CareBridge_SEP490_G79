@@ -6,6 +6,7 @@ import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
 import com.carebridge.backend.expertavailability.dto.request.SetOnlineStatusRequest;
+import com.carebridge.backend.expertavailability.dto.request.ReplaceAvailabilityRequest;
 import com.carebridge.backend.expertavailability.dto.request.ShareLocationRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
 import com.carebridge.backend.expertavailability.dto.response.LocationShareResponse;
@@ -52,6 +53,24 @@ public ResponseEntity<ApiResponse<List<AvailabilityResponse>>> getMyAvailability
 UUID userId = SecurityUtils.requireCurrentUserId(principal);
 UUID expertProfileId = resolveExpertProfileId(userId);
 return ResponseEntity.ok(ApiResponse.success(availabilityService.getMyAvailability(expertProfileId)));
+}
+
+@GetMapping("/availability/{expertProfileId}")
+@PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
+public ResponseEntity<ApiResponse<List<AvailabilityResponse>>> getPublicAvailability(
+        @PathVariable UUID expertProfileId) {
+return ResponseEntity.ok(ApiResponse.success(
+        availabilityService.getPublicAvailability(expertProfileId)));
+}
+
+@PutMapping("/availability/batch")
+@PreAuthorize("hasRole('EXPERT')")
+public ResponseEntity<ApiResponse<List<AvailabilityResponse>>> replaceAvailability(
+        Principal principal, @Valid @RequestBody ReplaceAvailabilityRequest request) {
+UUID userId = SecurityUtils.requireCurrentUserId(principal);
+UUID expertProfileId = resolveExpertProfileId(userId);
+return ResponseEntity.ok(ApiResponse.success(
+        availabilityService.replaceAvailability(expertProfileId, request)));
 }
 
 @DeleteMapping("/availability/{id}")

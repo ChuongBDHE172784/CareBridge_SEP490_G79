@@ -388,4 +388,26 @@ void main() {
 
     expect(coordinator.isRunning, isFalse);
   });
+
+  test(
+    'safe response rearms the detector task with its response timestamp',
+    () async {
+      final gateway = _FakeForegroundGateway();
+      final commands = <Object>[];
+      final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+        gateway: gateway,
+        isAuthenticated: () => true,
+        loadConfig: () async => enabledConfig,
+        loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+        sendTaskData: commands.add,
+      );
+      await coordinator.reconcile();
+      final respondedAt = DateTime.utc(2026, 8, 11, 18, 30);
+
+      coordinator.rearmFallDetectorAfterResponse(respondedAt: respondedAt);
+
+      expect(commands, hasLength(1));
+      expect(fallDetectorRearmAtFromTaskData(commands.single), respondedAt);
+    },
+  );
 }

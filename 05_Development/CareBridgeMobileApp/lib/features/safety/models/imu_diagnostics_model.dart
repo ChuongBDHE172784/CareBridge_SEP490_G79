@@ -24,6 +24,8 @@ extension ImuDetectorDecisionReasonDisplay on ImuDetectorDecisionReason {
   String get label => switch (this) {
     ImuDetectorDecisionReason.awaitingFreeFall => 'Đang chờ pha rơi tự do',
     ImuDetectorDecisionReason.freeFallDetected => 'Đã nhận pha rơi tự do',
+    ImuDetectorDecisionReason.freeFallTooShort =>
+      'Hủy: pha rơi quá ngắn để là một cú ngã',
     ImuDetectorDecisionReason.awaitingImpact => 'Đang chờ va chạm đủ ngưỡng',
     ImuDetectorDecisionReason.impactWindowExpired =>
       'Hủy: quá thời gian chờ va chạm',

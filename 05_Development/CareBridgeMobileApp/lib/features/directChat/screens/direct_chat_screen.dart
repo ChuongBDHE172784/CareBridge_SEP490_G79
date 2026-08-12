@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mime/mime.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,7 @@ import 'package:universal_io/io.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import 'direct_chat_attachment_viewer_screen.dart';
+import 'direct_chat_location_navigation_screen.dart';
 import '../calls/conversation_signal_hub.dart';
 import '../calls/direct_call_host.dart';
 import '../models/timeline_item.dart';
@@ -27,6 +29,20 @@ class DirectChatScreen extends StatefulWidget {
 
   @override
   State<DirectChatScreen> createState() => _DirectChatScreenState();
+}
+
+class _PendingAttachment {
+  final Uint8List bytes;
+  final String fileName;
+  final String mimeType;
+  final String kind;
+
+  _PendingAttachment({
+    required this.bytes,
+    required this.fileName,
+    required this.mimeType,
+    required this.kind,
+  });
 }
 
 class _DirectChatScreenState extends State<DirectChatScreen>
@@ -47,6 +63,8 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   String? _nextCursor;
   String? _previousCursor;
   bool _hasMoreOlder = false;
+
+  _PendingAttachment? _pendingAttachment;
 
   StreamSubscription? _signalSubscription;
   Timer? _markReadRetry;
@@ -233,20 +251,69 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 
   Future<void> _send() async {
     final body = _textController.text.trim();
-    if (body.isEmpty || _sending || !_expertAvailable) return;
+    if ((body.isEmpty && _pendingAttachment == null) ||
+        _sending ||
+        !_expertAvailable) {
+      return;
+    }
+
+    final attachment = _pendingAttachment;
     final clientMessageId = _uuid.v4();
     final currentUserId = AuthState.instance.userId ?? '';
-    final optimistic = TimelineItem.optimisticMessage(
-      clientMessageId: clientMessageId,
-      senderUserId: currentUserId,
-      messageBody: body,
-    );
+
     setState(() {
-      _items = mergeTimelineItems(_items, [optimistic]);
       _textController.clear();
+      _pendingAttachment = null;
       _sending = true;
     });
-    await _sendWithClientId(clientMessageId, body);
+
+    try {
+      if (attachment != null) {
+        final uploaded = await apiMultipart(
+          '/api/v1/direct-conversations/${widget.conversationId}/attachments?kind=${attachment.kind}',
+          const {},
+          files: [
+            MultipartUploadFile(
+              fieldName: 'file',
+              bytes: attachment.bytes,
+              fileName: attachment.fileName,
+              mimeType: attachment.mimeType,
+            ),
+          ],
+        );
+        final fileId = uploaded?['data']?['fileId'] as String?;
+        if (fileId == null) {
+          throw const FormatException('Không thể tải tệp lên');
+        }
+
+        final confirmed = await DirectChatService.instance.sendMessage(
+          widget.conversationId,
+          clientMessageId: clientMessageId,
+          messageType: attachment.kind == 'IMAGE' ? 'IMAGE' : 'FILE',
+          attachmentId: fileId,
+          messageBody: body.isNotEmpty ? body : null,
+        );
+        if (mounted) {
+          setState(() {
+            _items = mergeTimelineItems(_items, [confirmed]);
+          });
+        }
+      } else {
+        final optimistic = TimelineItem.optimisticMessage(
+          clientMessageId: clientMessageId,
+          senderUserId: currentUserId,
+          messageBody: body,
+        );
+        setState(() {
+          _items = mergeTimelineItems(_items, [optimistic]);
+        });
+        await _sendWithClientId(clientMessageId, body);
+      }
+    } catch (e) {
+      if (mounted) _showError('Không thể gửi: $e');
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   Future<void> _attachImage(ImageSource source) async {
@@ -261,32 +328,16 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       if (bytes.length > 10 * 1024 * 1024) {
         throw const FormatException('Ảnh phải nhỏ hơn 10 MB');
       }
-      setState(() => _sending = true);
-      final uploaded = await apiMultipart(
-        '/api/v1/direct-conversations/${widget.conversationId}/attachments?kind=IMAGE',
-        const {},
-        files: [
-          MultipartUploadFile(
-            fieldName: 'file',
-            bytes: bytes,
-            fileName: image.name,
-            mimeType: image.mimeType ?? 'image/jpeg',
-          ),
-        ],
-      );
-      final fileId = uploaded?['data']?['fileId'] as String?;
-      if (fileId == null) throw const FormatException('Không thể tải ảnh lên');
-      await DirectChatService.instance.sendMessage(
-        widget.conversationId,
-        clientMessageId: _uuid.v4(),
-        messageType: 'IMAGE',
-        attachmentId: fileId,
-      );
-      await _syncNewer();
+      setState(() {
+        _pendingAttachment = _PendingAttachment(
+          bytes: bytes,
+          fileName: image.name,
+          mimeType: image.mimeType ?? 'image/jpeg',
+          kind: 'IMAGE',
+        );
+      });
     } catch (e) {
-      if (mounted) _showError('Không thể gửi ảnh: $e');
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) _showError('Không thể chọn ảnh: $e');
     }
   }
 
@@ -299,34 +350,85 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       if (file.bytes!.length > 20 * 1024 * 1024) {
         throw const FormatException('Tài liệu phải nhỏ hơn 20 MB');
       }
-      setState(() => _sending = true);
-      final uploaded = await apiMultipart(
-        '/api/v1/direct-conversations/${widget.conversationId}/attachments?kind=DOCUMENT',
-        const {},
-        files: [
-          MultipartUploadFile(
-            fieldName: 'file',
-            bytes: file.bytes!,
-            fileName: file.name,
-            mimeType:
-                lookupMimeType(file.name, headerBytes: file.bytes) ??
-                'application/octet-stream',
-          ),
-        ],
-      );
-      final fileId = uploaded?['data']?['fileId'] as String?;
-      if (fileId == null) {
-        throw const FormatException('Không thể tải tài liệu lên');
-      }
-      await DirectChatService.instance.sendMessage(
-        widget.conversationId,
-        clientMessageId: _uuid.v4(),
-        messageType: 'FILE',
-        attachmentId: fileId,
-      );
-      await _syncNewer();
+      setState(() {
+        _pendingAttachment = _PendingAttachment(
+          bytes: file.bytes!,
+          fileName: file.name,
+          mimeType:
+              lookupMimeType(file.name, headerBytes: file.bytes) ??
+              'application/octet-stream',
+          kind: 'DOCUMENT',
+        );
+      });
     } catch (e) {
-      if (mounted) _showError('Không thể gửi tài liệu: $e');
+      if (mounted) _showError('Không thể chọn tài liệu: $e');
+    }
+  }
+
+  Future<void> _shareCurrentLocation() async {
+    if (_sending || !_expertAvailable) return;
+    Navigator.of(context).pop();
+    setState(() => _sending = true);
+    String? optimisticClientMessageId;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw const FormatException('Hãy bật dịch vụ vị trí để chia sẻ.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
+        throw const FormatException(
+          'Quyền vị trí đã bị tắt. Hãy cấp lại trong Cài đặt.',
+        );
+      }
+      if (permission == LocationPermission.denied) {
+        throw const FormatException('Bạn chưa cấp quyền chia sẻ vị trí.');
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 8),
+      );
+      final clientMessageId = _uuid.v4();
+      optimisticClientMessageId = clientMessageId;
+      final currentUserId = AuthState.instance.userId ?? '';
+      final optimistic = TimelineItem.optimisticLocation(
+        clientMessageId: clientMessageId,
+        senderUserId: currentUserId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        label: 'Vị trí hiện tại',
+      );
+      if (mounted) {
+        setState(() => _items = mergeTimelineItems(_items, [optimistic]));
+      }
+      final confirmed = await DirectChatService.instance.sendMessage(
+        widget.conversationId,
+        clientMessageId: clientMessageId,
+        messageType: 'LOCATION',
+        locationLatitude: position.latitude,
+        locationLongitude: position.longitude,
+        locationLabel: 'Vị trí hiện tại',
+      );
+      if (mounted) {
+        setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+      }
+    } catch (error) {
+      if (mounted) {
+        if (optimisticClientMessageId != null) {
+          setState(() {
+            _items = _items
+                .where(
+                  (item) => item.clientMessageId != optimisticClientMessageId,
+                )
+                .toList(growable: false);
+          });
+        }
+        _showError(error.toString().replaceFirst('FormatException: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -569,6 +671,89 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     );
   }
 
+  Widget _buildAttachmentPreviewWidget() {
+    final attachment = _pendingAttachment;
+    if (attachment == null) return const SizedBox.shrink();
+    final isImage = attachment.kind == 'IMAGE';
+    final sizeKb = (attachment.bytes.length / 1024).toStringAsFixed(1);
+    final sizeMb = (attachment.bytes.length / (1024 * 1024)).toStringAsFixed(1);
+    final displaySize = attachment.bytes.length >= 1024 * 1024
+        ? '$sizeMb MB'
+        : '$sizeKb KB';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _outlineVariant),
+      ),
+      child: Row(
+        children: [
+          if (isImage)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                attachment.bytes,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+              ),
+            )
+          else
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.insert_drive_file_rounded,
+                color: _primary,
+                size: 26,
+              ),
+            ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  attachment.fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  displaySize,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Hủy tệp đính kèm',
+            icon: const Icon(Icons.close_rounded, color: Colors.red, size: 20),
+            onPressed: () => setState(() => _pendingAttachment = null),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputRow() {
     return SafeArea(
       child: Container(
@@ -584,127 +769,173 @@ class _DirectChatScreenState extends State<DirectChatScreen>
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              decoration: const BoxDecoration(
-                color: _surfaceContainerLow,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.add_photo_alternate_rounded,
-                  color: _primary,
-                ),
-                onPressed: _sending
-                    ? null
-                    : () => showModalBottomSheet<void>(
-                        context: context,
-                        backgroundColor: _surface,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(24),
-                          ),
-                        ),
-                        builder: (sheetContext) => SafeArea(
-                          child: Wrap(
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Text(
-                                  'Tệp đính kèm',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: _onSurface,
-                                  ),
-                                ),
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.photo_library_outlined,
-                                  color: _primary,
-                                ),
-                                title: const Text('Chọn từ thư viện', style: TextStyle(fontFamily: 'Lexend')),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  _attachImage(ImageSource.gallery);
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.attach_file_rounded,
-                                  color: _primary,
-                                ),
-                                title: const Text('Chọn tài liệu', style: TextStyle(fontFamily: 'Lexend')),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  _attachDocument();
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.camera_alt_outlined,
-                                  color: _primary,
-                                ),
-                                title: const Text('Chụp ảnh', style: TextStyle(fontFamily: 'Lexend')),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  _attachImage(ImageSource.camera);
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: _outlineVariant),
-                ),
-                child: TextField(
-                  controller: _textController,
-                  minLines: 1,
-                  maxLines: 4,
-                  style: const TextStyle(fontFamily: 'Lexend', color: _onSurface, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Nhập tin nhắn...',
-                    hintStyle: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: _onSurfaceVariant.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    border: InputBorder.none,
+            if (_pendingAttachment != null) _buildAttachmentPreviewWidget(),
+            Row(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerLow,
+                    shape: BoxShape.circle,
                   ),
-                  onSubmitted: (_) => _send(),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.add_photo_alternate_rounded,
+                      color: _primary,
+                    ),
+                    onPressed: _sending
+                        ? null
+                        : () => showModalBottomSheet<void>(
+                            context: context,
+                            backgroundColor: _surface,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(24),
+                              ),
+                            ),
+                            builder: (sheetContext) => SafeArea(
+                              child: Wrap(
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text(
+                                      'Tệp đính kèm',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: _onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.photo_library_outlined,
+                                      color: _primary,
+                                    ),
+                                    title: const Text(
+                                      'Chọn từ thư viện',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _attachImage(ImageSource.gallery);
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.attach_file_rounded,
+                                      color: _primary,
+                                    ),
+                                    title: const Text(
+                                      'Chọn tài liệu',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _attachDocument();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.camera_alt_outlined,
+                                      color: _primary,
+                                    ),
+                                    title: const Text(
+                                      'Chụp ảnh',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _attachImage(ImageSource.camera);
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.location_on_outlined,
+                                      color: _primary,
+                                    ),
+                                    title: const Text(
+                                      'Chia sẻ vị trí hiện tại',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: const Text(
+                                      'Người nhận có thể bấm để dẫn đường',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    onTap: _shareCurrentLocation,
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                              ),
+                            ),
+                          ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              decoration: const BoxDecoration(
-                color: _primary,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.send_rounded,
-                  color: Colors.white,
-                  size: 20,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: _outlineVariant),
+                    ),
+                    child: TextField(
+                      controller: _textController,
+                      minLines: 1,
+                      maxLines: 4,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _onSurface,
+                        fontSize: 14,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Nhập tin nhắn...',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: _onSurfaceVariant.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: (_) => _send(),
+                    ),
+                  ),
                 ),
-                onPressed: _sending ? null : _send,
-              ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.send_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                    onPressed: _sending ? null : _send,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -761,9 +992,22 @@ class _TimelineTile extends StatelessWidget {
                 ? onRecall
                 : null,
             onTap:
-                item.messageType != 'FILE' ||
-                    item.attachmentId == null ||
-                    item.recalledAt != null
+                item.messageType == 'LOCATION' &&
+                    item.locationLatitude != null &&
+                    item.locationLongitude != null &&
+                    item.recalledAt == null
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DirectChatLocationNavigationScreen(
+                        latitude: item.locationLatitude!,
+                        longitude: item.locationLongitude!,
+                        label: item.locationLabel,
+                      ),
+                    ),
+                  )
+                : item.messageType != 'FILE' ||
+                      item.attachmentId == null ||
+                      item.recalledAt != null
                 ? null
                 : () => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -805,35 +1049,80 @@ class _TimelineTile extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontStyle: FontStyle.italic,
-                        color: isOwnMessage ? Colors.white70 : _onSurfaceVariant,
+                        color: isOwnMessage
+                            ? Colors.white70
+                            : _onSurfaceVariant,
                         fontSize: 13,
                       ),
                     )
                   : item.messageType == 'IMAGE' && item.messageId != null
-                  ? _InlineChatImage(
-                      conversationId: conversationId,
-                      messageId: item.messageId!,
-                      canRecall: isOwnMessage,
-                      onRecall: onRecall,
-                    )
-                  : item.messageType == 'FILE'
-                  ? Row(
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.insert_drive_file_rounded,
-                          color: isOwnMessage ? Colors.white : _primary,
+                        _InlineChatImage(
+                          conversationId: conversationId,
+                          messageId: item.messageId!,
+                          canRecall: isOwnMessage,
+                          onRecall: onRecall,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Tài liệu',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            color: isOwnMessage ? Colors.white : _onSurface,
-                            fontWeight: FontWeight.w500,
+                        if (item.messageBody != null &&
+                            item.messageBody!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            item.messageBody!,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: isOwnMessage ? Colors.white : _onSurface,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
+                    )
+                  : item.messageType == 'FILE'
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.insert_drive_file_rounded,
+                              color: isOwnMessage ? Colors.white : _primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Tài liệu',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                color: isOwnMessage ? Colors.white : _onSurface,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (item.messageBody != null &&
+                            item.messageBody!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            item.messageBody!,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: isOwnMessage ? Colors.white : _onSurface,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ],
+                    )
+                  : item.messageType == 'LOCATION'
+                  ? _LocationMessageCard(
+                      label: item.locationLabel,
+                      isOwnMessage: isOwnMessage,
                     )
                   : Text(
                       item.messageBody ?? '',
@@ -851,7 +1140,11 @@ class _TimelineTile extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
               child: Text(
                 _formatTimestamp(item.createdAt),
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  color: _onSurfaceVariant,
+                ),
               ),
             ),
           if (failed)
@@ -860,7 +1153,11 @@ class _TimelineTile extends StatelessWidget {
               icon: const Icon(Icons.refresh, size: 14, color: Colors.red),
               label: const Text(
                 'Gửi lại',
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Colors.red),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  color: Colors.red,
+                ),
               ),
             )
           else if (sending)
@@ -868,7 +1165,11 @@ class _TimelineTile extends StatelessWidget {
               padding: EdgeInsets.only(bottom: 6),
               child: Text(
                 'Đang gửi...',
-                style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  color: _onSurfaceVariant,
+                ),
               ),
             ),
         ],
@@ -988,6 +1289,119 @@ class _TimelineTile extends StatelessWidget {
       }
     }
   }
+}
+
+class _LocationMessageCard extends StatelessWidget {
+  const _LocationMessageCard({required this.label, required this.isOwnMessage});
+
+  final String? label;
+  final bool isOwnMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isOwnMessage ? Colors.white : const Color(0xFF5A463F);
+    return SizedBox(
+      width: 230,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 104,
+            decoration: BoxDecoration(
+              color: isOwnMessage
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : const Color(0xFFF2EAE4),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _MapPatternPainter(
+                      color: isOwnMessage
+                          ? Colors.white.withValues(alpha: 0.16)
+                          : const Color(0xFFC98C7B).withValues(alpha: 0.2),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isOwnMessage
+                        ? Colors.white
+                        : const Color(0xFFC98C7B),
+                    shape: BoxShape.circle,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x245A463F),
+                        blurRadius: 16,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.location_on_rounded,
+                    color: isOwnMessage
+                        ? const Color(0xFFC98C7B)
+                        : Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label?.trim().isNotEmpty == true
+                ? label!.trim()
+                : 'Vị trí được chia sẻ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              color: foreground,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'Chạm để dẫn đường',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              color: foreground.withValues(alpha: 0.78),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapPatternPainter extends CustomPainter {
+  const _MapPatternPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    for (var x = -20.0; x < size.width + 20; x += 38) {
+      canvas.drawLine(Offset(x, 0), Offset(x + 28, size.height), paint);
+    }
+    for (var y = 18.0; y < size.height; y += 34) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y - 10), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MapPatternPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 /// Resolves a short-lived, participant-authorized URL and renders the image in

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:go_router/go_router.dart';
 import 'core/auth/auth_state.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/notifications/fcm_service.dart';
@@ -18,7 +19,12 @@ import 'features/safety/services/safety_foreground_service.dart';
 bool shouldOpenSafetyMonitoringForDetectedEvent({
   required String eventStatus,
   required String currentPath,
-}) => eventStatus == 'OPEN' && currentPath != '/safety';
+  bool navigationInFlight = false,
+}) => eventStatus == 'OPEN' && currentPath != '/safety' && !navigationInFlight;
+
+@visibleForTesting
+Future<T?> pushSafetyMonitoringRoute<T extends Object?>(GoRouter router) =>
+    router.push<T>('/safety');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,6 +90,7 @@ class CareBridgeApp extends StatefulWidget {
 
 class _CareBridgeAppState extends State<CareBridgeApp> {
   StreamSubscription<SafetyEvent>? _detectedSafetyEventSubscription;
+  bool _safetyNavigationInFlight = false;
 
   @override
   void initState() {
@@ -97,16 +104,24 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
         .listen(_openSafetyMonitoringForDetectedEvent);
   }
 
-  void _openSafetyMonitoringForDetectedEvent(SafetyEvent event) {
+  Future<void> _openSafetyMonitoringForDetectedEvent(SafetyEvent event) async {
     if (!mounted) return;
     final currentPath = appRouter.routeInformationProvider.value.uri.path;
     if (!shouldOpenSafetyMonitoringForDetectedEvent(
       eventStatus: event.status,
       currentPath: currentPath,
+      navigationInFlight: _safetyNavigationInFlight,
     )) {
       return;
     }
-    appRouter.go('/safety');
+    // Preserve the screen that was active before the fall alert. Using go()
+    // replaces the entire stack and leaves a black screen when Safety pops.
+    _safetyNavigationInFlight = true;
+    try {
+      await pushSafetyMonitoringRoute(appRouter);
+    } finally {
+      _safetyNavigationInFlight = false;
+    }
   }
 
   @override

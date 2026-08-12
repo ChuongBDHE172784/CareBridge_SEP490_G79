@@ -105,6 +105,7 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         List<AuthorizedInstance> authorizedInstances = new ArrayList<>();
         for (var instance : currentInstances) {
             if (instance.getStatus() != ChecklistInstanceStatus.CANCELLED
+                    && !Boolean.FALSE.equals(instance.getWasActionable())
                     && isCurrentRead(instance, effectiveDate)
                     && isVisibleTemplate(instance, templatesByVersion)
                     && isVisibleSequenceInstance(instance, sequence, templatesByVersion)

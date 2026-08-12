@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/network/api_client.dart';
 import '../services/expert_home_service.dart';
@@ -8,6 +7,8 @@ abstract class ExpertCalendarApi {
   Future<dynamic> get(String path);
 
   Future<dynamic> post(String path, Map<String, dynamic> body);
+
+  Future<dynamic> put(String path, Map<String, dynamic> body);
 
   Future<dynamic> delete(String path);
 }
@@ -23,7 +24,26 @@ class _DefaultExpertCalendarApi implements ExpertCalendarApi {
       apiPost(path, body);
 
   @override
+  Future<dynamic> put(String path, Map<String, dynamic> body) =>
+      apiPut(path, body);
+
+  @override
   Future<dynamic> delete(String path) => apiDelete(path);
+}
+
+enum AvailabilityApplyScope {
+  selectedDay,
+  week,
+  month,
+  selectedWeekdays,
+  selectedMonthDays,
+}
+
+class AvailabilityTimeRange {
+  const AvailabilityTimeRange(this.start, this.end);
+
+  final DateTime start;
+  final DateTime end;
 }
 
 class ExpertCalendarScreen extends StatefulWidget {
@@ -48,20 +68,25 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
   ExpertCalendarApi get _api => widget.api ?? const _DefaultExpertCalendarApi();
 
   List<Map<String, dynamic>> _slots = const [];
+  late DateTime _visibleMonth;
+  late DateTime _selectedDate;
   bool _loading = true;
+  bool _saving = false;
   String? _error;
   int _fetchGeneration = 0;
-  final Set<String> _deletingIds = {};
 
   @override
   void initState() {
     super.initState();
+    final today = _dateOnly(DateTime.now());
+    _visibleMonth = DateTime(today.year, today.month);
+    _selectedDate = today;
     _fetchAvailability();
   }
 
-  Future<void> _fetchAvailability() async {
+  Future<void> _fetchAvailability({bool showLoader = true}) async {
     final generation = ++_fetchGeneration;
-    if (mounted) {
+    if (mounted && showLoader) {
       setState(() {
         _loading = true;
         _error = null;
@@ -79,6 +104,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
       setState(() {
         _slots = rows;
         _loading = false;
+        _error = null;
       });
     } catch (error) {
       if (!mounted || generation != _fetchGeneration) return;
@@ -92,388 +118,504 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
     }
   }
 
-  Future<void> _deleteSlot(String id) async {
-    if (_deletingIds.contains(id)) return;
-    final confirm = await showDialog<bool>(
+  Future<void> _openDayEditor(DateTime date) async {
+    final today = _dateOnly(DateTime.now());
+    if (date.isBefore(today) || _saving) return;
+    setState(() => _selectedDate = date);
+
+    final selected = availableHoursForDate(_slots, date).toSet();
+    final busy = busyHoursForDate(_slots, date).toSet();
+    var scope = AvailabilityApplyScope.selectedDay;
+    final selectedWeekdays = <int>{date.weekday};
+    final selectedMonthDays = <int>{date.day};
+    String? validationError;
+
+    final command = await showModalBottomSheet<_AvailabilityEditCommand>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: _surface,
-        title: const Text(
-          'Xóa khung giờ',
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, color: _onSurface),
-        ),
-        content: const Text(
-          'Bạn có chắc muốn xóa khung giờ rảnh này?',
-          style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFBA1A1A),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final now = DateTime.now();
+          final targets = resolveAvailabilityDates(
+            anchor: date,
+            scope: scope,
+            weekdays: selectedWeekdays,
+            monthDays: selectedMonthDays,
+            today: today,
+          );
+          final canSave =
+              (scope != AvailabilityApplyScope.selectedWeekdays ||
+                  selectedWeekdays.isNotEmpty) &&
+              (scope != AvailabilityApplyScope.selectedMonthDays ||
+                  selectedMonthDays.isNotEmpty);
+
+          return DraggableScrollableSheet(
+            initialChildSize: 0.88,
+            minChildSize: 0.62,
+            maxChildSize: 0.96,
+            expand: false,
+            builder: (context, scrollController) => Material(
+              color: _surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _outlineVariant,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 12, 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${_weekdayLongLabels[date.weekday - 1]}, '
+                                '${_two(date.day)} tháng ${_two(date.month)}',
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w700,
+                                  color: _onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              const Text(
+                                'Chọn các ca rảnh, mỗi ca kéo dài 1 giờ',
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 12,
+                                  color: _onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Đóng',
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: _outlineVariant),
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Khung giờ làm việc',
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontWeight: FontWeight.w700,
+                                  color: _primary,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              key: const Key('availability-select-all'),
+                              onPressed: () => setModalState(() {
+                                for (var hour = 7; hour < 21; hour++) {
+                                  if (isSelectableAvailabilityHour(
+                                        date,
+                                        hour,
+                                        now: now,
+                                      ) &&
+                                      !busy.contains(hour)) {
+                                    selected.add(hour);
+                                  }
+                                }
+                                validationError = null;
+                              }),
+                              child: const Text('Chọn tất cả'),
+                            ),
+                            TextButton(
+                              key: const Key('availability-clear-all'),
+                              onPressed: () => setModalState(() {
+                                selected.removeWhere(
+                                  (hour) => isSelectableAvailabilityHour(
+                                    date,
+                                    hour,
+                                    now: now,
+                                  ),
+                                );
+                              }),
+                              child: const Text('Bỏ chọn'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: 14,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 3.15,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                              ),
+                          itemBuilder: (context, index) {
+                            final hour = index + 7;
+                            final isBusy = busy.contains(hour);
+                            final enabled =
+                                !isBusy &&
+                                isSelectableAvailabilityHour(
+                                  date,
+                                  hour,
+                                  now: now,
+                                );
+                            final isSelected = selected.contains(hour);
+                            return InkWell(
+                              key: Key('availability-hour-$hour'),
+                              borderRadius: BorderRadius.circular(15),
+                              onTap: enabled
+                                  ? () => setModalState(() {
+                                      if (!selected.add(hour)) {
+                                        selected.remove(hour);
+                                      }
+                                      validationError = null;
+                                    })
+                                  : null,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 160),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isBusy
+                                      ? _surfaceContainerLow
+                                      : isSelected
+                                      ? _primary
+                                      : _surface,
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? _primary
+                                        : _outlineVariant,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isBusy
+                                          ? Icons.lock_clock_rounded
+                                          : isSelected
+                                          ? Icons.check_circle_rounded
+                                          : Icons.schedule_rounded,
+                                      size: 18,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : enabled
+                                          ? _primary
+                                          : _onSurfaceVariant.withValues(
+                                              alpha: 0.45,
+                                            ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${_two(hour)}:00–${_two(hour + 1)}:00',
+                                        style: TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : enabled
+                                              ? _onSurface
+                                              : _onSurfaceVariant.withValues(
+                                                  alpha: 0.55,
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (busy.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Ca có biểu tượng khóa đã có lịch tư vấn.',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 11,
+                              color: _onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        const Text(
+                          'Áp dụng lịch này cho',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
+                            color: _primary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<AvailabilityApplyScope>(
+                          key: const Key('availability-apply-scope'),
+                          initialValue: scope,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: _surfaceContainerLow,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: AvailabilityApplyScope.selectedDay,
+                              child: Text('Chỉ ngày này'),
+                            ),
+                            DropdownMenuItem(
+                              value: AvailabilityApplyScope.week,
+                              child: Text('Tất cả ngày trong tuần'),
+                            ),
+                            DropdownMenuItem(
+                              value: AvailabilityApplyScope.month,
+                              child: Text('Tất cả ngày trong tháng'),
+                            ),
+                            DropdownMenuItem(
+                              value: AvailabilityApplyScope.selectedWeekdays,
+                              child: Text('Các thứ trong tuần tùy chọn'),
+                            ),
+                            DropdownMenuItem(
+                              value: AvailabilityApplyScope.selectedMonthDays,
+                              child: Text('Các ngày trong tháng tùy chọn'),
+                            ),
+                          ],
+                          onChanged: (value) => setModalState(() {
+                            scope = value ?? AvailabilityApplyScope.selectedDay;
+                            validationError = null;
+                          }),
+                        ),
+                        if (scope ==
+                            AvailabilityApplyScope.selectedWeekdays) ...[
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 7,
+                            runSpacing: 7,
+                            children: List.generate(7, (index) {
+                              final weekday = index + 1;
+                              return FilterChip(
+                                key: Key('availability-weekday-$weekday'),
+                                label: Text(_weekdayLabels[index]),
+                                selected: selectedWeekdays.contains(weekday),
+                                onSelected: (value) => setModalState(() {
+                                  value
+                                      ? selectedWeekdays.add(weekday)
+                                      : selectedWeekdays.remove(weekday);
+                                }),
+                              );
+                            }),
+                          ),
+                        ],
+                        if (scope ==
+                            AvailabilityApplyScope.selectedMonthDays) ...[
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: List.generate(
+                              DateUtils.getDaysInMonth(date.year, date.month),
+                              (index) {
+                                final day = index + 1;
+                                return FilterChip(
+                                  key: Key('availability-month-day-$day'),
+                                  label: Text('$day'),
+                                  selected: selectedMonthDays.contains(day),
+                                  onSelected: (value) => setModalState(() {
+                                    value
+                                        ? selectedMonthDays.add(day)
+                                        : selectedMonthDays.remove(day);
+                                  }),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: _surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome_rounded,
+                                color: _primary,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '${selected.length} ca/ngày • ${targets.length} ngày sẽ được cập nhật',
+                                  style: const TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: _onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (validationError != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            validationError!,
+                            key: const Key('availability-validation-error'),
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              color: Color(0xFFBA1A1A),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton.icon(
+                          key: const Key('availability-save'),
+                          onPressed: canSave
+                              ? () => Navigator.pop(
+                                  context,
+                                  _AvailabilityEditCommand(
+                                    date: date,
+                                    hours: selected,
+                                    scope: scope,
+                                    weekdays: selectedWeekdays,
+                                    monthDays: selectedMonthDays,
+                                  ),
+                                )
+                              : () => setModalState(() {
+                                  validationError =
+                                      'Hãy chọn ít nhất một ngày áp dụng.';
+                                }),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          icon: const Icon(Icons.save_rounded),
+                          label: Text(
+                            targets.length == 1
+                                ? 'Lưu lịch rảnh'
+                                : 'Lưu cho ${targets.length} ngày',
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Xóa', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-          ),
-        ],
+          );
+        },
       ),
     );
-    if (confirm != true || !mounted) return;
 
-    setState(() => _deletingIds.add(id));
+    if (command == null || !mounted) return;
+    await _applyAvailability(command);
+  }
+
+  Future<void> _applyAvailability(_AvailabilityEditCommand command) async {
+    final dates = resolveAvailabilityDates(
+      anchor: command.date,
+      scope: command.scope,
+      weekdays: command.weekdays,
+      monthDays: command.monthDays,
+      today: _dateOnly(DateTime.now()),
+    );
+    if (dates.isEmpty) return;
+
+    setState(() => _saving = true);
     try {
+      final sortedHours = command.hours.toList()..sort();
       await _api
-          .delete('/api/v1/expert/availability/$id')
-          .timeout(const Duration(seconds: 15));
+          .put('/api/v1/expert/availability/batch', {
+            'targetDates': dates.map(_routeDate).toList(),
+            'timeZone': _localUtcOffset(),
+            'channelType': 'ONLINE_CHAT',
+            'slots': sortedHours
+                .map((hour) => {'startTime': '${_two(hour)}:00'})
+                .toList(),
+          })
+          .timeout(const Duration(seconds: 30));
+      await _fetchAvailability(showLoader: false);
       if (!mounted) return;
-      await _fetchAvailability();
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã xóa khung giờ rảnh')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            dates.length == 1
+                ? 'Đã cập nhật lịch rảnh'
+                : 'Đã đồng bộ lịch rảnh cho ${dates.length} ngày',
+          ),
+        ),
+      );
     } catch (error) {
+      await _fetchAvailability(showLoader: false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             friendlyApiError(
               error,
-              fallback: 'Không thể xóa khung giờ. Vui lòng thử lại.',
+              fallback:
+                  'Chưa thể đồng bộ toàn bộ lịch. Dữ liệu đã được tải lại.',
             ),
           ),
         ),
       );
     } finally {
-      if (mounted) setState(() => _deletingIds.remove(id));
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  Future<void> _showAddSlotDialog() async {
-    final today = _dateOnly(DateTime.now());
-    var selectedDate = today.add(const Duration(days: 1));
-    var startTime = const TimeOfDay(hour: 8, minute: 0);
-    var endTime = const TimeOfDay(hour: 12, minute: 0);
-    String? selectedPreset = 'morning';
-    String? validationError;
-    var submitting = false;
-
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: _surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final start = combineLocalDateAndTime(selectedDate, startTime);
-            final end = combineLocalDateAndTime(selectedDate, endTime);
-
-            void choosePreset(_AvailabilityPreset preset) {
-              setModalState(() {
-                selectedPreset = preset.id;
-                startTime = preset.start;
-                endTime = preset.end;
-                validationError = null;
-              });
-            }
-
-            Future<void> chooseDate() async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: selectedDate,
-                firstDate: today,
-                lastDate: today.add(const Duration(days: 90)),
-              );
-              if (picked == null || !context.mounted) return;
-              setModalState(() {
-                selectedDate = _dateOnly(picked);
-                validationError = null;
-              });
-            }
-
-            Future<void> chooseTime({required bool isStart}) async {
-              final picked = await showTimePicker(
-                context: context,
-                initialTime: isStart ? startTime : endTime,
-              );
-              if (picked == null || !context.mounted) return;
-              setModalState(() {
-                selectedPreset = null;
-                if (isStart) {
-                  startTime = picked;
-                } else {
-                  endTime = picked;
-                }
-                validationError = null;
-              });
-            }
-
-            Future<void> submit() async {
-              final error = validateAvailabilityRange(
-                start,
-                end,
-                now: DateTime.now(),
-              );
-              if (error != null) {
-                setModalState(() => validationError = error);
-                return;
-              }
-              setModalState(() {
-                submitting = true;
-                validationError = null;
-              });
-              try {
-                await _api
-                    .post('/api/v1/expert/availability', {
-                      'startAt': start.toUtc().toIso8601String(),
-                      'endAt': end.toUtc().toIso8601String(),
-                      'channelType': 'ONLINE_CHAT',
-                      'status': 'AVAILABLE',
-                    })
-                    .timeout(const Duration(seconds: 15));
-                if (!context.mounted) return;
-                Navigator.pop(context, true);
-              } catch (error) {
-                if (!context.mounted) return;
-                setModalState(() {
-                  submitting = false;
-                  validationError = friendlyApiError(
-                    error,
-                    fallback: 'Không thể tạo khung giờ. Vui lòng thử lại.',
-                  );
-                });
-              }
-            }
-
-            return SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  24,
-                  20,
-                  24,
-                  MediaQuery.viewInsetsOf(context).bottom + 24,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Thêm khung giờ rảnh',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: _onSurface,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Đóng',
-                          onPressed: submitting
-                              ? null
-                              : () => Navigator.pop(context, false),
-                          icon: const Icon(Icons.close, color: _onSurface),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Chọn ngày nhanh',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w700,
-                        color: _primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        _QuickDateChip(
-                          key: const Key('availability-date-today'),
-                          label: 'Hôm nay',
-                          date: today,
-                          selectedDate: selectedDate,
-                          onSelected: (date) => setModalState(() {
-                            selectedDate = date;
-                            validationError = null;
-                          }),
-                        ),
-                        _QuickDateChip(
-                          key: const Key('availability-date-tomorrow'),
-                          label: 'Ngày mai',
-                          date: today.add(const Duration(days: 1)),
-                          selectedDate: selectedDate,
-                          onSelected: (date) => setModalState(() {
-                            selectedDate = date;
-                            validationError = null;
-                          }),
-                        ),
-                        _QuickDateChip(
-                          key: const Key('availability-date-day-after'),
-                          label: 'Ngày kia',
-                          date: today.add(const Duration(days: 2)),
-                          selectedDate: selectedDate,
-                          onSelected: (date) => setModalState(() {
-                            selectedDate = date;
-                            validationError = null;
-                          }),
-                        ),
-                        ActionChip(
-                          key: const Key('availability-date-custom'),
-                          avatar: const Icon(Icons.calendar_month_rounded, size: 18, color: _primary),
-                          label: Text(
-                            DateFormat('dd/MM/yyyy').format(selectedDate),
-                            style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: submitting ? null : chooseDate,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Ca gợi ý',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w700,
-                        color: _primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _presets
-                          .map(
-                            (preset) => ChoiceChip(
-                              key: Key('availability-preset-${preset.id}'),
-                              label: Text(
-                                '${preset.label} '
-                                '(${_formatTime(preset.start)}–${_formatTime(preset.end)})',
-                                style: const TextStyle(fontFamily: 'Lexend'),
-                              ),
-                              selected: selectedPreset == preset.id,
-                              onSelected: submitting
-                                  ? null
-                                  : (_) => choosePreset(preset),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Giờ tùy chỉnh',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w700,
-                        color: _primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            key: const Key('availability-start-time'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _primary,
-                              side: const BorderSide(color: _outlineVariant),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            ),
-                            onPressed: submitting
-                                ? null
-                                : () => chooseTime(isStart: true),
-                            icon: const Icon(Icons.schedule_rounded, size: 18),
-                            label: Text('Từ ${_formatTime(startTime)}', style: const TextStyle(fontFamily: 'Lexend')),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            key: const Key('availability-end-time'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _primary,
-                              side: const BorderSide(color: _outlineVariant),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            ),
-                            onPressed: submitting
-                                ? null
-                                : () => chooseTime(isStart: false),
-                            icon: const Icon(Icons.schedule_rounded, size: 18),
-                            label: Text('Đến ${_formatTime(endTime)}', style: const TextStyle(fontFamily: 'Lexend')),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (validationError != null) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        validationError!,
-                        key: const Key('availability-validation-error'),
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          color: Color(0xFFBA1A1A),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        key: const Key('availability-save'),
-                        onPressed: submitting ? null : submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        child: submitting
-                            ? const SizedBox.square(
-                                dimension: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Lưu khung giờ',
-                                style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 16),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (created != true || !mounted) return;
-    await _fetchAvailability();
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Đã thêm khung giờ rảnh')));
+  void _changeMonth(int delta) {
+    setState(() {
+      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + delta);
+      final today = _dateOnly(DateTime.now());
+      final first = DateTime(_visibleMonth.year, _visibleMonth.month);
+      _selectedDate = _sameMonth(today, _visibleMonth) ? today : first;
+    });
   }
 
   @override
@@ -483,18 +625,6 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
 
     return Scaffold(
       backgroundColor: _canvas,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('calendar-add-slot'),
-        backgroundColor: _primary,
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        onPressed: _showAddSlotDialog,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Thêm khung giờ',
-          style: TextStyle(fontFamily: 'Lexend', color: Colors.white, fontWeight: FontWeight.w700),
-        ),
-      ),
       body: SafeArea(
         top: false,
         child: Column(
@@ -503,7 +633,9 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(24),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x0A845143),
@@ -512,35 +644,48 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                   ),
                 ],
               ),
-              padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
+              padding: EdgeInsets.fromLTRB(12, topInset + 8, 12, 12),
               child: Row(
                 children: [
-                  if (canPop) ...[
+                  if (canPop)
                     IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+                      tooltip: 'Quay lại',
                       onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: 12),
-                  ] else
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: _primary,
+                      ),
+                    )
+                  else
                     const SizedBox(width: 8),
                   const Expanded(
-                    child: Text(
-                      'Lịch rảnh của tôi',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: _onSurface,
-                        letterSpacing: -0.3,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Lịch rảnh của tôi',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: _onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Chạm vào một ngày để chỉnh sửa',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
                     key: const Key('calendar-refresh'),
                     tooltip: 'Làm mới lịch rảnh',
-                    onPressed: _loading ? null : _fetchAvailability,
+                    onPressed: _loading || _saving ? null : _fetchAvailability,
                     icon: const Icon(Icons.refresh_rounded, color: _primary),
                   ),
                 ],
@@ -564,51 +709,24 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off_rounded, size: 48, color: _onSurfaceVariant),
+              const Icon(
+                Icons.cloud_off_rounded,
+                size: 48,
+                color: _onSurfaceVariant,
+              ),
               const SizedBox(height: 12),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  color: _onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: _fetchAvailability,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _primary,
-                  side: const BorderSide(color: _outlineVariant),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend')),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    if (_slots.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.event_available_rounded, size: 64, color: _primaryContainer),
-              SizedBox(height: 16),
-              Text(
-                'Chưa có khung giờ rảnh nào',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Thêm thời gian bạn có thể nhận tư vấn.',
-                style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
-                textAlign: TextAlign.center,
+                child: const Text('Thử lại'),
               ),
             ],
           ),
@@ -616,171 +734,405 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
       );
     }
 
-    return RefreshIndicator(
-      color: _primary,
-      onRefresh: _fetchAvailability,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-        itemCount: _slots.length,
-        itemBuilder: (context, index) {
-          final slot = _slots[index];
-          final start = DateTime.tryParse('${slot['startAt']}')?.toLocal();
-          final end = DateTime.tryParse('${slot['endAt']}')?.toLocal();
-          final rawId = slot['availabilityId'] ?? slot['id'];
-          if (start == null || end == null) {
-            return const SizedBox.shrink();
-          }
-          final expired = end.isBefore(DateTime.now());
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: _surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _outlineVariant, width: 1),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0A845143),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
+    final dates = calendarDatesForMonth(_visibleMonth);
+    final today = _dateOnly(DateTime.now());
+    return Stack(
+      children: [
+        RefreshIndicator(
+          color: _primary,
+          onRefresh: _fetchAvailability,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: _outlineVariant),
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: expired
-                          ? _surfaceContainerLow
-                          : _surfaceContainerLow,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      expired ? Icons.history_rounded : Icons.access_time_filled_rounded,
-                      color: expired ? _onSurfaceVariant : _primary,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat('dd/MM/yyyy').format(start),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: expired ? Colors.grey : _onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${DateFormat('HH:mm').format(start)} – '
-                          '${DateFormat('HH:mm').format(end)}',
-                          style: TextStyle(
-                            color: expired ? Colors.grey : _primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          expired ? 'Đã kết thúc' : 'Sẵn sàng đặt lịch',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            color: expired ? _onSurfaceVariant.withValues(alpha: 0.6) : _onSurfaceVariant,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (rawId != null)
-                    _deletingIds.contains('$rawId')
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : IconButton(
-                            tooltip: 'Xóa khung giờ',
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            key: const Key('calendar-previous-month'),
+                            tooltip: 'Tháng trước',
+                            onPressed: _saving ? null : () => _changeMonth(-1),
                             icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.redAccent,
+                              Icons.chevron_left_rounded,
+                              color: _primary,
                             ),
-                            onPressed: () => _deleteSlot('$rawId'),
                           ),
-                ],
+                          Expanded(
+                            child: Text(
+                              'Tháng ${_two(_visibleMonth.month)}, '
+                              '${_visibleMonth.year}',
+                              key: const Key('calendar-month-label'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: _onSurface,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('calendar-next-month'),
+                            tooltip: 'Tháng sau',
+                            onPressed: _saving ? null : () => _changeMonth(1),
+                            icon: const Icon(
+                              Icons.chevron_right_rounded,
+                              color: _primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 9),
+                      child: Row(
+                        children: _weekdayLabels
+                            .map(
+                              (label) => Expanded(
+                                child: Center(
+                                  child: Text(
+                                    label,
+                                    style: const TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: _onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                      itemCount: dates.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 7,
+                            childAspectRatio: 0.77,
+                            crossAxisSpacing: 3,
+                            mainAxisSpacing: 3,
+                          ),
+                      itemBuilder: (context, index) {
+                        final date = dates[index];
+                        final inMonth = _sameMonth(date, _visibleMonth);
+                        final inPast = date.isBefore(today);
+                        final selected = _sameDate(date, _selectedDate);
+                        final hours = availableHoursForDate(_slots, date);
+                        final busy = busyHoursForDate(_slots, date);
+                        return InkWell(
+                          key: Key('calendar-day-${_routeDate(date)}'),
+                          borderRadius: BorderRadius.circular(13),
+                          onTap: !inMonth || inPast || _saving
+                              ? null
+                              : () => _openDayEditor(date),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 160),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 6,
+                              horizontal: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? _primary.withValues(alpha: 0.11)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(13),
+                              border: Border.all(
+                                color: selected ? _primary : Colors.transparent,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _sameDate(date, today)
+                                        ? _primary
+                                        : Colors.transparent,
+                                  ),
+                                  child: Text(
+                                    '${date.day}',
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: !inMonth || inPast
+                                          ? _onSurfaceVariant.withValues(
+                                              alpha: 0.35,
+                                            )
+                                          : _sameDate(date, today)
+                                          ? Colors.white
+                                          : _onSurface,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (hours.isNotEmpty || busy.isNotEmpty)
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (hours.isNotEmpty)
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: const BoxDecoration(
+                                            color: _primaryContainer,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      if (busy.isNotEmpty) ...[
+                                        if (hours.isNotEmpty)
+                                          const SizedBox(width: 3),
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF5B8A72),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  hours.isEmpty ? '' : '${hours.length} ca',
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w600,
+                                    color: inMonth
+                                        ? _primary
+                                        : _onSurfaceVariant.withValues(
+                                            alpha: 0.25,
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.touch_app_rounded, color: _primary),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Chọn một ngày trên lịch, sau đó tích các ca từ 07:00 đến 21:00. Lịch có thể áp dụng nhanh cho tuần, tháng hoặc nhóm ngày tùy chọn.',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          height: 1.45,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_saving)
+          Positioned.fill(
+            child: ColoredBox(
+              color: _canvas.withValues(alpha: 0.78),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: _primary),
+                    SizedBox(height: 14),
+                    Text(
+                      'Đang đồng bộ lịch rảnh…',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+      ],
     );
   }
 }
 
-class _QuickDateChip extends StatelessWidget {
-  final String label;
-  final DateTime date;
-  final DateTime selectedDate;
-  final ValueChanged<DateTime> onSelected;
-
-  const _QuickDateChip({
-    super.key,
-    required this.label,
+class _AvailabilityEditCommand {
+  const _AvailabilityEditCommand({
     required this.date,
-    required this.selectedDate,
-    required this.onSelected,
+    required this.hours,
+    required this.scope,
+    required this.weekdays,
+    required this.monthDays,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: _sameDate(date, selectedDate),
-      onSelected: (_) => onSelected(date),
-    );
-  }
+  final DateTime date;
+  final Set<int> hours;
+  final AvailabilityApplyScope scope;
+  final Set<int> weekdays;
+  final Set<int> monthDays;
 }
 
-class _AvailabilityPreset {
-  final String id;
-  final String label;
-  final TimeOfDay start;
-  final TimeOfDay end;
-
-  const _AvailabilityPreset(this.id, this.label, this.start, this.end);
-}
-
-const _presets = [
-  _AvailabilityPreset(
-    'morning',
-    'Ca sáng',
-    TimeOfDay(hour: 8, minute: 0),
-    TimeOfDay(hour: 11, minute: 30),
-  ),
-  _AvailabilityPreset(
-    'afternoon',
-    'Ca chiều',
-    TimeOfDay(hour: 13, minute: 30),
-    TimeOfDay(hour: 17, minute: 0),
-  ),
-  _AvailabilityPreset(
-    'evening',
-    'Ca tối',
-    TimeOfDay(hour: 18, minute: 0),
-    TimeOfDay(hour: 20, minute: 30),
-  ),
+const _weekdayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const _weekdayLongLabels = [
+  'Thứ Hai',
+  'Thứ Ba',
+  'Thứ Tư',
+  'Thứ Năm',
+  'Thứ Sáu',
+  'Thứ Bảy',
+  'Chủ Nhật',
 ];
 
-DateTime combineLocalDateAndTime(DateTime date, TimeOfDay time) {
-  return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+List<DateTime> calendarDatesForMonth(DateTime month) {
+  final first = DateTime(month.year, month.month);
+  final gridStart = first.subtract(Duration(days: first.weekday - 1));
+  return List.generate(42, (index) => gridStart.add(Duration(days: index)));
 }
+
+List<DateTime> resolveAvailabilityDates({
+  required DateTime anchor,
+  required AvailabilityApplyScope scope,
+  Set<int> weekdays = const {},
+  Set<int> monthDays = const {},
+  DateTime? today,
+}) {
+  final normalizedAnchor = _dateOnly(anchor);
+  final lowerBound = _dateOnly(today ?? DateTime.now());
+  late Iterable<DateTime> dates;
+  switch (scope) {
+    case AvailabilityApplyScope.selectedDay:
+      dates = [normalizedAnchor];
+    case AvailabilityApplyScope.week:
+      final monday = normalizedAnchor.subtract(
+        Duration(days: normalizedAnchor.weekday - 1),
+      );
+      dates = List.generate(7, (index) => monday.add(Duration(days: index)));
+    case AvailabilityApplyScope.month:
+      dates = _allDatesInMonth(normalizedAnchor);
+    case AvailabilityApplyScope.selectedWeekdays:
+      dates = _allDatesInMonth(
+        normalizedAnchor,
+      ).where((date) => weekdays.contains(date.weekday));
+    case AvailabilityApplyScope.selectedMonthDays:
+      dates = _allDatesInMonth(
+        normalizedAnchor,
+      ).where((date) => monthDays.contains(date.day));
+  }
+  final result =
+      dates.where((date) => !date.isBefore(lowerBound)).toSet().toList()
+        ..sort();
+  return result;
+}
+
+List<int> availableHoursForDate(
+  List<Map<String, dynamic>> slots,
+  DateTime date,
+) => _hoursForDate(slots, date, available: true);
+
+List<int> busyHoursForDate(List<Map<String, dynamic>> slots, DateTime date) =>
+    _hoursForDate(slots, date, available: false);
+
+List<int> _hoursForDate(
+  List<Map<String, dynamic>> slots,
+  DateTime date, {
+  required bool available,
+}) {
+  final result = <int>[];
+  for (var hour = 7; hour < 21; hour++) {
+    final hourStart = DateTime(date.year, date.month, date.day, hour);
+    final hourEnd = hourStart.add(const Duration(hours: 1));
+    final covered = slots.any((row) {
+      final status = '${row['status'] ?? 'AVAILABLE'}'.toUpperCase();
+      if ((status == 'AVAILABLE') != available) return false;
+      final start = DateTime.tryParse('${row['startAt']}')?.toLocal();
+      final end = DateTime.tryParse('${row['endAt']}')?.toLocal();
+      return start != null &&
+          end != null &&
+          !start.isAfter(hourStart) &&
+          !end.isBefore(hourEnd);
+    });
+    if (covered) result.add(hour);
+  }
+  return result;
+}
+
+List<AvailabilityTimeRange> mergeAvailabilityHours(
+  DateTime date,
+  Set<int> hours,
+) {
+  final sorted = hours.where((hour) => hour >= 7 && hour < 21).toList()..sort();
+  if (sorted.isEmpty) return const [];
+  final ranges = <AvailabilityTimeRange>[];
+  var start = sorted.first;
+  var previous = start;
+  for (final hour in sorted.skip(1)) {
+    if (hour == previous + 1) {
+      previous = hour;
+      continue;
+    }
+    ranges.add(
+      AvailabilityTimeRange(
+        DateTime(date.year, date.month, date.day, start),
+        DateTime(date.year, date.month, date.day, previous + 1),
+      ),
+    );
+    start = hour;
+    previous = hour;
+  }
+  ranges.add(
+    AvailabilityTimeRange(
+      DateTime(date.year, date.month, date.day, start),
+      DateTime(date.year, date.month, date.day, previous + 1),
+    ),
+  );
+  return ranges;
+}
+
+bool isSelectableAvailabilityHour(
+  DateTime date,
+  int hour, {
+  required DateTime now,
+}) {
+  if (hour < 7 || hour >= 21) return false;
+  return DateTime(date.year, date.month, date.day, hour).isAfter(now);
+}
+
+DateTime combineLocalDateAndTime(DateTime date, TimeOfDay time) =>
+    DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
 String? validateAvailabilityRange(
   DateTime start,
@@ -796,12 +1148,30 @@ String? validateAvailabilityRange(
   return null;
 }
 
+Iterable<DateTime> _allDatesInMonth(DateTime date) sync* {
+  final count = DateUtils.getDaysInMonth(date.year, date.month);
+  for (var day = 1; day <= count; day++) {
+    yield DateTime(date.year, date.month, day);
+  }
+}
+
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
 
 bool _sameDate(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
-String _formatTime(TimeOfDay time) =>
-    '${time.hour.toString().padLeft(2, '0')}:'
-    '${time.minute.toString().padLeft(2, '0')}';
+bool _sameMonth(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month;
+
+String _routeDate(DateTime date) =>
+    '${date.year}-${_two(date.month)}-${_two(date.day)}';
+
+String _two(int value) => value.toString().padLeft(2, '0');
+
+String _localUtcOffset() {
+  final offset = DateTime.now().timeZoneOffset;
+  final sign = offset.isNegative ? '-' : '+';
+  final absolute = offset.abs();
+  return '$sign${_two(absolute.inHours)}:${_two(absolute.inMinutes.remainder(60))}';
+}

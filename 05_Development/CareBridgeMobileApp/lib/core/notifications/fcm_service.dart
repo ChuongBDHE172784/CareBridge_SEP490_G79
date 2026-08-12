@@ -178,6 +178,10 @@ class FcmService {
   /// infrastructure anywhere yet — see MEDI-FL-09).
   @visibleForTesting
   static String? resolveTapRoute(Map<String, dynamic> data) {
+    if (data['type'] == 'LOCATION_SHARE' ||
+        data['referenceType'] == 'LOCATION_SHARE') {
+      return '/notifications';
+    }
     final sessionId = data['sessionId'];
     if (data['type'] == 'EMERGENCY_ALERT' &&
         sessionId is String &&
@@ -250,14 +254,22 @@ class FcmService {
         type == 'REMINDER' ||
         type == 'REMINDER_SCHEDULE' ||
         referenceType == 'REMINDER_SCHEDULE';
-    if (!isReminder) return;
+    final isLocationShare =
+        type == 'LOCATION_SHARE' || referenceType == 'LOCATION_SHARE';
+    if (!isReminder && !isLocationShare) return;
     final route = resolveTapRoute(data);
     final context = rootNavigatorKey.currentContext;
-    if (!isReminder || route == null || context == null) return;
+    if (route == null || context == null) return;
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
-    final title = data['title']?.toString() ?? 'Nhắc lịch';
-    final body = data['body']?.toString() ?? 'Bạn có một lịch cần xem.';
+    final title =
+        data['title']?.toString() ??
+        (isLocationShare ? 'Mother đã gửi vị trí' : 'Nhắc lịch');
+    final body =
+        data['body']?.toString() ??
+        (isLocationShare
+            ? 'Nhấn để xem vị trí hiện tại của Mother.'
+            : 'Bạn có một lịch cần xem.');
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(

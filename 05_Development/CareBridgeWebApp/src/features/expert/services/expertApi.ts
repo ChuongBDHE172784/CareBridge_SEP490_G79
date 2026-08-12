@@ -186,6 +186,13 @@ export interface CreateAvailabilityRequest {
 	status: string;
 }
 
+export interface ReplaceAvailabilityRequest {
+	targetDates: string[];
+	timeZone: string;
+	channelType: string;
+	slots: Array<{ startTime: string }>;
+}
+
 export interface ShareLocationRequest {
 	latitude: number;
 	longitude: number;
@@ -496,6 +503,13 @@ export async function createAvailability(body: CreateAvailabilityRequest): Promi
 
 export async function getMyAvailability(): Promise<AvailabilityResponse[]> {
 	const { data } = await apiClient.get('/api/v1/expert/availability/me');
+	return data.data;
+}
+
+export async function replaceAvailability(
+	body: ReplaceAvailabilityRequest
+): Promise<AvailabilityResponse[]> {
+	const { data } = await apiClient.put('/api/v1/expert/availability/batch', body);
 	return data.data;
 }
 

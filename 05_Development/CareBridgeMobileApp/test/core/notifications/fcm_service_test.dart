@@ -95,6 +95,11 @@ void main() {
     expect(route, '/emergency/alert/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
   });
 
+  test('LOCATION_SHARE opens the Family notification center', () {
+    final route = FcmService.resolveTapRoute({'type': 'LOCATION_SHARE'});
+    expect(route, '/notifications');
+  });
+
   test('valid foreground emergency is handled immediately', () {
     expect(
       FcmService.shouldOpenForegroundEmergency({

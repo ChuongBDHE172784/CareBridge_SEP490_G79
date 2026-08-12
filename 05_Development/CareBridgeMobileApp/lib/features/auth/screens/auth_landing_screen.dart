@@ -110,7 +110,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
           setState(() {
             _loading = false;
             _error =
-                'KhÃ´ng thá»ƒ kiá»ƒm tra thiáº¿t láº­p cÃ¡ nhÃ¢n hÃ³a. Vui lÃ²ng thá»­ láº¡i.';
+                'Không thể kiểm tra thiết lập cá nhân hóa. Vui lòng thử lại.';
           });
         }
         return;

@@ -4,6 +4,15 @@ import 'package:go_router/go_router.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
 import 'package:untitled/features/expert/screens/expert_public_profile_screen.dart';
+import 'package:untitled/features/expert/models/expert_availability_slot.dart';
+import 'package:untitled/features/expert/services/expert_availability_service.dart';
+
+class _EmptyAvailabilityService extends ExpertAvailabilityService {
+  @override
+  Future<List<ExpertAvailabilitySlot>> getPublicAvailability(
+    String expertProfileId,
+  ) async => [];
+}
 
 class _ScriptedDirectChatService extends DirectChatService {
   int findOrCreateCallCount = 0;
@@ -57,6 +66,7 @@ void main() {
             path: '/expert/public/:expertProfileId',
             builder: (_, state) => ExpertPublicProfileScreen(
               expertProfileId: state.pathParameters['expertProfileId']!,
+              availabilityService: _EmptyAvailabilityService(),
             ),
           ),
           GoRoute(
@@ -88,6 +98,7 @@ void main() {
             path: '/expert/public/:expertProfileId',
             builder: (_, state) => ExpertPublicProfileScreen(
               expertProfileId: state.pathParameters['expertProfileId']!,
+              availabilityService: _EmptyAvailabilityService(),
             ),
           ),
           GoRoute(
@@ -126,13 +137,13 @@ class _ScriptedDirectChatServiceWithConversation
 
   @override
   Future<List<DirectConversationSummary>> listMyConversations() async => [
-        DirectConversationSummary(
-          conversationId: 'conv-123',
-          counterpartUserId: 'expert-user-1',
-          counterpartRole: 'EXPERT',
-          expertAvailable: true,
-          counterpartDisplayName: 'BS. Trần Thị B',
-          unreadCount: 0,
-        ),
-      ];
+    DirectConversationSummary(
+      conversationId: 'conv-123',
+      counterpartUserId: 'expert-user-1',
+      counterpartRole: 'EXPERT',
+      expertAvailable: true,
+      counterpartDisplayName: 'BS. Trần Thị B',
+      unreadCount: 0,
+    ),
+  ];
 }

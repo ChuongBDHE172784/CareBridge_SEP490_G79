@@ -1,6 +1,7 @@
 package com.carebridge.backend.security.service;
 
 import com.carebridge.backend.common.exception.RateLimitExceededException;
+import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.entity.OtpVerification;
@@ -165,7 +166,7 @@ class AuthServiceResendOtpTest {
 
         OtpVerification existingOtp = OtpVerification.builder()
                 .user(user)
-                .phone(phone)
+                .email(email)
                 .purpose(OtpVerification.OtpPurpose.LOGIN)
                 .build();
 
@@ -260,7 +261,7 @@ class AuthServiceResendOtpTest {
         // Given
         String phone = "+84901234567";
         User user = User.builder().id(UUID.randomUUID()).phone(phone).build();
-        OtpVerification otp = OtpVerification.builder().user(user).build();
+        OtpVerification otp = OtpVerification.builder().user(user).phone(phone).build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
         when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId()))
@@ -284,7 +285,7 @@ class AuthServiceResendOtpTest {
     }
 
     @Test
-    void resendOtp_SwitchingChannelForSameAccount_ShouldRemainRateLimited() {
+    void resendOtp_SwitchingChannelForSameAccount_IsRejected() {
         String phone = "+84901234567";
         String email = "test@example.com";
         UUID userId = UUID.randomUUID();
@@ -298,11 +299,10 @@ class AuthServiceResendOtpTest {
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
         when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(userId))
                 .thenReturn(Optional.of(existingOtp));
-        when(rateLimitPolicy.tryConsumeResend(accountKey)).thenReturn(true, false);
-        when(rateLimitPolicy.getTimeUntilResendReset(accountKey)).thenReturn(60L);
+        when(rateLimitPolicy.tryConsumeResend(accountKey)).thenReturn(true);
 
         ResendOtpRequest phoneRequest = new ResendOtpRequest();
         phoneRequest.setPhone(phone);
@@ -312,13 +312,14 @@ class AuthServiceResendOtpTest {
         emailRequest.setEmail(email);
 
         assertThatThrownBy(() -> authService.resendOtp(emailRequest))
-                .isInstanceOf(RateLimitExceededException.class);
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Use the same verification channel for OTP resend");
 
-        verify(rateLimitPolicy, times(2)).tryConsumeResend(accountKey);
+        verify(rateLimitPolicy).tryConsumeResend(accountKey);
         // Iteration 3 (EC-E6 fix): each resend attempt now saves existing + new
         // BEFORE the cooldown check, so two channel-switched attempts produce
         // 2 attempts × 2 saves = 4 save() invocations.
-        verify(otpVerificationRepository, times(4)).save(any(OtpVerification.class));
+        verify(otpVerificationRepository, times(2)).save(any(OtpVerification.class));
         verify(smsService).sendOtpVerificationSms(eq(phone), anyString(), eq(5));
         verifyNoInteractions(emailService);
     }

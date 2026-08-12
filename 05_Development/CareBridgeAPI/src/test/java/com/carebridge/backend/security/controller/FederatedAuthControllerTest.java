@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.common.exception.GlobalExceptionHandler;
@@ -56,6 +58,73 @@ class FederatedAuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
+    }
+
+    @Test
+    void verifiedPhoneRegistration_returnsCreatedCareBridgeSession() throws Exception {
+        when(federatedAuthService.registerPhone(any())).thenReturn(FederatedAuthResponse.builder()
+                .accessToken("access").refreshToken("refresh").newUser(true).profileCompleted(false).build());
+
+        mockMvc.perform(post("/api/v1/auth/phone/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idToken":"valid-phone-token","name":"Phone User",
+                                 "email":"optional@example.com","phone":"0901111021",
+                                 "password":"Strong@123","role":"MOTHER","deviceInfo":"MockMvc"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.newUser").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("access"));
+    }
+
+    @Test
+    void verifiedPhoneLogin_returnsExistingCareBridgeSession() throws Exception {
+        when(federatedAuthService.loginPhone(any())).thenReturn(FederatedAuthResponse.builder()
+                .accessToken("access").refreshToken("refresh").newUser(false).profileCompleted(true).build());
+
+        mockMvc.perform(post("/api/v1/auth/phone/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"valid-phone-token\",\"deviceInfo\":\"MockMvc\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.newUser").value(false))
+                .andExpect(jsonPath("$.data.refreshToken").value("refresh"));
+    }
+
+    @Test
+    void verifiedPhoneLogin_newPhone_returnsCreatedCareBridgeSession() throws Exception {
+        when(federatedAuthService.loginPhone(any())).thenReturn(FederatedAuthResponse.builder()
+                .accessToken("access").refreshToken("refresh").newUser(true).profileCompleted(false).build());
+
+        mockMvc.perform(post("/api/v1/auth/phone/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"valid-phone-token\",\"deviceInfo\":\"MockMvc\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.newUser").value(true))
+                .andExpect(jsonPath("$.data.profileCompleted").value(false));
+    }
+
+    @Test
+    void phoneRegistration_missingEmail_isRejectedBeforeService() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/phone/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idToken":"valid-phone-token","name":"Phone User",
+                                 "phone":"0901111021","password":"Strong@123"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(federatedAuthService, never()).registerPhone(any());
+    }
+
+    @Test
+    void phoneRegistration_invalidPhonePayload_isRejectedBeforeService() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/phone/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idToken":"valid-phone-token","name":"Phone User",
+                                 "phone":"+14155552671","password":"Strong@123"}
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

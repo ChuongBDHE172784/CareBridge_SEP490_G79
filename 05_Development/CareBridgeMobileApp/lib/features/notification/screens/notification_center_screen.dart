@@ -388,6 +388,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     Color iconColor;
 
     switch (type) {
+      case 'LOCATION_SHARE':
+        icon = Icons.share_location_rounded;
+        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
+        iconColor = isUnread ? _primary : _onSurfaceVariant;
+        break;
       case 'VACCINATION':
       case 'REMINDER':
         icon = Icons.vaccines_outlined;

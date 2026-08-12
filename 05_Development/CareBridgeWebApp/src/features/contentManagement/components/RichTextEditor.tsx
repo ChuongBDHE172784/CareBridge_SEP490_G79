@@ -3,6 +3,10 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import TextAlign from '@tiptap/extension-text-align';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import { ImageWithLayout } from './imageWithLayout';
 import '../richContentBody.css';
 import './RichTextEditor.css';
@@ -14,15 +18,12 @@ const FONT_FAMILIES = [
   { label: 'Sans-serif', value: 'Arial, sans-serif' },
   { label: 'Monospace', value: '"Courier New", monospace' },
 ];
-// ADR-RTE-008: preset sizes only (no freeform drag-resize) — smallest scoped change, no new
-// npm dependency. Values match HtmlContentSanitizer.java WIDTH_PCT_ENUM exactly.
 const IMAGE_WIDTH_PRESETS = ['25', '50', '75', '100'];
 const IMAGE_ALIGN_OPTIONS: { value: string; label: string }[] = [
   { value: 'left', label: 'Trái' },
   { value: 'center', label: 'Giữa' },
   { value: 'right', label: 'Phải' },
 ];
-// ADR-RTE-009
 const TEXT_ALIGN_OPTIONS: { value: string; label: string; icon: string }[] = [
   { value: 'left', label: 'Căn trái', icon: 'format_align_left' },
   { value: 'center', label: 'Căn giữa', icon: 'format_align_center' },
@@ -42,24 +43,18 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
 
   const editor = useEditor({
     extensions: [
-      StarterKit, // includes Bold/Italic/Underline/lists/blockquote/headings out of the box in v3
-      // Bundles TextStyle + Color + FontFamily + FontSize (official Tiptap v3 extension —
-      // see ContentRichTextEditor_TDS.md ADR-RTE-002 addendum: this replaced the custom
-      // font-size mark extension originally planned, since Tiptap now ships one natively).
-      // backgroundColor/lineHeight disabled: the backend sanitizer (ADR-RTE-005) only
-      // allows color/font-size/font-family, so exposing more here would silently vanish
-      // on save.
+      StarterKit,
       TextStyleKit.configure({ backgroundColor: false, lineHeight: false }),
       ImageWithLayout,
-      // ADR-RTE-009: style-based, same mechanism as color/font-size/font-family above.
       TextAlign.configure({ types: ['paragraph', 'heading'] }),
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: value,
-    // Tiptap v3 default: useEditor no longer re-renders the component on every transaction
-    // (selection change, formatting toggle, etc.) — without this, toolbar active-state
-    // highlighting (bold/italic/heading/font-size, and the image resize/align toolbar which
-    // only appears once a selection is a NodeSelection on an image) would never update after
-    // the initial render, since node-selection changes alone don't call onUpdate/onChange.
     shouldRerenderOnTransaction: true,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
@@ -69,8 +64,6 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
     },
   });
 
-  // Keep the editor in sync when `value` is replaced from outside (e.g. loading an
-  // existing article into EditContentPage) without fighting the user's own typing.
   useEffect(() => {
     if (!editor) return;
     if (value !== editor.getHTML()) {
@@ -88,10 +81,6 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
     if (!file) return;
     const url = await onImageUpload(file);
     editor.chain().focus().setImage({ src: url }).run();
-    // Select the newly-inserted image node immediately so the resize/align toolbar (ADR-RTE-008)
-    // is usable right away, without requiring a separate click on the image first. Insertion can
-    // shift/split surrounding nodes (e.g. the editor's initial empty paragraph), so locate the
-    // node we just inserted by matching its src rather than assuming a pre-computed position.
     let imagePos: number | null = null;
     editor.state.doc.descendants((node, pos) => {
       if (imagePos === null && node.type.name === 'image' && node.attrs.src === url) {
@@ -103,6 +92,21 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
     if (imagePos !== null) {
       editor.commands.setNodeSelection(imagePos);
     }
+  };
+
+  const handleAddLink = () => {
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('Nhập URL liên kết (https://...):', previousUrl);
+    if (url === null) return;
+    if (url === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  };
+
+  const handleInsertTable = () => {
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   };
 
   return (
@@ -245,6 +249,26 @@ export default function RichTextEditor({ value, onChange, onImageUpload, placeho
         </button>
 
         <span className="rich-text-toolbar-divider" />
+
+        <button
+          type="button"
+          onClick={handleAddLink}
+          className={`rich-text-toolbar-btn ${editor.isActive('link') ? 'is-active' : ''}`}
+          aria-label="Chèn liên kết"
+          title="Chèn liên kết"
+        >
+          <span className="material-symbols-outlined text-lg">link</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleInsertTable}
+          className={`rich-text-toolbar-btn ${editor.isActive('table') ? 'is-active' : ''}`}
+          aria-label="Chèn bảng"
+          title="Chèn bảng"
+        >
+          <span className="material-symbols-outlined text-lg">table_chart</span>
+        </button>
 
         <button
           type="button"

@@ -4,7 +4,9 @@ export interface UserProfile {
   email: string | null;
   name: string | null;
   avatarUrl: string | null;
-  role: UserRole;
+  role: UserRole | null;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
 }
 
 export type UserRole =

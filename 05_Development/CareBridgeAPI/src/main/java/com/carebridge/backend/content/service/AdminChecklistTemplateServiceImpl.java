@@ -57,9 +57,10 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
     @Override
     @Transactional(readOnly = true)
     public Page<AdminChecklistTemplateDetailResponse> list(
-            ChecklistTemplateStatus status, ContentStage stage, Pageable pageable) {
+            ChecklistTemplateStatus status, ContentStage stage, String keyword, Pageable pageable) {
         Page<ChecklistTemplate> templates = checklistTemplateRepository
-                .findAdminByOptionalStageAndStatus(stage, status, null, pageable);
+                .findAdminByOptionalStageAndStatus(stage, status,
+                        keyword == null || keyword.isBlank() ? null : keyword.trim(), pageable);
         return templates.map(this::toResponseWithItems);
     }
 
@@ -78,7 +79,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         Set<ChecklistRecipientRole> recipientRoles = requireRecipientRoles(request.recipientRoles());
         ContentStage normalizedStage = normalizeStage(recipientRoles, request.stage());
         InlineEligibility eligibility = resolveEligibility(recipientRoles, normalizedStage, request.substage());
-        validateItemTargets(request.items());
+        Short contractVersion = normalizeContractVersion(request.checklistContractVersion());
+        validateItems(request.items(), contractVersion);
         UUID lineageId = UUID.randomUUID();
         UUID versionId = UUID.randomUUID();
         ChecklistTemplate template = ChecklistTemplate.builder()
@@ -97,6 +99,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .migrationReviewRequired(false)
                 .distributionEnabled(false)
                 .templateType(normalizeTemplateType(request.templateType()))
+                .checklistContractVersion(contractVersion)
                 .authorUserId(adminUserId)
                 .build();
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
@@ -140,7 +143,18 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         Set<ChecklistRecipientRole> recipientRoles = requireRecipientRoles(request.recipientRoles());
         ContentStage normalizedStage = normalizeStage(recipientRoles, request.stage());
         InlineEligibility eligibility = resolveEligibility(recipientRoles, normalizedStage, request.substage());
-        validateItemTargets(request.items());
+        Short contractVersion = request.checklistContractVersion() == null
+                ? normalizeContractVersion(template.getChecklistContractVersion())
+                : normalizeContractVersion(request.checklistContractVersion());
+        validateItems(request.items(), contractVersion);
+        Short previousContractVersion = normalizeContractVersion(template.getChecklistContractVersion());
+        if (request.items() == null && !previousContractVersion.equals(contractVersion)) {
+            // A root contract change cannot leave the previous leaf shape in
+            // place. Require the caller to submit the complete replacement set
+            // so target/requiredness is validated and rewritten atomically.
+            throw ContentException.validationFailed(
+                    "items", "must be provided when checklistContractVersion changes");
+        }
 
         if (template.getTemplateLineageId() == null) {
             template.setTemplateLineageId(template.getId());
@@ -154,6 +168,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         template.setTemplateType(request.templateType() == null
                 ? normalizeTemplateType(template.getTemplateType())
                 : request.templateType());
+        template.setChecklistContractVersion(contractVersion);
         template.setStage(normalizedStage);
         if (request.displayOrder() != null
                 && template.getStatus() != ChecklistTemplateStatus.APPROVED
@@ -187,6 +202,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             currentItems = reconcileItems(request.items(), saved);
         } else {
             currentItems = checklistItemRepository.findByTemplate_IdOrderByOrder(id);
+            normalizeExistingItems(currentItems, saved);
         }
 
         auditService.log(AuditAction.CHECKLIST_TEMPLATE_UPDATED, adminUserId,
@@ -285,14 +301,30 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .stage(source.getStage())
                 .sequencePosition(source.getSequencePosition())
                 .recipientScope(source.getRecipientScope())
+                .substageId(source.getSubstageId())
                 .eligibilityAnchorType(source.getEligibilityAnchorType())
                 .eligibilityRangeUnit(source.getEligibilityRangeUnit())
                 .eligibilityStartInclusive(source.getEligibilityStartInclusive())
                 .eligibilityEndInclusive(source.getEligibilityEndInclusive())
+                .scheduleType(source.getScheduleType())
+                .materializationPolicy(source.getMaterializationPolicy())
+                .scheduleGroupKey(source.getScheduleGroupKey())
+                .scheduleContextType(source.getScheduleContextType())
+                .scheduleEndMode(source.getScheduleEndMode())
+                .weekBoundaryRule(source.getWeekBoundaryRule())
                 .status(ChecklistTemplateStatus.DRAFT)
                 .migrationReviewRequired(false)
                 .distributionEnabled(false)
                 .templateType(source.getTemplateType())
+                .checklistContractVersion(normalizeContractVersion(source.getChecklistContractVersion()))
+                // Preserve the source's canonical cadence/provenance contract.  A
+                // cloned Pregnancy V2 draft must remain activatable after review;
+                // dropping this metadata would make the DB activation gate fail
+                // permanently because authoring requests deliberately do not expose
+                // internal provenance fields.
+                .checklistMetadataJson(source.getChecklistMetadataJson())
+                .checklistMetadataHash(source.getChecklistMetadataHash())
+                .checklistQuarantineReasonCode(source.getChecklistQuarantineReasonCode())
                 .versionNo(nextVersionNo)
                 .authorUserId(adminUserId)
                 .build();
@@ -301,9 +333,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         List<ChecklistItem> sourceItems = checklistItemRepository.findByTemplate_IdOrderByOrder(source.getId());
         List<ChecklistItem> clonedItems = sourceItems.stream()
                 .map(item -> {
-                    if (item.getTargetSubject() == null) {
-                        throw ContentException.itemTargetRequired();
-                    }
+                    validateItem(item.getTargetSubject(), item.getIsRequired(),
+                            normalizeContractVersion(source.getChecklistContractVersion()));
                     return ChecklistItem.builder()
                             .template(saved)
                             .itemText(item.getItemText())
@@ -311,6 +342,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                             .supportFunction(item.getSupportFunction())
                             .order(item.getOrder())
                             .isRequired(item.getIsRequired())
+                            .checklistContractVersion(normalizeContractVersion(source.getChecklistContractVersion()))
                             .targetSubject(item.getTargetSubject())
                             .isActive(true)
                             .build();
@@ -358,6 +390,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                     .supportFunction(item.supportFunction())
                     .order(item.order())
                     .isRequired(item.isRequired())
+                    .checklistContractVersion(normalizeContractVersion(template.getChecklistContractVersion()))
                     .targetSubject(resolveTargetSubject(item, template))
                     .isActive(true)
                     .build());
@@ -398,6 +431,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             item.setSupportFunction(requested.supportFunction());
             item.setOrder(requested.order());
             item.setIsRequired(requested.isRequired());
+            item.setChecklistContractVersion(normalizeContractVersion(template.getChecklistContractVersion()));
             item.setTargetSubject(resolveTargetSubject(requested, template));
             item.setIsActive(true);
             activeItems.add(item);
@@ -410,10 +444,24 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
     private ChecklistTargetSubject resolveTargetSubject(
             ChecklistItemRequest item, ChecklistTemplate template) {
-        if (item.targetSubject() == null) {
-            throw ContentException.itemTargetRequired();
+        Short contractVersion = normalizeContractVersion(template.getChecklistContractVersion());
+        validateItem(item.targetSubject(), item.isRequired(), contractVersion);
+        return contractVersion == 2 ? null : item.targetSubject();
+    }
+
+    private void normalizeExistingItems(List<ChecklistItem> items, ChecklistTemplate template) {
+        Short contractVersion = normalizeContractVersion(template.getChecklistContractVersion());
+        boolean changed = false;
+        for (ChecklistItem item : items) {
+            validateItem(item.getTargetSubject(), item.getIsRequired(), contractVersion);
+            if (!contractVersion.equals(normalizeContractVersion(item.getChecklistContractVersion()))) {
+                item.setChecklistContractVersion(contractVersion);
+                changed = true;
+            }
         }
-        return item.targetSubject();
+        if (changed) {
+            checklistItemRepository.saveAll(items);
+        }
     }
 
     private Set<ChecklistRecipientRole> requireRecipientRoles(Set<ChecklistRecipientRole> requestedRoles) {
@@ -459,10 +507,43 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 requestedSubstage.endInclusive());
     }
 
-    private void validateItemTargets(List<ChecklistItemRequest> items) {
-        if (items != null && items.stream().anyMatch(item -> item.targetSubject() == null)) {
+    private void validateItems(List<ChecklistItemRequest> items, Short contractVersion) {
+        if (items == null) {
+            return;
+        }
+        for (ChecklistItemRequest item : items) {
+            validateItem(item.targetSubject(), item.isRequired(), contractVersion);
+        }
+    }
+
+    private void validateItem(
+            ChecklistTargetSubject targetSubject,
+            Boolean required,
+            Short contractVersion) {
+        if (contractVersion == 2) {
+            if (targetSubject != null) {
+                throw ContentException.itemTargetUnsupported();
+            }
+            if (required != null) {
+                throw ContentException.itemRequirednessUnsupported();
+            }
+            return;
+        }
+        if (targetSubject == null) {
             throw ContentException.itemTargetRequired();
         }
+        if (required == null) {
+            throw ContentException.validationFailed("isRequired", "must be provided for contract version 1");
+        }
+    }
+
+    private Short normalizeContractVersion(Short requestedVersion) {
+        short resolved = requestedVersion == null ? 1 : requestedVersion;
+        if (resolved != 1 && resolved != 2) {
+            throw ContentException.validationFailed(
+                    "checklistContractVersion", "must be 1 or 2");
+        }
+        return resolved;
     }
 
     private ChecklistTemplateType normalizeTemplateType(ChecklistTemplateType requestedType) {

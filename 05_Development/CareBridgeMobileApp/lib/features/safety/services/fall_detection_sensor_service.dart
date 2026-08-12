@@ -243,7 +243,11 @@ class FallDetectionSensorService {
                 const Duration(seconds: 30))) {
       _scheduleLocationRefresh();
     }
-    if (candidate == null || _sending) return;
+    if (candidate == null) return;
+    // A candidate is ignored while the previous event is being submitted.
+    // This prevents one physical fall from creating duplicate alerts while
+    // the API request is still in flight or retrying.
+    if (_sending) return;
 
     _sending = true;
     unawaited(_sendCandidate(candidate, _runGeneration));
@@ -253,6 +257,11 @@ class FallDetectionSensorService {
     if (!_running) return;
     _gyroscopeStreamError = null;
     _latestGyroscope = event;
+  }
+
+  void rearmAfterAlertResponse(DateTime respondedAt) {
+    if (!_running) return;
+    _detector.rearmAfterAlertResponse(respondedAt);
   }
 
   void _publishSamplingDiagnostics(ImuSample sample, {bool force = false}) {

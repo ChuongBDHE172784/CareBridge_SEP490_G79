@@ -24,8 +24,11 @@ from app.danger_phrases import (
     MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES,
     MATERNAL_BREATHING_DISTRESS_PHRASES,
     MATERNAL_CYANOSIS_PHRASES,
+    MATERNAL_HEAVY_BLEEDING_PHRASES,
     MATERNAL_SEIZURE_PHRASES,
     MATERNAL_SELF_HARM_PHRASES,
+    MATERNAL_SEVERE_HEADACHE_PHRASES,
+    MATERNAL_VISUAL_DISTURBANCE_PHRASES,
     normalized_text,
     text_contains_any,
 )
@@ -41,6 +44,34 @@ _PHRASE_SIGNALS: tuple[tuple[tuple[str, ...], str], ...] = (
     (MATERNAL_SELF_HARM_PHRASES, "SELF_HARM_IDEATION"),
 )
 
+#: Stage-scoped phrase groups, ported under D-032. These mean different things for a pregnancy
+#: and for a postpartum mother, so unlike the groups above they are emitted only when the stage
+#: is already known from trusted context — never inferred from the sentence.
+#:
+#: They exist because V2 was blind to them while V1 already scored RED from the same lists
+#: (``app/risk_rules.py``). Measured on the 160-case vague corpus, that gap put V2 RED recall at
+#: 52.9%: "máu ra ướt đẫm hai miếng băng" and "đau đầu dữ dội kèm nhìn mờ" produced no signal at
+#: all with Gemini unavailable.
+_STAGE_PHRASE_SIGNALS: dict[str, tuple[tuple[tuple[str, ...], str], ...]] = {
+    "PREGNANCY": (
+        (MATERNAL_HEAVY_BLEEDING_PHRASES, "HEAVY_VAGINAL_BLEEDING"),
+        (MATERNAL_SEVERE_HEADACHE_PHRASES, "SEVERE_HEADACHE"),
+        (MATERNAL_VISUAL_DISTURBANCE_PHRASES, "VISUAL_DISTURBANCE"),
+    ),
+    "POSTPARTUM_MOTHER": (
+        (MATERNAL_HEAVY_BLEEDING_PHRASES, "HEAVY_POSTPARTUM_BLEEDING"),
+        (MATERNAL_SEVERE_HEADACHE_PHRASES, "SEVERE_HEADACHE"),
+        (MATERNAL_VISUAL_DISTURBANCE_PHRASES, "VISUAL_DISTURBANCE"),
+    ),
+}
+
+#: Only a stage the user or their profile actually stated may open the stage-scoped groups. A
+#: stage the extractor guessed is exactly the case D-032's scope limit excludes.
+_TRUSTED_STAGE_SOURCES = frozenset({
+    "EXPLICIT_SELECTED_PROFILE", "CONFIRMED_CONVERSATION_TARGET",
+    "EXPLICIT_IN_LATEST_MESSAGE", "EXPLICIT_CLARIFICATION_ANSWER", "STAGE_SPECIFIC_CONTEXT",
+})
+
 #: The matcher only reports a phrase the writer used and did not negate, so what it finds is
 #: something they said about now, in their own words.
 _OBSERVATION = {
@@ -53,17 +84,42 @@ _OBSERVATION = {
 }
 
 
-def detect_danger_signals(message: object) -> dict[str, dict[str, object]]:
-    """Global danger signals evidenced by ``message``. Absence of a phrase asserts nothing."""
+def detect_danger_signals(
+    message: object, *, stage: object = None, stage_source: object = None
+) -> dict[str, dict[str, object]]:
+    """Danger signals evidenced by ``message``. Absence of a phrase asserts nothing.
+
+    The entity-agnostic groups always run. The stage-scoped groups run only when ``stage`` is one
+    this module knows and ``stage_source`` says the value was stated rather than inferred — see
+    D-032. Callers that pass neither get exactly the previous behaviour.
+    """
 
     if type(message) is not str or not message.strip():
         return {}
     text = normalized_text(message)
-    return {
+    detected = {
         code: dict(_OBSERVATION)
         for phrases, code in _PHRASE_SIGNALS
         if text_contains_any(text, *phrases)
     }
+    for phrases, code in _stage_groups(stage, stage_source):
+        if code not in detected and text_contains_any(text, *phrases):
+            detected[code] = dict(_OBSERVATION)
+    return detected
+
+
+def _stage_groups(
+    stage: object, stage_source: object
+) -> tuple[tuple[tuple[str, ...], str], ...]:
+    """Stage-scoped groups this turn may use, or none when the stage is not trustworthy."""
+
+    stage_value = getattr(stage, "value", stage)
+    source_value = getattr(stage_source, "value", stage_source)
+    if type(stage_value) is not str or stage_value not in _STAGE_PHRASE_SIGNALS:
+        return ()
+    if type(source_value) is not str or source_value not in _TRUSTED_STAGE_SOURCES:
+        return ()
+    return _STAGE_PHRASE_SIGNALS[stage_value]
 
 
 def merge_as_floor(

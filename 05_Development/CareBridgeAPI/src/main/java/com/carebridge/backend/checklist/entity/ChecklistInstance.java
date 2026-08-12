@@ -2,6 +2,7 @@ package com.carebridge.backend.checklist.entity;
 
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationMode;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import jakarta.persistence.Column;
@@ -53,6 +54,40 @@ public class ChecklistInstance {
 
     @Column(name = "template_version_id")
     private UUID templateVersionId;
+
+    /** Canonical cadence period identity; null for retained legacy aggregates. */
+    @Column(name = "period_key", length = 180)
+    private String periodKey;
+
+    /** Schedule-zone snapshot used to resolve this occurrence. */
+    @Column(name = "schedule_zone_id", length = 80)
+    private String scheduleZoneId;
+
+    /** Pregnancy dating revision used by this occurrence, when applicable. */
+    @Column(name = "gestational_dating_revision")
+    private Long gestationalDatingRevision;
+
+    /** Soft-retained Family membership owner for this parent, when applicable. */
+    @Column(name = "care_group_member_id")
+    private UUID careGroupMemberId;
+
+    /** VIEW epoch captured when a Family parent was materialized. */
+    @Column(name = "checklist_access_epoch")
+    private Long checklistAccessEpoch;
+
+    @Column(name = "checklist_contract_version")
+    private Short checklistContractVersion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "materialization_mode", length = 20)
+    private ChecklistMaterializationMode materializationMode;
+
+    /** False for closed catch-up rows that never had an action window. */
+    @Column(name = "was_actionable")
+    private Boolean wasActionable;
+
+    @Column(name = "checklist_quarantine_reason_code", length = 80)
+    private String checklistQuarantineReasonCode;
 
     @Column(name = "recipient_user_id", nullable = false)
     private UUID recipientUserId;

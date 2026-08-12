@@ -13,6 +13,7 @@ export interface ConfirmDialogProps {
   reasonPlaceholder?: string;
   submitting?: boolean;
   errorText?: string;
+  children?: React.ReactNode;
   onConfirm: (reason?: string) => void;
   onCancel: () => void;
 }
@@ -33,6 +34,7 @@ export default function ConfirmDialog({
   reasonPlaceholder = 'Nhập lý do...',
   submitting = false,
   errorText,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -102,7 +104,10 @@ export default function ConfirmDialog({
           </div>
         )}
 
+        {children}
+
         {errorText && <p className="mt-3 text-sm leading-5 text-error">{errorText}</p>}
+
 
         <div className="mt-6 flex flex-wrap justify-end gap-2.5">
           <button

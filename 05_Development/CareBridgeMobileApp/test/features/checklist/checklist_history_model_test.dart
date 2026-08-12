@@ -52,4 +52,17 @@ void main() {
     expect(item.tasks.first.statusLabel, 'Đã hoàn thành');
     expect(item.tasks.last.statusLabel, 'Chưa hoàn thành');
   });
+
+  test('uses a neutral subject label for targetless V2 history', () {
+    final item = ChecklistHistoryItem.fromJson({
+      'checklistInstanceId': 'v2-history-1',
+      'templateName': 'Khuyến nghị thai kỳ',
+      'stage': 'PREGNANCY',
+      'targetSubject': null,
+      'tasks': const [],
+    });
+
+    expect(item.targetSubject, isNull);
+    expect(item.subjectLabel, 'Khuyến nghị');
+  });
 }

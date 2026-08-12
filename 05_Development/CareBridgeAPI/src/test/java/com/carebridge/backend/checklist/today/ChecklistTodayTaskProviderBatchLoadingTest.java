@@ -116,6 +116,23 @@ class ChecklistTodayTaskProviderBatchLoadingTest {
         verify(access, never()).canView(instance, ACTOR_ID);
     }
 
+    @Test
+    void nonActionableCatchUpRowIsNotProjectedIntoTodayEvenIfHistoricalMarkerIsMissing() {
+        ChecklistInstance instance = instance(FIRST_INSTANCE_ID, uuid(401));
+        instance.setWasActionable(Boolean.FALSE);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
+        when(instances.findByRecipientUserIdAndHistoricalAtIsNull(ACTOR_ID)).thenReturn(List.of(instance));
+
+        var candidates = new ChecklistTodayTaskProvider(instances, tasks, access)
+                .findAuthorizedTasks(ACTOR_ID);
+
+        assertThat(candidates).isEmpty();
+        verify(tasks, never()).findAllByChecklistInstanceIds(any());
+        verify(access, never()).canView(instance, ACTOR_ID);
+    }
+
     private static ChecklistInstance instance(UUID instanceId, UUID contextId) {
         return ChecklistInstance.builder()
                 .id(instanceId)

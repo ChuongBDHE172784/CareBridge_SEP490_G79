@@ -424,6 +424,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     Color iconColor;
 
     switch (type) {
+      case 'LOCATION_SHARE':
+        icon = Icons.share_location_rounded;
+        bgColor = isUnread ? _primaryFixed : _surfaceVariant;
+        iconColor = isUnread ? _onPrimaryFixed : _onSurfaceVariant;
+        break;
       case 'HEALTH':
       case 'HEALTH_ALERT':
         icon = Icons.warning_rounded;
@@ -468,6 +473,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _getTypeLabel(String type) {
     switch (type.toUpperCase()) {
+      case 'LOCATION_SHARE':
+        return 'Vị trí của Mother';
       case 'HEALTH':
       case 'HEALTH_ALERT':
         return 'Cảnh báo sức khỏe';

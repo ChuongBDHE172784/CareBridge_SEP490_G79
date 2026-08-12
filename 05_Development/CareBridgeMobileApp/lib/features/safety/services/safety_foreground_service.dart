@@ -16,6 +16,17 @@ import 'safety_service.dart';
 typedef SafetyConfigLoader = Future<SafetyConfig> Function();
 typedef SafetyConsentLoader = Future<List<ConsentGrant>> Function();
 typedef SafetyPermissionRequester = Future<bool> Function();
+typedef SafetyTaskDataSender = void Function(Object data);
+
+@visibleForTesting
+DateTime? fallDetectorRearmAtFromTaskData(Object data) {
+  if (data is! Map) return null;
+  final normalized = Map<String, dynamic>.from(data);
+  if (normalized['type'] != 'rearm_fall_detector') return null;
+  final respondedAt = normalized['respondedAt'];
+  if (respondedAt is! String) return null;
+  return DateTime.tryParse(respondedAt)?.toUtc();
+}
 
 abstract class SafetyForegroundGateway {
   Future<bool> isRunning();
@@ -34,13 +45,15 @@ class SafetyForegroundServiceCoordinator {
     required bool Function() platformSupported,
     required bool Function() platformAndroid,
     required SafetyPermissionRequester requestAndroidPermissions,
+    required SafetyTaskDataSender sendTaskData,
   }) : _gateway = gateway,
        _isAuthenticated = isAuthenticated,
        _loadConfig = loadConfig,
        _loadConsents = loadConsents,
        _platformSupported = platformSupported,
        _platformAndroid = platformAndroid,
-       _requestAndroidPermissions = requestAndroidPermissions;
+       _requestAndroidPermissions = requestAndroidPermissions,
+       _sendTaskData = sendTaskData;
 
   factory SafetyForegroundServiceCoordinator.forTesting({
     required SafetyForegroundGateway gateway,
@@ -50,6 +63,7 @@ class SafetyForegroundServiceCoordinator {
     bool platformSupported = true,
     bool platformAndroid = true,
     SafetyPermissionRequester? requestAndroidPermissions,
+    SafetyTaskDataSender? sendTaskData,
   }) => SafetyForegroundServiceCoordinator._(
     gateway: gateway,
     isAuthenticated: isAuthenticated,
@@ -58,6 +72,7 @@ class SafetyForegroundServiceCoordinator {
     platformSupported: () => platformSupported,
     platformAndroid: () => platformAndroid,
     requestAndroidPermissions: requestAndroidPermissions ?? () async => true,
+    sendTaskData: sendTaskData ?? (_) {},
   );
 
   static final SafetyForegroundServiceCoordinator instance =
@@ -70,6 +85,7 @@ class SafetyForegroundServiceCoordinator {
             !kIsWeb && (Platform.isAndroid || Platform.isIOS),
         platformAndroid: () => !kIsWeb && Platform.isAndroid,
         requestAndroidPermissions: _requestAndroidForegroundPermissions,
+        sendTaskData: FlutterForegroundTask.sendDataToTask,
       );
 
   final SafetyForegroundGateway _gateway;
@@ -79,6 +95,7 @@ class SafetyForegroundServiceCoordinator {
   final bool Function() _platformSupported;
   final bool Function() _platformAndroid;
   final SafetyPermissionRequester _requestAndroidPermissions;
+  final SafetyTaskDataSender _sendTaskData;
   final StreamController<SafetyEvent> _eventController =
       StreamController<SafetyEvent>.broadcast();
   final StreamController<ImuDiagnosticsSnapshot> _diagnosticsController =
@@ -100,6 +117,14 @@ class SafetyForegroundServiceCoordinator {
       : const Stream.empty();
   bool get isRunning => _isRunning;
   bool get isSupported => _platformSupported();
+
+  void rearmFallDetectorAfterResponse({DateTime? respondedAt}) {
+    if (!_platformSupported() || !_isRunning) return;
+    _sendTaskData({
+      'type': 'rearm_fall_detector',
+      'respondedAt': (respondedAt ?? DateTime.now()).toUtc().toIso8601String(),
+    });
+  }
 
   void initialize() {
     if (_initialized || !_platformSupported()) return;
@@ -381,6 +406,14 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
       'type': 'imu_diagnostics',
       'snapshot': snapshot.toJson(),
     });
+  }
+
+  @override
+  void onReceiveData(Object data) {
+    final respondedAt = fallDetectorRearmAtFromTaskData(data);
+    if (respondedAt != null) {
+      _sensorService.rearmAfterAlertResponse(respondedAt);
+    }
   }
 
   @override

@@ -1,6 +1,7 @@
 package com.carebridge.backend.journey.controller;
 
 import com.carebridge.backend.common.response.ApiResponse;
+import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.journey.dto.CreateJourneyRequest;
 import com.carebridge.backend.journey.dto.CreateJourneyResponse;
@@ -43,7 +44,10 @@ public class JourneyController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CreateJourneyResponse>> createJourney(
             @Valid @RequestBody CreateJourneyRequest request,
+            @RequestHeader(name = "X-Checklist-Contract-Version", required = false)
+            String contractVersion,
             Principal principal) {
+        request.setChecklistContractVersion(parseContractVersion(contractVersion));
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         var response = journeyService.createJourney(request, callerId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -56,7 +60,10 @@ public class JourneyController {
     public ResponseEntity<ApiResponse<JourneyResponse>> updateJourney(
             @PathVariable UUID journeyId,
             @Valid @RequestBody UpdateJourneyRequest request,
+            @RequestHeader(name = "X-Checklist-Contract-Version", required = false)
+            String contractVersion,
             Principal principal) {
+        request.setChecklistContractVersion(parseContractVersion(contractVersion));
         var ownerId = SecurityUtils.requireCurrentUserId(principal);
         var response = journeyService.updateJourney(ownerId, journeyId, request);
         return ResponseEntity.ok(ApiResponse.success(response, "Journey updated successfully"));
@@ -107,5 +114,26 @@ public class JourneyController {
         var userId = SecurityUtils.requireCurrentUserId(principal);
         var dashboard = journeyService.getDashboard(userId);
         return ResponseEntity.ok(ApiResponse.success(dashboard));
+    }
+
+    private Integer parseContractVersion(String raw) {
+        if (raw == null) return 1;
+        if (raw.isBlank()) {
+            throw unsupportedContractVersion();
+        }
+        try {
+            int value = Integer.parseInt(raw.trim());
+            if (value == 1 || value == 2) return value;
+        } catch (NumberFormatException ignored) {
+            // Use the stable API error below.
+        }
+        throw unsupportedContractVersion();
+    }
+
+    private BusinessException unsupportedContractVersion() {
+        return new BusinessException(
+                HttpStatus.BAD_REQUEST,
+                "CHECKLIST_CONTRACT_VERSION_UNSUPPORTED",
+                "Unsupported checklist contract version");
     }
 }

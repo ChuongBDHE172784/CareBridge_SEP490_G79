@@ -29,6 +29,7 @@ void main() {
       await service.register(
         name: 'Dr Test',
         email: 'expert@example.com',
+        phone: '+84912345678',
         password: 'Password@1',
         role: 'EXPERT',
       );
@@ -36,6 +37,8 @@ void main() {
       expect(path, '/api/v1/auth/register');
       expect(body?['role'], 'EXPERT');
       expect(body?['email'], 'expert@example.com');
+      expect(body?['phone'], '+84912345678');
+      expect(body?['verificationMethod'], 'EMAIL');
     },
   );
 }

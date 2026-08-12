@@ -26,6 +26,8 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -99,6 +101,48 @@ class UnifiedTaskActionFacadeTest {
                 new TaskActionRequest(TaskAction.SKIP, REQUEST_ID, "USER_CHOICE")))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.getCode()).isEqualTo("IDEMPOTENCY_KEY_REUSE"));
+    }
+
+    @Test
+    void chk028_replayRejectsMembershipEpochChangedAfterInitialAuthorization() throws Exception {
+        AuthorizedTask firstEpoch = new AuthorizedTask(
+                TaskKind.CHECKLIST, TASK, INSTANCE, "PENDING", Set.of(TaskAction.COMPLETE),
+                UUID.randomUUID(), 7L);
+        AuthorizedTask secondEpoch = new AuthorizedTask(
+                TaskKind.CHECKLIST, TASK, INSTANCE, "PENDING", Set.of(TaskAction.COMPLETE),
+                firstEpoch.authorizationCareGroupId(), 8L);
+        AuthorizedTask revalidatedEpoch = new AuthorizedTask(
+                TaskKind.CHECKLIST, TASK, INSTANCE, "PENDING", Set.of(TaskAction.COMPLETE),
+                firstEpoch.authorizationCareGroupId(), 9L);
+        AtomicInteger postApplyAuthorizationCalls = new AtomicInteger();
+        AtomicReference<Boolean> firstApplyComplete = new AtomicReference<>(false);
+        when(handler.authorize(ACTOR, TASK)).thenAnswer(invocation ->
+                firstApplyComplete.get()
+                        ? (postApplyAuthorizationCalls.incrementAndGet() == 1
+                            ? secondEpoch : revalidatedEpoch)
+                        : firstEpoch);
+        when(handler.authorizeForUpdate(ACTOR, firstEpoch)).thenReturn(firstEpoch);
+        when(handler.apply(any(), any(), any(), any(), any(), any())).thenReturn(
+                new TaskActionResponse(TaskKind.CHECKLIST, TASK, INSTANCE, TaskAction.COMPLETE,
+                        "PENDING", "COMPLETED", NOW, false, UUID.randomUUID()));
+        AtomicReference<ChecklistActionCommand> storedCommand = new AtomicReference<>();
+        when(repository.findByActorUserIdAndTaskKindAndTaskIdAndClientRequestId(
+                ACTOR, "CHECKLIST", TASK, REQUEST_ID)).thenAnswer(invocation ->
+                        Optional.ofNullable(storedCommand.get()));
+        when(repository.save(any())).thenAnswer(invocation -> {
+            ChecklistActionCommand command = invocation.getArgument(0);
+            storedCommand.set(command);
+            return command;
+        });
+
+        facade.apply(ACTOR, TaskKind.CHECKLIST, TASK,
+                new TaskActionRequest(TaskAction.COMPLETE, REQUEST_ID, null));
+        assertThat(storedCommand.get()).isNotNull();
+        firstApplyComplete.set(true);
+        assertThatThrownBy(() -> facade.apply(ACTOR, TaskKind.CHECKLIST, TASK,
+                new TaskActionRequest(TaskAction.COMPLETE, REQUEST_ID, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo("TASK_NOT_FOUND"));
     }
 
     @Test

@@ -95,15 +95,20 @@ class RecommendationContentItem {
     final content =
         (json['content'] as Map?)?.cast<String, dynamic>() ?? const {};
     final reasonCode = json['reasonCode'] as String? ?? 'LIFECYCLE_FALLBACK';
+    final rawReasonLabel = json['reasonLabel'] as String?;
+    final reasonLabel =
+        (rawReasonLabel == 'Selected for your current care context' ||
+                reasonCode == 'PERSONALIZED_CONTEXT')
+            ? 'Phù hợp với ngữ cảnh chăm sóc của bạn'
+            : 'Hữu ích cho giai đoạn hiện tại của bạn';
+
     return RecommendationContentItem(
       rank: (json['rank'] as num?)?.toInt() ?? 0,
       selectionType: json['selectionType'] == 'TARGETED'
           ? RecommendationSelectionType.targeted
           : RecommendationSelectionType.fallback,
       reasonCode: reasonCode,
-      reasonLabel: reasonCode == 'PERSONALIZED_CONTEXT'
-          ? 'Selected for your current care context'
-          : 'Useful for your current stage',
+      reasonLabel: reasonLabel,
       id: content['id'] as String? ?? '',
       title: content['title'] as String? ?? '',
       summary: content['summary'] as String?,

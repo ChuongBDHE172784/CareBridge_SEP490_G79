@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import inspect
+import json
 
 import pytest
 from langgraph.types import Command
 
 from app.context import CareStage
 from app.rules.registry import load_dataset_requirements
-from app.triage_v2.graph import graph_config, triage_v2_graph
+from app.rules.registry import get_registry
+from app.triage_v2.api import TriageV2TurnRequest, _turn_state
+from app.triage_v2.graph import build_triage_v2_graph, graph_config, triage_v2_graph
 from app.triage_v2.state import create_initial_state
 
 
@@ -290,6 +293,51 @@ def test_resume_flattens_signal_observation_delta_so_new_danger_cannot_be_hidden
 
     assert resumed["triageOutcome"] == "RED"
     assert resumed["stopConversation"] is True
+
+
+def test_four_turn_baby_flow_keeps_intent_and_never_repeats_questions():
+    """A vague follow-up must not erase the established paediatric conversation."""
+
+    messages = ["Bé hai tháng bị sốt", "không biết", "không biết", "không biết"]
+    prior_state = None
+    questions_by_turn = []
+
+    for turn_index, message in enumerate(messages):
+        answered_question_ids = ["Q_GLOBAL_DANGER"] if turn_index == 1 else []
+        submitted_option_codes = ["UNSURE"] if turn_index == 1 else []
+        request = TriageV2TurnRequest(
+            sessionId="00000000-0000-0000-0000-00000000002d",
+            stateVersion=1,
+            expectedStateVersion=1,
+            requestId=f"phase2d-request-{turn_index:02d}",
+            messageId=f"phase2d-message-{turn_index:02d}",
+            latestUserMessage=message,
+            activeProfileId="phase2d-profile",
+            selectedTarget="BABY",
+            journeyContext={"babyAgeMonths": 2},
+            previousState=prior_state,
+            answeredQuestionIds=answered_question_ids,
+            submittedOptionCodes=submitted_option_codes,
+            expectedRulesetHash=get_registry().ruleset_sha256,
+        )
+        state = _turn_state(request)
+        result = dict(build_triage_v2_graph().invoke(state, graph_config(request.sessionId)))
+        result.pop("__interrupt__", None)
+        result.pop("submittedOptionCodes", None)
+
+        assert result["targetEntity"] == "BABY"
+        assert result["stage"] == "INFANT_0_12M"
+        expected_intent = "FOLLOW_UP_ANSWER" if turn_index == 1 else "SYMPTOM_TRIAGE"
+        assert result["intent"] == expected_intent
+        assert result["confirmedConversationIntent"] == "SYMPTOM_TRIAGE"
+        assert "Q_CLARIFY_INTENT" not in result["plannedQuestionIds"]
+
+        questions_by_turn.append(list(result["plannedQuestionIds"]))
+        prior_state = json.loads(json.dumps(result, ensure_ascii=False))
+
+    flattened = [question for questions in questions_by_turn for question in questions]
+    assert "Q_BABY_TEMPERATURE" in flattened
+    assert len(flattened) == len(set(flattened))
 
 
 def test_graph_is_isolated_from_legacy_gemini_rag_java_and_db_modules():

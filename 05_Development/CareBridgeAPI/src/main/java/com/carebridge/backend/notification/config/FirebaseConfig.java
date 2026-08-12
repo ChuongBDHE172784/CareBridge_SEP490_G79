@@ -24,7 +24,7 @@ import java.util.Date;
  * ADC must be explicitly enabled and cannot be combined with the base64 credential.
  */
 @Configuration
-@ConditionalOnExpression("${carebridge.fcm.enabled:false} or ${carebridge.firebase.firestore.enabled:false} or ${carebridge.firebase.auth-emulator-enabled:false}")
+@ConditionalOnExpression("${carebridge.fcm.enabled:false} or ${carebridge.firebase.firestore.enabled:false} or ${carebridge.firebase.auth.enabled:false} or ${carebridge.firebase.auth-emulator-enabled:false}")
 public class FirebaseConfig {
 
     @Value("${carebridge.fcm.credentials-base64:}")

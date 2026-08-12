@@ -396,3 +396,54 @@ alone would turn a common complaint into an emergency; the registry's AND is wha
 and tests pin both halves, the stage scope and negation.
 **Impact** V1 PREGNANCY only. First rule activation in V1 since the paediatric set — treat any further one
 as needing the same standard: an existing registry rule to port, or a clinical decision.
+
+## D-031 — D-029 extends to top-tier public hospitals; four visual phrases are refused
+**Date** 2026-08-11 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-11.
+**Problem** A source review was commissioned for the wording used by Vietnamese health authorities for
+haemorrhage and pre-eclampsia danger signs. Sixteen candidate phrases came back. Ten of them cite
+`tudu.com.vn` (Bệnh viện Từ Dũ), which is not a `.gov.vn` domain, so D-029 as written did not admit them.
+Only two rows were true `.gov.vn`, and both were case-report news items rather than guidance.
+**Decision, part 1** D-029's source test is widened from "a `.gov.vn` source" to "a `.gov.vn` source, or a
+top-tier public hospital's own health-education pages". Bệnh viện Từ Dũ qualifies as the leading public
+obstetric hospital in the south. Everything else in D-029 is unchanged: a quoted phrase may only add
+another spelling of a sign the catalogue already acts on, each phrase cites its source in a comment, and
+quoting a source still does not make the mapping reviewed.
+**Still excluded** Commercial and private-hospital content — Vinmec, Hello Bacsi, Medlatec, Long Châu —
+along with news portals, forums and AI-generated pages. A case-report news article on a `.gov.vn` domain
+describes one patient; it is not wording guidance and does not qualify either.
+**Decision, part 2** The four visual-disturbance phrases are refused: `ruồi bay`, `đèn nhấp nháy`,
+`chói sáng`, `thấy các đốm sáng trước mắt`. Measured against the existing matcher, the first three fired on
+six of six ordinary sentences — "nhà em nhiều ruồi bay quá", "bóng đèn nhấp nháy hỏng rồi, phòng bé tối
+quá", "trời nắng chói sáng". `VISUAL_DISTURBANCE` is the second half of `PREG_RED_002`, so a pregnant user
+mentioning a headache and a broken light would have been shown an eclampsia emergency. The fourth does not
+even match the natural phrasing "nhìn thấy đốm sáng trước mắt" and adds no recall.
+**Boundary** This refusal is about ambiguity, not about the clinical claim. Any of the four may return with
+a context constraint — for instance, requiring "mắt" or "nhìn" in the same clause — but that is a matcher
+design change with its own tests, not a lexicon addition under D-029.
+**Refused as redundant** `băng huyết sau sinh`, `chảy máu ồ ạt` and `chảy máu ồ ạt trong ổ bụng` are already
+matched by the existing `băng huyết` and `máu ồ ạt`. Adding them changes no behaviour.
+**Admitted** `đau đầu kéo dài` and its mirror `nhức đầu kéo dài`, quoted from Từ Dũ's pre-eclampsia page.
+Neither fires on "đau đầu nhẹ" or "đau đầu chút rồi hết", and neither can reach RED alone: `PREG_RED_002`
+requires `VISUAL_DISTURBANCE` as well.
+**Impact** `app/danger_phrases.py`, shared by V1 scoring and the V2 deterministic floor.
+
+## D-032 — The V2 floor is wired to the three maternal phrase groups V1 already scores
+**Date** 2026-08-11 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-11.
+**Problem** `app/danger_phrases.py` declares eight phrase groups. `app/triage_v2/deterministic_signals.py`
+maps five of them to signals. The three left unmapped — `MATERNAL_HEAVY_BLEEDING_PHRASES`,
+`MATERNAL_SEVERE_HEADACHE_PHRASES`, `MATERNAL_VISUAL_DISTURBANCE_PHRASES` — are exactly the two maternal
+RED rules. Measured on the 160-case vague corpus, V2 RED recall is 52.9%: with Gemini unavailable,
+"Em đang bầu, máu ra ướt đẫm hai miếng băng" and "Em bầu bị đau đầu dữ dội kèm nhìn mờ" produce no signal
+at all and reach NEEDS_MORE_INFO.
+**Decision** The three groups are mapped into the V2 floor. This is a port, not an authoring: V1 already
+scores RED from these exact groups at `app/risk_rules.py:228` and `:240-241`, and V1 is the engine
+currently serving users. D-030 set the standard — "porting it moves a stated rule rather than authoring
+one" — and this meets it on the same terms.
+**Scope limit** Stage-scoped signals are emitted only when the stage is already resolved from trusted
+context (`EXPLICIT_SELECTED_PROFILE` or `CONFIRMED_CONVERSATION_TARGET`). The original rationale for
+leaving these groups out — that inferring them would mean guessing the stage — holds only while the stage
+is unknown, and does not apply once a profile has stated it.
+**Not included** No new sign, no new threshold, no new phrase beyond D-031's two. The seven signals with
+no question that resolves them stay refused under D-030.
+**Impact** `app/triage_v2/deterministic_signals.py`. Expected to close most of the RED recall gap; the
+remainder is free-text numerics ("Bé hai tháng đo được 38,2 độ"), which is parsing, not a clinical claim.

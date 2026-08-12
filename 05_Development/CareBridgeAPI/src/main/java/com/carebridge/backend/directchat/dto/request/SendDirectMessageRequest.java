@@ -17,4 +17,10 @@ public class SendDirectMessageRequest {
     private String messageType;
 
     private UUID attachmentId;
+
+    private Double locationLatitude;
+
+    private Double locationLongitude;
+
+    private String locationLabel;
 }

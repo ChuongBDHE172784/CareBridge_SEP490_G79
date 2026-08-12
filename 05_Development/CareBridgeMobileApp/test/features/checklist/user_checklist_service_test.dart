@@ -68,6 +68,43 @@ void main() {
     },
   );
 
+  test(
+    'V2 user-created task omits target and negotiates contract header',
+    () async {
+      late Map<String, dynamic> capturedBody;
+      late Map<String, String> capturedHeaders;
+      final service = UserChecklistService(
+        postV2Request: (path, body, headers) async {
+          expect(path, '/api/v1/user-checklist-items');
+          capturedBody = body;
+          capturedHeaders = headers;
+          return {
+            'data': {
+              'itemId': 'task-v2',
+              'itemText': 'Pack water',
+              'category': 'GENERAL',
+              'completed': false,
+              'itemOrder': 0,
+              'targetSubject': null,
+              'origin': 'USER_CREATED',
+            },
+          };
+        },
+      );
+
+      final result = await service.addItemV2(
+        itemText: 'Pack water',
+        clientTaskId: 'client-v2',
+        journeyId: 'journey-v2',
+      );
+
+      expect(capturedHeaders, {'X-Checklist-Contract-Version': '2'});
+      expect(capturedBody['clientTaskId'], 'client-v2');
+      expect(capturedBody, isNot(contains('targetSubject')));
+      expect(result.targetSubject, isNull);
+    },
+  );
+
   test('baby-targeted task sends only the owned baby context', () async {
     late Map<String, dynamic> capturedBody;
     final service = UserChecklistService(

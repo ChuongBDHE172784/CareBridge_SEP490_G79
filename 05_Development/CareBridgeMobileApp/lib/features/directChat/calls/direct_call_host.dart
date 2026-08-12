@@ -8,6 +8,7 @@ import 'conversation_signal_hub.dart';
 import 'direct_call_api.dart';
 import 'direct_call_coordinator.dart';
 import 'direct_call_state.dart';
+import 'ringtone_player.dart';
 import 'zego_express_call_room.dart';
 
 class DirectCallScope extends InheritedWidget {
@@ -80,6 +81,13 @@ class _DirectCallHostState extends State<DirectCallHost>
           _joining = false;
         }
       });
+      if (state.phase == DirectCallPhase.outgoing) {
+        RingtonePlayer.instance.start('outgoing');
+      } else if (state.phase == DirectCallPhase.incoming) {
+        RingtonePlayer.instance.start('incoming');
+      } else {
+        RingtonePlayer.instance.stop();
+      }
       if (state.phase == DirectCallPhase.readyToJoin &&
           _credentials == null &&
           !_joining) {
@@ -281,6 +289,7 @@ class _DirectCallHostState extends State<DirectCallHost>
     WidgetsBinding.instance.removeObserver(this);
     AuthState.instance.removeListener(_onAuthChanged);
     _stateSubscription?.cancel();
+    RingtonePlayer.instance.stop();
     if (widget.coordinator == null) {
       unawaited(_coordinator.dispose());
     }

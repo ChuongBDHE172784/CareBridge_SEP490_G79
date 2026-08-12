@@ -86,6 +86,15 @@ def test_an_unknown_intent_asks_about_intent_and_global_danger():
     assert ids(eligible_questions(context)) == ["Q_CLARIFY_INTENT", "Q_GLOBAL_DANGER"]
 
 
+def test_an_unknown_maternal_stage_asks_for_stage_and_global_danger():
+    context = resolved(
+        stage=CareStage.UNKNOWN,
+        context_status=ContextResolutionStatus.NEEDS_STAGE,
+    )
+
+    assert ids(eligible_questions(context)) == ["Q_CLARIFY_STAGE", "Q_GLOBAL_DANGER"]
+
+
 def test_a_caller_supplied_candidate_list_cannot_bypass_the_lockdown():
     """Even if the planner asks for symptom questions, unresolved context wins."""
 
@@ -122,6 +131,16 @@ def test_a_question_that_resolves_nothing_missing_is_not_asked():
 def test_an_already_answered_question_is_not_repeated():
     context = resolved(answered_question_ids=frozenset({"Q_BLEEDING_AMOUNT"}))
     assert "Q_BLEEDING_AMOUNT" not in ids(eligible_questions(context))
+
+
+def test_an_already_asked_question_is_not_repeated_or_marked_answered():
+    context = resolved(
+        asked_question_ids=frozenset({"Q_BLEEDING_AMOUNT"}),
+        answered_question_ids=frozenset(),
+    )
+
+    assert "Q_BLEEDING_AMOUNT" not in ids(eligible_questions(context))
+    assert context.answered_question_ids == frozenset()
 
 
 def test_an_unmeasurable_question_is_not_re_asked():

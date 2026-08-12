@@ -74,6 +74,7 @@ class TriageV2State(TypedDict):
     targetEntitySource: ResolutionSource
     intent: IntentType
     intentSource: ResolutionSource
+    confirmedConversationIntent: IntentType
     stage: CareStage
     contextResolutionStatus: ContextResolutionStatus
     contextConflicts: list[str]
@@ -86,6 +87,8 @@ class TriageV2State(TypedDict):
     measurements: dict[str, JsonValue]
     dataConflicts: list[str]
     answeredQuestionIds: list[str]
+    askedQuestionIds: list[str]
+    submittedOptionCodes: list[str]
     unknownFields: list[str]
     safetyScreenStatus: DatasetStatus
     contextDatasetStatus: DatasetStatus
@@ -168,6 +171,7 @@ def create_initial_state(
         targetEntitySource=ResolutionSource.NONE,
         intent=IntentType.UNKNOWN,
         intentSource=ResolutionSource.NONE,
+        confirmedConversationIntent=IntentType.UNKNOWN,
         stage=CareStage.UNKNOWN,
         contextResolutionStatus=ContextResolutionStatus.INSUFFICIENT_CONTEXT,
         contextConflicts=[],
@@ -180,6 +184,8 @@ def create_initial_state(
         measurements={},
         dataConflicts=[],
         answeredQuestionIds=[],
+        askedQuestionIds=[],
+        submittedOptionCodes=[],
         unknownFields=[],
         safetyScreenStatus=DatasetStatus.INCOMPLETE,
         contextDatasetStatus=DatasetStatus.INCOMPLETE,

@@ -7,8 +7,11 @@ import static org.mockito.Mockito.*;
 
 import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
+import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.security.dto.request.FederatedAuthRequest;
 import com.carebridge.backend.security.dto.request.LinkGoogleIdentityRequest;
+import com.carebridge.backend.security.dto.request.PhoneLoginRequest;
+import com.carebridge.backend.security.dto.request.PhoneRegisterRequest;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.entity.UserIdentity;
 import com.carebridge.backend.security.exception.FederatedAuthException;
@@ -16,6 +19,8 @@ import com.carebridge.backend.security.federation.*;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.mapper.UserMapper;
 import com.carebridge.backend.security.policy.AuthenticationPolicy;
+import com.carebridge.backend.security.policy.PasswordComplexityPolicy;
+import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.RefreshTokenRepository;
 import com.carebridge.backend.security.repository.UserIdentityRepository;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -29,6 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class FederatedAuthServiceTest {
@@ -39,11 +45,13 @@ class FederatedAuthServiceTest {
     private final UserSessionRepository sessions = mock(UserSessionRepository.class);
     private final JwtTokenProvider jwt = mock(JwtTokenProvider.class);
     private final AuditService audit = mock(AuditService.class);
+    private final PasswordComplexityPolicy passwordPolicy = mock(PasswordComplexityPolicy.class);
+    private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private FederatedAuthService service;
 
     @BeforeEach
     void setUp() {
-        reset(verifier, identities, users, refreshTokens, sessions, jwt, audit);
+        reset(verifier, identities, users, refreshTokens, sessions, jwt, audit, passwordPolicy, passwordEncoder);
         when(users.findByEmailIgnoreCase(anyString())).thenReturn(Optional.empty());
         when(users.findByPhone(anyString())).thenReturn(Optional.empty());
         when(identities.findByUserIdAndProvider(any(UUID.class), any(FederatedProvider.class)))
@@ -61,8 +69,10 @@ class FederatedAuthServiceTest {
         when(identities.saveAndFlush(any(UserIdentity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(identities.save(any(UserIdentity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(jwt.generateAccessToken(any(User.class), any(UUID.class))).thenReturn("carebridge-access-token");
+        when(passwordPolicy.isComplexEnough(anyString())).thenReturn(true);
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$12$hashed");
         service = new FederatedAuthServiceImpl(verifier, identities, users, refreshTokens, sessions,
-                new AuthenticationPolicy(), jwt, new UserMapper(), audit);
+                new AuthenticationPolicy(), passwordPolicy, passwordEncoder, jwt, new UserMapper(), audit);
     }
 
     @Test
@@ -77,45 +87,132 @@ class FederatedAuthServiceTest {
     }
 
     @Test
-    void newPhoneIdentity_normalizesE164AndCreatesAccount() {
+    void genericFederatedEndpoint_rejectsPhoneIdentityWithoutCreatingAccount() {
         when(verifier.verify("valid-phone-token")).thenReturn(phone("phone-1", "0901111001"));
-        var response = service.authenticate(request("valid-phone-token"));
-        assertThat(response.user().getPhone()).isEqualTo("+84901111001");
-        assertThat(response.user().getPhoneVerified()).isTrue();
+
+        assertThatThrownBy(() -> service.authenticate(request("valid-phone-token")))
+                .isInstanceOf(FederatedAuthException.class)
+                .hasMessage("Unsupported identity provider");
+
+        verify(users, never()).saveAndFlush(any());
+        verifyNoInteractions(sessions, refreshTokens);
     }
 
     @Test
-    void newPhoneIdentity_invalidVietnameseNumber_isRejectedBeforeIdentityLock() {
-        when(verifier.verify("invalid-phone-token"))
-                .thenReturn(phone("phone-invalid", "+14155552671"));
+    void phoneRegistration_matchingFirebaseProof_createsVerifiedActiveAccountAndSession() {
+        when(verifier.verify("verified-phone-token"))
+                .thenReturn(phone("firebase-phone-1", "+84901111021"));
 
-        assertThatThrownBy(() -> service.authenticate(request("invalid-phone-token")))
+        var response = service.registerPhone(new PhoneRegisterRequest(
+                "verified-phone-token", "Phone User", "optional@example.com",
+                "0901111021", "Strong@123", null, "JUnit phone"));
+
+        assertThat(response.newUser()).isTrue();
+        assertThat(response.user().getPhone()).isEqualTo("+84901111021");
+        assertThat(response.user().getPhoneVerified()).isTrue();
+        assertThat(response.user().getEmailVerified()).isFalse();
+        assertThat(response.accessToken()).isEqualTo("carebridge-access-token");
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(users).saveAndFlush(userCaptor.capture());
+        assertThat(userCaptor.getValue().isEnabled()).isTrue();
+        assertThat(userCaptor.getValue().getPasswordHash()).isEqualTo("$2a$12$hashed");
+        verify(identities).saveAndFlush(argThat(identity ->
+                identity.getProvider() == FederatedProvider.PHONE
+                        && identity.getProviderPhone().equals("+84901111021")));
+        verify(sessions).save(any(UserSession.class));
+    }
+
+    @Test
+    void phoneRegistration_requestPhoneDoesNotMatchToken_rejectedWithoutMutation() {
+        when(verifier.verify("mismatched-phone-token"))
+                .thenReturn(phone("firebase-phone-2", "+84901111022"));
+
+        assertThatThrownBy(() -> service.registerPhone(new PhoneRegisterRequest(
+                "mismatched-phone-token", "Phone User", null,
+                "0901111023", "Strong@123", null, null)))
                 .isInstanceOf(FederatedAuthException.class)
                 .hasMessage("Unable to authenticate");
-        verify(identities).lockProviderSubject("PHONE:phone-invalid");
-        verify(users, never()).save(any(User.class));
+
+        verify(users, never()).saveAndFlush(any());
+        verifyNoInteractions(sessions, refreshTokens);
     }
 
     @Test
-    void existingProviderSubject_DoesNotRevalidateAnUnusedForeignPhoneClaim() {
-        UUID userId = UUID.randomUUID();
-        User existingUser = activeUser(userId, null, "+84901111009");
-        UserIdentity identity = UserIdentity.builder()
-                .user(existingUser)
-                .provider(FederatedProvider.PHONE)
-                .providerSubject("existing-foreign-claim")
-                .build();
-        when(verifier.verify("existing-foreign-token"))
-                .thenReturn(phone("existing-foreign-claim", "+14155552671"));
-        when(identities.findByProviderAndProviderSubject(
-                FederatedProvider.PHONE, "existing-foreign-claim"))
-                .thenReturn(Optional.of(identity));
+    void phoneRegistration_expertRoleIsRejectedBecauseExpertMustVerifyByEmail() {
+        when(verifier.verify("expert-phone-token"))
+                .thenReturn(phone("firebase-expert-phone", "+84901111027"));
 
-        var response = service.authenticate(request("existing-foreign-token"));
+        assertThatThrownBy(() -> service.registerPhone(new PhoneRegisterRequest(
+                "expert-phone-token", "Expert User", "expert@example.com",
+                "+84901111027", "Strong@123", Role.EXPERT, "JUnit phone")))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Expert registration requires email verification");
 
-        assertThat(response.user().getId()).isEqualTo(userId);
-        verify(users).save(existingUser);
+        verify(users, never()).saveAndFlush(any());
+        verifyNoInteractions(sessions, refreshTokens);
+    }
+
+    @Test
+    void phoneLogin_knownCanonicalPhone_linksIdentityAndCreatesSession() {
+        User user = activeUser(UUID.randomUUID(), "existing@example.com", "+84901111024");
+        when(verifier.verify("login-phone-token"))
+                .thenReturn(phone("firebase-phone-3", "0901111024"));
+        when(users.findByPhone("+84901111024")).thenReturn(Optional.of(user));
+
+        var response = service.loginPhone(new PhoneLoginRequest(
+                "login-phone-token", "JUnit phone"));
+
+        assertThat(response.newUser()).isFalse();
+        assertThat(response.user().getId()).isEqualTo(user.getId());
+        verify(identities).saveAndFlush(argThat(identity ->
+                identity.getUser() == user
+                        && identity.getProviderSubject().equals("firebase-phone-3")));
+        verify(sessions).save(any(UserSession.class));
+    }
+
+    @Test
+    void phoneLogin_unknownPhone_createsMinimalVerifiedAccountAndSession() {
+        when(verifier.verify("unknown-phone-token"))
+                .thenReturn(phone("firebase-phone-4", "+84901111025"));
+        when(users.findByPhone("+84901111025")).thenReturn(Optional.empty());
+
+        var response = service.loginPhone(new PhoneLoginRequest(
+                "unknown-phone-token", "JUnit phone"));
+
+        assertThat(response.newUser()).isTrue();
+        assertThat(response.profileCompleted()).isFalse();
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(users).saveAndFlush(userCaptor.capture());
+        User created = userCaptor.getValue();
+        assertThat(created.getPhone()).isEqualTo("+84901111025");
+        assertThat(created.getPhoneVerified()).isTrue();
+        assertThat(created.getEmail()).isNull();
+        assertThat(created.getPasswordHash()).isNull();
+        assertThat(created.getRole()).isNull();
+        verify(identities).saveAndFlush(argThat(identity ->
+                identity.getUser() == created
+                        && identity.getProvider() == FederatedProvider.PHONE
+                        && identity.getProviderSubject().equals("firebase-phone-4")));
+        verify(sessions).save(any(UserSession.class));
+        verify(audit).log(eq(AuditAction.FEDERATED_REGISTRATION), eq(created.getId()),
+                eq("UserIdentity"), any(), eq(java.util.Map.of("provider", "PHONE")));
+    }
+
+    @Test
+    void phoneLogin_unverifiedProfilePhone_isNotAutomaticallyLinked() {
+        User user = activeUser(UUID.randomUUID(), "existing@example.com", "+84901111026");
+        user.setPhoneVerified(false);
+        when(verifier.verify("unverified-profile-phone-token"))
+                .thenReturn(phone("firebase-phone-5", "+84901111026"));
+        when(users.findByPhone("+84901111026")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.loginPhone(new PhoneLoginRequest(
+                "unverified-profile-phone-token", null)))
+                .isInstanceOf(FederatedAuthException.class)
+                .hasMessage("Unable to authenticate");
+
         verify(identities, never()).saveAndFlush(any());
+        verifyNoInteractions(sessions, refreshTokens);
     }
 
     @Test
@@ -138,10 +235,10 @@ class FederatedAuthServiceTest {
 
     @Test
     void repeatedProviderSubject_doesNotCreateDuplicateUser() {
-        VerifiedFederatedIdentity proof = phone("stable-1", "+84901111002");
+        VerifiedFederatedIdentity proof = google("stable-1", "stable@example.com");
         when(verifier.verify("stable-subject-token")).thenReturn(proof);
         AtomicReference<UserIdentity> saved = new AtomicReference<>();
-        when(identities.findByProviderAndProviderSubject(FederatedProvider.PHONE, "stable-1"))
+        when(identities.findByProviderAndProviderSubject(FederatedProvider.GOOGLE, "stable-1"))
                 .thenAnswer(ignored -> Optional.ofNullable(saved.get()));
         when(identities.saveAndFlush(any())).thenAnswer(invocation -> {
             UserIdentity identity = invocation.getArgument(0);
@@ -177,10 +274,10 @@ class FederatedAuthServiceTest {
         User blocked = activeUser(UUID.randomUUID(), null, "+84901111003");
         blocked.setLocked(true);
         blocked.setLockedAt(Instant.now());
-        UserIdentity identity = UserIdentity.builder().user(blocked).provider(FederatedProvider.PHONE)
+        UserIdentity identity = UserIdentity.builder().user(blocked).provider(FederatedProvider.GOOGLE)
                 .providerSubject("blocked-1").lastUsedAt(Instant.now()).build();
-        when(verifier.verify("blocked-account-token")).thenReturn(phone("blocked-1", blocked.getPhone()));
-        when(identities.findByProviderAndProviderSubject(FederatedProvider.PHONE, "blocked-1"))
+        when(verifier.verify("blocked-account-token")).thenReturn(google("blocked-1", "blocked@example.com"));
+        when(identities.findByProviderAndProviderSubject(FederatedProvider.GOOGLE, "blocked-1"))
                 .thenReturn(Optional.of(identity));
         assertThatThrownBy(() -> service.authenticate(request("blocked-account-token")))
                 .hasMessageContaining("locked");
@@ -189,7 +286,7 @@ class FederatedAuthServiceTest {
 
     @Test
     void rolelessAccount_isRoutedToProfileCompletion() {
-        when(verifier.verify("roleless-user-token")).thenReturn(phone("roleless-1", "+84901111004"));
+        when(verifier.verify("roleless-user-token")).thenReturn(google("roleless-1", "roleless@example.com"));
         var response = service.authenticate(request("roleless-user-token"));
         assertThat(response.profileCompleted()).isFalse();
         assertThat(response.accessToken()).isNotBlank();

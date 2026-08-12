@@ -51,6 +51,23 @@ void main() {
       expect(item.attachmentId, 'file-1');
       expect(item.recalledAt, isNotNull);
     });
+
+    test('parses location payload for a message', () {
+      final item = TimelineItem.fromJson({
+        'kind': 'MESSAGE',
+        'messageId': 'm-location',
+        'senderUserId': 'u1',
+        'messageType': 'LOCATION',
+        'locationLatitude': 10.7769,
+        'locationLongitude': 106.7009,
+        'locationLabel': 'Cổng bệnh viện',
+        'createdAt': '2026-08-12T08:00:00Z',
+      });
+
+      expect(item.locationLatitude, 10.7769);
+      expect(item.locationLongitude, 106.7009);
+      expect(item.locationLabel, 'Cổng bệnh viện');
+    });
   });
 
   group('TimelineItem.optimisticMessage', () {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
 import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
@@ -14,6 +15,11 @@ import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
+import com.carebridge.backend.checklist.model.ChecklistScheduleEndMode;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.ViewContentDetailTestFactory;
 import com.carebridge.backend.recommendation.RecommendationConstants;
@@ -221,6 +227,53 @@ class ContentMapperTest {
         ChecklistTemplateResponse response = contentMapper.toChecklistTemplateResponse(template, List.of());
 
         assertThat(response.getItems()).isNotNull().isEmpty();
+    }
+
+    @Test
+    void checklistProjectionsExposeTypedCadenceAndSafeProvenanceMetadata() {
+        ChecklistTemplate template = ChecklistTemplate.builder()
+                .id(UUID.randomUUID())
+                .name("WHO Plan 2 weekly")
+                .stage(ContentStage.PREGNANCY)
+                .checklistContractVersion((short) 2)
+                .scheduleType(ChecklistScheduleType.WEEKLY)
+                .materializationPolicy(ChecklistMaterializationPolicy.EACH_WEEK)
+                .scheduleGroupKey("PREGNANCY_WHO_PLAN_02")
+                .scheduleContextType(ChecklistCareContextType.JOURNEY)
+                .scheduleEndMode(ChecklistScheduleEndMode.FIXED_OFFSET)
+                .weekBoundaryRule(ChecklistWeekBoundaryRule.ANCHOR_RELATIVE_7D)
+                .eligibilityStartInclusive(20)
+                .eligibilityEndInclusive(24)
+                .checklistMetadataJson("{\"plan\":2,\"section\":\"WEEKLY\","
+                        + "\"schema\":\"CHECKLIST_METADATA_V1\","
+                        + "\"provenanceStatus\":\"PENDING_CLINICAL_COPY_SIGN_OFF\","
+                        + "\"importBatchId\":\"PREGNANCY_WHO_20260812_V1\","
+                        + "\"importCorrelationId\":\"8a2dfd42-8ce0-5de6-9d30-0fe3e50210c5\","
+                        + "\"priorityNarrative\":\"Ưu tiên trong 12 tuần đầu\","
+                        + "\"priorityNarrativeMode\":\"DISPLAY_ONLY\"}")
+                .build();
+
+        ChecklistTemplateResponse response = contentMapper.toChecklistTemplateResponse(template, List.of());
+        assertThat(response.getPlanNumber()).isEqualTo(2);
+        assertThat(response.getSection()).isEqualTo("WEEKLY");
+        assertThat(response.getMaterializationPolicy()).isEqualTo(ChecklistMaterializationPolicy.EACH_WEEK);
+        assertThat(response.getEligibilityStartInclusive()).isEqualTo(20);
+
+        AdminChecklistTemplateResponse list = contentMapper.toAdminChecklistTemplateResponse(template, 4);
+        assertThat(list.provenanceStatus()).isEqualTo("PENDING_CLINICAL_COPY_SIGN_OFF");
+
+        AdminChecklistTemplateDetailResponse admin =
+                contentMapper.toAdminChecklistTemplateDetailResponse(template, List.of());
+        assertThat(admin.getProvenance()).isNotNull();
+        assertThat(admin.getProvenance().provenanceStatus())
+                .isEqualTo("PENDING_CLINICAL_COPY_SIGN_OFF");
+        assertThat(admin.getProvenance().importBatchId())
+                .isEqualTo("PREGNANCY_WHO_20260812_V1");
+        assertThat(admin.getProvenance().priorityNarrative())
+                .isEqualTo("Ưu tiên trong 12 tuần đầu");
+
+        template.setChecklistMetadataJson("not-json");
+        assertThat(contentMapper.toChecklistTemplateResponse(template, List.of()).getPlanNumber()).isNull();
     }
 
     @Test

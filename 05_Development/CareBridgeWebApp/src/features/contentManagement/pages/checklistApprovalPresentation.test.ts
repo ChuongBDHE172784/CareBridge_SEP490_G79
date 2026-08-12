@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   checklistApprovalErrorMessage,
+  checklistCadenceLabel,
   checklistCoexistenceGuidance,
+  checklistProvenanceStatusLabel,
   checklistRecipientLabel,
   checklistSequenceLabel,
+  checklistWindowLabel,
 } from './checklistApprovalPresentation';
 
 describe('checklist approval presentation', () => {
@@ -33,5 +36,13 @@ describe('checklist approval presentation', () => {
     });
     expect(unknown).not.toContain('internal SQL details');
     expect(unknown).toContain('Vui');
+  });
+
+  it('renders inline pregnancy windows and cadence for V2 roots', () => {
+    expect(checklistWindowLabel({ substage: null, eligibilityStartInclusive: 20, eligibilityEndInclusive: 24 })).toBe('Tuần 20–24');
+    expect(checklistWindowLabel({ substage: null, eligibilityStartInclusive: 39, eligibilityEndInclusive: 2147483647 })).toBe('Tuần 39+');
+    expect(checklistCadenceLabel('WEEKLY', 'EACH_WEEK')).toBe('Theo tuần');
+    expect(checklistCadenceLabel('SET', 'ONCE_PER_WINDOW')).toBe('Theo bộ');
+    expect(checklistProvenanceStatusLabel('PENDING_CLINICAL_COPY_SIGN_OFF')).toContain('Chờ sign-off');
   });
 });

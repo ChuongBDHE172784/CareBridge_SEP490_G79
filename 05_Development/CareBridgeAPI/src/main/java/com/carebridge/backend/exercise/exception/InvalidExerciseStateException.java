@@ -21,4 +21,11 @@ public class InvalidExerciseStateException extends RuntimeException {
                 "safetyWarning cannot be blanked",
                 HttpStatus.BAD_REQUEST);
     }
+
+    public static InvalidExerciseStateException postureNotReady() {
+        return new InvalidExerciseStateException(
+                "EXERCISE_POSTURE_NOT_READY",
+                "Configure an active and valid posture analysis configuration before publishing",
+                HttpStatus.CONFLICT);
+    }
 }

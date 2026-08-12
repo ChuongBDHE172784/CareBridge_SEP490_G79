@@ -52,8 +52,12 @@ public class HtmlContentSanitizer {
     private static final PolicyFactory POLICY = new HtmlPolicyBuilder()
             .allowCommonInlineFormattingElements() // b, i, s, u, strong, em, br, span, ...
             .allowCommonBlockElements() // p, div, h1-h6, ul, ol, li, blockquote
-            .allowStyling(TEXT_STYLE_SCHEMA) // color / font-size / font-family only
-            .allowUrlProtocols("https") // required for the "src" URL attribute below to pass at all
+            .allowStyling(TEXT_STYLE_SCHEMA) // color / font-size / font-family / text-align only
+            .allowElements("hr")
+            .allowElements("table", "thead", "tbody", "tfoot", "tr", "th", "td")
+            .allowElements("a")
+            .allowAttributes("href", "target", "rel").onElements("a")
+            .allowUrlProtocols("http", "https") // required for links and src URL attributes
             .allowElements("img")
             .allowAttributes("alt").onElements("img")
             .allowAttributes("width", "height").matching(DIMENSION).onElements("img")

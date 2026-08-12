@@ -4,6 +4,12 @@ import 'checklist_assignment_refresh_bus.dart';
 
 typedef ChecklistPostRequest =
     Future<dynamic> Function(String path, Map<String, dynamic> body);
+typedef ChecklistPostV2Request =
+    Future<dynamic> Function(
+      String path,
+      Map<String, dynamic> body,
+      Map<String, String> headers,
+    );
 typedef ChecklistDeleteRequest = Future<dynamic> Function(String path);
 
 class ChecklistTemplateAssignmentResult {
@@ -37,13 +43,21 @@ class ChecklistTemplateAssignmentResult {
 class UserChecklistService {
   UserChecklistService({
     ChecklistPostRequest? postRequest,
+    ChecklistPostV2Request? postV2Request,
     ChecklistDeleteRequest? deleteRequest,
   }) : _postRequest = postRequest ?? apiPost,
+       _postV2Request =
+           postV2Request ??
+           (postRequest == null
+               ? ((path, body, headers) =>
+                     apiPost(path, body, extraHeaders: headers))
+               : ((path, body, headers) => postRequest(path, body))),
        _deleteRequest = deleteRequest ?? ((path) => apiDelete(path));
 
   static final UserChecklistService instance = UserChecklistService();
 
   final ChecklistPostRequest _postRequest;
+  final ChecklistPostV2Request _postV2Request;
   final ChecklistDeleteRequest _deleteRequest;
 
   Future<void> deleteItem(String itemId) async {
@@ -99,6 +113,39 @@ class UserChecklistService {
         'careGroupId': careGroupId,
       'itemOrder': ?itemOrder,
     });
+    final item = UserChecklistItem.fromJson(
+      data['data'] as Map<String, dynamic>,
+    );
+    ChecklistAssignmentRefreshBus.notify();
+    return item;
+  }
+
+  /// Creates a targetless user-created task using the explicit V2 wire
+  /// contract. The existing [addItem] method remains the V1 compatibility
+  /// adapter for callers that still provide a target subject.
+  Future<UserChecklistItem> addItemV2({
+    required String itemText,
+    required String clientTaskId,
+    ChecklistCategory category = ChecklistCategory.general,
+    String? journeyId,
+    String? babyId,
+    String? careGroupId,
+    int? itemOrder,
+  }) async {
+    final data = await _postV2Request(
+      '/api/v1/user-checklist-items',
+      {
+        'itemText': itemText,
+        'clientTaskId': clientTaskId,
+        'category': category.apiValue,
+        if (journeyId != null && journeyId.isNotEmpty) 'journeyId': journeyId,
+        if (babyId != null && babyId.isNotEmpty) 'babyId': babyId,
+        if (careGroupId != null && careGroupId.isNotEmpty)
+          'careGroupId': careGroupId,
+        'itemOrder': ?itemOrder,
+      },
+      const {'X-Checklist-Contract-Version': '2'},
+    );
     final item = UserChecklistItem.fromJson(
       data['data'] as Map<String, dynamic>,
     );

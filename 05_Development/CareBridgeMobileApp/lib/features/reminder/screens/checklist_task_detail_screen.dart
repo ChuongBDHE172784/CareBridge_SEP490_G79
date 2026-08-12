@@ -70,7 +70,7 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
   String get _targetLabel => switch (widget.task.target) {
     TodayTaskTarget.mother => 'Mẹ',
     TodayTaskTarget.baby => 'Bé',
-    TodayTaskTarget.unknown => 'Cá nhân',
+    TodayTaskTarget.unknown => widget.task.isChecklist ? 'Khuyến nghị' : 'Cá nhân',
   };
 
   Future<void> _performStatusAction() async {
@@ -262,7 +262,9 @@ class _TaskHeaderCard extends StatelessWidget {
               _MetadataPill(
                 icon: task.target == TodayTaskTarget.baby
                     ? Icons.child_care_outlined
-                    : Icons.favorite_outline_rounded,
+                    : task.isChecklist && task.target == TodayTaskTarget.unknown
+                        ? Icons.checklist_outlined
+                        : Icons.favorite_outline_rounded,
                 label: 'Đối tượng',
                 value: targetLabel,
               ),

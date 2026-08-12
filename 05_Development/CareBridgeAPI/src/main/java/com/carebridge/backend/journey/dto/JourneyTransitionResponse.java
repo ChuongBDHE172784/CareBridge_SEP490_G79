@@ -4,10 +4,12 @@ import com.carebridge.backend.journey.entity.JourneyDateConfidence;
 import com.carebridge.backend.journey.entity.JourneyDateSource;
 import com.carebridge.backend.journey.entity.JourneyTransitionType;
 import com.carebridge.backend.journey.entity.JourneyType;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,4 +27,7 @@ public class JourneyTransitionResponse {
     Instant effectiveAt;
     Instant recordedAt;
     long journeyVersion;
+    GestationalDatingBasis gestationalDatingBasis;
+    Long gestationalDatingRevision;
+    LocalDate canonicalLmp;
 }

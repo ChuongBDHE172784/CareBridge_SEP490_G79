@@ -91,7 +91,13 @@ public class CareGroupAuthorizationPolicy {
     }
 
     private boolean isActiveMembership(CareGroupMember member) {
-        return member.getInviteStatus() == InviteStatus.ACCEPTED
+        if (member.getInviteStatus() == InviteStatus.ACCEPTED) {
+            // Invitation expiry governs the pending invitation window. Once the
+            // member has accepted, access is controlled by membership status and
+            // permission/epoch state, not by the original invite deadline.
+            return true;
+        }
+        return member.getInviteStatus() == InviteStatus.PENDING
                 && (member.getInviteExpiresAt() == null
                 || !member.getInviteExpiresAt().isBefore(Instant.now()));
     }

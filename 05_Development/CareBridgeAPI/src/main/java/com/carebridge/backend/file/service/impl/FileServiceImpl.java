@@ -264,9 +264,9 @@ public class FileServiceImpl implements IFileService {
                 storageService.store(storageKey, file.getBytes(), mimeType);
             }
             persistedStorageKey = storageService.persistedKey(storageKey);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-004",
-                    "Failed to store file");
+                    "Failed to store file: " + e.getMessage());
         }
 
         try {

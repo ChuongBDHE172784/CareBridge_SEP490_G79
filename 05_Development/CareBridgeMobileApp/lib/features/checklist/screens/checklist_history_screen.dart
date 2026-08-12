@@ -244,10 +244,13 @@ class _ChecklistHistoryScreenState extends State<ChecklistHistoryScreen> {
                           Row(
                             children: [
                               Icon(
-                                item.targetSubject ==
-                                        ChecklistHistoryTargetSubject.baby
-                                    ? Icons.child_care_rounded
-                                    : Icons.pregnant_woman_rounded,
+                                switch (item.targetSubject) {
+                                  ChecklistHistoryTargetSubject.baby =>
+                                    Icons.child_care_rounded,
+                                  ChecklistHistoryTargetSubject.mother =>
+                                    Icons.pregnant_woman_rounded,
+                                  null => Icons.checklist_rounded,
+                                },
                                 color: _primary,
                                 size: 22,
                               ),

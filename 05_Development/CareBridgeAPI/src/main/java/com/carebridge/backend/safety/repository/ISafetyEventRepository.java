@@ -23,6 +23,8 @@ public interface ISafetyEventRepository extends JpaRepository<SafetyEvent, UUID>
     @Query("select event from SafetyEvent event where event.id = :id and event.userId = :userId")
     Optional<SafetyEvent> findLockedByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
     Optional<SafetyEvent> findByImuSessionIdAndSignalKey(UUID imuSessionId, String signalKey);
+    Optional<SafetyEvent> findFirstByImuSessionIdAndResponseTypeIsNullAndDetectedAtAfterOrderByDetectedAtDesc(
+            UUID imuSessionId, Instant detectedAtAfter);
 
     List<SafetyEvent> findTop100ByStatusAndResponseTypeIsNullAndCountdownDeadlineAtLessThanEqualOrderByCountdownDeadlineAtAsc(
             SafetyEventStatus status, Instant deadline);

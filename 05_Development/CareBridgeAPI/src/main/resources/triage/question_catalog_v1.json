@@ -1,6 +1,6 @@
 {
   "$comment": "CANONICAL QUESTION CATALOGUE — the fixed clinical questions, shared by the Java and Python planners. The medical content of every question is frozen here; an LLM may later rephrase for readability but can never invent a question, change what one asks, or add an option. Business logic keys off optionCode/questionId, never display text. Two runtimes with two hand-written catalogues would eventually ask different questions of the same patient, so there is exactly one.",
-  "contractVersion": "1.0.0",
+  "contractVersion": "1.1.0",
   "maxQuestionsPerTurn": 3,
   "maxRounds": 3,
   "questions": [
@@ -807,6 +807,52 @@
       "isTargetClarification": false,
       "isStageClarification": false,
       "isIntentClarification": true
+    },
+    {
+      "$comment": "PENDING_CLINICAL_REVIEW",
+      "questionId": "Q_CLARIFY_STAGE",
+      "text": "Bạn hiện đang ở giai đoạn nào?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "STAGE_PRECONCEPTION",
+          "displayText": "Đang chuẩn bị mang thai"
+        },
+        {
+          "optionCode": "STAGE_POSSIBLE_PREGNANCY",
+          "displayText": "Có thể đang mang thai nhưng chưa xác nhận"
+        },
+        {
+          "optionCode": "STAGE_PREGNANCY",
+          "displayText": "Đang mang thai"
+        },
+        {
+          "optionCode": "STAGE_POSTPARTUM_MOTHER",
+          "displayText": "Đã sinh em bé"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "stage"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 0,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": true,
+      "isIntentClarification": false
     },
     {
       "questionId": "Q_BABY_AGE_MONTHS",

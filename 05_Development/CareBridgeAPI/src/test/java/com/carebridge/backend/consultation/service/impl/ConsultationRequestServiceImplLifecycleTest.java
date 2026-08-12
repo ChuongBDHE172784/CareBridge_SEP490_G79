@@ -23,6 +23,7 @@ import com.carebridge.backend.directchat.service.FindOrCreateConversationResult;
 import com.carebridge.backend.directchat.service.IDirectConversationService;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
@@ -57,6 +58,7 @@ class ConsultationRequestServiceImplLifecycleTest {
     @Mock private ConsultationRequestRepository repository;
     @Mock private ConsultationRequestWriter writer;
     @Mock private ExpertProfileRepository expertProfileRepository;
+    @Mock private ExpertAvailabilityRepository expertAvailabilityRepository;
     @Mock private UserRepository userRepository;
     @Mock private ConsultationRequestPolicy policy;
     @Mock private IDirectConversationService directConversationService;
@@ -71,6 +73,7 @@ class ConsultationRequestServiceImplLifecycleTest {
                 repository,
                 writer,
                 expertProfileRepository,
+                expertAvailabilityRepository,
                 userRepository,
                 policy,
                 directConversationService,

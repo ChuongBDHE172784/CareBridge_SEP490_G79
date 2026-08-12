@@ -41,6 +41,8 @@ abstract class SafetyCountdownFeedback {
 }
 
 class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
+  static SystemSafetyCountdownFeedback? _activeOwner;
+
   var _active = false;
   FlutterTts? _tts;
   bool _ttsInitialized = false;
@@ -118,6 +120,11 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
 
   @override
   void start() {
+    final previous = _activeOwner;
+    if (previous != null && !identical(previous, this)) {
+      previous._stopInternal();
+    }
+    _activeOwner = this;
     _active = true;
     _speechTimer?.cancel();
     unawaited(_speakPhrase());
@@ -143,6 +150,11 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
 
   @override
   void stop() {
+    _stopInternal();
+    if (identical(_activeOwner, this)) _activeOwner = null;
+  }
+
+  void _stopInternal() {
     _active = false;
     _speechTimer?.cancel();
     _speechTimer = null;
@@ -400,8 +412,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             Text(
               _usesProductionPresentation
                   ? (_remainingSeconds > 0
-                      ? 'CareBridge phát hiện dấu hiệu nghi ngờ ngã'
-                      : 'Đã chuyển sang hỗ trợ khẩn cấp!')
+                        ? 'CareBridge phát hiện dấu hiệu nghi ngờ ngã'
+                        : 'Đã chuyển sang hỗ trợ khẩn cấp!')
                   : 'Kiểm thử luồng phát hiện ngã bằng dữ liệu mô phỏng',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
@@ -419,8 +431,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             Text(
               _usesProductionPresentation
                   ? (_remainingSeconds > 0
-                      ? 'Bạn có ổn không? Hãy phản hồi trước khi hết thời gian.'
-                      : 'Hệ thống đã gửi thông báo đến người thân. Hãy gọi cấp cứu 115 nếu cần trợ giúp ngay.')
+                        ? 'Bạn có ổn không? Hãy phản hồi trước khi hết thời gian.'
+                        : 'Hệ thống đã gửi thông báo đến người thân. Hãy gọi cấp cứu 115 nếu cần trợ giúp ngay.')
                   : 'Mô phỏng sẽ tự kết thúc sau $_remainingSeconds giây.',
               textAlign: TextAlign.center,
             ),
@@ -503,8 +515,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
                 text: _isSensorSelfTest
                     ? 'Khi ngã thật: CareBridge gửi cảnh báo cho người thân.'
                     : (_remainingSeconds > 0
-                        ? 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.'
-                        : 'CareBridge đã gửi cảnh báo khẩn cấp tới người thân của bạn.'),
+                          ? 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.'
+                          : 'CareBridge đã gửi cảnh báo khẩn cấp tới người thân của bạn.'),
               ),
               const SizedBox(height: 8),
               _EmergencyStep(

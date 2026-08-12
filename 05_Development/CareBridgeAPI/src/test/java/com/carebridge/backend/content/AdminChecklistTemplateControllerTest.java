@@ -1,6 +1,7 @@
 package com.carebridge.backend.content;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -103,7 +104,7 @@ class AdminChecklistTemplateControllerTest {
     @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "SYSTEM_ADMIN")
     void list_asSystemAdmin_shouldReturn200() throws Exception {
         Page<AdminChecklistTemplateDetailResponse> page = new PageImpl<>(java.util.List.of());
-        when(adminChecklistTemplateService.list(any(), any(), any())).thenReturn(page);
+        when(adminChecklistTemplateService.list(any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get(BASE_URL)).andExpect(status().isOk());
     }
@@ -118,12 +119,24 @@ class AdminChecklistTemplateControllerTest {
                 .status(ChecklistTemplateStatus.DRAFT)
                 .items(List.of())
                 .build();
-        when(adminChecklistTemplateService.list(any(), any(), any()))
+        when(adminChecklistTemplateService.list(any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(template)));
 
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].status").value("DRAFT"));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "SYSTEM_ADMIN")
+    void list_passesKeywordToService() throws Exception {
+        when(adminChecklistTemplateService.list(any(), any(), eq("thai"), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get(BASE_URL).param("keyword", "thai"))
+                .andExpect(status().isOk());
+
+        verify(adminChecklistTemplateService).list(any(), any(), eq("thai"), any());
     }
 
     @Test

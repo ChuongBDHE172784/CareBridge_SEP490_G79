@@ -224,6 +224,8 @@ class _UploadVerificationDocsScreenState
       appBar: AppBar(
         title: const Text('Giấy tờ chuyên môn'),
         backgroundColor: Colors.transparent,
+        foregroundColor: const Color(0xFF2C221E),
+        surfaceTintColor: Colors.transparent,
       ),
       body: SafeArea(
         child: Form(

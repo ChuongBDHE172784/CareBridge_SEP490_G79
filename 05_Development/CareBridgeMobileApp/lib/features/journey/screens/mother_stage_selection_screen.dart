@@ -37,13 +37,10 @@ enum _MotherStage { planning, postpartum, pregnant, babyCare }
 class _MotherStageSelectionScreenState
     extends State<MotherStageSelectionScreen> {
   static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFF8F5F1);
-  static const _surface = Color(0xFFFFFCF9);
-  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
-  static const _surfaceContainerLow = Color(0xFFF8EEE9);
-  static const _onSurface = Color(0xFF2A211D);
-  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _primaryAccent = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFFFF8F6);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF6B5850);
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 
@@ -53,8 +50,6 @@ class _MotherStageSelectionScreenState
   late final Future<void> Function() _refreshSession;
 
   _MotherStage? _selectedStage;
-  final Set<SupportPreference> _preferences = {};
-  bool _consentAccepted = false;
   bool _onboardingComplete = false;
   bool _restoring = true;
   bool _loading = false;
@@ -105,18 +100,12 @@ class _MotherStageSelectionScreenState
           setState(() {
             _onboardingComplete = true;
             _selectedStage = null;
-            _preferences.clear();
-            _consentAccepted = false;
           });
         }
         return;
       }
       if (draft == null) return;
       final submissionId = draft['submissionId'];
-      final rawPreferences = draft['preferences'];
-      final preferenceValues = rawPreferences is List
-          ? rawPreferences.whereType<String>().toSet()
-          : <String>{};
       final stage = draft['stage'];
       final lifecycleGoal = draft['lifecycleGoal'];
       setState(() {
@@ -124,15 +113,6 @@ class _MotherStageSelectionScreenState
           _submissionId = submissionId;
         }
         _selectedStage = _stageFromDraft(stage, lifecycleGoal);
-        _preferences
-          ..clear()
-          ..addAll(
-            SupportPreference.values.where(
-              (value) => preferenceValues.contains(value.apiValue),
-            ),
-          );
-        // Consent must always be explicit and is never restored from storage.
-        _consentAccepted = false;
       });
     } finally {
       if (mounted) setState(() => _restoring = false);
@@ -145,7 +125,7 @@ class _MotherStageSelectionScreenState
       'submissionId': _submissionId,
       'stage': _selectedStage?.name,
       'lifecycleGoal': _goalForStage(_selectedStage)?.apiValue,
-      'preferences': _preferences.map((value) => value.apiValue).toList(),
+      'preferences': SupportPreference.values.map((value) => value.apiValue).toList(),
     };
     _draftWriteQueue = _draftWriteQueue.catchError((_) {}).then<void>((
       _,
@@ -166,7 +146,6 @@ class _MotherStageSelectionScreenState
     if (_restoring || _loading) return;
     setState(() {
       _selectedStage = stage;
-      _consentAccepted = false;
       _error = null;
     });
     _saveDraftInBackground();
@@ -196,14 +175,6 @@ class _MotherStageSelectionScreenState
   Future<bool> _ensureOnboarding(_MotherStage stage) async {
     final expectedUserId = AuthState.instance.userId;
     if (_onboardingComplete || stage == _MotherStage.babyCare) return true;
-    if (_preferences.isEmpty) {
-      setState(() => _error = 'Vui lòng chọn ít nhất một nội dung hỗ trợ.');
-      return false;
-    }
-    if (!_consentAccepted) {
-      setState(() => _error = 'Vui lòng đọc và đồng ý trước khi tiếp tục.');
-      return false;
-    }
     final goal = _goalForStage(stage);
     if (goal == null) return false;
 
@@ -230,7 +201,7 @@ class _MotherStageSelectionScreenState
           lifecycleGoal: goal,
           locale: 'vi-VN',
           timeZone: 'Asia/Ho_Chi_Minh',
-          preferences: _preferences.toList(),
+          preferences: SupportPreference.values,
           consentAccepted: true,
         ),
       );
@@ -366,7 +337,7 @@ class _MotherStageSelectionScreenState
       backgroundColor: _canvas,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 160),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -374,51 +345,55 @@ class _MotherStageSelectionScreenState
               const SizedBox(height: 28),
               _StageCard(
                 key: const Key('mother-stage-planning'),
+                badge: 'CHUẨN BỊ MANG THAI',
                 icon: Icons.spa_rounded,
                 title: 'Muốn mang thai',
                 subtitle:
                     'Nhận nội dung chuẩn bị sức khỏe, dinh dưỡng và nhắc việc trước thai kỳ.',
+                accentColor: const Color(0xFFE8927C),
+                selectedBg: const Color(0xFFFAF2EF),
                 selected: _selectedStage == _MotherStage.planning,
                 onTap: () => _selectStage(_MotherStage.planning),
               ),
               const SizedBox(height: 16),
               _StageCard(
                 key: const Key('mother-stage-pregnant'),
+                badge: 'THEO DÕI THAI KỲ',
                 icon: Icons.favorite_rounded,
-                title: 'Đang mang thai',
+                title: 'Mang thai',
                 subtitle:
                     'Tính tuổi thai, ngày dự sinh và cá nhân hóa hành trình theo tuần thai.',
+                accentColor: const Color(0xFFC98C7B),
+                selectedBg: const Color(0xFFFAF0ED),
                 selected: _selectedStage == _MotherStage.pregnant,
                 onTap: () => _selectStage(_MotherStage.pregnant),
               ),
               const SizedBox(height: 16),
               _StageCard(
                 key: const Key('mother-stage-postpartum'),
+                badge: 'HỒI PHỤC HẬU SẢN',
                 icon: Icons.self_improvement_rounded,
-                title: 'Đang hồi phục hậu sản',
+                title: 'Hồi phục hậu sản',
                 subtitle:
                     'Theo dõi quá trình hồi phục của bạn mà không cần tạo hồ sơ em bé.',
+                accentColor: const Color(0xFF5A9B8D),
+                selectedBg: const Color(0xFFF1F8F6),
                 selected: _selectedStage == _MotherStage.postpartum,
                 onTap: () => _selectStage(_MotherStage.postpartum),
               ),
               const SizedBox(height: 16),
               _StageCard(
                 key: const Key('mother-stage-baby-care'),
+                badge: 'CHĂM SÓC EM BÉ',
                 icon: Icons.child_care_rounded,
-                title: 'Đang nuôi bé',
+                title: 'Nuôi con',
                 subtitle:
                     'Tạo hồ sơ bé để theo dõi tăng trưởng, cột mốc và lịch chăm sóc hằng ngày.',
+                accentColor: const Color(0xFFD89B6A),
+                selectedBg: const Color(0xFFFAF5EE),
                 selected: _selectedStage == _MotherStage.babyCare,
                 onTap: () => _selectStage(_MotherStage.babyCare),
               ),
-              if (_selectedStage != null &&
-                  _selectedStage != _MotherStage.babyCare &&
-                  !_onboardingComplete) ...[
-                const SizedBox(height: 28),
-                _buildSupportPreferences(),
-                const SizedBox(height: 18),
-                _buildConsentCard(),
-              ],
             ],
           ),
         ),
@@ -432,34 +407,49 @@ class _MotherStageSelectionScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 56,
-          height: 56,
-          decoration: const BoxDecoration(
-            color: _surfaceContainerHigh,
-            shape: BoxShape.circle,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: _primaryAccent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: const Icon(Icons.auto_awesome_rounded, color: _primary),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.auto_awesome_rounded, size: 14, color: _primary),
+              SizedBox(width: 6),
+              Text(
+                'BƯỚC 2 / 2 • CHỌN GIAI ĐOẠN',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: _primary,
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         const Text(
           'Bạn đang ở giai đoạn nào?',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            color: _onSurface,
-            letterSpacing: -0.4,
-            height: 1.2,
+            fontSize: 31,
+            fontWeight: FontWeight.w800,
+            color: _textDark,
+            height: 1.18,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 8),
         const Text(
-          'CareBridge sẽ mở đúng hành trình chăm sóc cho mẹ và gia đình.',
+          'CareBridge sẽ mở đúng hành trình chăm sóc dành riêng cho bạn và gia đình.',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 14,
-            color: _onSurfaceVariant,
-            height: 1.45,
+            fontSize: 15,
+            color: _textMuted,
+            height: 1.5,
           ),
         ),
       ],
@@ -470,11 +460,18 @@ class _MotherStageSelectionScreenState
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: _canvas,
-          border: Border(top: BorderSide(color: _surfaceContainerHigh)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5A463F).withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -6),
+            ),
+          ],
+          border: const Border(top: BorderSide(color: Color(0xFFE8DDD6))),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -488,49 +485,69 @@ class _MotherStageSelectionScreenState
                 ),
                 decoration: BoxDecoration(
                   color: _errorBg,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _errorText.withValues(alpha: 0.2)),
                 ),
-                child: Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _errorText,
-                    height: 1.4,
-                  ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: _errorText, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: _errorText,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 56,
               child: FilledButton(
                 key: const Key('mother-stage-continue'),
                 onPressed: _canContinue ? _continue : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _primaryContainer,
+                  backgroundColor: _primary,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: _primaryContainer.withAlpha(112),
-                  shape: const StadiumBorder(),
-                  elevation: 0,
+                  disabledBackgroundColor: _primary.withValues(alpha: 0.40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  elevation: _canContinue ? 4 : 0,
+                  shadowColor: _primary.withValues(alpha: 0.35),
                 ),
                 child: _loading
                     ? const SizedBox(
-                        width: 22,
-                        height: 22,
+                        width: 24,
+                        height: 24,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                          strokeWidth: 2.5,
                           color: Colors.white,
                         ),
                       )
-                    : Text(
-                        _buttonLabel,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _buttonLabel,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_rounded, size: 20),
+                        ],
                       ),
               ),
             ),
@@ -539,141 +556,6 @@ class _MotherStageSelectionScreenState
       ),
     );
   }
-
-  Widget _buildSupportPreferences() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _surfaceContainerHigh),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Bạn muốn nhận hỗ trợ về',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: _onSurface,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: SupportPreference.values.map((preference) {
-              final selected = _preferences.contains(preference);
-              return FilterChip(
-                key: Key('preference-${preference.apiValue}'),
-                label: Text(_preferenceLabel(preference)),
-                selected: selected,
-                onSelected: _loading
-                    ? null
-                    : (value) {
-                        setState(() {
-                          value
-                              ? _preferences.add(preference)
-                              : _preferences.remove(preference);
-                          _error = null;
-                        });
-                        _saveDraftInBackground();
-                      },
-                selectedColor: _primaryContainer,
-                backgroundColor: _surfaceContainerLow,
-                checkmarkColor: Colors.white,
-                labelStyle: TextStyle(
-                  fontFamily: 'Lexend',
-                  color: selected ? Colors.white : _onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-                shape: const StadiumBorder(),
-                side: BorderSide(
-                  color: selected
-                      ? Colors.transparent
-                      : _surfaceContainerHigh,
-                  width: 1.5,
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConsentCard() {
-    return Semantics(
-      container: true,
-      label: 'Đồng ý bắt buộc, chưa được chọn sẵn',
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: _surfaceContainerLow,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _surfaceContainerHigh),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: CheckboxListTile(
-            key: const Key('lifecycle-consent'),
-            value: _consentAccepted,
-            onChanged: _loading
-                ? null
-                : (value) => setState(() {
-                    _consentAccepted = value == true;
-                    _error = null;
-                  }),
-            activeColor: _primaryContainer,
-            controlAffinity: ListTileControlAffinity.leading,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text(
-              'Tôi đồng ý cho CareBridge lưu thông tin nền và cá nhân hóa hành trình theo Chính sách MOTHER_LIFECYCLE_V1.',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                height: 1.45,
-                color: _onSurface,
-              ),
-            ),
-            subtitle: const Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: Text(
-                'Bạn có thể thu hồi đồng ý. Lịch sử đã tạo sẽ không bị thay đổi âm thầm.',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  height: 1.4,
-                  color: _onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _preferenceLabel(SupportPreference value) => switch (value) {
-    SupportPreference.nutrition => 'Dinh dưỡng',
-    SupportPreference.mentalWellbeing => 'Tinh thần',
-    SupportPreference.physicalActivity => 'Vận động',
-    SupportPreference.appointmentReminders => 'Nhắc lịch',
-  };
 
   String _newUuid() {
     final random = Random.secure();
@@ -695,25 +577,28 @@ class _MotherStageSelectionScreenState
 class _StageCard extends StatelessWidget {
   const _StageCard({
     super.key,
+    required this.badge,
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.accentColor,
+    required this.selectedBg,
     required this.selected,
     required this.onTap,
   });
 
+  final String badge;
   final IconData icon;
   final String title;
   final String subtitle;
+  final Color accentColor;
+  final Color selectedBg;
   final bool selected;
   final VoidCallback onTap;
 
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surface = Color(0xFFFFFCF9);
-  static const _surfaceLow = Color(0xFFF8EEE9);
-  static const _surfaceHigh = Color(0xFFF1E6E0);
-  static const _onSurface = Color(0xFF2A211D);
-  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF7A6860);
+  static const _borderNormal = Color(0xFFE8DDD6);
 
   @override
   Widget build(BuildContext context) {
@@ -725,18 +610,23 @@ class _StageCard extends StatelessWidget {
       child: ExcludeSemantics(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: selected ? _surfaceLow : _surface,
+            color: selected ? selectedBg : Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: selected ? _primaryContainer : _surfaceHigh,
-              width: selected ? 2 : 1,
+              color: selected
+                  ? accentColor
+                  : _borderNormal.withValues(alpha: 0.8),
+              width: selected ? 2.5 : 1.2,
             ),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 16,
-                offset: Offset(0, 4),
+                color: selected
+                    ? accentColor.withValues(alpha: 0.18)
+                    : const Color(0xFF5A463F).withValues(alpha: 0.05),
+                blurRadius: selected ? 24 : 16,
+                offset: Offset(0, selected ? 10 : 6),
               ),
             ],
           ),
@@ -746,60 +636,101 @@ class _StageCard extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(24),
               onTap: onTap,
+              splashColor: accentColor.withValues(alpha: 0.12),
+              highlightColor: accentColor.withValues(alpha: 0.06),
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: selected ? _primaryContainer : _surfaceHigh,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        icon,
-                        color: selected ? Colors.white : const Color(0xFF845143),
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: _onSurface,
-                              height: 1.25,
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? accentColor
+                                : accentColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: selected ? Colors.white : accentColor,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: accentColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  badge,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.6,
+                                    color: accentColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textDark,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: selected ? accentColor : Colors.transparent,
+                            border: Border.all(
+                              color: selected
+                                  ? accentColor
+                                  : _borderNormal.withValues(alpha: 0.9),
+                              width: selected ? 0 : 2,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 13,
-                              color: _onSurfaceVariant,
-                              height: 1.45,
-                            ),
-                          ),
-                        ],
-                      ),
+                          child: selected
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                )
+                              : null,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    AnimatedOpacity(
-                      opacity: selected ? 1 : 0,
-                      duration: const Duration(milliseconds: 160),
-                      child: const Icon(
-                        Icons.check_circle_rounded,
-                        color: _primaryContainer,
-                        size: 24,
+                    const SizedBox(height: 12),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        color: _textMuted,
+                        height: 1.45,
                       ),
                     ),
                   ],

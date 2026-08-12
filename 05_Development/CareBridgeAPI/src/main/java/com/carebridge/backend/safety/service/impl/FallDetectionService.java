@@ -36,6 +36,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.Map;
 import com.carebridge.backend.audit.entity.AuditAction;
@@ -51,6 +52,7 @@ public class FallDetectionService implements IFallDetectionService {
     private static final Logger log = LoggerFactory.getLogger(FallDetectionService.class);
     private static final Duration MAX_CLIENT_PAST_SKEW = Duration.ofHours(24);
     private static final Duration MAX_CLIENT_FUTURE_SKEW = Duration.ofMinutes(5);
+    private static final Duration DUPLICATE_FALL_WINDOW = Duration.ofSeconds(10);
 
     private final IImuMonitoringSessionRepository imuSessionRepository;
     private final ISafetyEventRepository safetyEventRepository;
@@ -140,6 +142,17 @@ public class FallDetectionService implements IFallDetectionService {
             return null;
         }
 
+        // A single physical drop can produce two verified peaks while the
+        // phone is settling on a pillow. Reuse the recent event for this IMU
+        // session only while it is unanswered, so a new fall can be recorded
+        // immediately after the user closes the previous alert as safe.
+        Optional<SafetyEvent> recentEvent = safetyEventRepository
+                .findFirstByImuSessionIdAndResponseTypeIsNullAndDetectedAtAfterOrderByDetectedAtDesc(
+                        activeSession.getId(), receivedAt.minus(DUPLICATE_FALL_WINDOW));
+        if (recentEvent.isPresent()) {
+            return toEventResponse(recentEvent.get());
+        }
+
         boolean includeLocation = payload.latitude() != null && payload.longitude() != null
                 && consentPolicy.mayPersistLocation(userId);
         SafetyEvent event = SafetyEvent.builder()
@@ -198,6 +211,13 @@ public class FallDetectionService implements IFallDetectionService {
         if (requestedEvent.getEventType() == SafetyEventType.SENSOR_SELF_TEST) {
             throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-013",
                     "Sensor self-test events cannot trigger emergency alerts");
+        }
+        // The countdown timeout callback can race with the user's final
+        // "I am safe" tap. Once a safe/false-positive response is persisted,
+        // a late emergency request is already obsolete and must be harmless.
+        if ("I_AM_OK".equals(requestedEvent.getResponseType())
+                || "FALSE_POSITIVE".equals(requestedEvent.getResponseType())) {
+            return;
         }
         // The expiry job can persist TIMEOUT milliseconds before the mobile
         // countdown sheet posts its timeout action. Both outcomes mean the
@@ -294,12 +314,27 @@ public class FallDetectionService implements IFallDetectionService {
     private SafetyEvent respondEntity(UUID userId, UUID eventId, String responseType,
                                       SafetyEventStatus status, String reason, boolean escalation) {
         SafetyEvent event = findOwnedEvent(userId, eventId);
-        if (event.getResponseType() != null) {
-            if (event.getResponseType().equals(responseType)) {
-                return event;
-            }
-            if (!"TIMEOUT".equals(event.getResponseType()) || (!"I_AM_OK".equals(responseType) && !"FALSE_POSITIVE".equals(responseType))) {
+        if (event.getEventType() == SafetyEventType.SENSOR_SELF_TEST) {
+            if (event.getResponseType() != null) {
+                if (event.getResponseType().equals(responseType)) {
+                    return event;
+                }
                 throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+            }
+            if (event.getStatus() != SafetyEventStatus.TEST_OPEN) {
+                throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Sensor self-test is no longer open");
+            }
+        } else {
+            if (event.getResponseType() != null) {
+                if (event.getResponseType().equals(responseType)) {
+                    return event;
+                }
+                boolean lateOwnerSafetyResponse =
+                        ("TIMEOUT".equals(event.getResponseType()) || "NEED_HELP".equals(event.getResponseType()))
+                                && ("I_AM_OK".equals(responseType) || "FALSE_POSITIVE".equals(responseType));
+                if (!lateOwnerSafetyResponse) {
+                    throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+                }
             }
         }
         Instant now = Instant.now();

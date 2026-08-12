@@ -99,3 +99,34 @@ def test_only_triage_intents_may_produce_a_colour():
 def test_evidence_is_recorded_for_the_audit_trail():
     resolution = resolve_intent(latest_user_message="Nguồn này từ đâu?")
     assert resolution.evidence
+
+
+def test_confirmed_conversation_intent_survives_an_ambiguous_follow_up():
+    resolution = resolve_intent(
+        latest_user_message="không biết",
+        confirmed_conversation_intent=IntentType.SYMPTOM_TRIAGE,
+    )
+
+    assert resolution.intent is IntentType.SYMPTOM_TRIAGE
+    assert resolution.source is ResolutionSource.CONFIRMED_CONVERSATION_INTENT
+
+
+def test_explicit_latest_intent_outranks_confirmed_conversation_intent():
+    resolution = resolve_intent(
+        latest_user_message="Tôi muốn tìm hiểu thông tin chung là gì?",
+        confirmed_conversation_intent=IntentType.SYMPTOM_TRIAGE,
+    )
+
+    assert resolution.intent is IntentType.GENERAL_HEALTH_INFORMATION
+    assert resolution.source is ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE
+
+
+def test_structural_answer_outranks_confirmed_conversation_intent():
+    resolution = resolve_intent(
+        latest_user_message="không biết",
+        submitted_option_codes=["UNSURE"],
+        confirmed_conversation_intent=IntentType.SYMPTOM_TRIAGE,
+    )
+
+    assert resolution.intent is IntentType.FOLLOW_UP_ANSWER
+    assert resolution.source is ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER

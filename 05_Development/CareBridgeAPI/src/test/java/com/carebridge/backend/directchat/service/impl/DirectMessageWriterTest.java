@@ -29,6 +29,7 @@ class DirectMessageWriterTest {
 
         verify(jdbcTemplate).update(anyString(), eq(image.getId()), eq(image.getConversationId()),
                 eq(image.getSenderUserId()), eq(image.getClientMessageId()), eq("IMAGE"), eq(null),
-                eq(attachmentId), org.mockito.ArgumentMatchers.any(java.sql.Timestamp.class));
+                eq(attachmentId), eq(null), eq(null), eq(null),
+                org.mockito.ArgumentMatchers.any(java.sql.Timestamp.class));
     }
 }

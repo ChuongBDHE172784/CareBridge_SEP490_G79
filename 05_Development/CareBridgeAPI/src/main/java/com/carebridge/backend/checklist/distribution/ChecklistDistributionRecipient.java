@@ -8,5 +8,17 @@ public record ChecklistDistributionRecipient(
         ChecklistRecipientRole role,
         boolean acceptedMembership,
         boolean checklistView,
-        boolean checklistComplete) {
+        boolean checklistComplete,
+        UUID careGroupMemberId,
+        Long checklistAccessEpoch) {
+
+    /** Compatibility constructor for callers that do not materialize Family metadata. */
+    public ChecklistDistributionRecipient(
+            UUID userId,
+            ChecklistRecipientRole role,
+            boolean acceptedMembership,
+            boolean checklistView,
+            boolean checklistComplete) {
+        this(userId, role, acceptedMembership, checklistView, checklistComplete, null, null);
+    }
 }

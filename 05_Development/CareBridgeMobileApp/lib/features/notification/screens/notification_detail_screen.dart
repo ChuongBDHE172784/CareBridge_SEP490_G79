@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../routing/consultation_notification_routing.dart';
+import 'location_share_notification_detail_screen.dart';
 
 class NotificationDetailScreen extends StatelessWidget {
   final NotificationRecord notification;
@@ -23,6 +24,10 @@ class NotificationDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (notification.type.trim().toUpperCase() == 'LOCATION_SHARE' ||
+        notification.referenceType?.trim().toUpperCase() == 'LOCATION_SHARE') {
+      return LocationShareNotificationDetailScreen(notification: notification);
+    }
     return Scaffold(
       backgroundColor: _bgColor,
       body: SafeArea(
@@ -278,6 +283,8 @@ class NotificationDetailScreen extends StatelessWidget {
         return 'Tin nhắn';
       case 'CONSULTATION':
         return 'Yêu cầu tư vấn';
+      case 'LOCATION_SHARE':
+        return 'Vị trí của Mother';
       default:
         return 'Thông báo';
     }

@@ -1,6 +1,7 @@
 package com.carebridge.backend.journey.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
@@ -64,6 +65,74 @@ class CanonicalAuditEventMappingTest {
         assertThatThrownBy(transition::prepareCanonicalEvent)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Journey transition reason must not exceed 500 characters");
+    }
+
+    @Test
+    void inferredPregnancyEpochEventHydratesAsCanonicalTransition() {
+        MotherJourneyTransition transition = MotherJourneyTransition.builder()
+                .journeyId(UUID.randomUUID())
+                .payload(Map.of(
+                        "eventType", "PREGNANCY_EPOCH_STARTED",
+                        "toStage", "PREGNANCY",
+                        "changes", Map.of("canonicalLmp", "2026-01-01"),
+                        "journeyVersion", 3,
+                        "source", "SYSTEM_DERIVED",
+                        "confidence", "ESTIMATED",
+                        "reason", "CHECKLIST_P2_GESTATIONAL_DATING_BACKFILL"))
+                .build();
+
+        transition.hydrateCanonicalEvent();
+
+        assertThat(transition.getEventType()).isEqualTo(JourneyTransitionType.PREGNANCY_EPOCH_STARTED);
+        assertThat(transition.getJourneyVersion()).isEqualTo(3L);
+        assertThat(transition.getSource()).isEqualTo(JourneyDateSource.SYSTEM_DERIVED);
+        assertThat(transition.getConfidence()).isEqualTo(JourneyDateConfidence.ESTIMATED);
+    }
+
+    @Test
+    void legacyEpochProjectionSerializesCanonicalEventAndCommitBoundary() {
+        Instant committed = Instant.parse("2026-07-18T03:00:00Z");
+        UUID correlation = UUID.randomUUID();
+        MotherJourneyTransition transition = MotherJourneyTransition.builder()
+                .journeyId(UUID.randomUUID())
+                .eventType(JourneyTransitionType.STAGE_CHANGED)
+                .toStage(JourneyType.PREGNANCY)
+                .effectiveAt(committed)
+                .recordedAt(committed)
+                .correlationId(correlation)
+                .pregnancyEpochStarted(true)
+                .build();
+
+        transition.prepareCanonicalEvent();
+
+        assertThat(transition.getPayload())
+                .containsEntry("eventType", "PREGNANCY_EPOCH_STARTED")
+                .containsEntry("effectiveFrom", committed.toString())
+                .containsEntry("recordedAt", committed.toString())
+                .containsEntry("correlationId", correlation.toString())
+                .containsKey("gestationalDatingRevision");
+    }
+
+    @Test
+    void datingCorrectionLeavesEffectiveToForNextEventDerivation() {
+        Instant committed = Instant.parse("2026-07-18T03:00:00Z");
+        MotherJourneyTransition transition = MotherJourneyTransition.builder()
+                .journeyId(UUID.randomUUID())
+                .eventType(JourneyTransitionType.DATING_CORRECTED)
+                .toStage(JourneyType.PREGNANCY)
+                .effectiveAt(committed)
+                .recordedAt(committed)
+                .gestationalDatingRevision(3L)
+                .canonicalLmp(LocalDate.of(2026, 6, 2))
+                .supersedesDatingRevision(2L)
+                .build();
+
+        transition.prepareCanonicalEvent();
+
+        assertThat(transition.getPayload())
+                .containsEntry("supersedesDatingRevision", 2L)
+                .containsEntry("effectiveFrom", committed.toString())
+                .doesNotContainKey("effectiveTo");
     }
 
     @Test
@@ -147,5 +216,48 @@ class CanonicalAuditEventMappingTest {
         assertThat(baseline.getRevision()).isZero();
         assertThat(baseline.getSchemaVersion()).isEqualTo("MOTHER_BASELINE_V1");
         assertThat(evidence.getJourneyVersion()).isZero();
+    }
+
+    @Test
+    void malformedLegacyPayloadsHydrateFailClosedInsteadOfBreakingTimelineReads() {
+        MotherJourneyTransition transition = MotherJourneyTransition.builder()
+                .payload(Map.ofEntries(
+                        Map.entry("eventType", "NOT_A_REAL_EVENT"),
+                        Map.entry("fromStage", "NOT_A_REAL_STAGE"),
+                        Map.entry("changes", "not-an-object"),
+                        Map.entry("journeyVersion", "not-a-number"),
+                        Map.entry("source", "UNKNOWN_SOURCE"),
+                        Map.entry("confidence", "UNKNOWN_CONFIDENCE"),
+                        Map.entry("basis", "UNKNOWN_BASIS"),
+                        Map.entry("canonicalLmp", "not-a-date"),
+                        Map.entry("gestationalDatingRevision", "9223372036854775808"),
+                        Map.entry("supersedesDatingRevision", "not-a-number"),
+                        Map.entry("correlationId", "not-a-uuid")))
+                .build();
+        PregnancyOutcomeEvidence evidence = PregnancyOutcomeEvidence.builder()
+                .payload(Map.of(
+                        "outcomeType", "NOT_A_REAL_OUTCOME",
+                        "outcomeDate", "not-a-date",
+                        "revisionNumber", "not-a-number",
+                        "journeyVersion", "9223372036854775808",
+                        "source", "UNKNOWN_SOURCE",
+                        "submissionId", "not-a-uuid",
+                        "supersedesEvidenceId", "not-a-uuid"))
+                .build();
+
+        assertThatCode(transition::hydrateCanonicalEvent).doesNotThrowAnyException();
+        assertThatCode(evidence::hydrateCanonicalEvent).doesNotThrowAnyException();
+        assertThat(transition.getEventType()).isEqualTo(JourneyTransitionType.DETAILS_CHANGED);
+        assertThat(transition.getChanges()).isEmpty();
+        assertThat(transition.getJourneyVersion()).isZero();
+        assertThat(transition.getGestationalDatingRevision()).isNull();
+        assertThat(transition.getCanonicalLmp()).isNull();
+        assertThat(transition.getCorrelationId()).isNull();
+        assertThat(evidence.getOutcomeType()).isNull();
+        assertThat(evidence.getOutcomeDate()).isNull();
+        assertThat(evidence.getRevisionNumber()).isZero();
+        assertThat(evidence.getJourneyVersion()).isZero();
+        assertThat(evidence.getSubmissionId()).isNull();
+        assertThat(evidence.getSupersedesEvidenceId()).isNull();
     }
 }
