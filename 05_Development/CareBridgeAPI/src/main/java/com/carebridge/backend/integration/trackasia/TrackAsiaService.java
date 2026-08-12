@@ -16,7 +16,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -48,6 +50,22 @@ public class TrackAsiaService {
                 .build();
     }
 
+    private static final Set<String> HEALTHCARE_TYPES = Set.of(
+            "hospital", "health_and_wellness", "clinic", "doctor", "medical_lab");
+
+    /** True when the provider tags the place as somewhere healthcare is delivered. */
+    private static boolean isHealthcarePlace(Object types) {
+        if (!(types instanceof List<?> list)) {
+            return false;
+        }
+        for (Object type : list) {
+            if (type instanceof String name && HEALTHCARE_TYPES.contains(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static String asString(Object value) {
         return value instanceof String s ? s : null;
     }
@@ -71,11 +89,15 @@ public class TrackAsiaService {
         if (typed.isEmpty() && province.isEmpty()) {
             return List.of();
         }
-        // With no name typed yet, browse the province: "bệnh viện <tỉnh>" is what turns
-        // a province choice into a usable list to pick from.
-        String effectiveQuery = typed.isEmpty()
-                ? "bệnh viện " + province
-                : (province.isEmpty() ? typed : typed + " " + province);
+        // Text Search matches any place name, so a bare "Nhi" came back with a sex-toy
+        // shop, a snack stall and a cafe. type=hospital is accepted and then ignored by
+        // the API - it still answers with airports and preschools - so the words carry
+        // the intent instead, and the types on each result do the actual filtering below.
+        String named = typed.toLowerCase(Locale.ROOT).contains("bệnh viện")
+                || typed.toLowerCase(Locale.ROOT).contains("phòng khám")
+                ? typed
+                : ("bệnh viện " + typed).trim();
+        String effectiveQuery = province.isEmpty() ? named : named + " " + province;
 
         try {
             // Place Text Search: the endpoint that answers "find me the hospital called
@@ -99,6 +121,7 @@ public class TrackAsiaService {
             if (response.statusCode() == 200) {
                 Map<String, Object> body = objectMapper.readValue(response.body(), new TypeReference<>() {});
                 List<TrackAsiaPlaceDto> results = new ArrayList<>();
+                List<TrackAsiaPlaceDto> medical = new ArrayList<>();
                 // Place Text Search answers with a flat "results" array, not the GeoJSON
                 // "features" the old code walked, and the coordinates arrive as a named
                 // lat/lng pair rather than a [lng, lat] tuple.
@@ -124,10 +147,18 @@ public class TrackAsiaService {
                                 dto.setLongitude(lng.doubleValue());
                             }
                         }
+                        if (isHealthcarePlace(place.get("types"))) {
+                            medical.add(dto);
+                        }
                         results.add(dto);
                     }
                 }
-                return results;
+                // Prefer the places the provider actually labels as healthcare. A street
+                // named after a hospital comes back as a "route", and a house number in
+                // front of one as a "street_address"; neither is somewhere you work.
+                // If nothing carries a health label, show the raw matches rather than an
+                // empty box - a thin list is still something the expert can judge.
+                return medical.isEmpty() ? results : medical;
             } else {
                 log.error("TrackAsia API error: HTTP {}", response.statusCode());
             }
