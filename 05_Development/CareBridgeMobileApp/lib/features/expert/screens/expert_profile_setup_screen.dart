@@ -194,6 +194,8 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
       appBar: AppBar(
         title: const Text('Hồ sơ chuyên gia'),
         backgroundColor: Colors.transparent,
+        foregroundColor: const Color(0xFF2C221E),
+        surfaceTintColor: Colors.transparent,
       ),
       body: SafeArea(
         child: Form(

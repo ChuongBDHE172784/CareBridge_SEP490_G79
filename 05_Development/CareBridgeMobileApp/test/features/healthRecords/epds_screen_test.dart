@@ -74,4 +74,22 @@ void main() {
     );
     expect(find.textContaining('Câu 10.'), findsOneWidget);
   });
+
+  testWidgets('EPDS header opens the conditions and guidance note', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EpdsScreen(journeyId: '00000000-0000-0000-0000-000000000001'),
+      ),
+    );
+
+    expect(find.text('Sàng lọc tâm trạng EPDS'), findsOneWidget);
+    await tester.tap(find.byTooltip('Điều kiện và hướng dẫn EPDS'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Điều kiện và hướng dẫn EPDS'), findsOneWidget);
+    expect(find.textContaining('0–9 điểm'), findsOneWidget);
+    expect(find.textContaining('Câu 10 có điểm 1–3'), findsOneWidget);
+  });
 }

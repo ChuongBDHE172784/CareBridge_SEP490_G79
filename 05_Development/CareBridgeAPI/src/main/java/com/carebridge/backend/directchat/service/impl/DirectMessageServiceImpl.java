@@ -127,7 +127,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
         Optional<DirectMessage> existing = messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
                 conversationId, senderUserId, request.getClientMessageId());
         if (existing.isPresent()) {
-            assertSameIdempotentPayload(existing.get(), textPayload ? trimmedBody : null, messageType, request.getAttachmentId());
+            assertSameIdempotentPayload(existing.get(), trimmedBody.isEmpty() ? null : trimmedBody, messageType, request.getAttachmentId());
             return new SendDirectMessageResult(toItemResponse(existing.get()), false);
         }
 
@@ -137,7 +137,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
                 .senderUserId(senderUserId)
                 .clientMessageId(request.getClientMessageId())
                 .messageType(messageType)
-                .messageBody(textPayload ? trimmedBody : null)
+                .messageBody(trimmedBody.isEmpty() ? null : trimmedBody)
                 .attachmentId(request.getAttachmentId())
                 .createdAt(Instant.now(clock))
                 .build();
@@ -148,7 +148,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
             saved = messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
                             conversationId, senderUserId, request.getClientMessageId())
                     .orElseThrow(DirectChatException::idempotencyConflict);
-            assertSameIdempotentPayload(saved, textPayload ? trimmedBody : null, messageType, request.getAttachmentId());
+            assertSameIdempotentPayload(saved, trimmedBody.isEmpty() ? null : trimmedBody, messageType, request.getAttachmentId());
         }
 
         if (created) {

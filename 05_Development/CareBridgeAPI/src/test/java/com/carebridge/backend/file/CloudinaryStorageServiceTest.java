@@ -91,6 +91,22 @@ class CloudinaryStorageServiceTest {
     }
 
     @Test
+    void store_authenticatedFailure_fallsBackToUploadType() throws Exception {
+        Cloudinary mockCloudinary = mock(Cloudinary.class);
+        Uploader mockUploader = mock(Uploader.class);
+        when(mockCloudinary.uploader()).thenReturn(mockUploader);
+        doThrow(new RuntimeException("Resource type 'authenticated' not allowed"))
+                .when(mockUploader).upload(any(), argThat((Map<?, ?> opts) -> opts != null && "authenticated".equals(opts.get("type"))));
+        when(mockUploader.upload(any(), argThat((Map<?, ?> opts) -> opts != null && "upload".equals(opts.get("type")))))
+                .thenReturn(Map.of("public_id", PUBLIC_ID));
+
+        CloudinaryStorageService svc = serviceWithMockClient(mockCloudinary);
+        svc.store("files/x.jpg", new byte[]{1, 2, 3}, "image/jpeg");
+
+        verify(mockUploader).upload(any(), argThat((Map<?, ?> opts) -> opts != null && "upload".equals(opts.get("type"))));
+    }
+
+    @Test
     void deleteRequired_publicUrlDestroysUploadAssetWithoutExtension() throws Exception {
         Cloudinary mockCloudinary = mock(Cloudinary.class);
         Uploader mockUploader = mock(Uploader.class);

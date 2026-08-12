@@ -516,9 +516,72 @@ class _EpdsScreenState extends State<EpdsScreen> {
           letterSpacing: -0.3,
         ),
       ),
+      actions: [
+        IconButton(
+          tooltip: 'Điều kiện và hướng dẫn EPDS',
+          icon: const Icon(Icons.priority_high_rounded),
+          onPressed: _showEpdsNotes,
+        ),
+      ],
     ),
     body: SafeArea(child: _started ? _buildQuestion() : _buildOverview()),
   );
+
+  Future<void> _showEpdsNotes() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.priority_high_rounded, color: _primaryContainer),
+            SizedBox(width: 8),
+            Expanded(child: Text('Điều kiện và hướng dẫn EPDS')),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'EPDS gồm 10 câu hỏi về cảm xúc trong 7 ngày qua, tổng điểm từ 0–30. Đây là công cụ sàng lọc, không thay thế chẩn đoán chuyên môn.',
+                style: TextStyle(height: 1.4),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Các mức nhận xét',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '• 0–9 điểm: Nguy cơ hiện tại thấp. Tiếp tục theo dõi và thực hiện lại theo lịch thai kỳ hoặc sau sinh.\n\n'
+                '• 10–12 điểm: Cần theo dõi và sàng lọc lại. Theo dõi sát và thực hiện lại EPDS sau 2–4 tuần.\n\n'
+                '• 13–30 điểm: Cần được đánh giá chuyên sâu. Nên sắp xếp gặp bác sĩ hoặc chuyên gia tâm lý.',
+                style: TextStyle(height: 1.45),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Cảnh báo tự hại',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '• Câu 10 có điểm 1–3: ưu tiên cảnh báo khẩn, bất kể tổng điểm. Cần đánh giá sức khỏe tâm thần ngay và tìm hỗ trợ y tế khẩn cấp nếu có ý nghĩ tự sát.\n\n'
+                '• Câu 10 = 0: áp dụng nhận xét theo tổng điểm ở trên.\n\n'
+                'Kết quả EPDS không tự xác định bạn có mắc trầm cảm hay không. Nếu bạn lo lắng hoặc triệu chứng kéo dài, hãy liên hệ nhân viên y tế.',
+                style: TextStyle(height: 1.45),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildQuestion() {
     final question = epdsQuestions[_questionIndex];

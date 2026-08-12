@@ -52,6 +52,8 @@ class _VerificationStatusScreenState extends State<VerificationStatusScreen> {
       appBar: AppBar(
         title: const Text('Trạng thái xác minh'),
         backgroundColor: Colors.transparent,
+        foregroundColor: const Color(0xFF2C221E),
+        surfaceTintColor: Colors.transparent,
       ),
       body: RefreshIndicator(
         onRefresh: _load,

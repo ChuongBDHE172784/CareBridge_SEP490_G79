@@ -29,6 +29,20 @@ class DirectChatScreen extends StatefulWidget {
   State<DirectChatScreen> createState() => _DirectChatScreenState();
 }
 
+class _PendingAttachment {
+  final Uint8List bytes;
+  final String fileName;
+  final String mimeType;
+  final String kind;
+
+  _PendingAttachment({
+    required this.bytes,
+    required this.fileName,
+    required this.mimeType,
+    required this.kind,
+  });
+}
+
 class _DirectChatScreenState extends State<DirectChatScreen>
     with WidgetsBindingObserver {
   static const _uuid = Uuid();
@@ -47,6 +61,8 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   String? _nextCursor;
   String? _previousCursor;
   bool _hasMoreOlder = false;
+
+  _PendingAttachment? _pendingAttachment;
 
   StreamSubscription? _signalSubscription;
   Timer? _markReadRetry;
@@ -233,20 +249,67 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 
   Future<void> _send() async {
     final body = _textController.text.trim();
-    if (body.isEmpty || _sending || !_expertAvailable) return;
+    if ((body.isEmpty && _pendingAttachment == null) ||
+        _sending ||
+        !_expertAvailable) {
+      return;
+    }
+
+    final attachment = _pendingAttachment;
     final clientMessageId = _uuid.v4();
     final currentUserId = AuthState.instance.userId ?? '';
-    final optimistic = TimelineItem.optimisticMessage(
-      clientMessageId: clientMessageId,
-      senderUserId: currentUserId,
-      messageBody: body,
-    );
+
     setState(() {
-      _items = mergeTimelineItems(_items, [optimistic]);
       _textController.clear();
+      _pendingAttachment = null;
       _sending = true;
     });
-    await _sendWithClientId(clientMessageId, body);
+
+    try {
+      if (attachment != null) {
+        final uploaded = await apiMultipart(
+          '/api/v1/direct-conversations/${widget.conversationId}/attachments?kind=${attachment.kind}',
+          const {},
+          files: [
+            MultipartUploadFile(
+              fieldName: 'file',
+              bytes: attachment.bytes,
+              fileName: attachment.fileName,
+              mimeType: attachment.mimeType,
+            ),
+          ],
+        );
+        final fileId = uploaded?['data']?['fileId'] as String?;
+        if (fileId == null) throw const FormatException('Không thể tải tệp lên');
+
+        final confirmed = await DirectChatService.instance.sendMessage(
+          widget.conversationId,
+          clientMessageId: clientMessageId,
+          messageType: attachment.kind == 'IMAGE' ? 'IMAGE' : 'FILE',
+          attachmentId: fileId,
+          messageBody: body.isNotEmpty ? body : null,
+        );
+        if (mounted) {
+          setState(() {
+            _items = mergeTimelineItems(_items, [confirmed]);
+          });
+        }
+      } else {
+        final optimistic = TimelineItem.optimisticMessage(
+          clientMessageId: clientMessageId,
+          senderUserId: currentUserId,
+          messageBody: body,
+        );
+        setState(() {
+          _items = mergeTimelineItems(_items, [optimistic]);
+        });
+        await _sendWithClientId(clientMessageId, body);
+      }
+    } catch (e) {
+      if (mounted) _showError('Không thể gửi: $e');
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   Future<void> _attachImage(ImageSource source) async {
@@ -261,32 +324,16 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       if (bytes.length > 10 * 1024 * 1024) {
         throw const FormatException('Ảnh phải nhỏ hơn 10 MB');
       }
-      setState(() => _sending = true);
-      final uploaded = await apiMultipart(
-        '/api/v1/direct-conversations/${widget.conversationId}/attachments?kind=IMAGE',
-        const {},
-        files: [
-          MultipartUploadFile(
-            fieldName: 'file',
-            bytes: bytes,
-            fileName: image.name,
-            mimeType: image.mimeType ?? 'image/jpeg',
-          ),
-        ],
-      );
-      final fileId = uploaded?['data']?['fileId'] as String?;
-      if (fileId == null) throw const FormatException('Không thể tải ảnh lên');
-      await DirectChatService.instance.sendMessage(
-        widget.conversationId,
-        clientMessageId: _uuid.v4(),
-        messageType: 'IMAGE',
-        attachmentId: fileId,
-      );
-      await _syncNewer();
+      setState(() {
+        _pendingAttachment = _PendingAttachment(
+          bytes: bytes,
+          fileName: image.name,
+          mimeType: image.mimeType ?? 'image/jpeg',
+          kind: 'IMAGE',
+        );
+      });
     } catch (e) {
-      if (mounted) _showError('Không thể gửi ảnh: $e');
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) _showError('Không thể chọn ảnh: $e');
     }
   }
 
@@ -299,36 +346,18 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       if (file.bytes!.length > 20 * 1024 * 1024) {
         throw const FormatException('Tài liệu phải nhỏ hơn 20 MB');
       }
-      setState(() => _sending = true);
-      final uploaded = await apiMultipart(
-        '/api/v1/direct-conversations/${widget.conversationId}/attachments?kind=DOCUMENT',
-        const {},
-        files: [
-          MultipartUploadFile(
-            fieldName: 'file',
-            bytes: file.bytes!,
-            fileName: file.name,
-            mimeType:
-                lookupMimeType(file.name, headerBytes: file.bytes) ??
-                'application/octet-stream',
-          ),
-        ],
-      );
-      final fileId = uploaded?['data']?['fileId'] as String?;
-      if (fileId == null) {
-        throw const FormatException('Không thể tải tài liệu lên');
-      }
-      await DirectChatService.instance.sendMessage(
-        widget.conversationId,
-        clientMessageId: _uuid.v4(),
-        messageType: 'FILE',
-        attachmentId: fileId,
-      );
-      await _syncNewer();
+      setState(() {
+        _pendingAttachment = _PendingAttachment(
+          bytes: file.bytes!,
+          fileName: file.name,
+          mimeType:
+              lookupMimeType(file.name, headerBytes: file.bytes) ??
+              'application/octet-stream',
+          kind: 'DOCUMENT',
+        );
+      });
     } catch (e) {
-      if (mounted) _showError('Không thể gửi tài liệu: $e');
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) _showError('Không thể chọn tài liệu: $e');
     }
   }
 
@@ -569,6 +598,87 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     );
   }
 
+  Widget _buildAttachmentPreviewWidget() {
+    final attachment = _pendingAttachment;
+    if (attachment == null) return const SizedBox.shrink();
+    final isImage = attachment.kind == 'IMAGE';
+    final sizeKb = (attachment.bytes.length / 1024).toStringAsFixed(1);
+    final sizeMb = (attachment.bytes.length / (1024 * 1024)).toStringAsFixed(1);
+    final displaySize = attachment.bytes.length >= 1024 * 1024 ? '$sizeMb MB' : '$sizeKb KB';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _outlineVariant),
+      ),
+      child: Row(
+        children: [
+          if (isImage)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                attachment.bytes,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+              ),
+            )
+          else
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.insert_drive_file_rounded,
+                color: _primary,
+                size: 26,
+              ),
+            ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  attachment.fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  displaySize,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Hủy tệp đính kèm',
+            icon: const Icon(Icons.close_rounded, color: Colors.red, size: 20),
+            onPressed: () => setState(() => _pendingAttachment = null),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputRow() {
     return SafeArea(
       child: Container(
@@ -584,127 +694,142 @@ class _DirectChatScreenState extends State<DirectChatScreen>
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              decoration: const BoxDecoration(
-                color: _surfaceContainerLow,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.add_photo_alternate_rounded,
-                  color: _primary,
-                ),
-                onPressed: _sending
-                    ? null
-                    : () => showModalBottomSheet<void>(
-                        context: context,
-                        backgroundColor: _surface,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(24),
-                          ),
-                        ),
-                        builder: (sheetContext) => SafeArea(
-                          child: Wrap(
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Text(
-                                  'Tệp đính kèm',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: _onSurface,
-                                  ),
-                                ),
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.photo_library_outlined,
-                                  color: _primary,
-                                ),
-                                title: const Text('Chọn từ thư viện', style: TextStyle(fontFamily: 'Lexend')),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  _attachImage(ImageSource.gallery);
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.attach_file_rounded,
-                                  color: _primary,
-                                ),
-                                title: const Text('Chọn tài liệu', style: TextStyle(fontFamily: 'Lexend')),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  _attachDocument();
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.camera_alt_outlined,
-                                  color: _primary,
-                                ),
-                                title: const Text('Chụp ảnh', style: TextStyle(fontFamily: 'Lexend')),
-                                onTap: () {
-                                  Navigator.pop(sheetContext);
-                                  _attachImage(ImageSource.camera);
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: _outlineVariant),
-                ),
-                child: TextField(
-                  controller: _textController,
-                  minLines: 1,
-                  maxLines: 4,
-                  style: const TextStyle(fontFamily: 'Lexend', color: _onSurface, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Nhập tin nhắn...',
-                    hintStyle: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: _onSurfaceVariant.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    border: InputBorder.none,
+            if (_pendingAttachment != null) _buildAttachmentPreviewWidget(),
+            Row(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerLow,
+                    shape: BoxShape.circle,
                   ),
-                  onSubmitted: (_) => _send(),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.add_photo_alternate_rounded,
+                      color: _primary,
+                    ),
+                    onPressed: _sending
+                        ? null
+                        : () => showModalBottomSheet<void>(
+                            context: context,
+                            backgroundColor: _surface,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(24),
+                              ),
+                            ),
+                            builder: (sheetContext) => SafeArea(
+                              child: Wrap(
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text(
+                                      'Tệp đính kèm',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: _onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.photo_library_outlined,
+                                      color: _primary,
+                                    ),
+                                    title: const Text('Chọn từ thư viện', style: TextStyle(fontFamily: 'Lexend')),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _attachImage(ImageSource.gallery);
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.attach_file_rounded,
+                                      color: _primary,
+                                    ),
+                                    title: const Text('Chọn tài liệu', style: TextStyle(fontFamily: 'Lexend')),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _attachDocument();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.camera_alt_outlined,
+                                      color: _primary,
+                                    ),
+                                    title: const Text('Chụp ảnh', style: TextStyle(fontFamily: 'Lexend')),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _attachImage(ImageSource.camera);
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                              ),
+                            ),
+                          ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              decoration: const BoxDecoration(
-                color: _primary,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.send_rounded,
-                  color: Colors.white,
-                  size: 20,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: _outlineVariant),
+                    ),
+                    child: TextField(
+                      controller: _textController,
+                      minLines: 1,
+                      maxLines: 4,
+                      style: const TextStyle(fontFamily: 'Lexend', color: _onSurface, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Nhập tin nhắn...',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: _onSurfaceVariant.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: (_) => _send(),
+                    ),
+                  ),
                 ),
-                onPressed: _sending ? null : _send,
-              ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.send_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                    onPressed: _sending ? null : _send,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -810,29 +935,67 @@ class _TimelineTile extends StatelessWidget {
                       ),
                     )
                   : item.messageType == 'IMAGE' && item.messageId != null
-                  ? _InlineChatImage(
-                      conversationId: conversationId,
-                      messageId: item.messageId!,
-                      canRecall: isOwnMessage,
-                      onRecall: onRecall,
-                    )
-                  : item.messageType == 'FILE'
-                  ? Row(
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.insert_drive_file_rounded,
-                          color: isOwnMessage ? Colors.white : _primary,
+                        _InlineChatImage(
+                          conversationId: conversationId,
+                          messageId: item.messageId!,
+                          canRecall: isOwnMessage,
+                          onRecall: onRecall,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Tài liệu',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            color: isOwnMessage ? Colors.white : _onSurface,
-                            fontWeight: FontWeight.w500,
+                        if (item.messageBody != null &&
+                            item.messageBody!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            item.messageBody!,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: isOwnMessage ? Colors.white : _onSurface,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
                           ),
+                        ],
+                      ],
+                    )
+                  : item.messageType == 'FILE'
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.insert_drive_file_rounded,
+                              color: isOwnMessage ? Colors.white : _primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Tài liệu',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                color: isOwnMessage ? Colors.white : _onSurface,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
+                        if (item.messageBody != null &&
+                            item.messageBody!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            item.messageBody!,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: isOwnMessage ? Colors.white : _onSurface,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
                       ],
                     )
                   : Text(
