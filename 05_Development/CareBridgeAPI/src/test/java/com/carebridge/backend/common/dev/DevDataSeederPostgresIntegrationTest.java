@@ -200,7 +200,7 @@ class DevDataSeederPostgresIntegrationTest {
                   JOIN users u ON u.user_id = ea.user_id
                  WHERE u.email IN ('expert2@carebridge.dev', 'expert3@carebridge.dev')
                    AND u.verification_status = 'APPROVED'
-                """)).isEqualTo(2L);
+                """)).isEqualTo(0L);
     }
 
     private List<Long> fixtureCounts() {

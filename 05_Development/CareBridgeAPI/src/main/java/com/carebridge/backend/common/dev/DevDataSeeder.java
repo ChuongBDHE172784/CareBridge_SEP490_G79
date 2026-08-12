@@ -48,9 +48,6 @@ import com.carebridge.backend.content.repository.ModerationActionRepository;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
-import com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus;
-import com.carebridge.backend.expertavailability.entity.ExpertAvailability;
-import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import com.carebridge.backend.expertverification.entity.ExpertCredential;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
@@ -143,7 +140,6 @@ public class DevDataSeeder implements ApplicationRunner {
     private final CareGroupMemberRepository careGroupMemberRepository;
     private final ExpertProfileRepository expertProfileRepository;
     private final ExpertCredentialRepository expertCredentialRepository;
-    private final ExpertAvailabilityRepository expertAvailabilityRepository;
     private final CommunityTopicRepository communityTopicRepository;
     private final CommunityQuestionRepository communityQuestionRepository;
     private final CommunityAnswerRepository communityAnswerRepository;
@@ -894,15 +890,6 @@ public class DevDataSeeder implements ApplicationRunner {
                 .build());
         }
 
-        if (expertAvailabilityRepository.findByExpertProfileId(profile.getExpertProfileId()).isEmpty()) {
-            expertAvailabilityRepository.save(ExpertAvailability.builder()
-                .expertProfileId(profile.getExpertProfileId())
-                .startAt(Instant.now().plus(java.time.Duration.ofDays(1)))
-                .endAt(Instant.now().plus(java.time.Duration.ofDays(1)).plusSeconds(3600))
-                .channelType("VIDEO_CALL")
-                .status(AvailabilityStatus.AVAILABLE)
-                .build());
-        }
     }
 
     private ExpertProfile insertExpertProfileRow(User expertUser, User admin, String specialty,
