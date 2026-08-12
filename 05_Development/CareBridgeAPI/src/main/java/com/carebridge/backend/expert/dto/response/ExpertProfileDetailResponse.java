@@ -23,6 +23,7 @@ public class ExpertProfileDetailResponse {
 	private String professionalTitle;
 	private Integer experienceYears;
 	private String workplace;
+	private String workplaceProvinceId;
 	private String hospitalId;
 	private String consultationScope;
 	private VerificationStatus verificationStatus;
