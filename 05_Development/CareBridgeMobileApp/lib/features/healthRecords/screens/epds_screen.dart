@@ -14,6 +14,23 @@ class EpdsOption {
   final int score;
 }
 
+String epdsLevel(int score) {
+  if (score >= 13) return 'Cần được đánh giá chuyên sâu';
+  if (score >= 10) return 'Cần theo dõi và sàng lọc lại';
+  return 'Nguy cơ hiện tại thấp';
+}
+
+String epdsGuidance(int score, int question10Score) {
+  if (question10Score > 0) {
+    return 'Cần đánh giá sức khỏe tâm thần ngay và hỗ trợ khẩn nếu có ý nghĩ tự sát.';
+  }
+  if (score >= 13) {
+    return 'Nên sắp xếp gặp bác sĩ hoặc chuyên gia tâm lý để được đánh giá chuyên sâu.';
+  }
+  if (score >= 10) return 'Theo dõi sát và thực hiện lại EPDS sau 2–4 tuần.';
+  return 'Tiếp tục theo dõi và thực hiện lại theo lịch thai kỳ hoặc sau sinh.';
+}
+
 class EpdsHistoryDetailScreen extends StatelessWidget {
   const EpdsHistoryDetailScreen({
     super.key,
@@ -95,6 +112,39 @@ class EpdsHistoryDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: question10Score > 0 ? const Color(0xFFFFE8E6) : _canvas,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: question10Score > 0 ? _danger : const Color(0xFFE6D8D3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  epdsLevel(totalScore),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    color: question10Score > 0 ? _danger : _primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  epdsGuidance(totalScore, question10Score),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    height: 1.4,
+                    color: _primary,
                   ),
                 ),
               ],
@@ -344,23 +394,6 @@ class _EpdsScreenState extends State<EpdsScreen> {
     } catch (_) {}
   }
 
-  String _level(int score) {
-    if (score >= 13) return 'Cần được đánh giá chuyên sâu';
-    if (score >= 10) return 'Cần theo dõi và sàng lọc lại';
-    return 'Nguy cơ hiện tại thấp';
-  }
-
-  String _guidance(int score) {
-    if (_answers[9] != null && _answers[9]! > 0) {
-      return 'Cần đánh giá sức khỏe tâm thần ngay và hỗ trợ khẩn nếu có ý nghĩ tự sát.';
-    }
-    if (score >= 13) {
-      return 'Nên sắp xếp gặp bác sĩ hoặc chuyên gia tâm lý để được đánh giá chuyên sâu.';
-    }
-    if (score >= 10) return 'Theo dõi sát và thực hiện lại EPDS sau 2–4 tuần.';
-    return 'Tiếp tục theo dõi và thực hiện lại theo lịch thai kỳ hoặc sau sinh.';
-  }
-
   Future<void> _submit() async {
     if (_answers.any((answer) => answer == null)) return;
     final total = calculateEpdsScore(_answers);
@@ -535,7 +568,9 @@ class _EpdsScreenState extends State<EpdsScreen> {
                       color: isSelected ? _surfaceContainerLow : _surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? _primaryContainer : _surfaceContainerHigh,
+                        color: isSelected
+                            ? _primaryContainer
+                            : _surfaceContainerHigh,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -546,7 +581,9 @@ class _EpdsScreenState extends State<EpdsScreen> {
                         option.label,
                         style: TextStyle(
                           fontFamily: 'Lexend',
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: _onSurface,
                         ),
                       ),
@@ -651,7 +688,7 @@ class _EpdsScreenState extends State<EpdsScreen> {
             if (_result != null) ...[
               const SizedBox(height: 14),
               Text(
-                'Kết quả: $_result/30 · ${_level(_result!)}',
+                'Kết quả: $_result/30 · ${epdsLevel(_result!)}',
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w700,
@@ -660,7 +697,7 @@ class _EpdsScreenState extends State<EpdsScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                _guidance(_result!),
+                epdsGuidance(_result!, _answers[9] ?? 0),
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   height: 1.4,
@@ -703,10 +740,7 @@ class _EpdsScreenState extends State<EpdsScreen> {
       if (_history.isEmpty)
         const Text(
           'Chưa có lần sàng lọc nào.',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            color: _onSurfaceVariant,
-          ),
+          style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
         )
       else
         ..._history.map(
@@ -730,7 +764,7 @@ class _EpdsScreenState extends State<EpdsScreen> {
                 ),
               ),
               title: Text(
-                _level(item.valueNumeric.round()),
+                epdsLevel(item.valueNumeric.round()),
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
@@ -755,7 +789,10 @@ class _EpdsScreenState extends State<EpdsScreen> {
                         color: Color(0xFFBA1A1A),
                       ),
                     ),
-                  const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: _onSurfaceVariant,
+                  ),
                 ],
               ),
             ),
