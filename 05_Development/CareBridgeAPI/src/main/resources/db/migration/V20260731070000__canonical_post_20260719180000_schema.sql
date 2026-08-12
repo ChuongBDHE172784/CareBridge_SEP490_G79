@@ -1176,6 +1176,10 @@ DECLARE
     parent_review_required boolean;
     parent_reviewed_at timestamptz;
 BEGIN
+    IF coalesce(current_setting('carebridge.checklist_p1_p2_role', true), '') = 'MIGRATION' THEN
+        RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    END IF;
+
     IF (TG_OP = 'DELETE' AND OLD.entry_type <> 'CHECKLIST_ENTRY')
        OR (TG_OP = 'INSERT' AND NEW.entry_type <> 'CHECKLIST_ENTRY')
        OR (TG_OP = 'UPDATE'

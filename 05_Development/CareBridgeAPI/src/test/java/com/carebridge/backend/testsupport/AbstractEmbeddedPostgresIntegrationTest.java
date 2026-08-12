@@ -16,7 +16,7 @@ import org.springframework.test.context.TestPropertySource;
         // The P1/P2 writer barrier is intentionally armed before Flyway opens
         // its migration transaction. Production supplies this from the
         // deployment runner; embedded tests model that bootstrap explicitly.
-        "spring.flyway.init-sql=select set_config('carebridge.checklist_v1_writes_frozen','true',false); select set_config('carebridge.checklist_p1_p2_role','MIGRATION',false)",
+        "spring.flyway.init-sql=DO $$ BEGIN PERFORM set_config('carebridge.checklist_v1_writes_frozen', 'true', false); PERFORM set_config('carebridge.checklist_p1_p2_role', 'MIGRATION', false); END $$;",
         "spring.flyway.baseline-on-migrate=false",
         "spring.flyway.out-of-order=true",
         "spring.jpa.hibernate.ddl-auto=validate",
