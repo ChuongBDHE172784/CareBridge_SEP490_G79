@@ -19,6 +19,10 @@ import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertavailability.dto.request.ShareLocationRequest;
+import com.carebridge.backend.expertavailability.dto.request.HourlyAvailabilitySlotRequest;
+import com.carebridge.backend.expertavailability.dto.request.ReplaceAvailabilityRequest;
+import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
+import com.carebridge.backend.expertavailability.entity.ExpertAvailability;
 import com.carebridge.backend.expertavailability.dto.response.LocationShareResponse;
 import com.carebridge.backend.expertavailability.entity.ExpertLocationShare;
 import com.carebridge.backend.expertavailability.mapper.ExpertAvailabilityMapper;
@@ -29,8 +33,11 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,6 +71,106 @@ class ExpertAvailabilityServiceImplTest {
                 new ExpertLocationShareMapper(),
                 consentGrantRepository,
                 CLOCK);
+    }
+
+    @Test
+    void replaceAvailabilityMaterializesHourlySlotsAndClearsEveryTargetDate() {
+        UUID profileId = UUID.randomUUID();
+        when(expertProfileRepository.findByIdForUpdate(profileId))
+                .thenReturn(Optional.of(eligibleProfile(profileId, UUID.randomUUID())));
+        when(availabilityRepository
+                .findByExpertProfileIdAndStartAtGreaterThanEqualAndStartAtLessThan(
+                        org.mockito.ArgumentMatchers.eq(profileId), any(), any()))
+                .thenReturn(List.of());
+        when(availabilityRepository.saveAll(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(availabilityMapper.toResponse(any(ExpertAvailability.class)))
+                .thenAnswer(invocation -> {
+                    ExpertAvailability row = invocation.getArgument(0);
+                    return AvailabilityResponse.builder()
+                            .expertProfileId(profileId)
+                            .startAt(row.getStartAt())
+                            .endAt(row.getEndAt())
+                            .build();
+                });
+        ReplaceAvailabilityRequest request = ReplaceAvailabilityRequest.builder()
+                .targetDates(List.of(LocalDate.of(2026, 7, 26), LocalDate.of(2026, 7, 27)))
+                .timeZone("UTC")
+                .channelType("ONLINE_CHAT")
+                .slots(List.of(
+                        new HourlyAvailabilitySlotRequest(LocalTime.of(7, 0)),
+                        new HourlyAvailabilitySlotRequest(LocalTime.of(20, 0))))
+                .build();
+
+        List<AvailabilityResponse> result = service.replaceAvailability(profileId, request);
+
+        assertThat(result).hasSize(4);
+        assertThat(result).extracting(AvailabilityResponse::getStartAt).containsExactly(
+                Instant.parse("2026-07-26T07:00:00Z"),
+                Instant.parse("2026-07-26T20:00:00Z"),
+                Instant.parse("2026-07-27T07:00:00Z"),
+                Instant.parse("2026-07-27T20:00:00Z"));
+        assertThat(result).allSatisfy(slot ->
+                assertThat(slot.getEndAt()).isEqualTo(slot.getStartAt().plusSeconds(3600)));
+        verify(availabilityRepository, times(2))
+                .findByExpertProfileIdAndStartAtGreaterThanEqualAndStartAtLessThan(
+                        org.mockito.ArgumentMatchers.eq(profileId), any(), any());
+        verify(availabilityRepository, times(2)).deleteAll(any());
+    }
+
+    @Test
+    void replaceAvailabilityRejectsNonHourlyOrOutOfRangeSlotsBeforeWriting() {
+        UUID profileId = UUID.randomUUID();
+        when(expertProfileRepository.findByIdForUpdate(profileId))
+                .thenReturn(Optional.of(eligibleProfile(profileId, UUID.randomUUID())));
+        ReplaceAvailabilityRequest request = ReplaceAvailabilityRequest.builder()
+                .targetDates(List.of(LocalDate.of(2026, 7, 26)))
+                .timeZone("UTC")
+                .channelType("ONLINE_CHAT")
+                .slots(List.of(new HourlyAvailabilitySlotRequest(LocalTime.of(20, 30))))
+                .build();
+
+        assertExpertError(
+                () -> service.replaceAvailability(profileId, request),
+                HttpStatus.BAD_REQUEST,
+                "EXPERT-011");
+
+        verify(availabilityRepository, never()).deleteAll(any());
+        verify(availabilityRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void publicAvailabilityOnlyReturnsFutureAvailableSlotsForEligibleExpert() {
+        UUID profileId = UUID.randomUUID();
+        ExpertAvailability available = ExpertAvailability.builder()
+                .expertProfileId(profileId)
+                .startAt(NOW.plusSeconds(3600))
+                .endAt(NOW.plusSeconds(7200))
+                .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE)
+                .build();
+        ExpertAvailability busy = ExpertAvailability.builder()
+                .expertProfileId(profileId)
+                .startAt(NOW.plusSeconds(7200))
+                .endAt(NOW.plusSeconds(10800))
+                .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.BUSY)
+                .build();
+        ExpertAvailability alreadyStarted = ExpertAvailability.builder()
+                .expertProfileId(profileId)
+                .startAt(NOW.minusSeconds(1800))
+                .endAt(NOW.plusSeconds(1800))
+                .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE)
+                .build();
+        when(expertProfileRepository.findById(profileId))
+                .thenReturn(Optional.of(eligibleProfile(profileId, UUID.randomUUID())));
+        when(availabilityRepository.findByExpertProfileIdAndEndAtAfterOrderByStartAtAsc(profileId, NOW))
+                .thenReturn(List.of(alreadyStarted, available, busy));
+        when(availabilityMapper.toResponse(available))
+                .thenReturn(AvailabilityResponse.builder().expertProfileId(profileId).startAt(available.getStartAt()).build());
+
+        assertThat(service.getPublicAvailability(profileId))
+                .singleElement()
+                .extracting(AvailabilityResponse::getStartAt)
+                .isEqualTo(available.getStartAt());
     }
 
     @Test

@@ -8,6 +8,7 @@ import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
 import com.carebridge.backend.expertavailability.dto.request.ShareLocationRequest;
+import com.carebridge.backend.expertavailability.dto.request.ReplaceAvailabilityRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
 import com.carebridge.backend.expertavailability.dto.response.LocationShareResponse;
 import com.carebridge.backend.expertavailability.entity.ExpertAvailability;
@@ -24,6 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,6 +40,10 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService {
+
+    private static final LocalTime FIRST_SLOT = LocalTime.of(7, 0);
+    private static final LocalTime LAST_SLOT = LocalTime.of(20, 0);
+    private static final int MAX_BATCH_DATES = 366;
 
     private final ExpertAvailabilityRepository availabilityRepository;
     private final ExpertLocationShareRepository locationShareRepository;
@@ -85,7 +98,7 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
             throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-011", "startAt must not be in the past");
         }
 
-        var profile = expertProfileRepository.findById(expertProfileId)
+        var profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
                 .orElseThrow(() -> new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
         if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new ExpertException(HttpStatus.FORBIDDEN, "EXPERT-010", "Expert profile not verified");
@@ -109,6 +122,97 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
         return availabilityRepository.findByExpertProfileId(expertProfileId).stream()
                 .map(availabilityMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AvailabilityResponse> getPublicAvailability(UUID expertProfileId) {
+        var profile = expertProfileRepository.findById(expertProfileId)
+                .orElseThrow(() -> new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+        if (!profile.isEligibleForConsultation()) {
+            throw new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found");
+        }
+        return availabilityRepository
+                .findByExpertProfileIdAndEndAtAfterOrderByStartAtAsc(expertProfileId, clock.instant())
+                .stream()
+                .filter(slot -> slot.getStatus() == com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE
+                        && slot.getStartAt().isAfter(clock.instant()))
+                .map(availabilityMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<AvailabilityResponse> replaceAvailability(
+            UUID expertProfileId, ReplaceAvailabilityRequest request) {
+        var profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
+                .orElseThrow(() -> new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
+        if (!profile.isEligibleForConsultation()) {
+            throw new ExpertException(HttpStatus.FORBIDDEN, "EXPERT-010", "Expert profile not verified");
+        }
+
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(request.getTimeZone());
+        } catch (DateTimeException exception) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-011", "Invalid time zone");
+        }
+
+        var targetDates = request.getTargetDates().stream().distinct().sorted().toList();
+        if (targetDates.isEmpty() || targetDates.size() > MAX_BATCH_DATES) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-011", "Invalid target date count");
+        }
+        var starts = request.getSlots().stream().map(slot -> slot.getStartTime()).toList();
+        if (new HashSet<>(starts).size() != starts.size()
+                || starts.stream().anyMatch(start -> start == null
+                        || start.getMinute() != 0
+                        || start.getSecond() != 0
+                        || start.getNano() != 0
+                        || start.isBefore(FIRST_SLOT)
+                        || start.isAfter(LAST_SLOT))) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-011", "Slots must start hourly from 07:00 to 20:00");
+        }
+
+        Instant now = clock.instant();
+        List<ExpertAvailability> replacements = new ArrayList<>();
+        for (LocalDate date : targetDates) {
+            Instant dayStart = date.atStartOfDay(zone).toInstant();
+            Instant dayEnd = date.plusDays(1).atStartOfDay(zone).toInstant();
+            var existing = availabilityRepository
+                    .findByExpertProfileIdAndStartAtGreaterThanEqualAndStartAtLessThan(
+                            expertProfileId, dayStart, dayEnd);
+            var preserved = existing.stream()
+                    .filter(slot -> slot.getStatus() != com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE
+                            || (slot.getAvailabilityId() != null
+                            && availabilityRepository.isReferencedByBooking(slot.getAvailabilityId())))
+                    .toList();
+            var removable = existing.stream().filter(slot -> !preserved.contains(slot)).toList();
+            availabilityRepository.deleteAll(removable);
+            for (LocalTime start : starts) {
+                Instant startAt = date.atTime(start).atZone(zone).toInstant();
+                if (startAt.isBefore(now)) {
+                    continue;
+                }
+                boolean occupied = preserved.stream().anyMatch(slot ->
+                        slot.getStartAt().isBefore(startAt.plusSeconds(3600))
+                                && startAt.isBefore(slot.getEndAt()));
+                if (occupied) {
+                    continue;
+                }
+                replacements.add(ExpertAvailability.builder()
+                        .expertProfileId(expertProfileId)
+                        .professionalProfileId(expertProfileId)
+                        .startAt(startAt)
+                        .endAt(startAt.plusSeconds(3600))
+                        .channelType(request.getChannelType())
+                        .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE)
+                        .build());
+            }
+        }
+
+        return availabilityRepository.saveAll(replacements).stream()
+                .sorted(Comparator.comparing(ExpertAvailability::getStartAt))
+                .map(availabilityMapper::toResponse)
+                .toList();
     }
 
     @Override

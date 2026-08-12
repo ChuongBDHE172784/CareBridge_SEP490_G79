@@ -22,6 +22,8 @@ import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
+import com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.entity.User;
 import java.time.Clock;
@@ -47,6 +49,7 @@ class ConsultationRequestServiceImplCreateTest {
     @Mock private ConsultationRequestRepository repository;
     @Mock private ConsultationRequestWriter writer;
     @Mock private ExpertProfileRepository expertProfileRepository;
+    @Mock private ExpertAvailabilityRepository expertAvailabilityRepository;
     @Mock private UserRepository userRepository;
     @Mock private ConsultationRequestPolicy policy;
     @Mock private IDirectConversationService directConversationService;
@@ -61,6 +64,7 @@ class ConsultationRequestServiceImplCreateTest {
                 repository,
                 writer,
                 expertProfileRepository,
+                expertAvailabilityRepository,
                 userRepository,
                 policy,
                 directConversationService,
@@ -149,6 +153,29 @@ class ConsultationRequestServiceImplCreateTest {
 
         verify(writer, never()).insertIfAbsent(any());
         verify(eventPublisher, never()).publishEvent(any(ConsultationRequestDomainEvent.class));
+    }
+
+    @Test
+    void acceptsExactFutureAvailabilityAndRejectsAStaleSelection() {
+        Instant start = NOW.plusSeconds(3600);
+        CreateConsultationRequestRequest valid = request(UUID.randomUUID(), "Nutrition");
+        valid.setPreferredWindowStart(start);
+        valid.setPreferredWindowEnd(start.plusSeconds(3600));
+        when(repository.findByRequesterUserIdAndClientRequestId(MOTHER_ID, valid.getClientRequestId()))
+                .thenReturn(Optional.empty(), Optional.empty());
+        when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID))
+                .thenReturn(Optional.of(eligibleExpert()));
+        when(userRepository.findByIdForUpdate(EXPERT_USER_ID))
+                .thenReturn(Optional.of(eligibleExpertAccount()));
+        when(expertAvailabilityRepository.existsByExpertProfileIdAndStartAtAndEndAtAndStatus(
+                EXPERT_PROFILE_ID, start, start.plusSeconds(3600), AvailabilityStatus.AVAILABLE))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(valid, MOTHER_ID))
+                .isInstanceOfSatisfying(ConsultationRequestException.class,
+                        error -> assertThat(error.getCode()).isEqualTo("CONREQ-010"));
+
+        verify(writer, never()).insertIfAbsent(any());
     }
 
     private static CreateConsultationRequestRequest request(UUID key, String topic) {

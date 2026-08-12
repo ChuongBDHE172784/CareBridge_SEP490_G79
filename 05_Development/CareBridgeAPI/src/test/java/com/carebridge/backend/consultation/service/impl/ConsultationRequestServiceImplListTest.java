@@ -15,6 +15,7 @@ import com.carebridge.backend.consultation.repository.ConsultationRequestWriter;
 import com.carebridge.backend.directchat.service.IDirectConversationService;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Clock;
@@ -37,6 +38,7 @@ class ConsultationRequestServiceImplListTest {
     @Mock private ConsultationRequestRepository repository;
     @Mock private ConsultationRequestWriter writer;
     @Mock private ExpertProfileRepository expertProfileRepository;
+    @Mock private ExpertAvailabilityRepository expertAvailabilityRepository;
     @Mock private UserRepository userRepository;
     @Mock private ConsultationRequestPolicy policy;
     @Mock private IDirectConversationService directConversationService;
@@ -51,6 +53,7 @@ class ConsultationRequestServiceImplListTest {
                 repository,
                 writer,
                 expertProfileRepository,
+                expertAvailabilityRepository,
                 userRepository,
                 policy,
                 directConversationService,
