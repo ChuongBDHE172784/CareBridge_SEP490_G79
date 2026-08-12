@@ -67,7 +67,8 @@ export async function uploadAttachment(
   form.append('file', file);
   const { data } = await apiClient.post(
     `/api/v1/direct-conversations/${conversationId}/attachments?kind=${kind}`,
-    form
+    form,
+    { headers: { 'Content-Type': undefined } }
   );
   return data.data;
 }

@@ -23,6 +23,8 @@ import {
 import { mountZegoRoomSession } from './zegoRoomSession';
 import './DirectCallProvider.css';
 
+import { ringtonePlayer } from './ringtonePlayer';
+
 export function DirectCallProvider({ children }: PropsWithChildren) {
   const userId = useAuthStore((state) => state.user?.id);
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -41,6 +43,7 @@ export function DirectCallProvider({ children }: PropsWithChildren) {
     renewTimerRef.current = null;
     setCredentials(null);
     setJoining(false);
+    ringtonePlayer.stop();
   }, []);
 
   useEffect(() => {
@@ -58,6 +61,13 @@ export function DirectCallProvider({ children }: PropsWithChildren) {
     coordinatorRef.current = coordinator;
     const unsubscribeState = coordinator.subscribe((next) => {
       setState(next);
+      if (next.phase === 'outgoing') {
+        ringtonePlayer.start('outgoing');
+      } else if (next.phase === 'incoming') {
+        ringtonePlayer.start('incoming');
+      } else {
+        ringtonePlayer.stop();
+      }
       if (next.phase === 'terminal') {
         sessionStorage.removeItem('carebridge-active-call-id');
         clearRtc();
