@@ -39,14 +39,15 @@ __pycache__/
 # Dart/Flutter local app data & cache
 .dart_localappdata/
 .dart-localappdata/
+.dart_tool/
+.dart-tool/
 .flutter_appdata/
 .flutter-appdata/
 .flutter_localappdata/
 .flutter-localappdata/
 .pub-cache/
+.pub_cache/
 .codex_flutter_cache/
-.dart_tool/
-.dart-tool/
 *.py[cod]
 *$py.class
 .pytest_cache/
@@ -73,6 +74,7 @@ pnpm-debug.log*
 
 # Java, Gradle, and mobile builds
 .gradle/
+.m2/
 .m2-local/
 target/
 out/
