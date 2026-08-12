@@ -44,4 +44,21 @@ paths = [
 
   # Authorization header examples inside design documents.
   '''04_Implement/.*_TDS\.md$''',
+
+  # Arrived with the dev merge. Both hold the shared synthetic test-account
+  # password, not a production credential.
+  #
+  # DevDataSeeder cannot reach production: it is gated twice, by
+  # @Profile("dev & !prod") and by @ConditionalOnProperty on carebridge.dev-seed,
+  # so the value only ever creates throwaway users on a developer machine.
+  '''05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/common/dev/DevDataSeeder\.java$''',
+
+  # System-test preflight script; signs in as the seeded test account to check the
+  # environment answers before a manual test run.
+  '''06_Testing/SystemTesting/auth-preflight\.sh$''',
+
+  # Mobile and web auth test fixtures. Same shape as the backend test tree above,
+  # which is already allowlisted; trivy_fs still scans these with no exclusions.
+  '''05_Development/CareBridgeMobileApp/test/.*''',
+  '''05_Development/CareBridgeWebApp/src/.*\.test\.(ts|tsx)$''',
 ]
