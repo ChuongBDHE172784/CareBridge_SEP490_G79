@@ -28,8 +28,35 @@ public record ModerationQueueItemResponse(
         UUID revertedBy,
         UUID authorId,
         String authorName,
+        String authorEmail,
+        String authorPhone,
         String targetTitle
 ) {
+    public ModerationQueueItemResponse(
+            UUID id,
+            UUID targetId,
+            ReportTargetType targetType,
+            UUID reporterUserId,
+            String contentPreview,
+            long reportCount,
+            Instant reportedAt,
+            String reportReason,
+            ReportStatus status,
+            ReportSource reportSource,
+            CasePriority priority,
+            Instant claimedAt,
+            Instant resolvedAt,
+            UUID assignedModeratorId,
+            Instant revertedAt,
+            UUID revertedBy,
+            UUID authorId,
+            String authorName,
+            String targetTitle) {
+        this(id, targetId, targetType, reporterUserId, contentPreview, reportCount, reportedAt, reportReason, status,
+                reportSource, priority, claimedAt, resolvedAt, assignedModeratorId, revertedAt, revertedBy,
+                authorId, authorName, null, null, targetTitle);
+    }
+
     public ModerationQueueItemResponse(
             UUID id,
             UUID targetId,
@@ -49,7 +76,7 @@ public record ModerationQueueItemResponse(
             UUID revertedBy) {
         this(id, targetId, targetType, reporterUserId, contentPreview, reportCount, reportedAt, reportReason, status,
                 reportSource, priority, claimedAt, resolvedAt, assignedModeratorId, revertedAt, revertedBy,
-                null, null, null);
+                null, null, null, null, null);
     }
 
     public ModerationQueueItemResponse(
@@ -62,6 +89,6 @@ public record ModerationQueueItemResponse(
             ReportStatus status) {
         this(id, null, targetType, null, contentPreview, reportCount, reportedAt, reportReason, status,
                 ReportSource.USER, CasePriority.NORMAL, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null, null);
     }
 }

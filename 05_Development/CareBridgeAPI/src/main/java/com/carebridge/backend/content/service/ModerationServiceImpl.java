@@ -159,6 +159,8 @@ public class ModerationServiceImpl implements ModerationService {
 
                     UUID authorId = null;
                     String authorName = null;
+                    String authorEmail = null;
+                    String authorPhone = null;
                     String targetTitle = null;
 
                     if (report.getTargetType() == ReportTargetType.QUESTION) {
@@ -181,13 +183,14 @@ public class ModerationServiceImpl implements ModerationService {
                     if (authorId != null) {
                         User u = users.get(authorId);
                         if (u != null) {
-                            authorName = u.getName() != null && !u.getName().isBlank()
-                                    ? u.getName()
-                                    : (u.getPhone() != null ? u.getPhone() : u.getEmail());
+                            authorName = u.getName();
+                            authorEmail = u.getEmail();
+                            authorPhone = u.getPhone();
                         }
                     }
 
-                    return moderationMapper.toQueueItemResponse(report, preview, count, authorId, authorName, targetTitle);
+                    return moderationMapper.toQueueItemResponse(
+                            report, preview, count, authorId, authorName, authorEmail, authorPhone, targetTitle);
                 })
                 .toList();
 
