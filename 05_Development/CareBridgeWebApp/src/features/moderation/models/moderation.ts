@@ -32,6 +32,8 @@ export interface ModerationQueueItem {
   revertedBy: string | null;
   authorId?: string | null;
   authorName?: string | null;
+  authorEmail?: string | null;
+  authorPhone?: string | null;
   targetTitle?: string | null;
 }
 

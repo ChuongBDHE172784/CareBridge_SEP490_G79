@@ -101,6 +101,8 @@ export default function ReportsQueuePage() {
         || matchesText(item.contentPreview, query)
         || matchesText(item.targetTitle, query)
         || matchesText(item.authorName, query)
+        || matchesText(item.authorEmail, query)
+        || matchesText(item.authorPhone, query)
         || matchesText(formatReportReason(item.reportReason), query)
         || matchesText(TARGET_TYPE_LABELS[item.targetType], query)
         || matchesText(REPORT_SOURCE_LABELS[item.reportSource], query)
@@ -388,10 +390,28 @@ export default function ReportsQueuePage() {
                             )}
                             <div className="text-xs text-on-surface-variant line-clamp-2">{item.contentPreview}</div>
                           </td>
-                          <td className="py-3.5 px-2 cursor-pointer whitespace-nowrap" onClick={() => goToDetail(item)}>
-                            <div className="text-xs font-semibold text-on-surface flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-base text-outline shrink-0">account_circle</span>
-                              <span>{item.authorName || '—'}</span>
+                          <td className="py-3.5 px-2 cursor-pointer" onClick={() => goToDetail(item)}>
+                            <div className="flex flex-col gap-0.5 max-w-[200px]">
+                              <div className="text-xs font-semibold text-on-surface flex items-center gap-1.5 truncate">
+                                <span className="material-symbols-outlined text-base text-outline shrink-0">account_circle</span>
+                                <span className="truncate">{item.authorName || item.authorEmail || item.authorPhone || '—'}</span>
+                              </div>
+                              {(item.authorEmail || item.authorPhone) && (
+                                <div className="text-[11px] text-on-surface-variant flex flex-col gap-0.5 pl-5 truncate">
+                                  {item.authorEmail && (
+                                    <span className="truncate flex items-center gap-1 text-outline" title={item.authorEmail}>
+                                      <span className="material-symbols-outlined text-[12px] shrink-0">mail</span>
+                                      <span className="truncate">{item.authorEmail}</span>
+                                    </span>
+                                  )}
+                                  {item.authorPhone && (
+                                    <span className="truncate flex items-center gap-1 text-outline" title={item.authorPhone}>
+                                      <span className="material-symbols-outlined text-[12px] shrink-0">phone</span>
+                                      <span className="truncate">{item.authorPhone}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="py-3.5 px-2 cursor-pointer whitespace-nowrap" onClick={() => goToDetail(item)}>

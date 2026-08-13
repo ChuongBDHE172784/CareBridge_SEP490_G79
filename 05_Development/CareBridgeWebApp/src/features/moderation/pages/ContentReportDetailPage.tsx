@@ -237,11 +237,17 @@ export default function ContentReportDetailPage() {
                       <span className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full bg-surface text-primary text-xs font-semibold">
                         {TARGET_TYPE_LABELS[item.targetType]}
                       </span>
-                      {item.authorName && (
-                        <span className="text-xs text-on-surface-variant flex items-center gap-1 font-medium">
-                          <span className="material-symbols-outlined text-sm">person</span>
-                          Tài khoản: <strong className="text-on-surface font-semibold">{item.authorName}</strong>
-                        </span>
+                      {(item.authorName || item.authorEmail || item.authorPhone) && (
+                        <div className="text-xs text-on-surface-variant flex flex-wrap items-center gap-2 font-medium">
+                          <span className="material-symbols-outlined text-sm text-outline">person</span>
+                          <span>Tài khoản: <strong className="text-on-surface font-semibold">{item.authorName || '—'}</strong></span>
+                          {item.authorEmail && (
+                            <span className="text-outline">({item.authorEmail})</span>
+                          )}
+                          {item.authorPhone && (
+                            <span className="text-outline">• SĐT: {item.authorPhone}</span>
+                          )}
+                        </div>
                       )}
                     </div>
                     {item.targetTitle && (
