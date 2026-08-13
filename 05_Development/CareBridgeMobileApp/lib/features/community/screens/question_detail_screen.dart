@@ -75,7 +75,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     }
     if (status == 'PENDING') {
       return _isMyQuestion
-          ? 'Câu hỏi của bạn có dấu hiệu cần kiểm duyệt và đang chờ kiểm duyệt viên phê duyệt thủ công.'
+          ? 'Câu hỏi của bạn đang chờ được kiểm duyệt.'
           : 'Câu hỏi đang chờ kiểm duyệt viên phê duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.';
     }
     if (status == 'HIDDEN') {
@@ -369,7 +369,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               key: const Key('fab-answer-question'),
               backgroundColor: _primary,
               elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               onPressed: () async {
                 final answered = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
@@ -385,7 +387,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               },
               label: const Text(
                 'Trả lời ngay',
-                style: TextStyle(fontFamily: 'Lexend', color: Colors.white, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
             ),
@@ -397,7 +403,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(24),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x0A845143),
@@ -413,7 +421,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: _primary,
+                        size: 20,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 12),
@@ -433,7 +445,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   ),
                   if (_question != null && !_isMyQuestion)
                     IconButton(
-                      icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant, size: 20),
+                      icon: const Icon(
+                        Icons.flag_outlined,
+                        color: _onSurfaceVariant,
+                        size: 20,
+                      ),
                       onPressed: () => _reportTarget(
                         targetType: 'QUESTION',
                         targetId: widget.questionId,
@@ -442,7 +458,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     ),
                   if (_isMyQuestion)
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant, size: 20),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: _onSurfaceVariant,
+                        size: 20,
+                      ),
                       onPressed: () async {
                         if (_question == null) return;
                         final updated = await Navigator.of(context).push<bool>(
@@ -468,13 +488,19 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     ),
                   if (_isMyQuestion)
                     IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFBA1A1A), size: 20),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Color(0xFFBA1A1A),
+                        size: 20,
+                      ),
                       onPressed: _deleteQuestion,
                       tooltip: 'Xóa câu hỏi',
                     ),
                   IconButton(
                     icon: Icon(
-                      _bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      _bookmarked
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
                       color: _bookmarked ? _primary : _onSurfaceVariant,
                       size: 22,
                     ),
@@ -486,7 +512,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primary))
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _primary),
+                    )
                   : _question == null
                   ? _buildError()
                   : RefreshIndicator(
@@ -701,17 +729,21 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                color:
+                    _question?.status == 'HIDDEN' ||
+                        _question?.status == 'LOCKED'
                     ? const Color(0xFFFFDAD6)
                     : _question?.status == 'PENDING'
-                        ? const Color(0xFFFFE8B5)
-                        : const Color(0xFFFFEFB8),
+                    ? const Color(0xFFFFE8B5)
+                    : const Color(0xFFFFEFB8),
                 borderRadius: BorderRadius.circular(14),
-                border: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                border:
+                    _question?.status == 'HIDDEN' ||
+                        _question?.status == 'LOCKED'
                     ? Border.all(color: const Color(0xFFFFB4AB))
                     : _question?.status == 'PENDING'
-                        ? Border.all(color: const Color(0xFFFFD599))
-                        : null,
+                    ? Border.all(color: const Color(0xFFFFD599))
+                    : null,
               ),
               child: Row(
                 children: [
@@ -719,15 +751,17 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     _question?.status == 'HIDDEN'
                         ? Icons.visibility_off_outlined
                         : _question?.status == 'LOCKED'
-                            ? Icons.lock_outline
-                            : _question?.status == 'PENDING'
-                                ? Icons.admin_panel_settings_outlined
-                                : Icons.smart_toy_outlined,
-                    color: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                        ? Icons.lock_outline
+                        : _question?.status == 'PENDING'
+                        ? Icons.admin_panel_settings_outlined
+                        : Icons.smart_toy_outlined,
+                    color:
+                        _question?.status == 'HIDDEN' ||
+                            _question?.status == 'LOCKED'
                         ? const Color(0xFF93000A)
                         : _question?.status == 'PENDING'
-                            ? const Color(0xFF8A5300)
-                            : const Color(0xFF745600),
+                        ? const Color(0xFF8A5300)
+                        : const Color(0xFF745600),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -735,11 +769,13 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       _questionStatusMessage,
                       style: TextStyle(
                         fontFamily: 'Lexend',
-                        color: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                        color:
+                            _question?.status == 'HIDDEN' ||
+                                _question?.status == 'LOCKED'
                             ? const Color(0xFF93000A)
                             : _question?.status == 'PENDING'
-                                ? const Color(0xFF8A5300)
-                                : const Color(0xFF5C4300),
+                            ? const Color(0xFF8A5300)
+                            : const Color(0xFF5C4300),
                         height: 1.35,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -977,7 +1013,7 @@ class _AnswerCard extends StatelessWidget {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Câu trả lời của bạn có dấu hiệu cần kiểm duyệt và đang chờ kiểm duyệt viên phê duyệt thủ công.',
+                      'Câu hỏi của bạn đang chờ được kiểm duyệt.',
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,

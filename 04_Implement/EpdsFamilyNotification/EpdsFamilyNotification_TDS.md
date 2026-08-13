@@ -264,6 +264,7 @@ untouched and `notification_records.care_group_id` NULL for this type.
 | MODIFY | `.../CareBridgeMobileApp/lib/features/notification/screens/notifications_screen.dart` | Icon + label for `EPDS_RESULT`; delegates the label map to the new shared file |
 | MODIFY | `.../CareBridgeMobileApp/lib/features/notification/screens/notification_center_screen.dart` | Icon for `EPDS_RESULT`; delegates the icon lookup to the new shared file |
 | NEW | `.../CareBridgeMobileApp/lib/features/notification/notification_type_display.dart` | Pure label/icon mapping extracted from the two screens so it is unit-testable without pumping a screen (added during implementation — TC-20/TC-21) |
+| MODIFY | `.../CareBridgeMobileApp/lib/features/notification/screens/notification_detail_screen.dart` | Type label for `EPDS_RESULT`; **suppresses the primary "Xem chi tiết" action** for this type (user request, 2026-08-14) |
 
 > **Mobile routing — scope correction (2026-08-14).** This row originally promised "icon/label/routing".
 > **Only icon and label were implemented.** Tapping an `EPDS_RESULT` notification falls through to the

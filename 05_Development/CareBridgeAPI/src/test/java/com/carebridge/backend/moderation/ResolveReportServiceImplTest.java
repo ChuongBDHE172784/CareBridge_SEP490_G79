@@ -33,6 +33,7 @@ import com.carebridge.backend.content.repository.ContentReportRepository;
 import com.carebridge.backend.content.repository.ModerationActionRepository;
 import com.carebridge.backend.content.service.ContentPreviewService;
 import com.carebridge.backend.content.service.ModerationServiceImpl;
+import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.security.Principal;
@@ -76,6 +77,9 @@ class ResolveReportServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ContentReviewNotificationService contentReviewNotificationService;
 
     @InjectMocks
     private ModerationServiceImpl moderationService;
@@ -318,6 +322,129 @@ class ResolveReportServiceImplTest {
         assertThat(actionCaptor.getValue().getReportId()).isEqualTo(REPORT_ID_QUESTION);
         assertThat(actionCaptor.getValue().getTargetId()).isEqualTo(QUESTION_AUTHOR_ID);
         assertThat(actionCaptor.getValue().getTargetType()).isEqualTo(ReportTargetType.ACCOUNT);
+    }
+
+    // === Author notification on REQUEST_REVISION / WARN (moderator handling note) ===
+
+    @Test
+    void resolveReport_warnQuestionReport_notifiesAuthorWithNote() {
+        ContentReport questionReport = makeReport(REPORT_ID_QUESTION, ReportTargetType.QUESTION, QUESTION_ID,
+                ReportStatus.PENDING, r -> {});
+        when(contentReportRepository.findById(REPORT_ID_QUESTION)).thenReturn(Optional.of(questionReport));
+        when(communityQuestionRepository.findById(QUESTION_ID))
+                .thenReturn(Optional.of(makeQuestion(QuestionStatus.APPROVED)));
+        when(userRepository.findById(QUESTION_AUTHOR_ID))
+                .thenReturn(Optional.of(User.builder().id(QUESTION_AUTHOR_ID).build()));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> {
+            ModerationAction action = inv.getArgument(0);
+            action.setId(UUID.randomUUID());
+            return action;
+        });
+
+        moderationService.resolveReport(REPORT_ID_QUESTION,
+                new ResolveReportRequest(ResolutionOutcome.WARN, "Ngôn từ chưa phù hợp"), principal);
+
+        verify(contentReviewNotificationService).notifyModerationOutcome(
+                eq(QUESTION_AUTHOR_ID), eq(QUESTION_ID), eq("QUESTION"), eq("Test question"),
+                eq("Cảnh báo từ kiểm duyệt viên"), eq("Ngôn từ chưa phù hợp"), eq("WARN"));
+    }
+
+    @Test
+    void resolveReport_requestRevisionQuestionReport_notifiesAuthorWithNote() {
+        ContentReport questionReport = makeReport(REPORT_ID_QUESTION, ReportTargetType.QUESTION, QUESTION_ID,
+                ReportStatus.PENDING, r -> {});
+        when(contentReportRepository.findById(REPORT_ID_QUESTION)).thenReturn(Optional.of(questionReport));
+        when(communityQuestionRepository.findById(QUESTION_ID))
+                .thenReturn(Optional.of(makeQuestion(QuestionStatus.APPROVED)));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> {
+            ModerationAction action = inv.getArgument(0);
+            action.setId(UUID.randomUUID());
+            return action;
+        });
+
+        moderationService.resolveReport(REPORT_ID_QUESTION,
+                new ResolveReportRequest(ResolutionOutcome.REQUEST_REVISION, "Vui lòng bỏ thông tin cá nhân"),
+                principal);
+
+        verify(contentReviewNotificationService).notifyModerationOutcome(
+                eq(QUESTION_AUTHOR_ID), eq(QUESTION_ID), eq("QUESTION"), eq("Test question"),
+                eq("Yêu cầu sửa nội dung"), eq("Vui lòng bỏ thông tin cá nhân"), eq("REQUEST_REVISION"));
+    }
+
+    @Test
+    void resolveReport_requestRevisionAnswerReport_notifiesAnswerAuthor() {
+        CommunityAnswer answer = makeAnswer(AnswerStatus.APPROVED);
+        ContentReport answerReport = makeReport(REPORT_ID_ANSWER, ReportTargetType.ANSWER, ANSWER_ID,
+                ReportStatus.PENDING, r -> {});
+        when(contentReportRepository.findById(REPORT_ID_ANSWER)).thenReturn(Optional.of(answerReport));
+        when(communityAnswerRepository.findById(ANSWER_ID)).thenReturn(Optional.of(answer));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> {
+            ModerationAction action = inv.getArgument(0);
+            action.setId(UUID.randomUUID());
+            return action;
+        });
+
+        moderationService.resolveReport(REPORT_ID_ANSWER,
+                new ResolveReportRequest(ResolutionOutcome.REQUEST_REVISION, "Cần dẫn nguồn"), principal);
+
+        verify(contentReviewNotificationService).notifyModerationOutcome(
+                eq(answer.getAuthorId()), eq(ANSWER_ID), eq("ANSWER"), eq("Test answer"),
+                eq("Yêu cầu sửa nội dung"), eq("Cần dẫn nguồn"), eq("REQUEST_REVISION"));
+    }
+
+    @Test
+    void resolveReport_dismiss_sendsNoAuthorNotification() {
+        ContentReport questionReport = makeReport(REPORT_ID_QUESTION, ReportTargetType.QUESTION, QUESTION_ID,
+                ReportStatus.PENDING, r -> {});
+        when(contentReportRepository.findById(REPORT_ID_QUESTION)).thenReturn(Optional.of(questionReport));
+
+        moderationService.resolveReport(REPORT_ID_QUESTION,
+                new ResolveReportRequest(ResolutionOutcome.DISMISS, "Không vi phạm"), principal);
+
+        verifyNoInteractions(contentReviewNotificationService);
+    }
+
+    @Test
+    void resolveReport_hideOutcome_sendsNoAuthorNotification() {
+        ContentReport questionReport = makeReport(REPORT_ID_QUESTION, ReportTargetType.QUESTION, QUESTION_ID,
+                ReportStatus.PENDING, r -> {});
+        when(contentReportRepository.findById(REPORT_ID_QUESTION)).thenReturn(Optional.of(questionReport));
+        when(communityQuestionRepository.findById(QUESTION_ID))
+                .thenReturn(Optional.of(makeQuestion(QuestionStatus.APPROVED)));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> {
+            ModerationAction action = inv.getArgument(0);
+            action.setId(UUID.randomUUID());
+            return action;
+        });
+
+        moderationService.resolveReport(REPORT_ID_QUESTION,
+                new ResolveReportRequest(ResolutionOutcome.HIDE, "Ẩn nội dung"), principal);
+
+        // Only REQUEST_REVISION and WARN notify the author; HIDE/LOCK/APPROVE must not.
+        verifyNoInteractions(contentReviewNotificationService);
+    }
+
+    @Test
+    void resolveReport_notificationFailure_doesNotFailTheResolution() {
+        ContentReport questionReport = makeReport(REPORT_ID_QUESTION, ReportTargetType.QUESTION, QUESTION_ID,
+                ReportStatus.PENDING, r -> {});
+        when(contentReportRepository.findById(REPORT_ID_QUESTION)).thenReturn(Optional.of(questionReport));
+        when(communityQuestionRepository.findById(QUESTION_ID))
+                .thenReturn(Optional.of(makeQuestion(QuestionStatus.APPROVED)));
+        when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> {
+            ModerationAction action = inv.getArgument(0);
+            action.setId(UUID.randomUUID());
+            return action;
+        });
+        org.mockito.Mockito.doThrow(new RuntimeException("notification store down"))
+                .when(contentReviewNotificationService).notifyModerationOutcome(
+                        any(), any(), any(), any(), any(), any(), any());
+
+        ResolveReportResponse response = moderationService.resolveReport(REPORT_ID_QUESTION,
+                new ResolveReportRequest(ResolutionOutcome.REQUEST_REVISION, "Sửa lại"), principal);
+
+        // The moderation decision is already committed; a notification outage must not undo it.
+        assertThat(response.reportStatus()).isEqualTo(ReportStatus.RESOLVED);
     }
 
     // RES-TC-109: reportId does not exist -> MOD-003

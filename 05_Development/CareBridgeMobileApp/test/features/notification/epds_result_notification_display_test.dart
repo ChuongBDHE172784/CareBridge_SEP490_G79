@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/notification/notification_type_display.dart';
 import 'package:untitled/features/notification/models/notification_model.dart';
+import 'package:untitled/features/notification/screens/notification_detail_screen.dart';
 
 /// CB-EPDS-TEST-001 — TC-20, TC-21.
 ///
@@ -41,6 +42,40 @@ void main() {
 
     test('unmapped types return null so the caller keeps its default', () {
       expect(notificationCenterIcon('SOMETHING_UNKNOWN'), isNull);
+    });
+  });
+
+  group('TC-25 — detail screen has no primary action for EPDS_RESULT', () {
+    NotificationRecord record(String type) => NotificationRecord(
+      id: 'n-1',
+      userId: 'family-1',
+      type: type,
+      title: 'Kết quả sàng lọc EPDS',
+      body: 'Mẹ vừa hoàn thành sàng lọc tâm trạng EPDS.',
+      referenceId: 'care-group-1',
+      referenceType: 'CARE_GROUP',
+      status: 'SENT',
+      createdAt: DateTime.utc(2026, 8, 14),
+    );
+
+    testWidgets('EPDS_RESULT detail shows no "Xem chi tiết" button', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: NotificationDetailScreen(notification: record('EPDS_RESULT')),
+      ));
+      await tester.pump();
+
+      expect(find.text('Xem chi tiết'), findsNothing);
+      // The remaining action must still be present — this is a removal, not a blank screen.
+      expect(find.text('Đánh dấu đã đọc'), findsOneWidget);
+    });
+
+    testWidgets('other types keep their primary action button', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: NotificationDetailScreen(notification: record('HEALTH_ALERT')),
+      ));
+      await tester.pump();
+
+      expect(find.text('Xem chi tiết'), findsOneWidget);
     });
   });
 

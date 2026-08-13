@@ -325,6 +325,7 @@ final class EpdsNotificationProps {
 | TC-15b | `EpdsFamilyNotificationServiceTest` | [x] | 🟢 Passed | |
 | TC-16 | `EpdsFamilyNotificationServiceTest` | ⚠️ post-impl (mutation-proven) | 🟢 Passed | real log-hygiene assertion; replaced a mis-scoped test |
 | TC-24 | `EpdsFamilyNotificationServiceTest` | [x] | 🟢 Passed | renumbered from the original TC-16 slot |
+| TC-25 | `epds_result_notification_display_test.dart` | ⚠️ post-impl (scope change) | 🟢 Passed | added 2026-08-14 on user request: detail screen shows no "Xem chi tiết" for `EPDS_RESULT`; paired assertion confirms other types keep theirs |
 | TC-17 | `EpdsFamilyNotificationServiceTest` | [x] | 🟢 Passed | |
 | TC-18 | `HealthMetricServiceEpdsEventTest` | [x] positive half; ➖ negative half | 🟢 Passed | see Red Gate note |
 | TC-19 | `HealthMetricServiceEpdsEventTest` | [x] | 🟢 Passed | |
@@ -436,7 +437,7 @@ Two cases passed in the Red phase. Both are documented exceptions, not silent pa
 - [ ] Red-phase stubs exist and throw `UnsupportedOperationException`
 
 ### 6.2 Exit Criteria (Definition of Done)
-- [ ] All 26 test cases pass — **NOT MET: 24/26.** TC-13 and TC-14b were not written (Docker unavailable, §5.2). Backend feature suite: `Tests run: 24, Failures: 0, Errors: 0`; mobile notification suite: 20/20
+- [ ] All 27 test cases pass — **NOT MET: 25/27.** TC-13 and TC-14b were not written (Docker unavailable, §5.2). Backend feature suite: `Tests run: 24, Failures: 0, Errors: 0`; mobile notification suite: **22/22**
 - [x] All 10 CRITICAL cases (TC-06, TC-07, TC-08, TC-09, TC-10, TC-11, TC-12, TC-15b, TC-22, TC-23) pass — ⚠️ human review of these still **pending**; they were observed green, which this spec explicitly says is not sufficient
 - [x] TC-15a's Red Gate exception is recorded, not silently marked FAIL — and a second, unpredicted exception (TC-18 negative half) was discovered in the actual run and recorded rather than hidden
 - [x] Red Gate verified — 21/23 failed before implementation; the 2 that passed are documented above
