@@ -17,6 +17,7 @@ interface CommunityQuestion {
   urgency: string;
   answerCount: number;
   hasExpertAnswer: boolean;
+  status?: string;
   createdAt: string;
   imageUrls?: string[];
 }
@@ -474,6 +475,12 @@ export default function ExpertQuestionQueuePage() {
                       >
                         {isHigh ? 'Khẩn cấp' : 'Thường'}
                       </span>
+                      {q.status === 'LOCKED' && (
+                        <span className="py-0.5 px-2.5 rounded-full bg-error-container text-error text-[11px] font-semibold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">lock</span>
+                          Đã khóa
+                        </span>
+                      )}
                       {hasImages && (
                         <span className="py-0.5 px-2.5 rounded-full bg-primary-container/40 text-primary text-[11px] font-semibold flex items-center gap-1">
                           <span className="material-symbols-outlined text-xs">image</span>
@@ -534,6 +541,12 @@ export default function ExpertQuestionQueuePage() {
                 <span className="py-0.5 px-2.5 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-medium">
                   Giai đoạn: {getStageLabel(detail?.stage || selectedSummary?.stage || '')}
                 </span>
+                {detail?.status === 'LOCKED' && (
+                  <span className="py-0.5 px-2.5 rounded-full bg-error-container text-error text-xs font-semibold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs">lock</span>
+                    Đã khóa thảo luận
+                  </span>
+                )}
               </div>
               <h3 className="text-base font-bold text-on-surface leading-snug m-0">
                 {detail?.title || selectedSummary?.title}
@@ -695,34 +708,44 @@ export default function ExpertQuestionQueuePage() {
             </div>
           </div>
 
-          {/* Answer Editor Textarea & Submit */}
-          <div className="p-4 border-t border-surface-container-highest bg-surface space-y-3">
-            {editingAnswerId && <div className="flex items-center justify-between rounded-xl bg-primary-container/30 px-3 py-2 text-xs text-on-surface"><span>Đang chỉnh sửa câu trả lời</span><button onClick={cancelEditingAnswer} className="cursor-pointer font-semibold text-primary">Hủy</button></div>}
-            <textarea
-              rows={4}
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Nhập câu trả lời tư vấn chuyên môn chi tiết cho mẹ bầu..."
-              className="w-full rounded-2xl border border-outline-variant bg-surface p-3.5 text-xs text-on-surface leading-relaxed outline-none focus:border-primary font-sans resize-none"
-            />
-            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && queueAnswerImage(event.target.files[0])} />
-            <div className="flex flex-wrap gap-2">
-              {existingAnswerImageUrls.map((url) => <div key={url} className="relative h-16 w-16"><img src={url} alt="Ảnh hiện có" className="h-full w-full rounded-xl object-cover" /><button onClick={() => setExistingAnswerImageUrls((urls) => urls.filter((image) => image !== url))} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] text-white cursor-pointer">×</button></div>)}
-              {pendingAnswerImages.map(({ previewUrl }) => <div key={previewUrl} className="relative h-16 w-16"><img src={previewUrl} alt="Ảnh sắp gửi" className="h-full w-full rounded-xl object-cover" /><button onClick={() => setPendingAnswerImages((images) => { const removed = images.find((image) => image.previewUrl === previewUrl); if (removed) URL.revokeObjectURL(removed.previewUrl); return images.filter((image) => image.previewUrl !== previewUrl); })} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] text-white cursor-pointer">×</button></div>)}
-              {existingAnswerImageUrls.length + pendingAnswerImages.length < 3 && <button onClick={() => imageInputRef.current?.click()} disabled={submitting} className="flex h-16 items-center gap-1 rounded-xl border border-dashed border-outline-variant px-3 text-xs text-outline hover:text-primary cursor-pointer disabled:opacity-50"><span className="material-symbols-outlined text-base">add_photo_alternate</span>Thêm ảnh</button>}
+          {/* Answer Editor Textarea & Submit or Locked Banner */}
+          {detail?.status === 'LOCKED' ? (
+            <div className="p-4 border-t border-surface-container-highest bg-surface-container-low/50 flex items-center gap-3 text-error">
+              <span className="material-symbols-outlined text-2xl text-error shrink-0">lock</span>
+              <div>
+                <p className="text-xs font-bold text-on-surface m-0">Câu hỏi đã bị khóa thảo luận</p>
+                <p className="text-[11px] text-on-surface-variant m-0 mt-0.5">Kiểm duyệt viên đã khóa câu hỏi này nên không thể gửi câu trả lời mới.</p>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-outline">{answerText.length} / 2 000 ký tự</span>
-              <button
-                onClick={postAnswer}
-                disabled={!answerText.trim() || submitting}
-                className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary font-semibold text-xs hover:brightness-110 disabled:opacity-50 cursor-pointer shadow-md"
-              >
-                <span className="material-symbols-outlined text-base">send</span>
-                {submitting ? 'Đang lưu...' : editingAnswerId ? 'Lưu thay đổi' : 'Gửi câu trả lời'}
-              </button>
+          ) : (
+            <div className="p-4 border-t border-surface-container-highest bg-surface space-y-3">
+              {editingAnswerId && <div className="flex items-center justify-between rounded-xl bg-primary-container/30 px-3 py-2 text-xs text-on-surface"><span>Đang chỉnh sửa câu trả lời</span><button onClick={cancelEditingAnswer} className="cursor-pointer font-semibold text-primary">Hủy</button></div>}
+              <textarea
+                rows={4}
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                placeholder="Nhập câu trả lời tư vấn chuyên môn chi tiết cho mẹ bầu..."
+                className="w-full rounded-2xl border border-outline-variant bg-surface p-3.5 text-xs text-on-surface leading-relaxed outline-none focus:border-primary font-sans resize-none"
+              />
+              <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && queueAnswerImage(event.target.files[0])} />
+              <div className="flex flex-wrap gap-2">
+                {existingAnswerImageUrls.map((url) => <div key={url} className="relative h-16 w-16"><img src={url} alt="Ảnh hiện có" className="h-full w-full rounded-xl object-cover" /><button onClick={() => setExistingAnswerImageUrls((urls) => urls.filter((image) => image !== url))} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] text-white cursor-pointer">×</button></div>)}
+                {pendingAnswerImages.map(({ previewUrl }) => <div key={previewUrl} className="relative h-16 w-16"><img src={previewUrl} alt="Ảnh sắp gửi" className="h-full w-full rounded-xl object-cover" /><button onClick={() => setPendingAnswerImages((images) => { const removed = images.find((image) => image.previewUrl === previewUrl); if (removed) URL.revokeObjectURL(removed.previewUrl); return images.filter((image) => image.previewUrl !== previewUrl); })} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] text-white cursor-pointer">×</button></div>)}
+                {existingAnswerImageUrls.length + pendingAnswerImages.length < 3 && <button onClick={() => imageInputRef.current?.click()} disabled={submitting} className="flex h-16 items-center gap-1 rounded-xl border border-dashed border-outline-variant px-3 text-xs text-outline hover:text-primary cursor-pointer disabled:opacity-50"><span className="material-symbols-outlined text-base">add_photo_alternate</span>Thêm ảnh</button>}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-outline">{answerText.length} / 2 000 ký tự</span>
+                <button
+                  onClick={postAnswer}
+                  disabled={!answerText.trim() || submitting}
+                  className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary font-semibold text-xs hover:brightness-110 disabled:opacity-50 cursor-pointer shadow-md"
+                >
+                  <span className="material-symbols-outlined text-base">send</span>
+                  {submitting ? 'Đang lưu...' : editingAnswerId ? 'Lưu thay đổi' : 'Gửi câu trả lời'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div className="w-1/2 hidden md:flex flex-col items-center justify-center rounded-2xl bg-surface border border-outline-variant/70 shadow-md p-8 text-center text-outline">
