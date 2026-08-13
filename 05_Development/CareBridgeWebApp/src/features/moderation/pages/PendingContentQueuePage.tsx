@@ -82,7 +82,7 @@ export default function PendingContentQueuePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [actionFilter, setActionFilter] = useState<'ALL' | PendingActionType>('ALL');
+  const [actionFilter, setActionFilter] = useState<'ALL' | PendingActionType | 'LOCK'>('ALL');
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(0);
   const [pendingSortKey, setPendingSortKey] = useState<PendingSortKey>('createdAt');
@@ -92,6 +92,14 @@ export default function PendingContentQueuePage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
   const [dialogError, setDialogError] = useState('');
+
+  const [unlockTarget, setUnlockTarget] = useState<ModerationHistoryItem | null>(null);
+  const [unlockSubmitting, setUnlockSubmitting] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+
+  const [unhideTarget, setUnhideTarget] = useState<ModerationHistoryItem | null>(null);
+  const [unhideSubmitting, setUnhideSubmitting] = useState(false);
+  const [unhideError, setUnhideError] = useState('');
 
   const [lockTarget, setLockTarget] = useState<ModerationHistoryItem | null>(null);
   const [lockSubmitting, setLockSubmitting] = useState(false);
@@ -224,6 +232,38 @@ export default function PendingContentQueuePage() {
       setDialogError('Thao tác thất bại, vui lòng thử lại.');
     } finally {
       setActioningId(null);
+    }
+  };
+
+  const confirmUnlock = async (reason?: string) => {
+    if (!unlockTarget) return;
+    setUnlockSubmitting(true);
+    setUnlockError('');
+    try {
+      await moderateContentDirect(unlockTarget.targetId, unlockTarget.targetType, 'APPROVE', reason);
+      setUnlockTarget(null);
+      await load();
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setUnlockError(message || 'Mở khóa thảo luận thất bại, vui lòng thử lại.');
+    } finally {
+      setUnlockSubmitting(false);
+    }
+  };
+
+  const confirmUnhide = async (reason?: string) => {
+    if (!unhideTarget) return;
+    setUnhideSubmitting(true);
+    setUnhideError('');
+    try {
+      await moderateContentDirect(unhideTarget.targetId, unhideTarget.targetType, 'APPROVE', reason);
+      setUnhideTarget(null);
+      await load();
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setUnhideError(message || 'Hiện lại nội dung thất bại, vui lòng thử lại.');
+    } finally {
+      setUnhideSubmitting(false);
     }
   };
 
@@ -360,6 +400,7 @@ export default function PendingContentQueuePage() {
                   <option value="ALL">Tất cả hành động</option>
                   <option value="APPROVE">Duyệt</option>
                   <option value="HIDE">Ẩn</option>
+                  <option value="LOCK">Khóa</option>
                   <option value="REQUEST_REVISION">Yêu cầu sửa</option>
                 </select>
               )}
@@ -456,6 +497,28 @@ export default function PendingContentQueuePage() {
                                   <span className="material-symbols-outlined text-base">visibility</span>
                                   Xem
                                 </button>
+                                {item.actionType === 'LOCK' && item.targetType === 'QUESTION' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setUnlockError(''); setUnlockTarget(item); }}
+                                    className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-primary flex items-center gap-1 hover:bg-surface-container-low"
+                                    title="Mở khóa thảo luận"
+                                  >
+                                    <span className="material-symbols-outlined text-base">lock_open</span>
+                                    Mở khóa
+                                  </button>
+                                )}
+                                {item.actionType === 'HIDE' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setUnhideError(''); setUnhideTarget(item); }}
+                                    className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-[#137333] flex items-center gap-1 hover:bg-surface-container-low"
+                                    title="Hiện nội dung"
+                                  >
+                                    <span className="material-symbols-outlined text-base">visibility</span>
+                                    Hiện
+                                  </button>
+                                )}
                                 {item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
                                   <button
                                     type="button"
@@ -664,6 +727,42 @@ export default function PendingContentQueuePage() {
         errorText={lockError}
         onConfirm={confirmLock}
         onCancel={() => setLockTarget(null)}
+      />
+
+      <ConfirmDialog
+        key={unlockTarget ? unlockTarget.actionId : 'none'}
+        open={unlockTarget !== null}
+        title="Mở khóa thảo luận câu hỏi này?"
+        description={
+          unlockTarget
+            ? `Câu hỏi sẽ được mở lại cho phép mọi người tiếp tục thảo luận và gửi câu trả lời: "${unlockTarget.contentPreview}".`
+            : undefined
+        }
+        icon="lock_open"
+        tone="default"
+        confirmLabel="Mở khóa"
+        submitting={unlockSubmitting}
+        errorText={unlockError}
+        onConfirm={confirmUnlock}
+        onCancel={() => setUnlockTarget(null)}
+      />
+
+      <ConfirmDialog
+        key={unhideTarget ? unhideTarget.actionId : 'none'}
+        open={unhideTarget !== null}
+        title={unhideTarget?.targetType === 'QUESTION' ? 'Hiện lại câu hỏi này?' : 'Hiện lại câu trả lời này?'}
+        description={
+          unhideTarget
+            ? `Nội dung sẽ được khôi phục sang trạng thái đã duyệt và hiển thị công khai trên cộng đồng: "${unhideTarget.contentPreview}".`
+            : undefined
+        }
+        icon="visibility"
+        tone="default"
+        confirmLabel="Hiện nội dung"
+        submitting={unhideSubmitting}
+        errorText={unhideError}
+        onConfirm={confirmUnhide}
+        onCancel={() => setUnhideTarget(null)}
       />
 
     </div>
