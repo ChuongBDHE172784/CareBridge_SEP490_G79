@@ -371,22 +371,11 @@ export default function ContentReportDetailPage() {
 	                    onClick={() => handleAction('SUSPEND')}
 	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
 	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Đình chỉ tài khoản trong 7 ngày'}
-	                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-error-container px-3.5 text-xs font-semibold text-error disabled:cursor-not-allowed disabled:opacity-40"
+	                    className="mb-4 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-error-container px-3.5 text-xs font-semibold text-error disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    <span className="material-symbols-outlined text-lg">person_off</span>
 	                    {submitting === 'SUSPEND' ? 'Đang xử lý...' : 'Đình chỉ 7 ngày'}
 	                  </button>
-
-
-                  <button
-                    onClick={() => handleAction('ESCALATE')}
-                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
-                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Chuyển tuyến xử lý lên System Admin'}
-                    className="mb-4 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-on-surface hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-lg">forward</span>
-                    {submitting === 'ESCALATE' ? 'Đang xử lý...' : 'Chuyển tuyến lên Admin'}
-                  </button>
 
                   <textarea
                     value={reason}
