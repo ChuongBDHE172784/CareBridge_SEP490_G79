@@ -6,6 +6,7 @@ import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/familySync/models/family_permission_model.dart';
 import 'package:untitled/features/familySync/services/family_home_service.dart';
 import 'package:untitled/features/home/screens/family_member_home_screen.dart';
+import 'package:untitled/features/recommendation/models/recommendation_model.dart';
 
 void main() {
   group('Family dashboard contract', () {
@@ -198,8 +199,8 @@ void main() {
         );
         expect(
           find.descendant(
-            of: find.byKey(const Key('family-global-overdue')),
-            matching: find.text('7'),
+            of: find.byKey(const Key('family-global-due-soon')),
+            matching: find.text('5'),
           ),
           findsOneWidget,
         );
@@ -221,14 +222,14 @@ void main() {
           findsOneWidget,
         );
         await tester.scrollUntilVisible(
-          find.byKey(const Key('family-global-overdue')),
+          find.byKey(const Key('family-global-due-soon')),
           -250,
           scrollable: find.byType(Scrollable).first,
         );
         expect(
           find.descendant(
-            of: find.byKey(const Key('family-global-overdue')),
-            matching: find.text('7'),
+            of: find.byKey(const Key('family-global-due-soon')),
+            matching: find.text('5'),
           ),
           findsOneWidget,
         );
@@ -340,6 +341,56 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('family-dashboard-error')), findsNothing);
+    });
+
+    testWidgets('passes careGroupId when loading recommendations for family member', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FamilyMemberHomeScreen(
+            dashboardLoader: ({selectedCareGroupId}) async => _snapshot(
+              selectedId: 'group-a',
+              groups: [_group('group-a', 'Nhóm A')],
+              detail: _detail('group-a'),
+            ),
+            recommendationLoader: () async => RecommendationContentResponse.fromJson({
+              'stage': 'PREGNANCY',
+              'pregnancyWeek': 12,
+              'weekEligibilityMode': 'BOUNDED_AND_STAGE_WIDE',
+              'profileStatus': 'ACTIVE',
+              'selectionMode': 'TARGETED_ONLY',
+              'coverageStatus': 'COMPLETE',
+              'fallbackUsed': false,
+              'items': [
+                {
+                  'rank': 1,
+                  'selectionType': 'TARGETED',
+                  'reasonCode': 'PERSONALIZED_CONTEXT',
+                  'reasonLabel': 'Phù hợp với ngữ cảnh chăm sóc của bạn',
+                  'content': {
+                    'id': 'article-1',
+                    'type': 'ARTICLE',
+                    'title': 'Dinh dưỡng thai kỳ tuần 12',
+                    'summary': 'Tóm tắt bài viết dinh dưỡng',
+                    'stage': 'PREGNANCY',
+                    'topicId': null,
+                    'publishedAt': '2026-08-01T00:00:00Z',
+                  },
+                },
+              ],
+            }),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Gợi ý dành riêng cho tuần 12'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gợi ý dành riêng cho tuần 12'), findsOneWidget);
+      expect(find.text('Dinh dưỡng thai kỳ tuần 12'), findsOneWidget);
     });
   });
 }

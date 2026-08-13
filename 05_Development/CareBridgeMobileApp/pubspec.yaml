@@ -35,6 +35,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   http: ^1.2.0
+  # Web-only ringtone synthesis (directChat/calls/ringtone_player_web.dart).
+  # Replaces dart:html + dart:web_audio, which no longer provide AudioContext.
+  web: ^1.1.1
   flutter_secure_storage: ^9.2.4
   google_fonts: ^6.1.0
   go_router: ^17.3.0

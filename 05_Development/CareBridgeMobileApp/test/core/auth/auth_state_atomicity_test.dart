@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/auth/auth_state.dart';
@@ -50,7 +51,104 @@ class _ControlledTokenStorage implements TokenStorage {
   }
 }
 
+/// Reproduces an iOS keychain read failure (`NSOSStatusErrorDomain -50`)
+/// caused by two isolates touching the store at the same time.
+class _FailingLoadStorage extends _ControlledTokenStorage {
+  @override
+  Future<Map<String, String?>> load() async =>
+      throw StateError('keychain unavailable');
+}
+
+String _jwtExpiringIn(Duration ttl) {
+  String segment(Map<String, dynamic> payload) =>
+      base64Url.encode(utf8.encode(jsonEncode(payload))).replaceAll('=', '');
+  final exp = DateTime.now().add(ttl).millisecondsSinceEpoch ~/ 1000;
+  return '${segment({'alg': 'RS256'})}.${segment({'exp': exp})}.signature';
+}
+
 void main() {
+  group('cross-isolate token rotation', () {
+    test('adopts the session another isolate rotated', () async {
+      final storage = _ControlledTokenStorage();
+      final state = AuthState.forTesting(storage: storage);
+      await state.setTokens(
+        accessToken: 'access-old',
+        refreshToken: 'refresh-old',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+      final generation = state.sessionGeneration;
+
+      // The safety foreground isolate wins the race and persists new tokens.
+      final rotatedAccessToken = _jwtExpiringIn(const Duration(minutes: 15));
+      storage.values
+        ..['accessToken'] = rotatedAccessToken
+        ..['refreshToken'] = 'refresh-new';
+
+      final adopted = await state.adoptRotatedCredentials(
+        expectedGeneration: generation,
+        expectedUserId: 'account-a',
+        rejectedRefreshToken: 'refresh-old',
+      );
+
+      expect(adopted, isTrue);
+      expect(state.accessToken, rotatedAccessToken);
+      expect(state.refreshToken, 'refresh-new');
+      expect(state.isAuthenticated, isTrue);
+      // Rotation preserves session identity so in-flight requests stay valid.
+      expect(state.sessionGeneration, generation);
+    });
+
+    test('refuses to adopt when the rejected token is still stored', () async {
+      final storage = _ControlledTokenStorage();
+      final state = AuthState.forTesting(storage: storage);
+      await state.setTokens(
+        accessToken: _jwtExpiringIn(const Duration(minutes: 15)),
+        refreshToken: 'refresh-old',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+
+      final adopted = await state.adoptRotatedCredentials(
+        expectedGeneration: state.sessionGeneration,
+        expectedUserId: 'account-a',
+        rejectedRefreshToken: 'refresh-old',
+      );
+
+      expect(adopted, isFalse);
+    });
+
+    test('a storage failure never ends a live session', () async {
+      final storage = _FailingLoadStorage();
+      final state = AuthState.forTesting(storage: storage);
+      await state.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+
+      expect(await state.restoreSessionFromSharedStorage(), isFalse);
+      expect(state.isAuthenticated, isTrue);
+      expect(state.accessToken, 'access-a');
+    });
+
+    test('reports a signed-out session when storage is empty', () async {
+      final storage = _ControlledTokenStorage();
+      final state = AuthState.forTesting(storage: storage);
+      await state.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+      storage.values.clear();
+
+      expect(await state.restoreSessionFromSharedStorage(), isFalse);
+      expect(state.isAuthenticated, isFalse);
+    });
+  });
+
   test(
     'setTokens persists before publishing authenticated memory state',
     () async {

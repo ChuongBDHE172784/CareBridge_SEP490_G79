@@ -23,6 +23,7 @@ const CONFIRM_CONFIG: Partial<Record<ResolutionOutcome, { title: string; icon: s
   WARN: { title: 'Cảnh cáo người dùng này?', icon: 'warning', tone: 'default' },
   RESTRICT: { title: 'Hạn chế đăng bài 7 ngày?', icon: 'speaker_notes_off', tone: 'danger' },
   SUSPEND: { title: 'Đình chỉ tài khoản 7 ngày?', icon: 'person_off', tone: 'danger' },
+  ESCALATE: { title: 'Chuyển tuyến xử lý lên Quản trị viên hệ thống (System Admin)?', icon: 'forward', tone: 'default' },
 };
 
 export default function ContentReportDetailPage() {
@@ -133,7 +134,7 @@ export default function ContentReportDetailPage() {
   // actions); the rest (APPROVE/DISMISS) execute immediately as before.
   const handleAction = (outcome: ResolutionOutcome) => {
     if (!item) return;
-    if (['HIDE', 'LOCK', 'REQUEST_REVISION', 'WARN', 'SUSPEND', 'RESTRICT'].includes(outcome) && !reason.trim()) {
+    if (['HIDE', 'LOCK', 'REQUEST_REVISION', 'WARN', 'SUSPEND', 'RESTRICT', 'ESCALATE'].includes(outcome) && !reason.trim()) {
       setActionError('Cần nhập ghi chú/lý do cho hành động này.');
       return;
     }
@@ -232,8 +233,29 @@ export default function ContentReportDetailPage() {
                     <h2 className="text-base font-bold text-on-surface m-0">Nội dung bị báo cáo</h2>
                   </div>
                   <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
-                    <p className="text-sm text-outline mb-1">{TARGET_TYPE_LABELS[item.targetType]}</p>
-                    <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{item.contentPreview}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/60 pb-3 mb-3">
+                      <span className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full bg-surface text-primary text-xs font-semibold">
+                        {TARGET_TYPE_LABELS[item.targetType]}
+                      </span>
+                      {(item.authorName || item.authorEmail || item.authorPhone) && (
+                        <div className="text-xs text-on-surface-variant flex flex-wrap items-center gap-2 font-medium">
+                          <span className="material-symbols-outlined text-sm text-outline">person</span>
+                          <span>Tài khoản: <strong className="text-on-surface font-semibold">{item.authorName || '—'}</strong></span>
+                          {item.authorEmail && (
+                            <span className="text-outline">({item.authorEmail})</span>
+                          )}
+                          {item.authorPhone && (
+                            <span className="text-outline">• SĐT: {item.authorPhone}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {item.targetTitle && (
+                      <h3 className="text-base font-bold text-on-surface mb-2 mt-0">
+                        {item.targetTitle}
+                      </h3>
+                    )}
+                    <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap m-0">{item.contentPreview}</p>
                   </div>
                 </div>
               </div>
@@ -370,30 +392,11 @@ export default function ContentReportDetailPage() {
 	                    onClick={() => handleAction('SUSPEND')}
 	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
 	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Đình chỉ tài khoản trong 7 ngày'}
-	                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-error-container px-3.5 text-xs font-semibold text-error disabled:cursor-not-allowed disabled:opacity-40"
+	                    className="mb-4 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-error-container px-3.5 text-xs font-semibold text-error disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    <span className="material-symbols-outlined text-lg">person_off</span>
 	                    {submitting === 'SUSPEND' ? 'Đang xử lý...' : 'Đình chỉ 7 ngày'}
 	                  </button>
-
-	                  <button
-                    onClick={() => handleAction('DISMISS')}
-                    disabled={submitting !== null}
-                    title="Đóng báo cáo mà không đổi trạng thái nội dung — khác với Duyệt: nếu nội dung đang PENDING, nó vẫn giữ nguyên PENDING"
-                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-lg">block</span>
-                    {submitting === 'DISMISS' ? 'Đang xử lý...' : 'Bỏ qua báo cáo (không đổi trạng thái)'}
-                  </button>
-
-                  <button
-                    disabled
-                    title="Backend chưa có outcome chuyển tuyến (escalate)"
-                    className="mb-4 flex h-9 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-on-surface-variant opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-lg">forward</span>
-                    Chuyển tuyến
-                  </button>
 
                   <textarea
                     value={reason}

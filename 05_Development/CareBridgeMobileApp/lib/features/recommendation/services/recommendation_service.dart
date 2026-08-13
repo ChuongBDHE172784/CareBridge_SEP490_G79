@@ -121,11 +121,18 @@ class RecommendationService {
     );
   }
 
-  Future<RecommendationContentResponse> getContent({int limit = 3}) async {
+  Future<RecommendationContentResponse> getContent({
+    int limit = 3,
+    String? careGroupId,
+  }) async {
     final expectedUser = _userId;
+    final queryParams = <String, dynamic>{'limit': limit};
+    if (careGroupId != null && careGroupId.isNotEmpty) {
+      queryParams['careGroupId'] = careGroupId;
+    }
     final response = await apiGet(
       '/api/v1/recommendations/content',
-      queryParams: {'limit': limit},
+      queryParams: queryParams,
     );
     _ensureCurrent(expectedUser);
     return RecommendationContentResponse.fromJson(

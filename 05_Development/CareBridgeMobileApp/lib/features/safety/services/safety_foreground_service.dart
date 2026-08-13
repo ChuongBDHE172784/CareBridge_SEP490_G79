@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/network/api_client.dart';
 import '../../privacy/models/privacy_model.dart';
 import '../../privacy/services/privacy_service.dart';
 import '../models/safety_config_model.dart';
@@ -26,6 +27,13 @@ DateTime? fallDetectorRearmAtFromTaskData(Object data) {
   final respondedAt = normalized['respondedAt'];
   if (respondedAt is! String) return null;
   return DateTime.tryParse(respondedAt)?.toUtc();
+}
+
+@visibleForTesting
+bool isFallDetectorAlertResponseStartData(Object data) {
+  if (data is! Map) return false;
+  return Map<String, dynamic>.from(data)['type'] ==
+      'begin_fall_detector_alert_response';
 }
 
 abstract class SafetyForegroundGateway {
@@ -117,6 +125,11 @@ class SafetyForegroundServiceCoordinator {
       : const Stream.empty();
   bool get isRunning => _isRunning;
   bool get isSupported => _platformSupported();
+
+  void beginFallDetectorAlertResponse() {
+    if (!_platformSupported() || !_isRunning) return;
+    _sendTaskData({'type': 'begin_fall_detector_alert_response'});
+  }
 
   void rearmFallDetectorAfterResponse({DateTime? respondedAt}) {
     if (!_platformSupported() || !_isRunning) return;
@@ -410,6 +423,10 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
 
   @override
   void onReceiveData(Object data) {
+    if (isFallDetectorAlertResponseStartData(data)) {
+      _sensorService.beginAlertResponse();
+      return;
+    }
     final respondedAt = fallDetectorRearmAtFromTaskData(data);
     if (respondedAt != null) {
       _sensorService.rearmAfterAlertResponse(respondedAt);
@@ -458,8 +475,18 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
       debugPrint(
         '[SafetyForegroundTaskHandler] eligibility validation failed: $error',
       );
-      await _stopTask();
+      if (await _endsSafetyMonitoring(error)) await _stopTask();
     }
+  }
+
+  /// A 401 here is usually this isolate losing a refresh-token rotation race
+  /// with the UI isolate, not a signed-out user. Switching fall detection off
+  /// for that would leave the user unmonitored until they notice, so re-read
+  /// the shared session and let the next repeat event retry instead.
+  Future<bool> _endsSafetyMonitoring(Object error) async {
+    if (error is! ApiException || error.statusCode != 401) return true;
+    await AuthState.instance.restoreSessionFromSharedStorage();
+    return !AuthState.instance.isAuthenticated;
   }
 
   Future<void> _stopTask() async {

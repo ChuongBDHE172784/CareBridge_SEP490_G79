@@ -66,6 +66,7 @@ class CommunityFeedItem {
   final bool hasExpertAnswer;
   final bool bookmarked;
   final bool liked;
+  final String status;
   final String createdAt;
 
   CommunityFeedItem({
@@ -80,6 +81,7 @@ class CommunityFeedItem {
     required this.hasExpertAnswer,
     required this.bookmarked,
     required this.liked,
+    this.status = 'APPROVED',
     required this.createdAt,
   });
 
@@ -96,10 +98,11 @@ class CommunityFeedItem {
         hasExpertAnswer: json['hasExpertAnswer'] as bool? ?? false,
         bookmarked: json['bookmarked'] as bool? ?? false,
         liked: json['liked'] as bool? ?? false,
+        status: json['status'] as String? ?? 'APPROVED',
         createdAt: json['createdAt'] as String? ?? '',
       );
 
-  CommunityFeedItem copyWith({bool? bookmarked, bool? liked, int? likeCount}) =>
+  CommunityFeedItem copyWith({bool? bookmarked, bool? liked, int? likeCount, String? status}) =>
       CommunityFeedItem(
         id: id,
         title: title,
@@ -112,6 +115,7 @@ class CommunityFeedItem {
         hasExpertAnswer: hasExpertAnswer,
         bookmarked: bookmarked ?? this.bookmarked,
         liked: liked ?? this.liked,
+        status: status ?? this.status,
         createdAt: createdAt,
       );
 }

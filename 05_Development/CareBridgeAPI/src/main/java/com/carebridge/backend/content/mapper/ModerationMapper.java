@@ -18,7 +18,8 @@ public class ModerationMapper {
     private static final String ELLIPSIS = "...";
 
     public ModerationQueueItemResponse toQueueItemResponse(
-            ContentReport report, String rawPreview, long reportCount) {
+            ContentReport report, String rawPreview, long reportCount,
+            UUID authorId, String authorName, String authorEmail, String authorPhone, String targetTitle) {
         return new ModerationQueueItemResponse(
                 report.getId(),
                 report.getTargetId(),
@@ -35,8 +36,24 @@ public class ModerationMapper {
                 report.getResolvedAt(),
                 report.getAssignedModeratorId(),
                 report.getRevertedAt(),
-                report.getRevertedBy()
+                report.getRevertedBy(),
+                authorId,
+                authorName,
+                authorEmail,
+                authorPhone,
+                targetTitle
         );
+    }
+
+    public ModerationQueueItemResponse toQueueItemResponse(
+            ContentReport report, String rawPreview, long reportCount,
+            UUID authorId, String authorName, String targetTitle) {
+        return toQueueItemResponse(report, rawPreview, reportCount, authorId, authorName, null, null, targetTitle);
+    }
+
+    public ModerationQueueItemResponse toQueueItemResponse(
+            ContentReport report, String rawPreview, long reportCount) {
+        return toQueueItemResponse(report, rawPreview, reportCount, null, null, null, null, null);
     }
 
     public ModerationQueueResponse toQueueResponse(

@@ -6,14 +6,13 @@ import {
   fetchModerationHistory,
   moderateContentDirect,
   fetchContentDetail,
-  undoModerationAction,
 } from '../services/moderationApi';
 import type {
   ModerationHistoryItem,
   PendingContentItem,
   ReportTargetType,
 } from '../models/moderation';
-import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
+import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS } from '../models/moderation';
 import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
 import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 import { fetchAiModerationStatus } from '../../aiRuleManagement/services/aiModerationPolicyApi';
@@ -83,7 +82,7 @@ export default function PendingContentQueuePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [actionFilter, setActionFilter] = useState<'ALL' | PendingActionType>('ALL');
+  const [actionFilter, setActionFilter] = useState<'ALL' | PendingActionType | 'LOCK'>('ALL');
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(0);
   const [pendingSortKey, setPendingSortKey] = useState<PendingSortKey>('createdAt');
@@ -94,9 +93,14 @@ export default function PendingContentQueuePage() {
   const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
   const [dialogError, setDialogError] = useState('');
 
-  const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
-  const [undoSubmitting, setUndoSubmitting] = useState(false);
-  const [undoError, setUndoError] = useState('');
+  const [unlockTarget, setUnlockTarget] = useState<ModerationHistoryItem | null>(null);
+  const [unlockSubmitting, setUnlockSubmitting] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+
+  const [unhideTarget, setUnhideTarget] = useState<ModerationHistoryItem | null>(null);
+  const [unhideSubmitting, setUnhideSubmitting] = useState(false);
+  const [unhideError, setUnhideError] = useState('');
+
   const [lockTarget, setLockTarget] = useState<ModerationHistoryItem | null>(null);
   const [lockSubmitting, setLockSubmitting] = useState(false);
   const [lockError, setLockError] = useState('');
@@ -141,6 +145,17 @@ export default function PendingContentQueuePage() {
     };
   }, [historyItems, items]);
 
+  const latestActionByTargetId = useMemo(() => {
+    const map = new Map<string, ModerationHistoryItem>();
+    const sorted = [...historyItems].sort((a, b) => new Date(b.actionAt).getTime() - new Date(a.actionAt).getTime());
+    for (const item of sorted) {
+      if (!map.has(item.targetId)) {
+        map.set(item.targetId, item);
+      }
+    }
+    return map;
+  }, [historyItems]);
+
   const filteredPending = useMemo(() => {
     const query = search.trim().toLowerCase();
     return items.filter((item) => {
@@ -153,12 +168,14 @@ export default function PendingContentQueuePage() {
   const filteredHistory = useMemo(() => {
     const query = search.trim().toLowerCase();
     return historyItems.filter((item) => {
+      if (!item.actionType) return false;
       const matchesAction = actionFilter === 'ALL' || item.actionType === actionFilter;
+      const actionLabel = ACTION_TYPE_LABELS[item.actionType] ?? item.actionType;
       const matchesQuery = query.length === 0
         || matchesText(item.contentPreview, query)
         || matchesText(item.reason, query)
         || matchesText(item.moderatorName, query)
-        || matchesText(ACTION_TYPE_LABELS[item.actionType], query)
+        || matchesText(actionLabel, query)
         || matchesText(TARGET_TYPE_LABELS[item.targetType], query);
       return matchesAction && matchesQuery;
     });
@@ -176,7 +193,7 @@ export default function PendingContentQueuePage() {
     switch (historySortKey) {
       case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
       case 'contentPreview': return item.contentPreview;
-      case 'actionType': return ACTION_TYPE_LABELS[item.actionType];
+      case 'actionType': return item.actionType ? (ACTION_TYPE_LABELS[item.actionType] ?? item.actionType) : '';
       case 'moderatorName': return item.moderatorName;
       case 'reason': return item.reason;
       case 'actionAt': return new Date(item.actionAt).getTime();
@@ -229,19 +246,35 @@ export default function PendingContentQueuePage() {
     }
   };
 
-  const confirmUndo = async () => {
-    if (!undoTarget) return;
-    setUndoSubmitting(true);
-    setUndoError('');
+  const confirmUnlock = async (reason?: string) => {
+    if (!unlockTarget) return;
+    setUnlockSubmitting(true);
+    setUnlockError('');
     try {
-      await undoModerationAction(undoTarget.actionId);
-      setUndoTarget(null);
+      await moderateContentDirect(unlockTarget.targetId, unlockTarget.targetType, 'APPROVE', reason);
+      setUnlockTarget(null);
       await load();
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setUndoError(message || 'Hoàn tác thất bại, vui lòng thử lại.');
+      setUnlockError(message || 'Mở khóa thảo luận thất bại, vui lòng thử lại.');
     } finally {
-      setUndoSubmitting(false);
+      setUnlockSubmitting(false);
+    }
+  };
+
+  const confirmUnhide = async (reason?: string) => {
+    if (!unhideTarget) return;
+    setUnhideSubmitting(true);
+    setUnhideError('');
+    try {
+      await moderateContentDirect(unhideTarget.targetId, unhideTarget.targetType, 'APPROVE', reason);
+      setUnhideTarget(null);
+      await load();
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setUnhideError(message || 'Hiện lại nội dung thất bại, vui lòng thử lại.');
+    } finally {
+      setUnhideSubmitting(false);
     }
   };
 
@@ -378,6 +411,7 @@ export default function PendingContentQueuePage() {
                   <option value="ALL">Tất cả hành động</option>
                   <option value="APPROVE">Duyệt</option>
                   <option value="HIDE">Ẩn</option>
+                  <option value="LOCK">Khóa</option>
                   <option value="REQUEST_REVISION">Yêu cầu sửa</option>
                 </select>
               )}
@@ -444,7 +478,9 @@ export default function PendingContentQueuePage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(pagedRows as ModerationHistoryItem[]).map((item) => (
+                        {(pagedRows as ModerationHistoryItem[]).map((item) => {
+                          const isLatestForTarget = latestActionByTargetId.get(item.targetId)?.actionId === item.actionId;
+                          return (
                           <tr key={item.actionId} className="border-b border-surface-container-highest hover:bg-surface-bright">
                             <td className="py-3.5 px-2">
                               <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
@@ -457,7 +493,7 @@ export default function PendingContentQueuePage() {
                             <td className="py-3.5 px-2">
                               <span className={`py-1 px-3 rounded-full text-xs font-semibold ${item.actionType === 'APPROVE' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#FCE8E6] text-[#C5221F]'
                                 }`}>
-                                {ACTION_TYPE_LABELS[item.actionType]}
+                                {item.actionType ? (ACTION_TYPE_LABELS[item.actionType] ?? item.actionType) : '—'}
                               </span>
                             </td>
                             <td className="py-3.5 px-2 text-[13px] text-on-surface-variant whitespace-nowrap">{item.moderatorName ?? '—'}</td>
@@ -474,17 +510,29 @@ export default function PendingContentQueuePage() {
                                   <span className="material-symbols-outlined text-base">visibility</span>
                                   Xem
                                 </button>
-                                {UNDOABLE_ACTION_TYPES.has(item.actionType) && (
+                                {isLatestForTarget && item.actionType === 'LOCK' && item.targetType === 'QUESTION' && (
                                   <button
                                     type="button"
-                                    onClick={() => { setUndoError(''); setUndoTarget(item); }}
-                                    className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-on-surface-variant flex items-center gap-1 hover:bg-surface-container-low"
+                                    onClick={() => { setUnlockError(''); setUnlockTarget(item); }}
+                                    className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-primary flex items-center gap-1 hover:bg-surface-container-low"
+                                    title="Mở khóa thảo luận"
                                   >
-                                    <span className="material-symbols-outlined text-base">undo</span>
-                                    Hoàn tác
+                                    <span className="material-symbols-outlined text-base">lock_open</span>
+                                    Mở khóa
                                   </button>
                                 )}
-                                {item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
+                                {isLatestForTarget && item.actionType === 'HIDE' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setUnhideError(''); setUnhideTarget(item); }}
+                                    className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-[#137333] flex items-center gap-1 hover:bg-surface-container-low"
+                                    title="Hiện nội dung"
+                                  >
+                                    <span className="material-symbols-outlined text-base">visibility</span>
+                                    Hiện
+                                  </button>
+                                )}
+                                {isLatestForTarget && item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
                                   <button
                                     type="button"
                                     disabled={lockLoadingId === item.actionId}
@@ -498,7 +546,7 @@ export default function PendingContentQueuePage() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                        );})}
                         {pagedRows.length === 0 && (
                           <tr><td colSpan={7} className="py-12 text-center text-outline">Không có lịch sử phù hợp bộ lọc.</td></tr>
                         )}
@@ -695,21 +743,39 @@ export default function PendingContentQueuePage() {
       />
 
       <ConfirmDialog
-        key={undoTarget ? undoTarget.actionId : 'none'}
-        open={undoTarget !== null}
-        title="Hoàn tác hành động này?"
+        key={unlockTarget ? unlockTarget.actionId : 'none'}
+        open={unlockTarget !== null}
+        title="Mở khóa thảo luận câu hỏi này?"
         description={
-          undoTarget
-            ? `Nội dung sẽ quay lại hàng đợi chờ duyệt (${TARGET_TYPE_LABELS[undoTarget.targetType]} - "${ACTION_TYPE_LABELS[undoTarget.actionType]}").`
+          unlockTarget
+            ? `Câu hỏi sẽ được mở lại cho phép mọi người tiếp tục thảo luận và gửi câu trả lời: "${unlockTarget.contentPreview}".`
             : undefined
         }
-        icon="undo"
+        icon="lock_open"
         tone="default"
-        confirmLabel="Hoàn tác"
-        submitting={undoSubmitting}
-        errorText={undoError}
-        onConfirm={confirmUndo}
-        onCancel={() => setUndoTarget(null)}
+        confirmLabel="Mở khóa"
+        submitting={unlockSubmitting}
+        errorText={unlockError}
+        onConfirm={confirmUnlock}
+        onCancel={() => setUnlockTarget(null)}
+      />
+
+      <ConfirmDialog
+        key={unhideTarget ? unhideTarget.actionId : 'none'}
+        open={unhideTarget !== null}
+        title={unhideTarget?.targetType === 'QUESTION' ? 'Hiện lại câu hỏi này?' : 'Hiện lại câu trả lời này?'}
+        description={
+          unhideTarget
+            ? `Nội dung sẽ được khôi phục sang trạng thái đã duyệt và hiển thị công khai trên cộng đồng: "${unhideTarget.contentPreview}".`
+            : undefined
+        }
+        icon="visibility"
+        tone="default"
+        confirmLabel="Hiện nội dung"
+        submitting={unhideSubmitting}
+        errorText={unhideError}
+        onConfirm={confirmUnhide}
+        onCancel={() => setUnhideTarget(null)}
       />
 
     </div>

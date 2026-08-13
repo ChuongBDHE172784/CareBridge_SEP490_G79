@@ -64,24 +64,25 @@ void main() {
     return result;
   }
 
-  testWidgets('offers safe and false-positive actions (need-help button removed)', (
-    tester,
-  ) async {
-    await openSheet(tester);
+  testWidgets(
+    'offers safe and false-positive actions (need-help button removed)',
+    (tester) async {
+      await openSheet(tester);
 
-    expect(find.byKey(const Key('safety-countdown-safe')), findsOneWidget);
-    expect(
-      find.byKey(const Key('safety-countdown-false-positive')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key('safety-countdown-help')), findsNothing);
-    expect(find.text('30'), findsOneWidget);
-    expect(
-      find.byKey(const Key('safety-countdown-large-timer')),
-      findsOneWidget,
-    );
-    expect(feedback.starts, 1);
-  });
+      expect(find.byKey(const Key('safety-countdown-safe')), findsOneWidget);
+      expect(
+        find.byKey(const Key('safety-countdown-false-positive')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('safety-countdown-help')), findsNothing);
+      expect(find.text('30'), findsOneWidget);
+      expect(
+        find.byKey(const Key('safety-countdown-large-timer')),
+        findsOneWidget,
+      );
+      expect(feedback.starts, 1);
+    },
+  );
 
   testWidgets('returns the selected false-positive reason', (tester) async {
     SafetyCountdownResult? result;
@@ -121,11 +122,157 @@ void main() {
     expect(feedback.stops, 1);
   });
 
-  testWidgets('times out at 30 seconds, triggers onTimeout, and shows giant Call 115 button', (
+  testWidgets(
+    'times out at 30 seconds, triggers onTimeout, and shows giant Call 115 button',
+    (tester) async {
+      bool timedOut = false;
+      Uri? launchedUri;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafetyCountdownSheet(
+              event: event,
+              feedback: feedback,
+              now: () => now,
+              onTimeout: () => timedOut = true,
+              uriLauncher: (uri) async {
+                launchedUri = uri;
+                return true;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      now = now.add(const Duration(seconds: 29));
+      await tester.pump(const Duration(seconds: 29));
+      expect(timedOut, isFalse);
+
+      now = now.add(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(timedOut, isTrue);
+      expect(feedback.pulses, isNotEmpty);
+      expect(feedback.stops, 1);
+      expect(
+        find.byKey(const Key('safety-countdown-call-115-button')),
+        findsOneWidget,
+      );
+      expect(find.text('GỌI 115 NGAY'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('safety-countdown-call-115-button')),
+      );
+      await tester.pumpAndSettle();
+      expect(launchedUri, Uri.parse('tel:115'));
+    },
+  );
+
+  testWidgets(
+    'timeout closes an open false-positive dialog but keeps sheet open with Call 115 button',
+    (tester) async {
+      bool timedOut = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafetyCountdownSheet(
+              event: event,
+              feedback: feedback,
+              now: () => now,
+              onTimeout: () => timedOut = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final falsePositiveButton = find.byKey(
+        const Key('safety-countdown-false-positive'),
+      );
+      await tester.ensureVisible(falsePositiveButton);
+      await tester.tap(falsePositiveButton);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('cảnh báo nhầm'), findsOneWidget);
+
+      now = now.add(const Duration(seconds: 30));
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+
+      expect(timedOut, isTrue);
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(feedback.stops, 1);
+      expect(
+        find.byKey(const Key('safety-countdown-call-115-button')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'safe confirmation started before deadline cannot be replaced by timeout',
+    (tester) async {
+      var timedOut = false;
+      SafetyCountdownResult? result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                result = await showModalBottomSheet<SafetyCountdownResult>(
+                  context: context,
+                  isDismissible: false,
+                  enableDrag: false,
+                  isScrollControlled: true,
+                  builder: (_) => SafetyCountdownSheet(
+                    event: event,
+                    feedback: feedback,
+                    now: () => now,
+                    onTimeout: () => timedOut = true,
+                  ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('safety-countdown-safe')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('safety-countdown-confirm-safe-button')),
+        findsOneWidget,
+      );
+
+      now = now.add(const Duration(seconds: 30));
+      await tester.pump(const Duration(seconds: 30));
+
+      expect(timedOut, isFalse);
+      expect(
+        find.byKey(const Key('safety-countdown-confirm-safe-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('safety-countdown-call-115-button')),
+        findsNothing,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('safety-countdown-confirm-safe-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(result?.action, SafetyCountdownAction.safe);
+      expect(timedOut, isFalse);
+    },
+  );
+
+  testWidgets('cancelling safe confirmation after deadline resumes timeout', (
     tester,
   ) async {
-    bool timedOut = false;
-    Uri? launchedUri;
+    var timeoutCount = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -133,71 +280,25 @@ void main() {
             event: event,
             feedback: feedback,
             now: () => now,
-            onTimeout: () => timedOut = true,
-            uriLauncher: (uri) async {
-              launchedUri = uri;
-              return true;
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    now = now.add(const Duration(seconds: 29));
-    await tester.pump(const Duration(seconds: 29));
-    expect(timedOut, isFalse);
-
-    now = now.add(const Duration(seconds: 1));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
-
-    expect(timedOut, isTrue);
-    expect(feedback.pulses, isNotEmpty);
-    expect(feedback.stops, 1);
-    expect(
-      find.byKey(const Key('safety-countdown-call-115-button')),
-      findsOneWidget,
-    );
-    expect(find.text('GỌI 115 NGAY'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('safety-countdown-call-115-button')));
-    await tester.pumpAndSettle();
-    expect(launchedUri, Uri.parse('tel:115'));
-  });
-
-  testWidgets('timeout closes an open false-positive dialog but keeps sheet open with Call 115 button', (
-    tester,
-  ) async {
-    bool timedOut = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SafetyCountdownSheet(
-            event: event,
-            feedback: feedback,
-            now: () => now,
-            onTimeout: () => timedOut = true,
+            onTimeout: () => timeoutCount++,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    final falsePositiveButton = find.byKey(
-      const Key('safety-countdown-false-positive'),
-    );
-    await tester.ensureVisible(falsePositiveButton);
-    await tester.tap(falsePositiveButton);
+    await tester.tap(find.byKey(const Key('safety-countdown-safe')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('cảnh báo nhầm'), findsOneWidget);
 
     now = now.add(const Duration(seconds: 30));
     await tester.pump(const Duration(seconds: 30));
+    expect(timeoutCount, isZero);
+
+    await tester.tap(
+      find.byKey(const Key('safety-countdown-cancel-safe-button')),
+    );
     await tester.pumpAndSettle();
 
-    expect(timedOut, isTrue);
-    expect(find.byType(SimpleDialog), findsNothing);
-    expect(feedback.stops, 1);
+    expect(timeoutCount, 1);
     expect(
       find.byKey(const Key('safety-countdown-call-115-button')),
       findsOneWidget,
@@ -349,11 +450,14 @@ void main() {
     },
   );
 
-  test('SystemSafetyCountdownFeedback lifecycle start, pulse, and stop complete safely', () {
-    final systemFeedback = SystemSafetyCountdownFeedback();
-    expect(() => systemFeedback.start(), returnsNormally);
-    expect(() => systemFeedback.pulse(10), returnsNormally);
-    expect(() => systemFeedback.pulse(5), returnsNormally);
-    expect(() => systemFeedback.stop(), returnsNormally);
-  });
+  test(
+    'SystemSafetyCountdownFeedback lifecycle start, pulse, and stop complete safely',
+    () {
+      final systemFeedback = SystemSafetyCountdownFeedback();
+      expect(() => systemFeedback.start(), returnsNormally);
+      expect(() => systemFeedback.pulse(10), returnsNormally);
+      expect(() => systemFeedback.pulse(5), returnsNormally);
+      expect(() => systemFeedback.stop(), returnsNormally);
+    },
+  );
 }

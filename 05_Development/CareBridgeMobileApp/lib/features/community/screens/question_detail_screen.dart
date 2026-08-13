@@ -8,7 +8,8 @@ import '../widgets/community_image_attachments.dart';
 import 'post_answer_screen.dart';
 import 'edit_question_screen.dart';
 
-bool canAnswerCommunityQuestion(String? status) => status == 'APPROVED';
+bool canAnswerCommunityQuestion(String? status) =>
+    status?.trim().toUpperCase() == 'APPROVED';
 
 /// CB-014 — UC-199 View Community Question Detail
 /// Displays a single approved community question with its answers.
@@ -64,6 +65,29 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       _question!.authorId == AuthState.instance.userId;
 
   bool get _canAnswerQuestion => canAnswerCommunityQuestion(_question?.status);
+
+  String get _questionStatusMessage {
+    final status = _question?.status;
+    if (status == 'AI_PENDING') {
+      return _isMyQuestion
+          ? 'Câu hỏi của bạn đang được AI kiểm duyệt nội dung...'
+          : 'Câu hỏi đang được AI kiểm duyệt nội dung. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.';
+    }
+    if (status == 'PENDING') {
+      return _isMyQuestion
+          ? 'Câu hỏi của bạn đang chờ được kiểm duyệt.'
+          : 'Câu hỏi đang chờ kiểm duyệt viên phê duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.';
+    }
+    if (status == 'HIDDEN') {
+      return _isMyQuestion
+          ? 'Câu hỏi này đã bị ẩn bởi kiểm duyệt viên do vi phạm tiêu chuẩn cộng đồng.'
+          : 'Câu hỏi này đã bị ẩn.';
+    }
+    if (status == 'LOCKED') {
+      return 'Câu hỏi đã bị khóa thảo luận bởi kiểm duyệt viên.';
+    }
+    return 'Câu hỏi đang chờ duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.';
+  }
 
   Future<void> _loadDetail() async {
     setState(() => _loading = true);
@@ -345,7 +369,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               key: const Key('fab-answer-question'),
               backgroundColor: _primary,
               elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               onPressed: () async {
                 final answered = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
@@ -361,7 +387,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               },
               label: const Text(
                 'Trả lời ngay',
-                style: TextStyle(fontFamily: 'Lexend', color: Colors.white, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
             ),
@@ -373,7 +403,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(24),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x0A845143),
@@ -389,7 +421,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: _primary,
+                        size: 20,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 12),
@@ -409,7 +445,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   ),
                   if (_question != null && !_isMyQuestion)
                     IconButton(
-                      icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant, size: 20),
+                      icon: const Icon(
+                        Icons.flag_outlined,
+                        color: _onSurfaceVariant,
+                        size: 20,
+                      ),
                       onPressed: () => _reportTarget(
                         targetType: 'QUESTION',
                         targetId: widget.questionId,
@@ -418,7 +458,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     ),
                   if (_isMyQuestion)
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant, size: 20),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: _onSurfaceVariant,
+                        size: 20,
+                      ),
                       onPressed: () async {
                         if (_question == null) return;
                         final updated = await Navigator.of(context).push<bool>(
@@ -444,13 +488,19 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     ),
                   if (_isMyQuestion)
                     IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFBA1A1A), size: 20),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Color(0xFFBA1A1A),
+                        size: 20,
+                      ),
                       onPressed: _deleteQuestion,
                       tooltip: 'Xóa câu hỏi',
                     ),
                   IconButton(
                     icon: Icon(
-                      _bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      _bookmarked
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
                       color: _bookmarked ? _primary : _onSurfaceVariant,
                       size: 22,
                     ),
@@ -462,7 +512,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: _primary))
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _primary),
+                    )
                   : _question == null
                   ? _buildError()
                   : RefreshIndicator(
@@ -677,17 +729,57 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEFB8),
+                color:
+                    _question?.status == 'HIDDEN' ||
+                        _question?.status == 'LOCKED'
+                    ? const Color(0xFFFFDAD6)
+                    : _question?.status == 'PENDING'
+                    ? const Color(0xFFFFE8B5)
+                    : const Color(0xFFFFEFB8),
                 borderRadius: BorderRadius.circular(14),
+                border:
+                    _question?.status == 'HIDDEN' ||
+                        _question?.status == 'LOCKED'
+                    ? Border.all(color: const Color(0xFFFFB4AB))
+                    : _question?.status == 'PENDING'
+                    ? Border.all(color: const Color(0xFFFFD599))
+                    : null,
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.hourglass_top_rounded, color: Color(0xFF745600)),
-                  SizedBox(width: 10),
+                  Icon(
+                    _question?.status == 'HIDDEN'
+                        ? Icons.visibility_off_outlined
+                        : _question?.status == 'LOCKED'
+                        ? Icons.lock_outline
+                        : _question?.status == 'PENDING'
+                        ? Icons.admin_panel_settings_outlined
+                        : Icons.smart_toy_outlined,
+                    color:
+                        _question?.status == 'HIDDEN' ||
+                            _question?.status == 'LOCKED'
+                        ? const Color(0xFF93000A)
+                        : _question?.status == 'PENDING'
+                        ? const Color(0xFF8A5300)
+                        : const Color(0xFF745600),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Câu hỏi đang chờ duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.',
-                      style: TextStyle(color: Color(0xFF5C4300), height: 1.35),
+                      _questionStatusMessage,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color:
+                            _question?.status == 'HIDDEN' ||
+                                _question?.status == 'LOCKED'
+                            ? const Color(0xFF93000A)
+                            : _question?.status == 'PENDING'
+                            ? const Color(0xFF8A5300)
+                            : const Color(0xFF5C4300),
+                        height: 1.35,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -871,8 +963,7 @@ class _AnswerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isOwnAnswer &&
-              (answer.status == 'PENDING' || answer.status == 'AI_PENDING')) ...[
+          if (isOwnAnswer && answer.status == 'AI_PENDING') ...[
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -884,18 +975,80 @@ class _AnswerCard extends StatelessWidget {
               child: const Row(
                 children: [
                   Icon(
-                    Icons.hourglass_top_rounded,
+                    Icons.smart_toy_outlined,
                     size: 16,
                     color: Color(0xFF856404),
                   ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Câu trả lời của bạn đang chờ AI kiểm duyệt nội dung...',
+                      'Câu trả lời của bạn đang được AI kiểm duyệt nội dung...',
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,
                         color: Color(0xFF856404),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (isOwnAnswer && answer.status == 'PENDING') ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFE8B5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFD599)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.admin_panel_settings_outlined,
+                    size: 16,
+                    color: Color(0xFF8A5300),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Câu hỏi của bạn đang chờ được kiểm duyệt.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: Color(0xFF8A5300),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (isOwnAnswer && answer.status == 'HIDDEN') ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDAD6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFB4AB)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.visibility_off_outlined,
+                    size: 16,
+                    color: Color(0xFF93000A),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Câu trả lời này đã bị ẩn bởi kiểm duyệt viên do vi phạm tiêu chuẩn cộng đồng.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: Color(0xFF93000A),
                         fontWeight: FontWeight.w500,
                       ),
                     ),

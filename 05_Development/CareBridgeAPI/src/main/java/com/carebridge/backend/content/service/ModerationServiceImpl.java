@@ -45,6 +45,7 @@ import com.carebridge.backend.content.mapper.ModerationMapper;
 import com.carebridge.backend.content.repository.ContentReportRepository;
 import com.carebridge.backend.content.repository.ModerationActionRepository;
 import com.carebridge.backend.expert.handler.IExpertEventHandler;
+import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.security.Principal;
@@ -55,12 +56,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -75,6 +78,7 @@ public class ModerationServiceImpl implements ModerationService {
     private final ModerationActionRepository moderationActionRepository;
     private final UserRepository userRepository;
     private final IExpertEventHandler expertEventHandler;
+    private final ContentReviewNotificationService contentReviewNotificationService;
 
     @Override
     public ModerationQueueResponse getModerationQueue(ModerationQueueFilter filter, Principal principal) {
@@ -113,6 +117,38 @@ public class ModerationServiceImpl implements ModerationService {
             }, pageable);
         }
 
+        java.util.Set<UUID> questionIds = new java.util.HashSet<>();
+        java.util.Set<UUID> answerIds = new java.util.HashSet<>();
+        java.util.Set<UUID> directUserIds = new java.util.HashSet<>();
+
+        for (ContentReport report : page.getContent()) {
+            if (report.getTargetType() == ReportTargetType.QUESTION) {
+                questionIds.add(report.getTargetId());
+            } else if (report.getTargetType() == ReportTargetType.ANSWER) {
+                answerIds.add(report.getTargetId());
+            } else if (report.getTargetType() == ReportTargetType.USER
+                    || report.getTargetType() == ReportTargetType.EXPERT
+                    || report.getTargetType() == ReportTargetType.ACCOUNT) {
+                directUserIds.add(report.getTargetId());
+            }
+        }
+
+        Map<UUID, CommunityQuestion> questions = questionIds.isEmpty() ? Map.of()
+                : communityQuestionRepository.findAllById(questionIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(CommunityQuestion::getId, q -> q));
+
+        Map<UUID, CommunityAnswer> answers = answerIds.isEmpty() ? Map.of()
+                : communityAnswerRepository.findAllById(answerIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(CommunityAnswer::getId, a -> a));
+
+        java.util.Set<UUID> allAuthorIds = new java.util.HashSet<>(directUserIds);
+        questions.values().forEach(q -> { if (q.getAuthorId() != null) allAuthorIds.add(q.getAuthorId()); });
+        answers.values().forEach(a -> { if (a.getAuthorId() != null) allAuthorIds.add(a.getAuthorId()); });
+
+        Map<UUID, User> users = allAuthorIds.isEmpty() ? Map.of()
+                : userRepository.findAllById(allAuthorIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
+
         List<ModerationQueueItemResponse> items = page.getContent().stream()
                 .map(report -> {
                     // C4: preview truncated inside ContentPreviewService
@@ -120,7 +156,41 @@ public class ModerationServiceImpl implements ModerationService {
                             report.getTargetId(), report.getTargetType());
                     long count = contentReportRepository.countByTargetIdAndStatus(
                             report.getTargetId(), report.getStatus());
-                    return moderationMapper.toQueueItemResponse(report, preview, count);
+
+                    UUID authorId = null;
+                    String authorName = null;
+                    String authorEmail = null;
+                    String authorPhone = null;
+                    String targetTitle = null;
+
+                    if (report.getTargetType() == ReportTargetType.QUESTION) {
+                        CommunityQuestion q = questions.get(report.getTargetId());
+                        if (q != null) {
+                            authorId = q.getAuthorId();
+                            targetTitle = q.getTitle();
+                        }
+                    } else if (report.getTargetType() == ReportTargetType.ANSWER) {
+                        CommunityAnswer a = answers.get(report.getTargetId());
+                        if (a != null) {
+                            authorId = a.getAuthorId();
+                        }
+                    } else if (report.getTargetType() == ReportTargetType.USER
+                            || report.getTargetType() == ReportTargetType.EXPERT
+                            || report.getTargetType() == ReportTargetType.ACCOUNT) {
+                        authorId = report.getTargetId();
+                    }
+
+                    if (authorId != null) {
+                        User u = users.get(authorId);
+                        if (u != null) {
+                            authorName = u.getName();
+                            authorEmail = u.getEmail();
+                            authorPhone = u.getPhone();
+                        }
+                    }
+
+                    return moderationMapper.toQueueItemResponse(
+                            report, preview, count, authorId, authorName, authorEmail, authorPhone, targetTitle);
                 })
                 .toList();
 
@@ -276,6 +346,7 @@ public class ModerationServiceImpl implements ModerationService {
         Map<UUID, String> answerPreviews = batchPreviewsFor(page.getContent(), ReportTargetType.ANSWER);
 
         List<ModerationHistoryItemResponse> items = page.getContent().stream()
+                .filter(action -> action.getActionType() != null)
                 .map(action -> {
                     String preview = action.getTargetType() == ReportTargetType.QUESTION
                             ? questionPreviews.get(action.getTargetId())
@@ -598,6 +669,8 @@ public class ModerationServiceImpl implements ModerationService {
                 report.getTargetId().toString(),
                 "reportId=" + reportId + " outcome=" + request.outcome() + " reason=" + request.reason());
 
+        notifyReportedAuthor(savedReport, request.outcome(), request.reason());
+
         return new ResolveReportResponse(
                 savedReport.getId(),
                 savedReport.getStatus(),
@@ -606,6 +679,68 @@ public class ModerationServiceImpl implements ModerationService {
                 actionId,
                 actionType,
                 resultingStatus);
+    }
+
+    /**
+     * Notifies the author of reported community content when a moderator asks for a revision or
+     * issues a warning, so the handling note reaches the person who has to act on it.
+     *
+     * <p>Only QUESTION and ANSWER reports have an in-app author to notify; USER/EXPERT/ACCOUNT
+     * reports target an account directly and CONTENT is handled by the editorial approval flow,
+     * which already has its own notification path.
+     *
+     * <p>Notification failure must never roll back a completed moderation decision, so everything
+     * here is wrapped and logged.
+     */
+    private void notifyReportedAuthor(ContentReport report, ResolutionOutcome outcome, String note) {
+        if (outcome != ResolutionOutcome.REQUEST_REVISION && outcome != ResolutionOutcome.WARN) {
+            return;
+        }
+        ReportTargetType targetType = report.getTargetType();
+        if (targetType != ReportTargetType.QUESTION && targetType != ReportTargetType.ANSWER) {
+            return;
+        }
+
+        try {
+            UUID authorId;
+            String label;
+            if (targetType == ReportTargetType.QUESTION) {
+                CommunityQuestion question = communityQuestionRepository.findById(report.getTargetId())
+                        .orElse(null);
+                if (question == null) {
+                    return;
+                }
+                authorId = question.getAuthorId();
+                label = excerpt(question.getTitle() != null ? question.getTitle() : question.getBody());
+            } else {
+                CommunityAnswer answer = communityAnswerRepository.findById(report.getTargetId())
+                        .orElse(null);
+                if (answer == null) {
+                    return;
+                }
+                authorId = answer.getAuthorId();
+                label = excerpt(answer.getBody());
+            }
+
+            String title = outcome == ResolutionOutcome.REQUEST_REVISION
+                    ? "Yêu cầu sửa nội dung"
+                    : "Cảnh báo từ kiểm duyệt viên";
+
+            contentReviewNotificationService.notifyModerationOutcome(
+                    authorId, report.getTargetId(), targetType.name(), label, title, note, outcome.name());
+        } catch (Exception e) {
+            log.error("Failed to notify author for report {} outcome {}: {}",
+                    report.getId(), outcome, e.getMessage(), e);
+        }
+    }
+
+    /** Keeps the notification body readable when the reported content is long. */
+    private static String excerpt(String text) {
+        if (text == null || text.isBlank()) {
+            return "Nội dung của bạn";
+        }
+        String trimmed = text.trim();
+        return trimmed.length() <= 80 ? trimmed : trimmed.substring(0, 77) + "...";
     }
 
     // UC-102/UC-58: only account-level actions are valid at this endpoint.

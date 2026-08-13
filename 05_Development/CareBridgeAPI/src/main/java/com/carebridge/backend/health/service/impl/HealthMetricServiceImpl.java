@@ -14,6 +14,7 @@ import com.carebridge.backend.health.entity.HealthObservation;
 import com.carebridge.backend.health.entity.MetricDefinition;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.entity.MetricType;
+import com.carebridge.backend.health.event.EpdsScreeningCompleted;
 import com.carebridge.backend.health.event.MaternalHealthMetricDeleted;
 import com.carebridge.backend.health.repository.HealthObservationRepository;
 import com.carebridge.backend.health.repository.MetricDefinitionRepository;
@@ -43,6 +44,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
             "BMI", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "HYDRATION",
             "EPDS_SCORE", "MATERNAL_HEART_RATE", "STRESS");
     private static final String DISCLAIMER = "Đây là dữ liệu theo dõi, không phải chẩn đoán y khoa.";
+    private static final String EPDS_METRIC_CODE = "EPDS_SCORE";
 
     private final HealthObservationRepository observationRepository;
     private final MetricDefinitionRepository definitionRepository;
@@ -111,7 +113,28 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
         auditService.log(AuditAction.HEALTH_METRIC_ADDED, userId,
                 "HealthObservation", saved.getId().toString(), "added");
+        publishIfEpdsScreening(saved, journeyId, userId, normalized);
         return toMetricResponse(saved, journeyId, null, false, definition.getVersion());
+    }
+
+    /**
+     * Publishes {@link EpdsScreeningCompleted} for EPDS submissions only (CB-EPDS-IMP-001).
+     *
+     * <p>Consumed after commit by the notification module, so a failure to notify can never roll
+     * back a screening the mother successfully recorded (TDS ADR-001).
+     */
+    private void publishIfEpdsScreening(HealthObservation saved, UUID journeyId, UUID userId,
+                                        MetricObservationValidator.NormalizedObservation normalized) {
+        if (!EPDS_METRIC_CODE.equals(normalized.metricCode())) {
+            return;
+        }
+        int totalScore = normalized.valueNumeric() == null ? 0 : normalized.valueNumeric().intValue();
+        // A null secondary value means Question 10 was not recorded — treat as non-escalating.
+        int question10Score = normalized.valueSecondary() == null
+                ? 0
+                : normalized.valueSecondary().intValue();
+        eventPublisher.publishEvent(new EpdsScreeningCompleted(
+                saved.getId(), journeyId, userId, totalScore, question10Score, Instant.now()));
     }
 
     @Override

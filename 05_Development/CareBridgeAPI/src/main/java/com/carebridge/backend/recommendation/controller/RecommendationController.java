@@ -46,7 +46,9 @@ public class RecommendationController {
     @GetMapping("/content")
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<RecommendationContentResponse>> getContent(
-            @RequestParam(name = "limit", defaultValue = "3") String rawLimit, Principal principal) {
+            @RequestParam(name = "limit", defaultValue = "3") String rawLimit,
+            @RequestParam(name = "careGroupId", required = false) UUID careGroupId,
+            Principal principal) {
         final int limit;
         try {
             limit = Integer.parseInt(rawLimit);
@@ -55,6 +57,6 @@ public class RecommendationController {
                     "RECOMMENDATION_LIMIT_INVALID", "limit must be an integer between 1 and 3");
         }
         UUID owner = SecurityUtils.requireCurrentUserId(principal);
-        return ResponseEntity.ok(ApiResponse.success(recommendationService.getContent(owner, limit)));
+        return ResponseEntity.ok(ApiResponse.success(recommendationService.getContent(owner, careGroupId, limit)));
     }
 }

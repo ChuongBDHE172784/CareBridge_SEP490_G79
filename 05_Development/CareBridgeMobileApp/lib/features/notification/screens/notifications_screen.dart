@@ -7,6 +7,7 @@ import 'notification_detail_screen.dart';
 import '../../familySync/screens/care_group_invitation_screen.dart';
 import '../../familySync/models/care_group_model.dart';
 import '../routing/consultation_notification_routing.dart';
+import '../notification_type_display.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -440,6 +441,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         bgColor = isUnread ? _primaryFixed : _surfaceVariant;
         iconColor = isUnread ? _onPrimaryFixed : _onSurfaceVariant;
         break;
+      case 'EPDS_RESULT':
+        icon = Icons.psychology_outlined;
+        bgColor = isUnread ? _primaryFixed : _surfaceVariant;
+        iconColor = isUnread ? _onPrimaryFixed : _onSurfaceVariant;
+        break;
       case 'APPOINTMENT':
       case 'REMINDER':
         icon = Icons.event_rounded;
@@ -471,27 +477,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  String _getTypeLabel(String type) {
-    switch (type.toUpperCase()) {
-      case 'LOCATION_SHARE':
-        return 'Vị trí của Mother';
-      case 'HEALTH':
-      case 'HEALTH_ALERT':
-        return 'Cảnh báo sức khỏe';
-      case 'GROUP_INVITE':
-        return 'Lời mời vào nhóm';
-      case 'APPOINTMENT':
-      case 'REMINDER':
-        return 'Nhắc lịch';
-      case 'MESSAGE':
-      case 'CHAT':
-        return 'Tin nhắn mới';
-      case 'CONSULTATION':
-        return 'Yêu cầu tư vấn';
-      default:
-        return 'Thông báo';
-    }
-  }
+  String _getTypeLabel(String type) => notificationTypeLabel(type);
 
   String _formatTime(DateTime dateTime) {
     final now = DateTime.now();

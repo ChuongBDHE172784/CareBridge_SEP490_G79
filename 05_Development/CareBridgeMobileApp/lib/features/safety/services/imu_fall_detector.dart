@@ -114,6 +114,13 @@ class ImuFallDetector {
   );
   static const Duration impactWindow = Duration(milliseconds: 1500);
   static const Duration impactSettlingGrace = Duration(milliseconds: 250);
+  // A phone dropped from about 50 cm rebounds off a floor, mattress or pillow
+  // instead of stopping dead. During a rebound it is briefly airborne again,
+  // so a post-impact sample can read close to free fall or show another spike
+  // even though nobody is moving the device. Such a transient restarts the
+  // immobility clock instead of discarding the candidate; only movement that
+  // outlasts a physical bounce means the device is being carried or handled.
+  static const Duration maximumSettlingDuration = Duration(milliseconds: 2500);
   static const Duration maximumPostImpactSampleGap = Duration(
     milliseconds: 500,
   );
@@ -135,6 +142,7 @@ class ImuFallDetector {
   var _postImpactSamples = 0;
   var _stationaryPostImpactSamples = 0;
   DateTime? _lastPostImpactSampleAt;
+  DateTime? _settledSince;
   DateTime? _cooldownUntil;
   ImuDetectorDecision _latestDecision = const ImuDetectorDecision(
     phase: FallDetectionPhase.idle,
@@ -270,6 +278,7 @@ class ImuFallDetector {
     _postImpactSamples = 0;
     _stationaryPostImpactSamples = 0;
     _lastPostImpactSampleAt = sample.timestamp.add(impactSettlingGrace);
+    _settledSince = sample.timestamp;
     _setDecision(ImuDetectorDecisionReason.impactDetected);
     return null;
   }
@@ -322,14 +331,23 @@ class ImuFallDetector {
     final movementAccelerationDeviation = isLongSoftFall
         ? softLandingStrongMovementAccelerationDeviation
         : strongMovementAccelerationDeviation;
+    // Rebound transients still count towards the stationary ratio below, so
+    // tolerating them does not weaken the immobility gate: only a device that
+    // truly comes to rest can reach the required ratio.
+    _postImpactSamples++;
     if (sample.gyroscopeMagnitude > movementGyroscopeThreshold ||
         accelerationDeviation > movementAccelerationDeviation) {
-      _resetCandidate();
-      _setDecision(ImuDetectorDecisionReason.excessiveMovement);
+      if (sinceFirstImpact > maximumSettlingDuration) {
+        _resetCandidate();
+        _setDecision(ImuDetectorDecisionReason.excessiveMovement);
+        return null;
+      }
+      _settledSince = null;
+      _setDecision(ImuDetectorDecisionReason.awaitingImmobility);
       return null;
     }
+    final settledSince = _settledSince ??= sample.timestamp;
 
-    _postImpactSamples++;
     final stationaryAccelerationLimit = isLongSoftFall
         ? softLandingStationaryAccelerationTolerance
         : stationaryAccelerationTolerance;
@@ -344,7 +362,7 @@ class ImuFallDetector {
     final requiredImmobilityWindow = isLongSoftFall
         ? softLandingImmobilityWindow
         : immobilityWindow;
-    if (sinceFirstImpact < requiredImmobilityWindow) {
+    if (sample.timestamp.difference(settledSince) < requiredImmobilityWindow) {
       _setDecision(ImuDetectorDecisionReason.awaitingImmobility);
       return null;
     }
@@ -392,6 +410,9 @@ class ImuFallDetector {
   void rearmAfterAlertResponse(DateTime respondedAt) {
     _resetCandidate();
     _previousSample = null;
+    // Answering an alert means the phone has just been picked up and tapped.
+    // Hold the short debounce so that handling does not immediately raise a
+    // second alert for the incident the user has already closed.
     final requestedCooldownUntil = respondedAt.toUtc().add(cooldown);
     final currentCooldownUntil = _cooldownUntil;
     if (currentCooldownUntil == null ||
@@ -409,5 +430,6 @@ class ImuFallDetector {
     _postImpactSamples = 0;
     _stationaryPostImpactSamples = 0;
     _lastPostImpactSampleAt = null;
+    _settledSince = null;
   }
 }
