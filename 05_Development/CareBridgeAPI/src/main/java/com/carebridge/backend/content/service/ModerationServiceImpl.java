@@ -276,6 +276,7 @@ public class ModerationServiceImpl implements ModerationService {
         Map<UUID, String> answerPreviews = batchPreviewsFor(page.getContent(), ReportTargetType.ANSWER);
 
         List<ModerationHistoryItemResponse> items = page.getContent().stream()
+                .filter(action -> action.getActionType() != null)
                 .map(action -> {
                     String preview = action.getTargetType() == ReportTargetType.QUESTION
                             ? questionPreviews.get(action.getTargetId())
