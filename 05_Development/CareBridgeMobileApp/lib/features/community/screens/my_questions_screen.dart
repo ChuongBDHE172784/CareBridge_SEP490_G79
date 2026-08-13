@@ -254,7 +254,8 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
     final canOpen =
         question.status == 'APPROVED' ||
         question.status == 'PENDING' ||
-        question.status == 'AI_PENDING';
+        question.status == 'AI_PENDING' ||
+        question.status == 'LOCKED';
     final canDelete =
         question.status != 'LOCKED' && question.status != 'DELETED';
     return Material(
