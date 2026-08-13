@@ -546,16 +546,30 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                       ),
                     ),
                     const Spacer(),
-                    const Text(
-                      'Trả lời ngay',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _primary,
+                    if (item.status == 'LOCKED') ...[
+                      const Icon(Icons.lock_outline_rounded, size: 14, color: Color(0xFFBA1A1A)),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Đã khóa',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFBA1A1A),
+                        ),
                       ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, size: 16, color: _primary),
+                    ] else ...[
+                      const Text(
+                        'Trả lời ngay',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _primary,
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, size: 16, color: _primary),
+                    ],
                   ],
                 ),
               ],

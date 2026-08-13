@@ -8,7 +8,8 @@ import '../widgets/community_image_attachments.dart';
 import 'post_answer_screen.dart';
 import 'edit_question_screen.dart';
 
-bool canAnswerCommunityQuestion(String? status) => status == 'APPROVED';
+bool canAnswerCommunityQuestion(String? status) =>
+    status?.trim().toUpperCase() == 'APPROVED';
 
 /// CB-014 — UC-199 View Community Question Detail
 /// Displays a single approved community question with its answers.
