@@ -72,6 +72,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  // detail directly by ID, bypassing the feed's per-author visibility rule.
  CommunityQuestion question = questionRepository.findById(questionId)
  .filter(q -> q.getStatus() == QuestionStatus.APPROVED
+ || q.getStatus() == QuestionStatus.LOCKED
  || ((q.getStatus() == QuestionStatus.AI_PENDING || q.getStatus() == QuestionStatus.PENDING)
  && q.getAuthorId().equals(currentUserId)))
  .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
