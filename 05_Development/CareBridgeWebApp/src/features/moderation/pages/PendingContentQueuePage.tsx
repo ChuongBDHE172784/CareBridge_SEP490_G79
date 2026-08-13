@@ -145,6 +145,17 @@ export default function PendingContentQueuePage() {
     };
   }, [historyItems, items]);
 
+  const latestActionByTargetId = useMemo(() => {
+    const map = new Map<string, ModerationHistoryItem>();
+    const sorted = [...historyItems].sort((a, b) => new Date(b.actionAt).getTime() - new Date(a.actionAt).getTime());
+    for (const item of sorted) {
+      if (!map.has(item.targetId)) {
+        map.set(item.targetId, item);
+      }
+    }
+    return map;
+  }, [historyItems]);
+
   const filteredPending = useMemo(() => {
     const query = search.trim().toLowerCase();
     return items.filter((item) => {
@@ -467,7 +478,9 @@ export default function PendingContentQueuePage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(pagedRows as ModerationHistoryItem[]).map((item) => (
+                        {(pagedRows as ModerationHistoryItem[]).map((item) => {
+                          const isLatestForTarget = latestActionByTargetId.get(item.targetId)?.actionId === item.actionId;
+                          return (
                           <tr key={item.actionId} className="border-b border-surface-container-highest hover:bg-surface-bright">
                             <td className="py-3.5 px-2">
                               <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
@@ -497,7 +510,7 @@ export default function PendingContentQueuePage() {
                                   <span className="material-symbols-outlined text-base">visibility</span>
                                   Xem
                                 </button>
-                                {item.actionType === 'LOCK' && item.targetType === 'QUESTION' && (
+                                {isLatestForTarget && item.actionType === 'LOCK' && item.targetType === 'QUESTION' && (
                                   <button
                                     type="button"
                                     onClick={() => { setUnlockError(''); setUnlockTarget(item); }}
@@ -508,7 +521,7 @@ export default function PendingContentQueuePage() {
                                     Mở khóa
                                   </button>
                                 )}
-                                {item.actionType === 'HIDE' && (
+                                {isLatestForTarget && item.actionType === 'HIDE' && (
                                   <button
                                     type="button"
                                     onClick={() => { setUnhideError(''); setUnhideTarget(item); }}
@@ -519,7 +532,7 @@ export default function PendingContentQueuePage() {
                                     Hiện
                                   </button>
                                 )}
-                                {item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
+                                {isLatestForTarget && item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
                                   <button
                                     type="button"
                                     disabled={lockLoadingId === item.actionId}
@@ -533,7 +546,7 @@ export default function PendingContentQueuePage() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                        );})}
                         {pagedRows.length === 0 && (
                           <tr><td colSpan={7} className="py-12 text-center text-outline">Không có lịch sử phù hợp bộ lọc.</td></tr>
                         )}
