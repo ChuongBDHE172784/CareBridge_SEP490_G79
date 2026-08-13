@@ -15,6 +15,8 @@ import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
 import ExpertRegisterPage from '../../features/auth/pages/ExpertRegisterPage';
 import AccountProfilePage from '../../features/auth/pages/AccountProfilePage';
+import ForgotPasswordPage from '../../features/auth/pages/ForgotPasswordPage';
+import ChangePasswordPage from '../../features/auth/pages/ChangePasswordPage';
 import BabyCareHubPage from '../../features/babyCare/pages/BabyCareHubPage';
 import BabyCareResourceNotFoundPage from '../../features/babyCare/pages/BabyCareResourceNotFoundPage';
 
@@ -119,6 +121,7 @@ export const router = createBrowserRouter([
       { path: 'otp', element: <OtpPage /> },
     ],
   },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/forbidden', element: <ForbiddenPage /> },
   { path: '/maintenance', element: <MaintenancePage /> },
   { path: '/account-blocked', element: <BlockedAccountPage /> },
@@ -183,6 +186,7 @@ export const router = createBrowserRouter([
               { path: '/admin/posture-configs/new', element: <EditPostureConfigPage /> },
               { path: '/admin/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
               { path: '/admin/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
+              { path: '/admin/settings/password', element: <ChangePasswordPage /> },
             ],
           },
           {
@@ -215,6 +219,7 @@ export const router = createBrowserRouter([
                   { path: '/content/exercises/:exerciseId/edit', element: <EditPregnancyExercisePage /> },
                   { path: '/content/exercises/:exerciseId/preview', element: <ExercisePreviewPage /> },
                   { path: '/content/exercises/preview', element: <ExercisePreviewPage /> },
+                  { path: '/content/settings/password', element: <ChangePasswordPage /> },
                 ],
               },
             ],
@@ -235,6 +240,7 @@ export const router = createBrowserRouter([
                 element: <ExpertLayout />,
                 children: [
                   { path: '/expert/onboarding', element: <ExpertOnboardingPage /> },
+                  { path: '/expert/settings/password', element: <ChangePasswordPage /> },
                   {
                     element: <ExpertOnboardingGuard />,
                     children: [
@@ -277,6 +283,7 @@ export const router = createBrowserRouter([
               { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
               { path: '/moderator/violations', element: <ViolationHistoryPage /> },
               { path: '/moderator/violations/:targetUserId', element: <ViolationDetailPage /> },
+              { path: '/moderator/settings/password', element: <ChangePasswordPage /> },
             ],
           },
           {

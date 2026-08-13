@@ -8,6 +8,9 @@ import type {
   RefreshTokenRequest,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+  ChangePasswordRequest,
   ExpertRegisterRequest,
   RegisterRequest,
   PhoneAuthRequest,
@@ -130,6 +133,15 @@ export async function updateUserProfile(body: {
 export async function forgotPassword(request: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
   const { data } = await apiClient.post<ApiResponse<ForgotPasswordResponse>>('/api/v1/auth/forgot-password', request);
   return data.data;
+}
+
+export async function resetPassword(request: ResetPasswordRequest): Promise<ResetPasswordResponse> {
+  const { data } = await apiClient.post<ApiResponse<ResetPasswordResponse>>('/api/v1/auth/reset-password', request);
+  return data.data;
+}
+
+export async function changePassword(request: ChangePasswordRequest): Promise<void> {
+  await apiClient.put('/api/v1/auth/change-password', request);
 }
 
 // Token refresh (internal)

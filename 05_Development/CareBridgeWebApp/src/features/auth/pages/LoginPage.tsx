@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,8 +24,10 @@ function isEmail(value: string): boolean {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;
 
   const {
     register,
@@ -108,6 +110,12 @@ export default function LoginPage() {
           )}
           <p role="status" aria-live="polite" className="sr-only">{serverError ?? ''}</p>
 
+          {successMessage && !serverError && !fieldError && (
+            <div role="status" className="rounded-xl bg-emerald-50 p-4 text-sm leading-5 text-emerald-800">
+              {successMessage}
+            </div>
+          )}
+
           {/* Login Form */}
           <form className="flex flex-col gap-6" onSubmit={handleSubmit(onSubmit)}>
             <div className="flex flex-col gap-4">
@@ -162,9 +170,9 @@ export default function LoginPage() {
                 <input type="checkbox" className="w-5 h-5 rounded border border-outline-variant accent-primary cursor-pointer" />
                 <span className="text-sm leading-5 text-on-surface-variant">Ghi nhớ tôi</span>
               </label>
-              <a href="/forgot-password" className="text-sm leading-5 font-medium text-primary no-underline transition-colors duration-200 hover:text-primary-container">
+              <Link to="/forgot-password" className="text-sm leading-5 font-medium text-primary no-underline transition-colors duration-200 hover:text-primary-container">
                 Quên mật khẩu?
-              </a>
+              </Link>
             </div>
 
             {/* Submit */}

@@ -68,6 +68,19 @@ export default function ContentPortalSidebar() {
           <p className="truncate font-semibold text-on-surface-variant">{user?.name ?? user?.phone ?? 'Content Admin'}</p>
           <p>{user?.role ?? 'CONTENT_ADMIN'}</p>
         </div>
+        <NavLink
+          to={hasRole('MODERATOR') ? '/moderator/settings/password' : '/content/settings/password'}
+          className={({ isActive }) =>
+            `flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              isActive
+                ? 'border-primary bg-primary-container text-primary'
+                : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+            }`
+          }
+        >
+          <span className="material-symbols-outlined text-[16px]">settings</span>
+          Cài đặt
+        </NavLink>
         <button
           type="button"
           onClick={handleLogout}
@@ -81,5 +94,3 @@ export default function ContentPortalSidebar() {
     </aside>
   );
 }
-
-
