@@ -117,6 +117,38 @@ public class ModerationServiceImpl implements ModerationService {
             }, pageable);
         }
 
+        java.util.Set<UUID> questionIds = new java.util.HashSet<>();
+        java.util.Set<UUID> answerIds = new java.util.HashSet<>();
+        java.util.Set<UUID> directUserIds = new java.util.HashSet<>();
+
+        for (ContentReport report : page.getContent()) {
+            if (report.getTargetType() == ReportTargetType.QUESTION) {
+                questionIds.add(report.getTargetId());
+            } else if (report.getTargetType() == ReportTargetType.ANSWER) {
+                answerIds.add(report.getTargetId());
+            } else if (report.getTargetType() == ReportTargetType.USER
+                    || report.getTargetType() == ReportTargetType.EXPERT
+                    || report.getTargetType() == ReportTargetType.ACCOUNT) {
+                directUserIds.add(report.getTargetId());
+            }
+        }
+
+        Map<UUID, CommunityQuestion> questions = questionIds.isEmpty() ? Map.of()
+                : communityQuestionRepository.findAllById(questionIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(CommunityQuestion::getId, q -> q));
+
+        Map<UUID, CommunityAnswer> answers = answerIds.isEmpty() ? Map.of()
+                : communityAnswerRepository.findAllById(answerIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(CommunityAnswer::getId, a -> a));
+
+        java.util.Set<UUID> allAuthorIds = new java.util.HashSet<>(directUserIds);
+        questions.values().forEach(q -> { if (q.getAuthorId() != null) allAuthorIds.add(q.getAuthorId()); });
+        answers.values().forEach(a -> { if (a.getAuthorId() != null) allAuthorIds.add(a.getAuthorId()); });
+
+        Map<UUID, User> users = allAuthorIds.isEmpty() ? Map.of()
+                : userRepository.findAllById(allAuthorIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
+
         List<ModerationQueueItemResponse> items = page.getContent().stream()
                 .map(report -> {
                     // C4: preview truncated inside ContentPreviewService
@@ -124,7 +156,38 @@ public class ModerationServiceImpl implements ModerationService {
                             report.getTargetId(), report.getTargetType());
                     long count = contentReportRepository.countByTargetIdAndStatus(
                             report.getTargetId(), report.getStatus());
-                    return moderationMapper.toQueueItemResponse(report, preview, count);
+
+                    UUID authorId = null;
+                    String authorName = null;
+                    String targetTitle = null;
+
+                    if (report.getTargetType() == ReportTargetType.QUESTION) {
+                        CommunityQuestion q = questions.get(report.getTargetId());
+                        if (q != null) {
+                            authorId = q.getAuthorId();
+                            targetTitle = q.getTitle();
+                        }
+                    } else if (report.getTargetType() == ReportTargetType.ANSWER) {
+                        CommunityAnswer a = answers.get(report.getTargetId());
+                        if (a != null) {
+                            authorId = a.getAuthorId();
+                        }
+                    } else if (report.getTargetType() == ReportTargetType.USER
+                            || report.getTargetType() == ReportTargetType.EXPERT
+                            || report.getTargetType() == ReportTargetType.ACCOUNT) {
+                        authorId = report.getTargetId();
+                    }
+
+                    if (authorId != null) {
+                        User u = users.get(authorId);
+                        if (u != null) {
+                            authorName = u.getName() != null && !u.getName().isBlank()
+                                    ? u.getName()
+                                    : (u.getPhone() != null ? u.getPhone() : u.getEmail());
+                        }
+                    }
+
+                    return moderationMapper.toQueueItemResponse(report, preview, count, authorId, authorName, targetTitle);
                 })
                 .toList();
 
