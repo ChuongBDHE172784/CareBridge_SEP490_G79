@@ -6,6 +6,7 @@ import com.carebridge.backend.baby.entity.Gender;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus;
 import com.carebridge.backend.expertavailability.entity.ExpertAvailability;
@@ -41,6 +42,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -83,47 +85,86 @@ public class DevDataSeeder implements ApplicationRunner {
     @Value("${carebridge.dev-seed.password:" + DEFAULT_TEST_PASSWORD + "}")
     private String testPassword;
 
-    record SeedAccount(String email, String fullName, Role role) {
+    record SeedAccount(
+            String email,
+            String fullName,
+            Role role,
+            String phone,
+            LocalDate dateOfBirth,
+            String area) {
     }
 
     private static final List<SeedAccount> SEED_ACCOUNTS = List.of(
-            new SeedAccount("admin@carebridge.dev", "Admin Test", Role.SYSTEM_ADMIN),
-            new SeedAccount("moderator@carebridge.dev", "Moderator Test", Role.MODERATOR),
-            new SeedAccount("content@carebridge.dev", "Content Test", Role.CONTENT_ADMIN),
-            new SeedAccount("expert@carebridge.dev", "Expert Test", Role.EXPERT),
-            new SeedAccount("mother@carebridge.dev", "Mother Test", Role.MOTHER),
-            new SeedAccount("family@carebridge.dev", "Family Test", Role.FAMILY),
-            new SeedAccount("mebau@carebridge.dev", "Mẹ Bầu Mới", Role.MOTHER),
-            new SeedAccount("mother3@carebridge.dev", "Mother Test 3", Role.MOTHER),
-            new SeedAccount("mother4@carebridge.dev", "Mother Test 4", Role.MOTHER),
-            new SeedAccount("mother5@carebridge.dev", "Live Birth Add Baby Mother", Role.MOTHER),
-            new SeedAccount("mother6@carebridge.dev", "Standalone Baby Profiles Mother", Role.MOTHER),
-            new SeedAccount("family2@carebridge.dev", "Family Test 2", Role.FAMILY),
-            new SeedAccount("family3@carebridge.dev", "Family Test 3", Role.FAMILY),
-            new SeedAccount("expert2@carebridge.dev", "Expert Test 2", Role.EXPERT),
-            new SeedAccount("expert3@carebridge.dev", "Expert Test 3", Role.EXPERT));
+            new SeedAccount("admin@carebridge.dev", "System Admin", Role.SYSTEM_ADMIN,
+                    "+84901000001", LocalDate.of(1990, 1, 10), "TP Hồ Chí Minh"),
+            new SeedAccount("moderator@carebridge.dev", "Moderator", Role.MODERATOR,
+                    "+84901000002", LocalDate.of(1992, 5, 18), "TP Hồ Chí Minh"),
+            new SeedAccount("content@carebridge.dev", "Content Admin", Role.CONTENT_ADMIN,
+                    "+84901000003", LocalDate.of(1991, 9, 22), "TP Hồ Chí Minh"),
+            new SeedAccount("expert@carebridge.dev", "BS Đỗ Hải Long", Role.EXPERT,
+                    "+84902000001", LocalDate.of(1982, 3, 12), "TP Hồ Chí Minh"),
+            new SeedAccount("mother@carebridge.dev", "Mẹ Bầu 1", Role.MOTHER,
+                    "+84911000001", LocalDate.of(1995, 2, 14), "TP Hồ Chí Minh"),
+            new SeedAccount("family@carebridge.dev", "Chồng Mẹ Bầu 1", Role.FAMILY,
+                    "+84912000001", LocalDate.of(1992, 7, 9), "TP Hồ Chí Minh"),
+            new SeedAccount("mother2@carebridge.dev", "Mẹ Bầu 2", Role.MOTHER,
+                    "+84911000002", LocalDate.of(1994, 6, 20), "Hà Nội"),
+            new SeedAccount("mother3@carebridge.dev", "Mẹ bầu 3", Role.MOTHER,
+                    "+84911000003", LocalDate.of(1996, 11, 3), "Đà Nẵng"),
+            new SeedAccount("mother4@carebridge.dev", "Mẹ bầu 4", Role.MOTHER,
+                    "+84911000004", LocalDate.of(1993, 4, 27), "TP Hồ Chí Minh"),
+            new SeedAccount("mother5@carebridge.dev", "Mẹ bầu 5", Role.MOTHER,
+                    "+84911000005", LocalDate.of(1997, 8, 16), "Cần Thơ"),
+            new SeedAccount("mother6@carebridge.dev", "Mẹ bầu 6", Role.MOTHER,
+                    "+84911000006", LocalDate.of(1995, 12, 8), "Đồng Nai"),
+            new SeedAccount("family2@carebridge.dev", "Chồng Mẹ Bầu 2", Role.FAMILY,
+                    "+84912000002", LocalDate.of(1991, 1, 25), "Hà Nội"),
+            new SeedAccount("family3@carebridge.dev", "Chồng Mẹ Bầu 3", Role.FAMILY,
+                    "+84912000003", LocalDate.of(1993, 10, 11), "Đà Nẵng"),
+            new SeedAccount("family4@carebridge.dev", "Chồng Mẹ Bầu 4", Role.FAMILY,
+                    "+84912000004", LocalDate.of(1990, 3, 30), "TP Hồ Chí Minh"),
+            new SeedAccount("family5@carebridge.dev", "Chồng Mẹ Bầu 5", Role.FAMILY,
+                    "+84912000005", LocalDate.of(1994, 5, 19), "Cần Thơ"),
+            new SeedAccount("family6@carebridge.dev", "Chồng Mẹ Bầu 6", Role.FAMILY,
+                    "+84912000006", LocalDate.of(1992, 12, 2), "Đồng Nai"),
+            new SeedAccount("expert2@carebridge.dev", "BS Trần Thị Thu Nga", Role.EXPERT,
+                    "+84902000002", LocalDate.of(1985, 6, 15), "TP Hồ Chí Minh"),
+            new SeedAccount("expert3@carebridge.dev", "BS Trần Văn Hoàng", Role.EXPERT,
+                    "+84902000003", LocalDate.of(1987, 10, 8), "TP Hồ Chí Minh"),
+            new SeedAccount("expert4@carebridge.dev", "BS Nguyễn Văn Minh", Role.EXPERT,
+                    "+84902000004", LocalDate.of(1980, 4, 21), "Hà Nội"),
+            new SeedAccount("expert5@carebridge.dev", "BS Nguyễn Thị Lan", Role.EXPERT,
+                    "+84902000005", LocalDate.of(1988, 1, 17), "Đà Nẵng"),
+            new SeedAccount("expert6@carebridge.dev", "BS Lê Văn Bình", Role.EXPERT,
+                    "+84902000006", LocalDate.of(1984, 9, 5), "Cần Thơ"));
+
+    private static final Set<String> SEED_EMAILS = SEED_ACCOUNTS.stream()
+            .map(SeedAccount::email)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
         validateSeedPassword(testPassword);
         String passwordHash = passwordEncoder.encode(testPassword);
+        retireObsoleteSeedAccounts();
 
         Map<String, User> savedUsers = new HashMap<>();
-        int created = 0;
+        int changed = 0;
 
         for (SeedAccount seed : SEED_ACCOUNTS) {
             var existing = userRepository.findByEmail(seed.email());
             if (existing.isPresent()) {
                 User user = existing.get();
+                boolean accountChanged = synchronizeSeedAccount(user, seed);
                 if (!passwordEncoder.matches(testPassword, user.getPasswordHash())) {
                     user.setPasswordHash(passwordHash);
-                    user.setEnabled(true);
-                    user.setLocked(false);
-                    user.setAccountStatus("ACTIVE");
-                    userRepository.save(user);
-                    created++;
+                    accountChanged = true;
                     log.info("Reset password for existing seed account: {}", seed.email());
+                }
+                if (accountChanged) {
+                    user = userRepository.save(user);
+                    changed++;
                 }
                 savedUsers.put(seed.email(), user);
                 continue;
@@ -132,6 +173,10 @@ public class DevDataSeeder implements ApplicationRunner {
             User user = User.builder()
                     .email(seed.email())
                     .name(seed.fullName())
+                    .displayName(seed.fullName())
+                    .phone(seed.phone())
+                    .dateOfBirth(seed.dateOfBirth())
+                    .area(seed.area())
                     .passwordHash(passwordHash)
                     .role(seed.role())
                     .enabled(true)
@@ -143,16 +188,134 @@ public class DevDataSeeder implements ApplicationRunner {
 
             user = userRepository.save(user);
             savedUsers.put(seed.email(), user);
-            created++;
+            changed++;
         }
 
-        if (created > 0) {
-            log.info("Created/updated {} synthetic dev seed accounts", created);
+        if (changed > 0) {
+            log.info("Created/updated {} synthetic dev seed accounts", changed);
         } else {
             log.debug("[DevDataSeeder] All seed accounts already exist - skipped.");
         }
 
         seedVerifiedProfileData(savedUsers);
+    }
+
+    private boolean synchronizeSeedAccount(User user, SeedAccount seed) {
+        boolean changed = false;
+        changed |= setIfDifferent(user.getName(), seed.fullName(), user::setName);
+        changed |= setIfDifferent(user.getDisplayName(), seed.fullName(), user::setDisplayName);
+        if (user.getPerson() != null
+                && !java.util.Objects.equals(user.getPerson().getDisplayName(), seed.fullName())) {
+            user.getPerson().setDisplayName(seed.fullName());
+            changed = true;
+        }
+        changed |= setIfDifferent(user.getPhone(), seed.phone(), user::setPhone);
+        changed |= setIfDifferent(user.getDateOfBirth(), seed.dateOfBirth(), user::setDateOfBirth);
+        changed |= setIfDifferent(user.getArea(), seed.area(), user::setArea);
+
+        if (user.getRole() != seed.role()) {
+            user.setRole(seed.role());
+            changed = true;
+        }
+        if (!user.isEnabled()) {
+            user.setEnabled(true);
+            changed = true;
+        }
+        if (user.isLocked()) {
+            user.setLocked(false);
+            user.setLockedAt(null);
+            user.setLockType(null);
+            user.setLockReason(null);
+            user.setLockedBy(null);
+            user.setLockEpisodeId(null);
+            changed = true;
+        }
+        if (!"ACTIVE".equals(user.getAccountStatus())) {
+            user.setAccountStatus("ACTIVE");
+            user.setDeactivatedAt(null);
+            user.setDeactivationReason(null);
+            user.setDeactivatedBy(null);
+            changed = true;
+        }
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            user.setEmailVerified(true);
+            changed = true;
+        }
+        if (!Boolean.TRUE.equals(user.getPhoneVerified())) {
+            user.setPhoneVerified(true);
+            changed = true;
+        }
+        return changed;
+    }
+
+    private <T> boolean setIfDifferent(T current, T expected, java.util.function.Consumer<T> setter) {
+        if (java.util.Objects.equals(current, expected)) {
+            return false;
+        }
+        setter.accept(expected);
+        return true;
+    }
+
+    private void retireObsoleteSeedAccounts() {
+        userRepository.findAll().stream()
+                .filter(user -> user.getEmail() != null)
+                .filter(user -> user.getEmail().endsWith("@carebridge.dev"))
+                .filter(user -> !SEED_EMAILS.contains(user.getEmail()))
+                .toList()
+                .forEach(user -> {
+                    String retiredEmail = user.getEmail();
+                    if (!hasUserReferences(user.getId())) {
+                        userRepository.delete(user);
+                        log.info("Removed obsolete unreferenced dev seed account: {}", retiredEmail);
+                        return;
+                    }
+
+                    user.setEmail("retired+" + user.getId() + "@invalid.carebridge.dev");
+                    user.setPhone(null);
+                    user.setEnabled(false);
+                    user.setLocked(false);
+                    user.setAccountStatus("DEACTIVATED");
+                    user.setDeactivatedAt(Instant.now());
+                    user.setDeactivationReason("Retired obsolete synthetic dev seed account");
+                    userRepository.save(user);
+                    log.warn("Retired referenced dev seed account instead of deleting it: {}", retiredEmail);
+                });
+    }
+
+    private boolean hasUserReferences(UUID userId) {
+        List<Map<String, Object>> foreignKeys = jdbcTemplate.queryForList("""
+                SELECT tc.table_schema, tc.table_name, kcu.column_name
+                  FROM information_schema.table_constraints tc
+                  JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                   AND tc.constraint_schema = kcu.constraint_schema
+                  JOIN information_schema.referential_constraints rc
+                    ON tc.constraint_name = rc.constraint_name
+                   AND tc.constraint_schema = rc.constraint_schema
+                  JOIN information_schema.constraint_column_usage ccu
+                    ON rc.unique_constraint_name = ccu.constraint_name
+                   AND rc.unique_constraint_schema = ccu.constraint_schema
+                 WHERE tc.constraint_type = 'FOREIGN KEY'
+                   AND ccu.table_schema = current_schema()
+                   AND ccu.table_name = 'users'
+                   AND ccu.column_name = 'user_id'
+                """);
+
+        return foreignKeys.stream().anyMatch(foreignKey -> {
+            String schema = quoteIdentifier(foreignKey.get("table_schema").toString());
+            String table = quoteIdentifier(foreignKey.get("table_name").toString());
+            String column = quoteIdentifier(foreignKey.get("column_name").toString());
+            Boolean referenced = jdbcTemplate.queryForObject(
+                    "SELECT EXISTS (SELECT 1 FROM " + schema + "." + table
+                            + " WHERE " + column + " = ?)",
+                    Boolean.class,
+                    userId);
+            return Boolean.TRUE.equals(referenced);
+        });
+    }
+
+    private String quoteIdentifier(String identifier) {
+        return '"' + identifier.replace("\"", "\"\"") + '"';
     }
 
     static void validateSeedPassword(String candidate) {
@@ -192,10 +355,24 @@ public class DevDataSeeder implements ApplicationRunner {
                     mother4Journey.getId(), mother4Journey.getJourneyType());
         }
 
+        seedVerifiedExpert(savedUsers.get("expert@carebridge.dev"), admin,
+                "Sản khoa", "BS.CKII", 15, "Bệnh viện Từ Dũ",
+                "Theo dõi thai kỳ nguy cơ cao, tư vấn tiền sản và chăm sóc sau sinh.", 350_000L);
         seedVerifiedExpert(savedUsers.get("expert2@carebridge.dev"), admin,
-                "Sản khoa", "Bác sĩ Sản khoa", 8, "Bệnh viện Từ Dũ");
+                "Sản khoa", "Bác sĩ", 8, "Bệnh viện Từ Dũ",
+                "Tư vấn sức khỏe thai kỳ, chuẩn bị sinh và phục hồi sau sinh.", 280_000L);
         seedVerifiedExpert(savedUsers.get("expert3@carebridge.dev"), admin,
-                "Nhi khoa", "Bác sĩ Nhi khoa", 6, "Bệnh viện Nhi Đồng 1");
+                "Nhi khoa", "Bác sĩ", 6, "Bệnh viện Nhi Đồng 1",
+                "Tư vấn chăm sóc trẻ sơ sinh, dinh dưỡng và các bệnh lý nhi khoa thường gặp.", 250_000L);
+        seedVerifiedExpert(savedUsers.get("expert4@carebridge.dev"), admin,
+                "Dinh dưỡng", "Thạc sĩ - Bác sĩ", 12, "Bệnh viện Bạch Mai",
+                "Xây dựng chế độ dinh dưỡng cho mẹ mang thai, sau sinh và trẻ nhỏ.", 320_000L);
+        seedVerifiedExpert(savedUsers.get("expert5@carebridge.dev"), admin,
+                "Tâm lý", "Chuyên gia Tâm lý", 9, "Bệnh viện Phụ sản - Nhi Đà Nẵng",
+                "Hỗ trợ tâm lý thai kỳ, phòng ngừa trầm cảm sau sinh và tư vấn gia đình.", 300_000L);
+        seedVerifiedExpert(savedUsers.get("expert6@carebridge.dev"), admin,
+                "Nhi khoa", "BS.CKI", 10, "Bệnh viện Nhi đồng Cần Thơ",
+                "Tư vấn chăm sóc, tiêm chủng và theo dõi phát triển trẻ sơ sinh, trẻ nhỏ.", 270_000L);
     }
 
     private MotherJourney seedStandaloneAddBabyJourney(User mother, String fixtureKey) {
@@ -541,15 +718,35 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     private void seedVerifiedExpert(User expertUser, User admin, String specialty,
-            String professionalTitle, int experienceYears, String workplace) {
+            String professionalTitle, int experienceYears, String workplace,
+            String consultationScope, long consultationFeeVnd) {
         ExpertProfile profile = expertProfileRepository.findByUserId(expertUser.getId())
                 .orElseGet(() -> insertExpertProfileRow(expertUser, admin, specialty, professionalTitle,
-                        experienceYears, workplace));
+                        experienceYears, workplace, consultationScope, consultationFeeVnd));
 
-        if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
+        boolean profileChanged = false;
+        profileChanged |= setIfDifferent(profile.getSpecialty(), specialty, profile::setSpecialty);
+        profileChanged |= setIfDifferent(profile.getProfessionalTitle(), professionalTitle,
+                profile::setProfessionalTitle);
+        profileChanged |= setIfDifferent(profile.getExperienceYears(), experienceYears,
+                profile::setExperienceYears);
+        profileChanged |= setIfDifferent(profile.getWorkplace(), workplace, profile::setWorkplace);
+        profileChanged |= setIfDifferent(profile.getConsultationScope(), consultationScope,
+                profile::setConsultationScope);
+        profileChanged |= setIfDifferent(profile.getConsultationFeeVnd(), consultationFeeVnd,
+                profile::setConsultationFeeVnd);
+        profileChanged |= setIfDifferent(profile.getTrustStatus(), TrustStatus.ACTIVE,
+                profile::setTrustStatus);
+
+        if (profile.getVerificationStatus() != VerificationStatus.APPROVED
+                || profile.getVerifiedAt() == null
+                || !admin.getId().equals(profile.getVerifiedBy())) {
             profile.setVerificationStatus(VerificationStatus.APPROVED);
             profile.setVerifiedAt(LocalDateTime.now());
             profile.setVerifiedBy(admin.getId());
+            profileChanged = true;
+        }
+        if (profileChanged) {
             profile = expertProfileRepository.save(profile);
         }
 
@@ -581,15 +778,18 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     private ExpertProfile insertExpertProfileRow(User expertUser, User admin, String specialty,
-            String professionalTitle, int experienceYears, String workplace) {
+            String professionalTitle, int experienceYears, String workplace,
+            String consultationScope, long consultationFeeVnd) {
         return expertProfileRepository.save(ExpertProfile.builder()
                 .expertProfileId(expertUser.getId())
                 .specialty(specialty)
                 .professionalTitle(professionalTitle)
                 .experienceYears(experienceYears)
                 .workplace(workplace)
-                .consultationScope("Tư vấn thai sản và chăm sóc mẹ bé")
+                .consultationScope(consultationScope)
+                .consultationFeeVnd(consultationFeeVnd)
                 .verificationStatus(VerificationStatus.APPROVED)
+                .trustStatus(TrustStatus.ACTIVE)
                 .verifiedAt(LocalDateTime.now())
                 .verifiedBy(admin.getId())
                 .build());

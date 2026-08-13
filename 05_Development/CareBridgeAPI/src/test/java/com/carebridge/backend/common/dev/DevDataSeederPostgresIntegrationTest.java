@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.SmsService;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +72,17 @@ class DevDataSeederPostgresIntegrationTest {
             'mother6@carebridge.dev'
             """;
 
+    private static final List<String> EXPECTED_SEED_EMAILS = List.of(
+            "admin@carebridge.dev", "moderator@carebridge.dev", "content@carebridge.dev",
+            "expert@carebridge.dev", "mother@carebridge.dev", "family@carebridge.dev",
+            "mother2@carebridge.dev", "mother3@carebridge.dev", "mother4@carebridge.dev",
+            "mother5@carebridge.dev", "mother6@carebridge.dev", "family2@carebridge.dev",
+            "family3@carebridge.dev", "family4@carebridge.dev", "family5@carebridge.dev",
+            "family6@carebridge.dev", "expert2@carebridge.dev", "expert3@carebridge.dev",
+            "expert4@carebridge.dev", "expert5@carebridge.dev", "expert6@carebridge.dev");
+
+    private static final Map<String, String> EXPECTED_SEED_NAMES = expectedSeedNames();
+
     private static final List<UUID> SEEDED_GROWTH_IDS = List.of(
             UUID.fromString("f0310000-0000-0000-0000-000000000001"),
             UUID.fromString("f0310000-0000-0000-0000-000000000002"),
@@ -92,6 +105,14 @@ class DevDataSeederPostgresIntegrationTest {
     @Test
     void freshFlywaySchemaUpgradesLegacyStandaloneFixturesAndRemainsIdempotent() {
         assertCanonicalSeedState(2);
+        assertLatestDevSchemaSeedState();
+
+        insertObsoleteUnreferencedSeedAccount();
+        assertThat(count("SELECT count(*) FROM users WHERE email = 'mebau@carebridge.dev'"))
+                .isEqualTo(1L);
+        seeder.run(new DefaultApplicationArguments(new String[0]));
+        assertThat(count("SELECT count(*) FROM users WHERE email = 'mebau@carebridge.dev'"))
+                .isZero();
         assertLatestDevSchemaSeedState();
 
         List<UUID> standaloneBabyIdsBefore = seededStandaloneBabyIds();
@@ -121,6 +142,19 @@ class DevDataSeederPostgresIntegrationTest {
         assertThat(seededEvidenceSubmissionCount("standalone-baby-")).isZero();
         assertThat(seededEvidenceSubmissionCount("story65-")).isEqualTo(2L);
         assertAuditEventsImmutableTriggerEnabled();
+    }
+
+    private void insertObsoleteUnreferencedSeedAccount() {
+        jdbcTemplate.update("""
+                INSERT INTO users
+                    (user_id, person_id, email, password_hash, full_name, display_name,
+                     role, enabled, locked, account_status, email_verified, phone_verified,
+                     settings_jsonb, social_identities, verification_status, trust_status,
+                     created_at, updated_at)
+                VALUES (?, ?, 'mebau@carebridge.dev', 'retired-seed-hash',
+                        'Mẹ Bầu Mới', 'Mẹ Bầu Mới', 'MOTHER', TRUE, FALSE, 'ACTIVE',
+                        TRUE, FALSE, '{}'::jsonb, '[]'::jsonb, 'PENDING', 'ACTIVE', NOW(), NOW())
+                """, UUID.randomUUID(), UUID.randomUUID());
     }
 
     private void assertCanonicalSeedState(int expectedEvidenceCount) {
@@ -173,8 +207,38 @@ class DevDataSeederPostgresIntegrationTest {
     }
 
     private void assertLatestDevSchemaSeedState() {
-        assertThat(count("SELECT count(*) FROM users WHERE email LIKE '%@carebridge.dev'"))
-                .isGreaterThanOrEqualTo(14L);
+        assertThat(jdbcTemplate.queryForList("""
+                SELECT email
+                  FROM users
+                 WHERE email LIKE '%@carebridge.dev'
+                 ORDER BY email
+                """, String.class)).containsExactlyInAnyOrderElementsOf(EXPECTED_SEED_EMAILS);
+        Map<String, String> actualNames = jdbcTemplate.query("""
+                SELECT email, full_name
+                  FROM users
+                 WHERE email LIKE '%@carebridge.dev'
+                """, resultSet -> {
+            Map<String, String> names = new LinkedHashMap<>();
+            while (resultSet.next()) {
+                names.put(resultSet.getString("email"), resultSet.getString("full_name"));
+            }
+            return names;
+        });
+        assertThat(actualNames).containsExactlyInAnyOrderEntriesOf(EXPECTED_SEED_NAMES);
+        assertThat(count("""
+                SELECT count(*)
+                  FROM users
+                 WHERE email LIKE '%@carebridge.dev'
+                   AND phone IS NOT NULL
+                   AND date_of_birth IS NOT NULL
+                   AND area IS NOT NULL
+                   AND enabled = TRUE
+                   AND account_status = 'ACTIVE'
+                   AND email_verified = TRUE
+                   AND phone_verified = TRUE
+                """)).isEqualTo(21L);
+        assertThat(count("SELECT count(DISTINCT phone) FROM users WHERE email LIKE '%@carebridge.dev'"))
+                .isEqualTo(21L);
         assertThat(count("""
                 SELECT count(*)
                   FROM care_group_members member
@@ -191,16 +255,53 @@ class DevDataSeederPostgresIntegrationTest {
                 SELECT count(*)
                   FROM expert_credentials ec
                   JOIN users u ON u.user_id = ec.user_id
-                 WHERE u.email IN ('expert2@carebridge.dev', 'expert3@carebridge.dev')
+                 WHERE u.email IN ('expert@carebridge.dev', 'expert2@carebridge.dev',
+                                   'expert3@carebridge.dev', 'expert4@carebridge.dev',
+                                   'expert5@carebridge.dev', 'expert6@carebridge.dev')
                    AND u.verification_status = 'APPROVED'
-                """)).isEqualTo(2L);
+                   AND u.trust_status = 'ACTIVE'
+                   AND u.specialty IS NOT NULL
+                   AND u.professional_title IS NOT NULL
+                   AND u.experience_years IS NOT NULL
+                   AND u.workplace IS NOT NULL
+                   AND u.consultation_scope IS NOT NULL
+                   AND u.consultation_fee_vnd IS NOT NULL
+                """)).isEqualTo(6L);
         assertThat(count("""
                 SELECT count(*)
                   FROM expert_availability ea
                   JOIN users u ON u.user_id = ea.user_id
-                 WHERE u.email IN ('expert2@carebridge.dev', 'expert3@carebridge.dev')
+                 WHERE u.email IN ('expert@carebridge.dev', 'expert2@carebridge.dev',
+                                   'expert3@carebridge.dev', 'expert4@carebridge.dev',
+                                   'expert5@carebridge.dev', 'expert6@carebridge.dev')
                    AND u.verification_status = 'APPROVED'
-                """)).isEqualTo(0L);
+                """)).isEqualTo(6L);
+    }
+
+    private static Map<String, String> expectedSeedNames() {
+        Map<String, String> names = new LinkedHashMap<>();
+        names.put("admin@carebridge.dev", "System Admin");
+        names.put("moderator@carebridge.dev", "Moderator");
+        names.put("content@carebridge.dev", "Content Admin");
+        names.put("expert@carebridge.dev", "BS Đỗ Hải Long");
+        names.put("mother@carebridge.dev", "Mẹ Bầu 1");
+        names.put("family@carebridge.dev", "Chồng Mẹ Bầu 1");
+        names.put("mother2@carebridge.dev", "Mẹ Bầu 2");
+        names.put("mother3@carebridge.dev", "Mẹ bầu 3");
+        names.put("mother4@carebridge.dev", "Mẹ bầu 4");
+        names.put("mother5@carebridge.dev", "Mẹ bầu 5");
+        names.put("mother6@carebridge.dev", "Mẹ bầu 6");
+        names.put("family2@carebridge.dev", "Chồng Mẹ Bầu 2");
+        names.put("family3@carebridge.dev", "Chồng Mẹ Bầu 3");
+        names.put("family4@carebridge.dev", "Chồng Mẹ Bầu 4");
+        names.put("family5@carebridge.dev", "Chồng Mẹ Bầu 5");
+        names.put("family6@carebridge.dev", "Chồng Mẹ Bầu 6");
+        names.put("expert2@carebridge.dev", "BS Trần Thị Thu Nga");
+        names.put("expert3@carebridge.dev", "BS Trần Văn Hoàng");
+        names.put("expert4@carebridge.dev", "BS Nguyễn Văn Minh");
+        names.put("expert5@carebridge.dev", "BS Nguyễn Thị Lan");
+        names.put("expert6@carebridge.dev", "BS Lê Văn Bình");
+        return Map.copyOf(names);
     }
 
     private List<Long> fixtureCounts() {
