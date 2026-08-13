@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/network/api_client.dart';
 import '../../privacy/models/privacy_model.dart';
 import '../../privacy/services/privacy_service.dart';
 import '../models/safety_config_model.dart';
@@ -474,8 +475,18 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
       debugPrint(
         '[SafetyForegroundTaskHandler] eligibility validation failed: $error',
       );
-      await _stopTask();
+      if (await _endsSafetyMonitoring(error)) await _stopTask();
     }
+  }
+
+  /// A 401 here is usually this isolate losing a refresh-token rotation race
+  /// with the UI isolate, not a signed-out user. Switching fall detection off
+  /// for that would leave the user unmonitored until they notice, so re-read
+  /// the shared session and let the next repeat event retry instead.
+  Future<bool> _endsSafetyMonitoring(Object error) async {
+    if (error is! ApiException || error.statusCode != 401) return true;
+    await AuthState.instance.restoreSessionFromSharedStorage();
+    return !AuthState.instance.isAuthenticated;
   }
 
   Future<void> _stopTask() async {
