@@ -6,14 +6,13 @@ import {
   fetchModerationHistory,
   moderateContentDirect,
   fetchContentDetail,
-  undoModerationAction,
 } from '../services/moderationApi';
 import type {
   ModerationHistoryItem,
   PendingContentItem,
   ReportTargetType,
 } from '../models/moderation';
-import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
+import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS } from '../models/moderation';
 import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
 import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 import { fetchAiModerationStatus } from '../../aiRuleManagement/services/aiModerationPolicyApi';
@@ -94,9 +93,6 @@ export default function PendingContentQueuePage() {
   const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
   const [dialogError, setDialogError] = useState('');
 
-  const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
-  const [undoSubmitting, setUndoSubmitting] = useState(false);
-  const [undoError, setUndoError] = useState('');
   const [lockTarget, setLockTarget] = useState<ModerationHistoryItem | null>(null);
   const [lockSubmitting, setLockSubmitting] = useState(false);
   const [lockError, setLockError] = useState('');
@@ -228,22 +224,6 @@ export default function PendingContentQueuePage() {
       setDialogError('Thao tác thất bại, vui lòng thử lại.');
     } finally {
       setActioningId(null);
-    }
-  };
-
-  const confirmUndo = async () => {
-    if (!undoTarget) return;
-    setUndoSubmitting(true);
-    setUndoError('');
-    try {
-      await undoModerationAction(undoTarget.actionId);
-      setUndoTarget(null);
-      await load();
-    } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setUndoError(message || 'Hoàn tác thất bại, vui lòng thử lại.');
-    } finally {
-      setUndoSubmitting(false);
     }
   };
 
@@ -476,16 +456,6 @@ export default function PendingContentQueuePage() {
                                   <span className="material-symbols-outlined text-base">visibility</span>
                                   Xem
                                 </button>
-                                {UNDOABLE_ACTION_TYPES.has(item.actionType) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => { setUndoError(''); setUndoTarget(item); }}
-                                    className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-on-surface-variant flex items-center gap-1 hover:bg-surface-container-low"
-                                  >
-                                    <span className="material-symbols-outlined text-base">undo</span>
-                                    Hoàn tác
-                                  </button>
-                                )}
                                 {item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
                                   <button
                                     type="button"
@@ -694,24 +664,6 @@ export default function PendingContentQueuePage() {
         errorText={lockError}
         onConfirm={confirmLock}
         onCancel={() => setLockTarget(null)}
-      />
-
-      <ConfirmDialog
-        key={undoTarget ? undoTarget.actionId : 'none'}
-        open={undoTarget !== null}
-        title="Hoàn tác hành động này?"
-        description={
-          undoTarget
-            ? `Nội dung sẽ quay lại hàng đợi chờ duyệt (${TARGET_TYPE_LABELS[undoTarget.targetType]} - "${ACTION_TYPE_LABELS[undoTarget.actionType]}").`
-            : undefined
-        }
-        icon="undo"
-        tone="default"
-        confirmLabel="Hoàn tác"
-        submitting={undoSubmitting}
-        errorText={undoError}
-        onConfirm={confirmUndo}
-        onCancel={() => setUndoTarget(null)}
       />
 
     </div>
