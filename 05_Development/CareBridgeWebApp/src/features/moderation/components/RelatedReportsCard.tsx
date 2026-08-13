@@ -1,5 +1,5 @@
 import type { RelatedReportItem } from '../models/moderation';
-import { formatReportReason } from '../models/moderation';
+import { formatReportReason, REPORT_STATUS_LABELS } from '../models/moderation';
 
 interface RelatedReportsCardProps {
   items: RelatedReportItem[];
@@ -27,7 +27,7 @@ export default function RelatedReportsCard({ items, totalElements, page, size, l
               <p className="text-sm text-outline mb-3">Tổng số lượt báo cáo trên mục tiêu này: <strong>{totalElements}</strong></p>
               <div className="space-y-3">
                 {items.map((report) => <div key={report.id} className="rounded-xl bg-surface-container-low p-3 text-sm">
-                  <div className="flex justify-between gap-3 text-xs text-outline"><span>{formatDateTime(report.reportedAt)}</span><span>{report.status}</span></div>
+                  <div className="flex justify-between gap-3 text-xs text-outline"><span>{formatDateTime(report.reportedAt)}</span><span>{REPORT_STATUS_LABELS[report.status] ?? report.status}</span></div>
                   <p className="mt-1 font-medium text-on-surface">{formatReportReason(report.category ?? 'OTHER')}</p>
                   {report.reason && <p className="mt-1 text-on-surface-variant">{report.reason}</p>}
                   <p className="mt-1 text-xs text-outline">Nguồn: {report.reportSource === 'AUTOMATED' ? 'Tự động' : 'Người dùng'}</p>
