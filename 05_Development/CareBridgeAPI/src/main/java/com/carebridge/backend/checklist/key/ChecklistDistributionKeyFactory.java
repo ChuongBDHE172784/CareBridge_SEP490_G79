@@ -79,6 +79,49 @@ public final class ChecklistDistributionKeyFactory {
     }
 
     /**
+     * Contract-aware identity for a non-cadenced occurrence.  V2 optional
+     * self-assignment is targetless but still has one durable occurrence; keep
+     * it in a separate namespace so a legacy V1 aggregate can never be reused
+     * accidentally when both representations share a lifecycle window.
+     */
+    public static String instanceKey(
+            UUID templateVersionId,
+            UUID recipientUserId,
+            String recipientRole,
+            UUID careGroupId,
+            String careContextType,
+            UUID careContextId,
+            String windowStart,
+            String windowEnd,
+            Long gestationalDatingRevision,
+            short contractVersion) {
+        if (contractVersion == 1) {
+            return instanceKey(templateVersionId, recipientUserId, recipientRole, careGroupId,
+                    careContextType, careContextId, windowStart, windowEnd, gestationalDatingRevision);
+        }
+        if (contractVersion != 2) {
+            throw new IllegalArgumentException("Unsupported checklist contract version");
+        }
+        if (gestationalDatingRevision != null && gestationalDatingRevision <= 0) {
+            throw new IllegalArgumentException("Gestational dating revision must be positive");
+        }
+        validateWindowBounds(windowStart, windowEnd);
+        return hash(
+                "CONTRACT_V2",
+                uuidOrAbsent(templateVersionId),
+                uuid(recipientUserId),
+                enumToken(recipientRole),
+                uuidOrAbsent(careGroupId),
+                enumToken(careContextType),
+                uuid(careContextId),
+                windowToken(windowStart),
+                windowToken(windowEnd),
+                gestationalDatingRevision == null
+                        ? "DATING_REVISION:<ABSENT>"
+                        : "DATING_REVISION:" + gestationalDatingRevision);
+    }
+
+    /**
      * V2 cadence identity.  The period token, schedule policy and zone are
      * explicit key material so two periods of one Plan cannot reuse a parent
      * merely because their broad Plan window is the same.

@@ -27,20 +27,20 @@ Release remains blocked unless one evidence set proves all of the following on t
 
 Local embedded-PostgreSQL results are useful preflight evidence but do not satisfy this production-like gate.
 
-## Pregnancy V2 current-chain preflight (`20260812130000`)
+## Pregnancy V2 current-chain preflight (`20260813100000`)
 
-The CHK-041 verifier is intentionally not a verifier for the seeded Pregnancy V2 content. Run this preflight separately on the same disposable PostgreSQL 18 profile before any clinical-copy sign-off or cohort enablement:
+The CHK-041 verifier is intentionally not a verifier for the seeded Pregnancy V2 content. Run this preflight separately on the same disposable PostgreSQL 18 profile before cohort enablement:
 
-1. Start from a clean disposable database and apply the active `classpath:db/migration` location through `20260812130000`.
+1. Start from a clean disposable database and apply the active `classpath:db/migration` location through `20260813100000`.
 2. Run `ChecklistFlywayEmbeddedPostgresTest` (or an equivalent SQL capture) and retain the Flyway version, validation result, and sanitized query evidence with the rehearsal record.
-3. Require all of these assertions: latest successful Flyway version is `20260812130000`; there are 16 Pregnancy V2 roots and 62 Pregnancy V2 leaves; every Pregnancy V2 row has `target_subject IS NULL` and `is_required IS NULL`; no Pregnancy DAILY root exists; Plan 2 starts at zero-based week offset 20 (source week 21); and all 16 roots remain `DRAFT`, `distribution_enabled = false`, and `provenanceStatus = PENDING_CLINICAL_COPY_SIGN_OFF`.
-4. Attempting to set a seeded root to `APPROVED` plus `distribution_enabled = true` before provenance sign-off must fail with the database constraint `checklist_pregnancy_v2_provenance_activation_ck`, and the row must remain Draft/non-distributable after the failed transaction.
+3. Require all of these assertions: latest successful Flyway version is `20260813100000`; there are 16 Pregnancy V2 roots and 62 Pregnancy V2 leaves; every Pregnancy V2 row has `target_subject IS NULL` and `is_required IS NULL`; no Pregnancy DAILY root exists; Plan 2 starts at zero-based week offset 20 (source week 21); and all 16 roots remain `DRAFT` and `distribution_enabled = false` until System Admin approval.
+4. After technical migration checks pass, setting a seeded root to `APPROVED` plus `distribution_enabled = true` is allowed through the normal System Admin approval path; no external clinical/content sign-off gate is required for this student project.
 
-This preflight proves the current seed and fail-closed activation boundary only. It does not prove clinical/content sign-off, production-like migration throughput, occurrence/history behavior, or mobile distribution. Those remain separate release gates. The executable embedded evidence is `com.carebridge.backend.checklist.distribution.ChecklistFlywayEmbeddedPostgresTest`.
+This preflight proves the current seed and technical activation boundary only. It does not prove production-like migration throughput, occurrence/history behavior, or mobile distribution. Those remain separate release gates. The executable embedded evidence is `com.carebridge.backend.checklist.distribution.ChecklistFlywayEmbeddedPostgresTest`.
 
-### Staging-only signed-off activation rehearsal
+### Staging-only reviewed activation rehearsal
 
-`com.carebridge.backend.checklist.distribution.PregnancyV2SignedOffActivationEmbeddedPostgresTest` applies the current chain to a disposable PostgreSQL 18 process, patches one WHO root with a test-only `SIGNED_OFF` fixture, and proves that the database gate permits one approved/distributable candidate while the remaining 15 roots stay Draft/non-distributable/pending. The fixture is under `src/test/resources/checklist/` and is never a Flyway migration. This is activation-boundary evidence only; it is not clinical approval, content sign-off, cohort enablement, occurrence/history E2E, or production-capacity evidence.
+`com.carebridge.backend.checklist.distribution.PregnancyV2SignedOffActivationEmbeddedPostgresTest` applies the current chain to a disposable PostgreSQL 18 process, patches one WHO root through the technical-review activation path, and proves that one approved/distributable candidate can coexist with the remaining 15 roots in Draft/non-distributable state. The fixture is under `src/test/resources/checklist/` and is never a Flyway migration. This is activation-boundary evidence only; it is not cohort enablement, occurrence/history E2E, or production-capacity evidence.
 
 ## Safety prerequisites
 

@@ -6,15 +6,13 @@ import java.util.Locale;
 public enum ContentStage {
     PRE_PREGNANCY,
     PREGNANCY,
-    POSTPARTUM;
+    POSTPARTUM,
+    BABY_CARE;
 
     @JsonCreator
     public static ContentStage fromApiValue(String value) {
         if (value == null || value.isBlank()) {
             return null;
-        }
-        if ("BABY_CARE".equalsIgnoreCase(value)) {
-            return POSTPARTUM;
         }
         return valueOf(value.toUpperCase(Locale.ROOT));
     }

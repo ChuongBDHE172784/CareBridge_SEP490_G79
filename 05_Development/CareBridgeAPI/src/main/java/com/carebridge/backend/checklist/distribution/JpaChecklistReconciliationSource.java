@@ -130,6 +130,9 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
 
             if (roles.contains(ChecklistRecipientRole.MOTHER)) {
                 for (ContextSeed context : personalContexts(actorUserId, template.getStage())) {
+                    if (!isCompatibleRootContext(template, context)) {
+                        continue;
+                    }
                     if (isSequenceTemplate(template) && activeLegacyPreconception) {
                         continue;
                     }
@@ -146,6 +149,9 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
             if (roles.contains(ChecklistRecipientRole.FAMILY)) {
                 for (AuthorizedFamilyGroup authorizedGroup : authorizedGroups) {
                     for (ContextSeed context : directContexts(authorizedGroup.group(), template.getStage())) {
+                        if (!isCompatibleRootContext(template, context)) {
+                            continue;
+                        }
                         commands.add(actorCommand(
                                  template, authorizedGroup.group(), context, actorUserId,
                                  ChecklistRecipientRole.FAMILY,
@@ -213,13 +219,33 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                     .map(this::journeyContext)
                     .ifPresent(contexts::add);
         }
-        if (stage == null || stage == ContentStage.POSTPARTUM) {
+        if (stage == null || stage == ContentStage.BABY_CARE) {
             babyRepository.findByOwnerUserIdAndStatusOrderByCreatedAtAsc(actorUserId, BabyProfileStatus.ACTIVE)
                     .stream()
                     .map(this::babyContext)
                     .forEach(contexts::add);
         }
         return List.copyOf(contexts);
+    }
+
+    private static boolean isCompatibleRootContext(ChecklistTemplate template, ContextSeed context) {
+        if (template.getStage() == null) {
+            return true;
+        }
+        if (template.getEligibilityAnchorType() == null || context == null) {
+            return false;
+        }
+        return switch (template.getStage()) {
+            case POSTPARTUM -> template.getEligibilityAnchorType() == ChecklistAnchorType.DELIVERY_DATE
+                    && context.type() == ChecklistCareContextType.JOURNEY
+                    && context.dates() != null
+                    && context.dates().deliveryDate() != null;
+            case BABY_CARE -> template.getEligibilityAnchorType() == ChecklistAnchorType.BIRTH_DATE
+                    && context.type() == ChecklistCareContextType.BABY
+                    && context.dates() != null
+                    && context.dates().birthDate() != null;
+            default -> true;
+        };
     }
 
     private List<ContextSeed> directContexts(CareGroup group, ContentStage stage) {
@@ -236,7 +262,7 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                         .ifPresent(contexts::add);
             }
         }
-        if (stage == null || stage == ContentStage.POSTPARTUM) {
+        if (stage == null || stage == ContentStage.BABY_CARE) {
             UUID babyId = group.getLinkedBabyProfileId();
             if (babyId != null) {
                 babyRepository.findById(babyId)
@@ -286,7 +312,8 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                 items,
                 correlationId,
                 context.gestationalDatingRevision(),
-                cadence);
+                cadence,
+                template.getChecklistContractVersion());
     }
 
     private static ChecklistLifecycleEligibility resolvedEligibility(
@@ -340,27 +367,11 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
         if (eligibility == null || eligibility.getStartInclusive() == null) {
             return null;
         }
-        LocalDate start = null;
-        if (context.dates().lastMenstrualDate() != null) {
-            start = context.dates().lastMenstrualDate();
-        } else if (context.dates().estimatedDueDate() != null) {
-            start = context.dates().estimatedDueDate().minusDays(280);
-        }
-        if (start == null || effectiveDate.isBefore(start)) {
-            return null;
-        }
-        long completedWeek = ChronoUnit.DAYS.between(start, effectiveDate) / 7;
-        LocalDate windowStart = start.plusWeeks(eligibility.getStartInclusive());
-        String periodKey;
-        if (policy == ChecklistMaterializationPolicy.EACH_WEEK) {
-            periodKey = String.format(java.util.Locale.ROOT, "W:G:%04d:%s", completedWeek, windowStart);
-        } else if (policy == ChecklistMaterializationPolicy.ONCE_PER_WINDOW) {
-            String end = eligibility.getEndInclusive() == Integer.MAX_VALUE
-                    ? "EXIT"
-                    : windowStart.plusWeeks(eligibility.getEndInclusive()
-                            - eligibility.getStartInclusive()).toString();
-            periodKey = "O:" + windowStart + ":" + end;
-        } else {
+        ChecklistEligibilityDecision decision = new ChecklistLifecycleEligibilityService().evaluate(
+                template.getStage(), eligibility, context.dates(), effectiveDate);
+        String periodKey = ChecklistPeriodIdentity.periodKey(
+                scheduleType, policy, decision, effectiveDate);
+        if (periodKey == null) {
             return null;
         }
         return ChecklistCadenceMetadata.interactive(scheduleType, policy, periodKey, timezone);

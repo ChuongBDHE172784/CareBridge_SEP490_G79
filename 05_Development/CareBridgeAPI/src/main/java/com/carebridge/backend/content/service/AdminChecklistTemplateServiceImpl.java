@@ -5,9 +5,14 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.audit.entity.AuditLog;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
+import com.carebridge.backend.checklist.model.ChecklistScheduleEndMode;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
 import com.carebridge.backend.content.dto.request.ChecklistSubstageRequest;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
@@ -36,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -81,6 +87,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         InlineEligibility eligibility = resolveEligibility(recipientRoles, normalizedStage, request.substage());
         Short contractVersion = normalizeContractVersion(request.checklistContractVersion());
         validateItems(request.items(), contractVersion);
+        validateCadence(request.scheduleType(), request.materializationPolicy(), request.items());
         UUID lineageId = UUID.randomUUID();
         UUID versionId = UUID.randomUUID();
         ChecklistTemplate template = ChecklistTemplate.builder()
@@ -100,6 +107,12 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .distributionEnabled(false)
                 .templateType(normalizeTemplateType(request.templateType()))
                 .checklistContractVersion(contractVersion)
+                .scheduleType(request.scheduleType())
+                .materializationPolicy(request.materializationPolicy())
+                .scheduleGroupKey(request.scheduleGroupKey())
+                .scheduleContextType(canonicalScheduleContextType(normalizedStage, request.scheduleContextType()))
+                .scheduleEndMode(request.scheduleEndMode())
+                .weekBoundaryRule(request.weekBoundaryRule())
                 .authorUserId(adminUserId)
                 .build();
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
@@ -127,8 +140,10 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             throw ContentException.versionImmutable();
         }
 
-        // Same separation-of-duties guard as ContentItem.updateContent (BR-CNT-006): a Content Admin
-        // may only work a draft or submit it for review — publication is a System Admin decision
+        // Same separation-of-duties guard as ContentItem.updateContent (BR-CNT-006): a
+        // Content Admin
+        // may only work a draft or submit it for review — publication is a System Admin
+        // decision
         // made exclusively through ChecklistTemplateApprovalService.decide().
         if (template.getStatus() != ChecklistTemplateStatus.DRAFT
                 && template.getStatus() != ChecklistTemplateStatus.PENDING_REVIEW) {
@@ -146,7 +161,30 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         Short contractVersion = request.checklistContractVersion() == null
                 ? normalizeContractVersion(template.getChecklistContractVersion())
                 : normalizeContractVersion(request.checklistContractVersion());
+        ChecklistScheduleType effectiveScheduleType = request.scheduleType() == null
+                && request.materializationPolicy() == null
+                        ? template.getScheduleType()
+                        : request.scheduleType();
+        ChecklistMaterializationPolicy effectiveMaterializationPolicy = request.scheduleType() == null
+                && request.materializationPolicy() == null
+                        ? template.getMaterializationPolicy()
+                        : request.materializationPolicy();
+        String effectiveScheduleGroupKey = request.scheduleGroupKey() == null
+                ? template.getScheduleGroupKey()
+                : request.scheduleGroupKey();
+        ChecklistCareContextType effectiveScheduleContextType = request.scheduleContextType() == null
+                ? template.getScheduleContextType()
+                : request.scheduleContextType();
+        effectiveScheduleContextType = canonicalScheduleContextType(
+                normalizedStage, effectiveScheduleContextType);
+        ChecklistScheduleEndMode effectiveScheduleEndMode = request.scheduleEndMode() == null
+                ? template.getScheduleEndMode()
+                : request.scheduleEndMode();
+        ChecklistWeekBoundaryRule effectiveWeekBoundaryRule = request.weekBoundaryRule() == null
+                ? template.getWeekBoundaryRule()
+                : request.weekBoundaryRule();
         validateItems(request.items(), contractVersion);
+        validateCadence(effectiveScheduleType, effectiveMaterializationPolicy, request.items());
         Short previousContractVersion = normalizeContractVersion(template.getChecklistContractVersion());
         if (request.items() == null && !previousContractVersion.equals(contractVersion)) {
             // A root contract change cannot leave the previous leaf shape in
@@ -169,6 +207,12 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 ? normalizeTemplateType(template.getTemplateType())
                 : request.templateType());
         template.setChecklistContractVersion(contractVersion);
+        template.setScheduleType(effectiveScheduleType);
+        template.setMaterializationPolicy(effectiveMaterializationPolicy);
+        template.setScheduleGroupKey(effectiveScheduleGroupKey);
+        template.setScheduleContextType(effectiveScheduleContextType);
+        template.setScheduleEndMode(effectiveScheduleEndMode);
+        template.setWeekBoundaryRule(effectiveWeekBoundaryRule);
         template.setStage(normalizedStage);
         if (request.displayOrder() != null
                 && template.getStatus() != ChecklistTemplateStatus.APPROVED
@@ -195,8 +239,10 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         }
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
-        // null leaves entries untouched; a non-null list is the complete active set. Existing
-        // rows are reconciled in place so imported personal checklist foreign keys remain valid.
+        // null leaves entries untouched; a non-null list is the complete active set.
+        // Existing
+        // rows are reconciled in place so imported personal checklist foreign keys
+        // remain valid.
         List<ChecklistItem> currentItems;
         if (request.items() != null) {
             currentItems = reconcileItems(request.items(), saved);
@@ -217,7 +263,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         ChecklistTemplate template = checklistTemplateRepository.findById(id)
                 .orElseThrow(ContentException::checklistTemplateNotFound);
 
-        // ADR-CHK-002: idempotency guard — already ARCHIVED is rejected, not silently re-applied
+        // ADR-CHK-002: idempotency guard — already ARCHIVED is rejected, not silently
+        // re-applied
         if (template.getStatus() == ChecklistTemplateStatus.ARCHIVED) {
             throw ContentException.checklistTemplateAlreadyArchived();
         }
@@ -226,7 +273,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         }
 
         ChecklistTemplateStatus previousStatus = template.getStatus();
-        // ADR-CHK-002: soft-delete only. Canonical template entries and imported personal
+        // ADR-CHK-002: soft-delete only. Canonical template entries and imported
+        // personal
         // preparation_checklist_items remain stable when a template is archived.
         template.setStatus(ChecklistTemplateStatus.ARCHIVED);
         template.setDistributionEnabled(false);
@@ -235,7 +283,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
         Instant archivedAt = Instant.now();
         auditService.log(AuditAction.CHECKLIST_TEMPLATE_ARCHIVED, adminUserId,
-                "ChecklistTemplate", saved.getId().toString(), "reason=" + request.reason() + " previousStatus=" + previousStatus);
+                "ChecklistTemplate", saved.getId().toString(),
+                "reason=" + request.reason() + " previousStatus=" + previousStatus);
 
         return new HideChecklistTemplateResponse(
                 saved.getId(), previousStatus, saved.getStatus(), request.reason(), adminUserId, archivedAt);
@@ -255,7 +304,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             throw ContentException.checklistTemplateNotFound();
         }
         return auditLogRepository.findByEntityIdAndEntityTypeAndActionInOrderByCreatedAtDesc(
-                        id, "ChecklistTemplate", Set.of(AuditAction.CHECKLIST_TEMPLATE_CREATED, AuditAction.CHECKLIST_TEMPLATE_UPDATED)).stream()
+                id, "ChecklistTemplate",
+                Set.of(AuditAction.CHECKLIST_TEMPLATE_CREATED, AuditAction.CHECKLIST_TEMPLATE_UPDATED)).stream()
                 .map(this::toVersionResponse)
                 .flatMap(java.util.Optional::stream)
                 .toList();
@@ -317,7 +367,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .distributionEnabled(false)
                 .templateType(source.getTemplateType())
                 .checklistContractVersion(normalizeContractVersion(source.getChecklistContractVersion()))
-                // Preserve the source's canonical cadence/provenance contract.  A
+                // Preserve the source's canonical cadence/provenance contract. A
                 // cloned Pregnancy V2 draft must remain activatable after review;
                 // dropping this metadata would make the DB activation gate fail
                 // permanently because authoring requests deliberately do not expose
@@ -344,6 +394,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                             .isRequired(item.getIsRequired())
                             .checklistContractVersion(normalizeContractVersion(source.getChecklistContractVersion()))
                             .targetSubject(item.getTargetSubject())
+                            .configurationJson(item.getConfigurationJson())
                             .isActive(true)
                             .build();
                 })
@@ -367,8 +418,10 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         try {
             ChecklistTemplateVersionSnapshotResponse snapshot = objectMapper.readValue(
                     auditLog.getNewValueJson(), ChecklistTemplateVersionSnapshotResponse.class);
-            return java.util.Optional.of(new ChecklistTemplateVersionSnapshotResponse(snapshot.versionNo(), snapshot.name(),
-                    snapshot.stage(), snapshot.status(), snapshot.itemCount(), auditLog.getActorUserId(), auditLog.getCreatedAt()));
+            return java.util.Optional
+                    .of(new ChecklistTemplateVersionSnapshotResponse(snapshot.versionNo(), snapshot.name(),
+                            snapshot.stage(), snapshot.status(), snapshot.itemCount(), auditLog.getActorUserId(),
+                            auditLog.getCreatedAt()));
         } catch (Exception ignored) {
             return java.util.Optional.empty();
         }
@@ -392,6 +445,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                     .isRequired(item.isRequired())
                     .checklistContractVersion(normalizeContractVersion(template.getChecklistContractVersion()))
                     .targetSubject(resolveTargetSubject(item, template))
+                    .configurationJson(itemConfiguration(item))
                     .isActive(true)
                     .build());
         }
@@ -400,8 +454,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
     private List<ChecklistItem> reconcileItems(
             List<ChecklistItemRequest> requestedItems, ChecklistTemplate template) {
-        List<ChecklistItem> existingItems =
-                checklistItemRepository.findAllByTemplateIdOrderByOrder(template.getId());
+        List<ChecklistItem> existingItems = checklistItemRepository.findAllByTemplateIdOrderByOrder(template.getId());
         Map<UUID, ChecklistItem> existingById = new HashMap<>();
         for (ChecklistItem existing : existingItems) {
             existingById.put(existing.getId(), existing);
@@ -433,6 +486,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             item.setIsRequired(requested.isRequired());
             item.setChecklistContractVersion(normalizeContractVersion(template.getChecklistContractVersion()));
             item.setTargetSubject(resolveTargetSubject(requested, template));
+            item.setConfigurationJson(itemConfiguration(requested));
             item.setIsActive(true);
             activeItems.add(item);
         }
@@ -516,6 +570,62 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         }
     }
 
+    private void validateCadence(
+            ChecklistScheduleType scheduleType,
+            ChecklistMaterializationPolicy policy,
+            List<ChecklistItemRequest> items) {
+        boolean weekly = items != null && items.stream().anyMatch(item -> Boolean.TRUE.equals(item.repeatWeekly()));
+        boolean daily = items != null && items.stream().anyMatch(item -> Boolean.TRUE.equals(item.repeatDaily()));
+        boolean unmarked = items != null && items.stream().anyMatch(
+                item -> !Boolean.TRUE.equals(item.repeatWeekly()) && !Boolean.TRUE.equals(item.repeatDaily()));
+        if (weekly && daily) {
+            throw ContentException.validationFailed("items",
+                    "Từng tuần và Từng ngày không được trộn trong cùng checklist");
+        }
+        if ((weekly || daily) && unmarked) {
+            throw ContentException.validationFailed("items", "Các mục có nội dung phải dùng cùng một nhịp lặp");
+        }
+        if (scheduleType == null && policy == null) {
+            return;
+        }
+        if (scheduleType == null || policy == null) {
+            throw ContentException.validationFailed("scheduleType",
+                    "scheduleType và materializationPolicy phải đi cùng nhau");
+        }
+        boolean validPair = switch (scheduleType) {
+            case LEGACY -> policy == ChecklistMaterializationPolicy.LEGACY_WINDOW;
+            case SET -> policy == ChecklistMaterializationPolicy.SEQUENCE_STEP;
+            case WEEKLY -> policy == ChecklistMaterializationPolicy.ONCE_PER_WINDOW
+                    || policy == ChecklistMaterializationPolicy.EACH_WEEK;
+            case DAILY -> policy == ChecklistMaterializationPolicy.EACH_DAY;
+        };
+        if (!validPair) {
+            throw ContentException.validationFailed("materializationPolicy", "cadence pair không hợp lệ");
+        }
+        if (weekly && !(scheduleType == ChecklistScheduleType.WEEKLY
+                && policy == ChecklistMaterializationPolicy.EACH_WEEK)) {
+            throw ContentException.validationFailed("scheduleType", "Mục Từng tuần cần cadence WEEKLY/EACH_WEEK");
+        }
+        if (daily && !(scheduleType == ChecklistScheduleType.DAILY
+                && policy == ChecklistMaterializationPolicy.EACH_DAY)) {
+            throw ContentException.validationFailed("scheduleType", "Mục Từng ngày cần cadence DAILY/EACH_DAY");
+        }
+    }
+
+    private String itemConfiguration(ChecklistItemRequest item) {
+        if (!Boolean.TRUE.equals(item.repeatWeekly()) && !Boolean.TRUE.equals(item.repeatDaily())) {
+            return "{}";
+        }
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("repeatWeekly", Boolean.TRUE.equals(item.repeatWeekly()));
+        node.put("repeatDaily", Boolean.TRUE.equals(item.repeatDaily()));
+        try {
+            return objectMapper.writeValueAsString(node);
+        } catch (Exception ignored) {
+            return "{}";
+        }
+    }
+
     private void validateItem(
             ChecklistTargetSubject targetSubject,
             Boolean required,
@@ -524,8 +634,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             if (targetSubject != null) {
                 throw ContentException.itemTargetUnsupported();
             }
-            if (required != null) {
-                throw ContentException.itemRequirednessUnsupported();
+            if (required == null) {
+                throw ContentException.itemRequirednessRequired();
             }
             return;
         }
@@ -563,10 +673,23 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
     private boolean isAnchorCompatible(ContentStage stage, ChecklistAnchorType anchor) {
         return switch (stage) {
             case PREGNANCY -> anchor == ChecklistAnchorType.LMP || anchor == ChecklistAnchorType.EDD;
-            case POSTPARTUM -> anchor == ChecklistAnchorType.DELIVERY_DATE
-                    || anchor == ChecklistAnchorType.BIRTH_DATE;
+            case POSTPARTUM -> anchor == ChecklistAnchorType.DELIVERY_DATE;
+            case BABY_CARE -> anchor == ChecklistAnchorType.BIRTH_DATE;
             case PRE_PREGNANCY -> anchor == ChecklistAnchorType.NONE;
         };
+    }
+
+    private ChecklistCareContextType canonicalScheduleContextType(
+            ContentStage stage, ChecklistCareContextType requested) {
+        if (stage == null || stage == ContentStage.PRE_PREGNANCY) {
+            return requested;
+        }
+        ChecklistCareContextType expected = stage == ContentStage.BABY_CARE
+                ? ChecklistCareContextType.BABY : ChecklistCareContextType.JOURNEY;
+        if (requested != null && requested != expected) {
+            throw ContentException.substageStageMismatch();
+        }
+        return expected;
     }
 
     private record InlineEligibility(

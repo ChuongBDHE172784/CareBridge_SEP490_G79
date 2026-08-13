@@ -112,7 +112,18 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
   Future<void> _openSupportFunction() async {
     final supportFunction = widget.task.supportFunction;
     if (supportFunction == null) return;
-    await context.push<void>(supportFunction.route);
+    final route = supportFunction.routeFor(
+      careContextType: widget.task.careContextType,
+      careContextId: widget.task.careContextId,
+    );
+    if (route == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa có hành trình để mở chỉ số sức khỏe.')),
+      );
+      return;
+    }
+    await context.push<void>(route);
   }
 
   @override

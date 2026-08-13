@@ -92,13 +92,6 @@ function toChecklistEntry(item: AdminChecklistTemplate): QueueEntry {
   };
 }
 
-function isPregnancyV2PendingProvenance(entry: QueueEntry): boolean {
-  return entry.kind === 'CHECKLIST'
-    && entry.stage === 'PREGNANCY'
-    && entry.checklistContractVersion === 2
-    && entry.provenanceStatus !== 'SIGNED_OFF';
-}
-
 function formatDateTime(iso: string | null): string {
   if (!iso) return 'Chưa có dữ liệu';
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -204,7 +197,8 @@ export default function ContentApprovalQueuePage() {
     const checklist = items.filter((item) => item.kind === 'CHECKLIST').length;
     const pregnancy = items.filter((item) => item.stage === 'PREGNANCY').length;
     const postpartum = items.filter((item) => item.stage === 'POSTPARTUM').length;
-    return { total: items.length, content, checklist, pregnancy, postpartum };
+    const babyCare = items.filter((item) => item.stage === 'BABY_CARE').length;
+    return { total: items.length, content, checklist, pregnancy, postpartum, babyCare };
   }, [items]);
 
   const batchCounts = useMemo(() => {
@@ -227,10 +221,7 @@ export default function ContentApprovalQueuePage() {
     });
   }, [items, batchTarget]);
 
-  const eligibleBatchItems = useMemo(
-    () => matchingBatchItems.filter((item) => !isPregnancyV2PendingProvenance(item)),
-    [matchingBatchItems],
-  );
+  const eligibleBatchItems = matchingBatchItems;
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -308,9 +299,7 @@ export default function ContentApprovalQueuePage() {
     });
 
     setSelectedBatchItemIds(new Set(
-      targetItems
-        .filter((item) => !isPregnancyV2PendingProvenance(item))
-        .map((item) => `${item.kind}-${item.id}`),
+      targetItems.map((item) => `${item.kind}-${item.id}`),
     ));
     setBatchTarget(target);
   };
@@ -339,8 +328,7 @@ export default function ContentApprovalQueuePage() {
     if (!batchTarget) return;
 
     const targetItems = matchingBatchItems.filter((item) =>
-      !isPregnancyV2PendingProvenance(item)
-      && selectedBatchItemIds.has(`${item.kind}-${item.id}`),
+      selectedBatchItemIds.has(`${item.kind}-${item.id}`),
     );
 
     if (targetItems.length === 0) {
@@ -515,7 +503,8 @@ export default function ContentApprovalQueuePage() {
             { label: 'Bài viết / FAQ', value: stats.content, icon: 'article' },
             { label: 'Checklist', value: stats.checklist, icon: 'checklist' },
             { label: 'Thai kỳ', value: stats.pregnancy, icon: 'pregnant_woman' },
-            { label: 'Hậu sản & Chăm bé', value: stats.postpartum, icon: 'family_restroom' },
+            { label: 'Hậu sản', value: stats.postpartum, icon: 'pregnant_woman' },
+            { label: 'Chăm bé', value: stats.babyCare, icon: 'child_care' },
           ].map((stat) => (
             <div key={stat.label} className="bg-surface rounded-2xl p-5 shadow-sm border border-surface-container-highest flex items-center justify-between">
               <div>
@@ -653,21 +642,13 @@ export default function ContentApprovalQueuePage() {
                               </button>
                               <button
                                 type="button"
-                                disabled={working === workingKey || isBatchPublishing || isPregnancyV2PendingProvenance(entry)}
+                                disabled={working === workingKey || isBatchPublishing}
                                 onClick={() => openDecision(entry, 'APPROVE')}
-                                title={isPregnancyV2PendingProvenance(entry)
-                                  ? 'Chưa thể xuất bản: cần sign-off clinical/content'
-                                  : undefined}
                                 className="h-8 py-1 px-4 rounded-full bg-primary text-on-primary border-0 text-xs font-semibold cursor-pointer flex items-center gap-1 hover:bg-primary/90 disabled:opacity-50"
                               >
                                 <span className="material-symbols-outlined text-base">publish</span>
                                 Xuất bản
                               </button>
-                              {isPregnancyV2PendingProvenance(entry) && (
-                                <span role="status" className="max-w-[180px] text-right text-[11px] font-medium text-amber-700">
-                                  Chờ sign-off clinical/content
-                                </span>
-                              )}
                               <button
                                 type="button"
                                 disabled={working === workingKey || isBatchPublishing}
@@ -809,11 +790,10 @@ export default function ContentApprovalQueuePage() {
                 {matchingBatchItems.map((item) => {
                   const key = `${item.kind}-${item.id}`;
                   const isChecked = selectedBatchItemIds.has(key);
-                  const isBlocked = isPregnancyV2PendingProvenance(item);
                   return (
                     <label
                       key={key}
-                      className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${isBlocked ? 'opacity-60 cursor-not-allowed' : 'hover:bg-surface-container-low cursor-pointer'}`}
+                      className="flex items-center justify-between p-2.5 rounded-lg transition-colors hover:bg-surface-container-low cursor-pointer"
                     >
                       <div className="flex flex-col flex-1 pr-3 max-w-[85%]">
                         <span className="text-xs font-medium text-on-surface line-clamp-1">
@@ -822,16 +802,10 @@ export default function ContentApprovalQueuePage() {
                         <span className="text-[11px] text-outline">
                           {item.typeLabel} · {item.stageLabel}
                         </span>
-                        {isBlocked && (
-                          <span className="text-[11px] font-medium text-amber-700">
-                            Chờ sign-off clinical/content
-                          </span>
-                        )}
                       </div>
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        disabled={isBlocked}
                         onChange={() => toggleSelectBatchItem(key)}
                         className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary/20 cursor-pointer accent-primary"
                       />

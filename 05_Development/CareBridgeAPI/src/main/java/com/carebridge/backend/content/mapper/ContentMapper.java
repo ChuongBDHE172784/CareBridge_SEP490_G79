@@ -295,6 +295,16 @@ public class ContentMapper {
     }
 
     private ChecklistItemResponse toChecklistItemResponse(ChecklistItem item) {
+        boolean repeatWeekly = false;
+        boolean repeatDaily = false;
+        try {
+            JsonNode configuration = item.getConfigurationJson() == null
+                    ? null : objectMapper.readTree(item.getConfigurationJson());
+            repeatWeekly = configuration != null && configuration.path("repeatWeekly").asBoolean(false);
+            repeatDaily = configuration != null && configuration.path("repeatDaily").asBoolean(false);
+        } catch (Exception ignored) {
+            // Malformed optional authoring metadata must not hide the checklist.
+        }
         return ChecklistItemResponse.builder()
                 .id(item.getId())
                 .itemText(item.getItemText())
@@ -303,6 +313,8 @@ public class ContentMapper {
                 .isRequired(item.getIsRequired())
                 .targetSubject(item.getTargetSubject())
                 .supportFunction(item.getSupportFunction())
+                .repeatWeekly(repeatWeekly)
+                .repeatDaily(repeatDaily)
                 .build();
     }
 

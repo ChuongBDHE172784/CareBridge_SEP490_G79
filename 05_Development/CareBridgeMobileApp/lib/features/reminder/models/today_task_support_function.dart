@@ -1,5 +1,7 @@
 enum TodayTaskSupportFunctionCode {
   healthRecords,
+  maternalHealthMetrics,
+  maternalExercises,
   appointments,
   reminders,
   journey,
@@ -12,6 +14,8 @@ enum TodayTaskSupportFunctionCode {
 extension TodayTaskSupportFunctionCodeValue on TodayTaskSupportFunctionCode {
   String get apiValue => switch (this) {
     TodayTaskSupportFunctionCode.healthRecords => 'HEALTH_RECORDS',
+    TodayTaskSupportFunctionCode.maternalHealthMetrics => 'MATERNAL_HEALTH_METRICS',
+    TodayTaskSupportFunctionCode.maternalExercises => 'MATERNAL_EXERCISES',
     TodayTaskSupportFunctionCode.appointments => 'APPOINTMENTS',
     TodayTaskSupportFunctionCode.reminders => 'REMINDERS',
     TodayTaskSupportFunctionCode.journey => 'JOURNEY',
@@ -27,6 +31,8 @@ class TodayTaskSupportFunctionCodeApi {
       ?.trim()
       .toUpperCase()) {
     'HEALTH_RECORDS' => TodayTaskSupportFunctionCode.healthRecords,
+    'MATERNAL_HEALTH_METRICS' => TodayTaskSupportFunctionCode.maternalHealthMetrics,
+    'MATERNAL_EXERCISES' => TodayTaskSupportFunctionCode.maternalExercises,
     'APPOINTMENTS' => TodayTaskSupportFunctionCode.appointments,
     'REMINDERS' => TodayTaskSupportFunctionCode.reminders,
     'JOURNEY' => TodayTaskSupportFunctionCode.journey,
@@ -46,7 +52,7 @@ class TodayTaskSupportFunctionCodeApi {
 class TodayTaskSupportFunction {
   final TodayTaskSupportFunctionCode code;
   final String label;
-  final String route;
+  final String? route;
 
   const TodayTaskSupportFunction({
     required this.code,
@@ -58,6 +64,16 @@ class TodayTaskSupportFunction {
     code: TodayTaskSupportFunctionCode.healthRecords,
     label: 'Hồ sơ sức khỏe',
     route: '/health-records',
+  );
+  static const maternalHealthMetrics = TodayTaskSupportFunction(
+    code: TodayTaskSupportFunctionCode.maternalHealthMetrics,
+    label: 'Đo chỉ số sức khỏe của mẹ',
+    route: null,
+  );
+  static const maternalExercises = TodayTaskSupportFunction(
+    code: TodayTaskSupportFunctionCode.maternalExercises,
+    label: 'Bài tập cho mẹ',
+    route: '/mother-exercise',
   );
   static const appointments = TodayTaskSupportFunction(
     code: TodayTaskSupportFunctionCode.appointments,
@@ -97,6 +113,8 @@ class TodayTaskSupportFunction {
 
   static const values = <TodayTaskSupportFunction>[
     healthRecords,
+    maternalHealthMetrics,
+    maternalExercises,
     appointments,
     reminders,
     journey,
@@ -112,6 +130,8 @@ class TodayTaskSupportFunction {
     final code = TodayTaskSupportFunctionCodeApi.fromApi(value);
     return switch (code) {
       TodayTaskSupportFunctionCode.healthRecords => healthRecords,
+      TodayTaskSupportFunctionCode.maternalHealthMetrics => maternalHealthMetrics,
+      TodayTaskSupportFunctionCode.maternalExercises => maternalExercises,
       TodayTaskSupportFunctionCode.appointments => appointments,
       TodayTaskSupportFunctionCode.reminders => reminders,
       TodayTaskSupportFunctionCode.journey => journey,
@@ -130,5 +150,23 @@ class TodayTaskSupportFunction {
         ? value['code'] as String?
         : null;
     return fromApi(code);
+  }
+
+  /// Resolves a client-owned destination for a task.
+  ///
+  /// Maternal health metrics are scoped to a pregnancy journey, so the
+  /// journey id comes from the trusted Today context fields rather than from
+  /// an API-provided URL. Other support functions retain their static routes.
+  String? routeFor({String? careContextType, String? careContextId}) {
+    if (code != TodayTaskSupportFunctionCode.maternalHealthMetrics) {
+      return route;
+    }
+    if (careContextType?.trim().toUpperCase() != 'JOURNEY') return null;
+    final journeyId = careContextId?.trim();
+    if (journeyId == null || journeyId.isEmpty) return null;
+    return Uri(
+      path: '/journeys/${Uri.encodeComponent(journeyId)}/metrics/trend',
+      queryParameters: const {'metricType': 'BMI'},
+    ).toString();
   }
 }

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -110,17 +111,31 @@ describe('ChecklistFormPage version', () => {
     expect(harness.fetchChecklistTemplateDetail).not.toHaveBeenCalled();
   });
 
-  it('renders recipient role controls for V2 authoring', () => {
+  it('renders V2 authoring controls without explicit recipient selection card', () => {
     render(<ChecklistFormPage />);
 
-    expect(screen.getByRole('checkbox', { name: 'Recipient MOTHER' })).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'Recipient FAMILY' })).toBeTruthy();
-    expect((screen.getByRole('radio', { name: 'Recommendation-only V2 contract' }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole('checkbox', { name: 'Recipient MOTHER' })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Recipient FAMILY' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Checklist contract' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Recommendation-only V2 contract' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Legacy V1 target-bearing contract' })).toBeNull();
+    expect(screen.getByLabelText('List weekly recurrence')).toBeTruthy();
+    expect(screen.getByLabelText('List daily recurrence')).toBeTruthy();
     expect(screen.queryByLabelText('Item 1 target')).toBeNull();
-    expect(screen.queryByRole('checkbox', { name: 'Bắt buộc' })).toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'Bắt buộc' })).toBeTruthy();
   });
 
-  it('keeps V2 item payload targetless and omits requiredness', async () => {
+  it.each(['PREGNANCY', 'POSTPARTUM'] as const)('keeps the lifecycle anchor internal for %s instead of exposing it in the form', async (selectedStage) => {
+    const user = userEvent.setup();
+    render(<ChecklistFormPage />);
+
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), selectedStage);
+
+    expect(screen.queryByLabelText('Lifecycle anchor')).toBeNull();
+    expect(screen.queryByText('Mốc tính')).toBeNull();
+  });
+
+  it('keeps V2 item payload targetless while serializing requiredness', async () => {
     const user = userEvent.setup();
     harness.createChecklistTemplate.mockResolvedValue({
       id: 'v2-created', name: 'Daily recommendation', description: '', stage: 'PREGNANCY',
@@ -132,6 +147,7 @@ describe('ChecklistFormPage version', () => {
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     await user.type(screen.getByLabelText('Item 1 text'), 'Uống đủ nước');
     expect(screen.queryByLabelText('Item 1 target')).toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'Bắt buộc' })).toHaveProperty('checked', true);
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
@@ -140,109 +156,209 @@ describe('ChecklistFormPage version', () => {
     })));
     const payload = harness.createChecklistTemplate.mock.calls[0][0];
     expect(payload.items[0]).not.toHaveProperty('targetSubject');
-    expect(payload.items[0]).not.toHaveProperty('isRequired');
+    expect(payload.items[0]).toHaveProperty('isRequired', true);
   });
 
-  it('renders lifecycle targeting for MOTHER and mixed recipients', async () => {
+  it.each([
+    ['PRE_PREGNANCY', 2],
+    ['PREGNANCY', 2],
+    ['POSTPARTUM', 1],
+    ['BABY_CARE', 1],
+  ] as const)('derives checklist contract V%i for %s stage', async (selectedStage, expectedVersion) => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: `created-${selectedStage}`, name: 'Stage defaults', description: '', stage: selectedStage,
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Stage defaults');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), selectedStage);
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      checklistContractVersion: expectedVersion,
+      stage: selectedStage,
+    })));
+  });
+
+  it('uses the birth-date anchor and baby target for Chăm bé', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'created-baby-care', name: 'Baby care', description: '', stage: 'BABY_CARE',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+    await user.type(screen.getByLabelText('Template name'), 'Baby care');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'BABY_CARE');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Theo dõi giấc ngủ của bé');
+    expect(screen.getByLabelText('Lifecycle window start')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: 'BABY_CARE', checklistContractVersion: 1, scheduleContextType: 'BABY',
+      }),
+    ));
+    const payload = harness.createChecklistTemplate.mock.calls.at(-1)?.[0];
+    expect(payload.substage).toEqual(expect.objectContaining({ anchor: 'BIRTH_DATE' }));
+    expect(payload.items[0]?.targetSubject).toBe('BABY');
+  });
+
+  it('serializes a source-facing single week as a zero-based runtime offset', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'single-week', name: 'Week 21', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Week 21');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.selectOptions(screen.getByLabelText('Lifecycle window mode'), 'SINGLE');
+    await user.selectOptions(screen.getByLabelText('Lifecycle window start'), '21');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      substage: {
+        code: 'PREGNANCY_LMP_WEEK_20_20',
+        anchor: 'LMP',
+        startInclusive: 20,
+        endInclusive: 20,
+        unit: 'WEEK',
+      },
+    })));
+  });
+
+  it('serializes a source-facing week range 21-25 as offsets 20-24', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'range-week', name: 'Plan 2', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Plan 2');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.selectOptions(screen.getByLabelText('Lifecycle window start'), '21');
+    await user.selectOptions(screen.getByLabelText('Lifecycle window end'), '25');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      substage: {
+        code: 'PREGNANCY_LMP_WEEK_20_24',
+        anchor: 'LMP',
+        startInclusive: 20,
+        endInclusive: 24,
+        unit: 'WEEK',
+      },
+    })));
+  });
+
+  it('maps the list-level weekly checkbox to root weekly cadence', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'weekly-item', name: 'Weekly item', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Weekly item');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Theo dõi huyết áp');
+    await user.click(screen.getByLabelText('List weekly recurrence'));
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      scheduleType: 'WEEKLY',
+      materializationPolicy: 'EACH_WEEK',
+      items: [expect.objectContaining({ repeatWeekly: true, repeatDaily: false })],
+    })));
+  });
+
+  it('applies list-level recurrence to all items in the checklist', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'list-recurrence', name: 'Shared cadence', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Shared cadence');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Theo dõi huyết áp');
+    await user.click(screen.getByLabelText('List weekly recurrence'));
+    await user.click(screen.getByRole('button', { name: 'Thêm mục' }));
+    await user.type(screen.getByLabelText('Item 2 text'), 'Khám thai lần đầu');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      scheduleType: 'WEEKLY',
+      materializationPolicy: 'EACH_WEEK',
+      items: [
+        expect.objectContaining({ itemText: 'Theo dõi huyết áp', repeatWeekly: true }),
+        expect.objectContaining({ itemText: 'Khám thai lần đầu', repeatWeekly: true }),
+      ],
+    })));
+  });
+
+  it('loads recurrence checkbox state when editing an existing item', async () => {
+    routeId = 'recurrence-edit';
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(),
+      checklistContractVersion: 2,
+      items: [{
+        id: 'item-weekly', itemText: 'Theo dõi huyết áp', order: 1,
+        isRequired: null, targetSubject: null, repeatWeekly: true, repeatDaily: false,
+      }],
+    });
+    render(<ChecklistFormPage />);
+
+    expect(await screen.findByDisplayValue('Theo dõi huyết áp')).toBeTruthy();
+    expect((screen.getByLabelText('List weekly recurrence') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('List daily recurrence') as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('does not invent a lifecycle substage for a family-neutral draft', async () => {
+    routeId = 'neutral-edit';
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(),
+      stage: null,
+      recipientRoles: ['MOTHER'],
+      substage: null,
+    });
+    render(<ChecklistFormPage />);
+
+    expect(await screen.findByText('Chỉnh sửa Checklist')).toBeTruthy();
+    expect(screen.getByLabelText('Lifecycle stage')).toHaveProperty('value', '');
+    expect(screen.queryByLabelText('Lifecycle window start')).toBeNull();
+  });
+
+  it('preserves an open-ended pregnancy window while editing', async () => {
+    routeId = 'open-ended-edit';
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(),
+      substage: {
+        code: 'PREGNANCY_LMP_WEEK_39_2147483647',
+        anchor: 'LMP',
+        startInclusive: 39,
+        endInclusive: 2147483647,
+        unit: 'WEEK',
+      },
+    });
+    render(<ChecklistFormPage />);
+
+    expect(await screen.findByText('Chỉnh sửa Checklist')).toBeTruthy();
+    expect(screen.getByLabelText('Lifecycle window start')).toHaveProperty('value', '40');
+    expect(screen.getByLabelText('Lifecycle window end')).toHaveProperty('value', 'STAGE_EXIT');
+  });
+
+  it('renders lifecycle targeting for default MOTHER recipient', async () => {
     const user = userEvent.setup();
     render(<ChecklistFormPage />);
 
     expect(screen.getByRole('region', { name: 'Lifecycle targeting' })).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PRE_PREGNANCY');
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
     expect(screen.getByRole('region', { name: 'Lifecycle targeting' })).toBeTruthy();
-    expect(screen.getByRole('note').textContent).toContain('legacy');
-  });
-
-  it('hides and normalizes lifecycle targeting for a FAMILY-only draft before submit', async () => {
-    const user = userEvent.setup();
-    harness.createChecklistTemplate.mockResolvedValue({
-      id: 'created-1', name: 'Family checks', description: '', stage: null,
-      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['FAMILY'],
-    });
-    render(<ChecklistFormPage />);
-
-    await user.type(screen.getByLabelText('Template name'), 'Family checks');
-    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient MOTHER' }));
-
-    expect(screen.queryByRole('region', { name: 'Lifecycle targeting' })).toBeNull();
-    expect(screen.queryByLabelText('Lifecycle stage')).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-
-    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
-      recipientRoles: ['FAMILY'], stage: null, substage: null,
-    })));
-  });
-
-  it('hides and clears lifecycle state when no recipient is selected', async () => {
-    const user = userEvent.setup();
-    render(<ChecklistFormPage />);
-
-    await user.type(screen.getByLabelText('Template name'), 'No recipient yet');
-    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient MOTHER' }));
-
-    expect(screen.queryByRole('region', { name: 'Lifecycle targeting' })).toBeNull();
-    expect(screen.queryByLabelText('Lifecycle stage')).toBeNull();
-    expect((screen.getByRole('button', { name: 'Save draft' }) as HTMLButtonElement).disabled).toBe(true);
-
-    harness.createChecklistTemplate.mockResolvedValue({
-      id: 'created-zero', name: 'No recipient yet', description: '', stage: null,
-      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['FAMILY'],
-    });
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-
-    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
-      recipientRoles: ['FAMILY'], stage: null, substage: null,
-    })));
-  });
-
-  it('normalizes an edited MOTHER-to-FAMILY transition before update', async () => {
-    const user = userEvent.setup();
-    routeId = 'family-transition';
-    harness.fetchChecklistTemplateDetail.mockResolvedValue({
-      ...checklistDetail(),
-      recipientRoles: ['MOTHER', 'FAMILY'],
-      substage: {
-        code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', startInclusive: 0, endInclusive: 12, unit: 'WEEK',
-      },
-    });
-    harness.updateChecklistTemplate.mockResolvedValue(checklistDetail());
-    render(<ChecklistFormPage />);
-
-    await screen.findByText('Chỉnh sửa Checklist');
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient MOTHER' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
-    expect(screen.queryByRole('region', { name: 'Lifecycle targeting' })).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-    await waitFor(() => expect(harness.updateChecklistTemplate).toHaveBeenCalledWith(
-      'family-transition',
-      expect.objectContaining({ recipientRoles: ['FAMILY'], stage: null, substage: null, status: 'DRAFT' }),
-    ));
-  });
-
-  it('clears lifecycle state when an edited MOTHER template transitions to zero roles', async () => {
-    const user = userEvent.setup();
-    routeId = 'zero-transition';
-    harness.fetchChecklistTemplateDetail.mockResolvedValue({
-      ...checklistDetail(),
-      substage: {
-        code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', startInclusive: 0, endInclusive: 12, unit: 'WEEK',
-      },
-    });
-    render(<ChecklistFormPage />);
-
-    await screen.findByText('Chỉnh sửa Checklist');
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient MOTHER' }));
-
-    expect(screen.queryByRole('region', { name: 'Lifecycle targeting' })).toBeNull();
-    expect((screen.getByRole('button', { name: 'Save draft' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(harness.updateChecklistTemplate).not.toHaveBeenCalled();
   });
 
   it('serializes an explicit MOTHER-only payload with lifecycle metadata', async () => {
@@ -260,7 +376,7 @@ describe('ChecklistFormPage version', () => {
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
       recipientRoles: ['MOTHER'],
       stage: 'PREGNANCY',
-      substage: expect.objectContaining({ code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', unit: 'WEEK' }),
+      substage: expect.objectContaining({ code: 'PREGNANCY_LMP_WEEK_0_19', anchor: 'LMP', unit: 'WEEK' }),
     })));
   });
 
@@ -277,7 +393,7 @@ describe('ChecklistFormPage version', () => {
     await user.type(screen.getByLabelText('Template name'), 'Prepare for pregnancy');
     await user.click(screen.getByLabelText('Optional checklist'));
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PRE_PREGNANCY');
-    expect(screen.queryByLabelText('Lifecycle substage')).toBeNull();
+    expect(screen.queryByLabelText('Lifecycle window start')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Submit for review' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
@@ -297,38 +413,75 @@ describe('ChecklistFormPage version', () => {
     ));
   });
 
-  it('serializes mixed recipient roles and explicit item target', async () => {
+  it('serializes weekly cadence and postpartum stage window', async () => {
     const user = userEvent.setup();
     harness.createChecklistTemplate.mockResolvedValue({
       id: 'created-2', name: 'Mixed checks', description: '', stage: 'PREGNANCY',
-      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER', 'FAMILY'],
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
     });
     render(<ChecklistFormPage />);
 
     await user.type(screen.getByLabelText('Template name'), 'Mixed checks');
-    await user.click(screen.getByRole('radio', { name: 'Legacy V1 target-bearing contract' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
-    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'POSTPARTUM');
+    await user.selectOptions(screen.getByLabelText('Lifecycle window start'), '1');
+    await user.selectOptions(screen.getByLabelText('Lifecycle window end'), '6');
     expect(screen.getByText('Cửa sổ vòng đời')).toBeTruthy();
-    await user.selectOptions(screen.getByLabelText('Lifecycle substage'), 'PREGNANCY_LMP_WEEK_0_12');
+    await user.click(screen.getByLabelText('List weekly recurrence'));
     await user.type(screen.getByLabelText('Item 1 text'), 'Prepare documents');
-    await user.selectOptions(screen.getByLabelText('Item 1 target'), 'BABY');
     await user.type(screen.getByLabelText('Nội dung chi tiết mục 1'), 'Chuẩn bị giấy tờ cần thiết.');
     await user.selectOptions(screen.getByLabelText('Chức năng hỗ trợ mục 1'), 'CONTENT_LIBRARY');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
-      recipientRoles: ['MOTHER', 'FAMILY'],
+      recipientRoles: ['MOTHER'],
       checklistContractVersion: 1,
-      stage: 'PREGNANCY',
+      stage: 'POSTPARTUM',
+      scheduleContextType: 'JOURNEY',
       substage: expect.objectContaining({
-        code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', unit: 'WEEK',
+        code: 'POSTPARTUM_DELIVERY_DATE_WEEK_0_5', anchor: 'DELIVERY_DATE', unit: 'WEEK',
       }),
       items: [expect.objectContaining({
-        targetSubject: 'BABY',
         description: 'Chuẩn bị giấy tờ cần thiết.',
         supportFunction: 'CONTENT_LIBRARY',
       })],
+    })));
+  });
+
+  it('serializes maternal health metrics as a support destination', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'created-maternal-health-metrics', name: 'Theo dõi chỉ số', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Theo dõi chỉ số');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Ghi nhận chỉ số sức khỏe');
+    await user.selectOptions(screen.getByRole('combobox', { name: /hỗ trợ mục 1/i }), 'MATERNAL_HEALTH_METRICS');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({ supportFunction: 'MATERNAL_HEALTH_METRICS' })],
+    })));
+  });
+
+  it('serializes maternal exercises as a support destination', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'created-maternal-exercises', name: 'Bài tập cho mẹ', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Bài tập cho mẹ');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Thực hiện bài tập phù hợp');
+    await user.selectOptions(screen.getByRole('combobox', { name: /hỗ trợ mục 1/i }), 'MATERNAL_EXERCISES');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({ supportFunction: 'MATERNAL_EXERCISES' })],
     })));
   });
 
@@ -338,5 +491,16 @@ describe('ChecklistFormPage version', () => {
     const guidance = screen.getByText((value) => value.startsWith('Checklist V2'));
     expect(guidance.className).toContain('text-on-surface-variant');
     expect(guidance.className).not.toContain('text-[#9C857C]');
+  });
+
+  it('disables weekly recurrence checkbox when lifecycle window is 1 week', async () => {
+    const user = userEvent.setup();
+    render(<ChecklistFormPage />);
+
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    expect((screen.getByLabelText('List weekly recurrence') as HTMLInputElement).disabled).toBe(false);
+
+    await user.selectOptions(screen.getByLabelText('Lifecycle window mode'), 'SINGLE');
+    expect((screen.getByLabelText('List weekly recurrence') as HTMLInputElement).disabled).toBe(true);
   });
 });

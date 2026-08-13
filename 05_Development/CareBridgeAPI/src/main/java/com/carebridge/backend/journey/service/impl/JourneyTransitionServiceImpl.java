@@ -1035,6 +1035,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .canonicalLmp(dating.canonicalLmp())
                 .completedGestationalWeek(dating.resolved()
                         ? dating.completedGestationalWeek() : null)
+                .completedGestationalDays(dating.resolved()
+                        ? dating.completedGestationalDays() : null)
                 .sourceWeekNumber(dating.resolved() ? dating.sourceWeekNumber() : null)
                 .plan(dating.plan())
                 .createdAt(journey.getCreatedAt())
@@ -1088,6 +1090,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                     journey.getLastMenstrualDate(), journey.getEstimatedDueDate(), false);
         }
         int completed = GestationalDatingResolver.completedGestationalWeek(canonical, today);
+        int completedDays = GestationalDatingResolver.completedGestationalDays(canonical, today);
         int source = GestationalDatingResolver.sourceWeekNumber(completed);
         return new GestationalDatingResolution(
                 journey.getGestationalDatingBasis(),
@@ -1098,6 +1101,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 true,
                 false,
                 completed,
+                completedDays,
                 source,
                 GestationalDatingResolver.planForSourceWeek(source));
     }

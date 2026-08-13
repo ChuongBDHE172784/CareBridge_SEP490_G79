@@ -10,6 +10,8 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
@@ -78,6 +80,16 @@ class ChecklistCurrentScopePolicyTest {
         ChecklistInstance instance = instance(2L);
 
         assertThat(policy.isCurrent(instance, EFFECTIVE_DATE)).isTrue();
+    }
+
+    @Test
+    void configuredButUnsupportedCadenceFailsClosed() {
+        template.setScheduleType(ChecklistScheduleType.WEEKLY);
+        template.setMaterializationPolicy(ChecklistMaterializationPolicy.EACH_DAY);
+        ChecklistInstance instance = instance(2L);
+        instance.setPeriodKey("legacy-period");
+
+        assertThat(policy.isCurrent(instance, EFFECTIVE_DATE)).isFalse();
     }
 
     private ChecklistInstance instance(Long revision) {

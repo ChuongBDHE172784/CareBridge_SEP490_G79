@@ -23,11 +23,15 @@ void main() {
   });
 
   testWidgets(
-    'registration form requires both contacts and keeps Google quick sign-up',
+    'registration form requires both contacts and keeps Google and SMS quick sign-up',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
       expect(
         find.byKey(const Key('federated-google-register')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('federated-phone-register')),
         findsOneWidget,
       );
       expect(find.byKey(const Key('register-email-field')), findsOneWidget);
@@ -37,6 +41,7 @@ void main() {
         findsNothing,
       );
       expect(find.byTooltip('Đăng ký với Google'), findsOneWidget);
+      expect(find.byTooltip('Đăng ký bằng SMS'), findsOneWidget);
       expect(find.text('G'), findsOneWidget);
     },
   );

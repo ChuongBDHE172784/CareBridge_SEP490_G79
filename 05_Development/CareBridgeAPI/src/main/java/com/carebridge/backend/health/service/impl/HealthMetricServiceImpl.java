@@ -119,7 +119,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     public MetricResponse updateMetric(UUID userId, UUID journeyId, UUID metricId, UpdateMetricRequest request) {
         MotherJourney journey = activeOwnedJourney(journeyId, userId, "METRIC-010", "METRIC-013");
         HealthObservation observation = observationRepository.findByIdAndCareSubjectIdAndStatus(
-                        metricId, requireCareSubjectId(journey), MetricStatus.ACTIVE)
+                metricId, requireCareSubjectId(journey), MetricStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-011",
                         "Metric not found in this journey: " + metricId));
         if (observation.getCreatedAt() != null
@@ -131,7 +131,8 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
         MetricType legacyType = legacyTypeForCanonical(observation.getMetricCode());
         MetricDefinition definition = effectiveDefinition(observation.getMetricCode());
         Map<String, Object> existingContext = observation.getContext() == null
-                ? new LinkedHashMap<>() : new LinkedHashMap<>(observation.getContext());
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(observation.getContext());
         MetricObservationValidator.NormalizedObservation normalized = validator.mergeAndNormalize(
                 legacyType,
                 observation.getValueNumeric(),
@@ -196,7 +197,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
     @Override
     public MetricTrendResponse getMetricTrend(UUID userId, UUID journeyId, MetricType metricType,
-                                               Instant from, Instant to) {
+            Instant from, Instant to) {
         MotherJourney journey = journeyRepository.findById(journeyId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-020",
                         "Journey not found: " + journeyId));
@@ -271,7 +272,8 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private MetricType legacyTypeForCanonical(String metricCode) {
         return switch (metricCode) {
-            // Existing historical records can still be interpreted, but WEIGHT is not exposed as a capability.
+            // Existing historical records can still be interpreted, but WEIGHT is not
+            // exposed as a capability.
             case "WEIGHT" -> MetricType.WEIGHT;
             case "BMI" -> MetricType.BMI;
             case "BLOOD_PRESSURE" -> MetricType.BLOOD_PRESSURE;
@@ -307,7 +309,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     }
 
     private MetricResponse toMetricResponse(HealthObservation observation, UUID journeyId,
-                                             String aiInsight, boolean redFlag, int definitionVersion) {
+            String aiInsight, boolean redFlag, int definitionVersion) {
         return MetricResponse.builder()
                 .metricId(observation.getId())
                 .journeyId(journeyId)
@@ -361,14 +363,17 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private Instant instantFromPayload(Map<String, Object> payload, String key) {
         Object value = payload == null ? null : payload.get(key);
-        if (value == null) return null;
-        if (value instanceof Instant instant) return instant;
+        if (value == null)
+            return null;
+        if (value instanceof Instant instant)
+            return instant;
         return Instant.parse(value.toString());
     }
 
     private Integer integerFromPayload(Map<String, Object> payload, String key) {
         Object value = payload == null ? null : payload.get(key);
-        if (value == null) return null;
+        if (value == null)
+            return null;
         return value instanceof Number number ? number.intValue() : Integer.valueOf(value.toString());
     }
 }

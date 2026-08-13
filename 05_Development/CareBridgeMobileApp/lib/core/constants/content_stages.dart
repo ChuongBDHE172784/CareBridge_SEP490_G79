@@ -8,6 +8,7 @@ class ContentStageOption {
 const prePregnancyContentStage = 'PRE_PREGNANCY';
 const pregnancyContentStage = 'PREGNANCY';
 const postpartumContentStage = 'POSTPARTUM';
+const babyCareContentStage = 'BABY_CARE';
 
 const contentStageOptions = <ContentStageOption>[
   ContentStageOption(
@@ -15,18 +16,19 @@ const contentStageOptions = <ContentStageOption>[
     label: 'Chuẩn bị mang thai',
   ),
   ContentStageOption(value: pregnancyContentStage, label: 'Thai kỳ'),
-  ContentStageOption(value: postpartumContentStage, label: 'Hậu sản & Chăm bé'),
+  ContentStageOption(value: postpartumContentStage, label: 'Hậu sản'),
+  ContentStageOption(value: babyCareContentStage, label: 'Chăm bé'),
 ];
 
 const canonicalContentStages = <String>{
   prePregnancyContentStage,
   pregnancyContentStage,
   postpartumContentStage,
+  babyCareContentStage,
 };
 
 String? tryNormalizeContentStage(String? value) {
   final normalized = value?.trim().toUpperCase();
-  if (normalized == 'BABY_CARE') return postpartumContentStage;
   return canonicalContentStages.contains(normalized) ? normalized : null;
 }
 
@@ -42,7 +44,9 @@ String contentStageLabel(String? value) {
     case pregnancyContentStage:
       return 'Thai kỳ';
     case postpartumContentStage:
-      return 'Hậu sản & Chăm bé';
+      return 'Hậu sản';
+    case babyCareContentStage:
+      return 'Chăm bé';
     default:
       return value ?? '';
   }

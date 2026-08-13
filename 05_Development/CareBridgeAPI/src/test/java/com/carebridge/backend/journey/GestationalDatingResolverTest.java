@@ -31,6 +31,7 @@ class GestationalDatingResolverTest {
         assertThat(result.canonicalLmp()).isEqualTo(LocalDate.of(2026, 6, 1));
         assertThat(result.estimatedDueDate()).isEqualTo(LocalDate.of(2027, 3, 8));
         assertThat(result.completedGestationalWeek()).isEqualTo(6);
+        assertThat(result.completedGestationalDays()).isEqualTo(5);
         assertThat(result.sourceWeekNumber()).isEqualTo(7);
         assertThat(result.plan()).isEqualTo(1);
     }

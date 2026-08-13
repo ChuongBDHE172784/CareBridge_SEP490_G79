@@ -25,6 +25,7 @@ function stageBadgeClass(stage: ContentStage | null): string {
     case 'PRE_PREGNANCY': return 'bg-emerald-100 text-emerald-800';
     case 'PREGNANCY': return 'bg-amber-100 text-amber-800';
     case 'POSTPARTUM': return 'bg-rose-100 text-rose-800';
+    case 'BABY_CARE': return 'bg-sky-100 text-sky-800';
     case null: return 'bg-surface-container-low text-on-surface-variant';
   }
 }

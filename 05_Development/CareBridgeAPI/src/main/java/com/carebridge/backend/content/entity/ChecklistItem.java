@@ -23,8 +23,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "care_item_templates")
@@ -72,10 +74,10 @@ public class ChecklistItem {
 
     @Enumerated(EnumType.STRING)
     /**
-     * V1 checklist entries carry a MOTHER/BABY target.  Contract V2 entries are
-     * recommendation leaves and deliberately persist SQL NULL; the owning
-     * template's checklistContractVersion is the discriminator.  Keep the
-     * compatibility builder default for old V1 callers that omit the field.
+     * V1 checklist entries carry a MOTHER/BABY target. Contract V2 entries are
+     * targetless recommendation leaves; the owning template's
+     * checklistContractVersion is the discriminator. Keep the compatibility
+     * builder default for old V1 callers that omit the field.
      */
     @Builder.Default
     @Column(name = "target_subject", nullable = true, length = 10)
@@ -111,6 +113,16 @@ public class ChecklistItem {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    /**
+     * Small authoring-only recurrence projection.  The canonical runtime cadence
+     * remains root-owned; this JSON keeps the two item checkboxes without adding
+     * another table or confusing due-offset timing with recurrence.
+     */
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "configuration_jsonb", nullable = false, columnDefinition = "jsonb")
+    private String configurationJson = "{}";
+
     /** Compatibility constructor for the pre-detail entity shape. */
     public ChecklistItem(
             UUID id,
@@ -127,8 +139,8 @@ public class ChecklistItem {
             String entryType,
             Instant createdAt,
             Instant updatedAt) {
-        this(id, template, itemText, null, null, order, isRequired, (short) 1, targetSubject,
-                dueAnchorType, dueOffsetStart, dueOffsetEnd, dueOffsetUnit,
-                isActive, entryType, createdAt, updatedAt);
-    }
+         this(id, template, itemText, null, null, order, isRequired, (short) 1, targetSubject,
+                 dueAnchorType, dueOffsetStart, dueOffsetEnd, dueOffsetUnit,
+                 isActive, entryType, createdAt, updatedAt, "{}");
+     }
 }

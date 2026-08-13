@@ -13,7 +13,10 @@ import com.carebridge.backend.checklist.distribution.ChecklistCurrentScopePolicy
 import com.carebridge.backend.checklist.today.dto.TodaySequenceProjection;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCandidate;
 import com.carebridge.backend.checklist.today.model.TaskAction;
+import com.carebridge.backend.checklist.today.model.TaskCadence;
 import com.carebridge.backend.checklist.today.model.TaskKind;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateType;
@@ -130,6 +133,7 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         List<TodayTaskCandidate> result = new ArrayList<>();
         for (var authorized : authorizedInstances) {
             ChecklistInstance instance = authorized.instance();
+            ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
             for (var task : tasksByInstanceId.getOrDefault(instance.getId(), List.of())) {
                 if (task.getStatus() == ChecklistTaskStatus.CANCELLED) {
                     continue;
@@ -150,7 +154,8 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
                         instance.getCareContextType(), instance.getCareContextId(),
                         task.getTitleSnapshot(), task.getTargetSubject(), instance.getOrigin(),
                         task.getStatus().name(), actions, task.getDueAt(), terminalAt(task), null,
-                        task.getDescriptionSnapshot(), task.getSupportFunction()));
+                        task.getDescriptionSnapshot(), task.getSupportFunction(), cadence(template),
+                        template == null ? null : template.getStage()));
             }
         }
         return List.copyOf(result);
@@ -236,6 +241,21 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             return task.getSkippedAt();
         }
         return task.getCancelledAt();
+    }
+
+    private static TaskCadence cadence(ChecklistTemplate template) {
+        if (template == null) {
+            return TaskCadence.ONCE;
+        }
+        if (template.getScheduleType() == ChecklistScheduleType.DAILY
+                && template.getMaterializationPolicy() == ChecklistMaterializationPolicy.EACH_DAY) {
+            return TaskCadence.DAILY;
+        }
+        if (template.getScheduleType() == ChecklistScheduleType.WEEKLY
+                && template.getMaterializationPolicy() == ChecklistMaterializationPolicy.EACH_WEEK) {
+            return TaskCadence.WEEKLY;
+        }
+        return TaskCadence.ONCE;
     }
 
     private record AuthorizedInstance(ChecklistInstance instance, boolean canAct) {

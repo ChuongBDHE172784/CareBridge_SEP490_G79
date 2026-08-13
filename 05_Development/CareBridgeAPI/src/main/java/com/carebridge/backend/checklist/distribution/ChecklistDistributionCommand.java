@@ -24,13 +24,14 @@ public record ChecklistDistributionCommand(
         List<ChecklistDistributionItem> items,
         UUID correlationId,
         Long gestationalDatingRevision,
-        ChecklistCadenceMetadata cadence) {
+        ChecklistCadenceMetadata cadence,
+        Short checklistContractVersion) {
 
     public ChecklistDistributionCommand withCadence(ChecklistCadenceMetadata replacement) {
         return new ChecklistDistributionCommand(templateLineageId, templateVersionId, careGroupId,
                 careGroupOwnerUserId, contextType, contextId, contextOwnerUserId, stage, substage,
                 lifecycleDates, effectiveDate, timezone, recipients, items, correlationId,
-                gestationalDatingRevision, replacement);
+                gestationalDatingRevision, replacement, checklistContractVersion);
     }
 
     /** Compatibility constructor for non-pregnancy and legacy callers. */
@@ -76,6 +77,31 @@ public record ChecklistDistributionCommand(
         this(templateLineageId, templateVersionId, careGroupId, careGroupOwnerUserId,
                 contextType, contextId, contextOwnerUserId, stage, substage, lifecycleDates,
                 effectiveDate, timezone, recipients, items, correlationId,
-                gestationalDatingRevision, null);
+                gestationalDatingRevision, null, null);
+    }
+
+    /** Compatibility constructor for existing cadence callers before the root contract was carried. */
+    public ChecklistDistributionCommand(
+            UUID templateLineageId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            UUID careGroupOwnerUserId,
+            ChecklistCareContextType contextType,
+            UUID contextId,
+            UUID contextOwnerUserId,
+            ContentStage stage,
+            ChecklistLifecycleEligibility substage,
+            ChecklistLifecycleDates lifecycleDates,
+            LocalDate effectiveDate,
+            ZoneId timezone,
+            List<ChecklistDistributionRecipient> recipients,
+            List<ChecklistDistributionItem> items,
+            UUID correlationId,
+            Long gestationalDatingRevision,
+            ChecklistCadenceMetadata cadence) {
+        this(templateLineageId, templateVersionId, careGroupId, careGroupOwnerUserId,
+                contextType, contextId, contextOwnerUserId, stage, substage, lifecycleDates,
+                effectiveDate, timezone, recipients, items, correlationId,
+                gestationalDatingRevision, cadence, null);
     }
 }

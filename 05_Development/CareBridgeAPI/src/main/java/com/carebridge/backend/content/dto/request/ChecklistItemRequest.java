@@ -11,18 +11,21 @@ public record ChecklistItemRequest(
         UUID id,
         @NotBlank @Size(max = 500) String itemText,
         @NotNull Integer order,
-        /** V1 requires this flag; V2 recommendation leaves intentionally omit it. */
+        /** V1 and V2 checklist leaves require an explicit boolean value. */
         Boolean isRequired,
         ChecklistTargetSubject targetSubject,
         @Size(max = 4000) String description,
-        ChecklistSupportFunction supportFunction
+        ChecklistSupportFunction supportFunction,
+        /** Authoring recurrence marker persisted in the existing item JSON metadata. */
+        Boolean repeatWeekly,
+        Boolean repeatDaily
 ) {
     public ChecklistItemRequest(String itemText, Integer order, Boolean isRequired) {
-        this(null, itemText, order, isRequired, ChecklistTargetSubject.MOTHER, null, null);
+        this(null, itemText, order, isRequired, ChecklistTargetSubject.MOTHER, null, null, false, false);
     }
 
     public ChecklistItemRequest(UUID id, String itemText, Integer order, Boolean isRequired) {
-        this(id, itemText, order, isRequired, ChecklistTargetSubject.MOTHER, null, null);
+        this(id, itemText, order, isRequired, ChecklistTargetSubject.MOTHER, null, null, false, false);
     }
 
     /** Compatibility constructor for callers that supplied the target subject. */
@@ -32,6 +35,18 @@ public record ChecklistItemRequest(
             Integer order,
             Boolean isRequired,
             ChecklistTargetSubject targetSubject) {
-        this(id, itemText, order, isRequired, targetSubject, null, null);
+        this(id, itemText, order, isRequired, targetSubject, null, null, false, false);
+    }
+
+    /** Compatibility constructor for the pre-cadence authoring request shape. */
+    public ChecklistItemRequest(
+            UUID id,
+            String itemText,
+            Integer order,
+            Boolean isRequired,
+            ChecklistTargetSubject targetSubject,
+            String description,
+            ChecklistSupportFunction supportFunction) {
+        this(id, itemText, order, isRequired, targetSubject, description, supportFunction, false, false);
     }
 }

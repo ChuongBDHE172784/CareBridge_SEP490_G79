@@ -130,21 +130,17 @@ class PregnancyWhoChecklistSeedContractTest {
         assertThat(rootData).doesNotContain("0, 11");
         assertThat(sql).contains(
                 "target_subject, is_required, checklist_contract_version",
-                "NULL, NULL, 2,");
+                "NULL, TRUE, 2,");
         assertThat(sql).contains("root_count <> 16", "item_count <> 62", "daily_count <> 0");
     }
 
     @Test
-    void forwardMigrationKeepsPendingPregnancyCopyNonDistributableAtDatabaseBoundary() throws Exception {
+    void forwardMigrationDropsTheRetiredPregnancyProvenanceConstraint() throws Exception {
         String migration = read(Path.of(
-                "src/main/resources/db/migration/V20260812130000__gate_pregnancy_v2_provenance_activation.sql"));
+                "src/main/resources/db/migration/V20260813100000__remove_pregnancy_v2_provenance_activation_gate.sql"));
         assertThat(migration).contains(
-                "checklist_pregnancy_v2_provenance_activation_ck",
-                "checklist_metadata_jsonb ->> 'schema' = 'CHECKLIST_METADATA_V1'",
-                "checklist_metadata_jsonb ->> 'provenanceStatus' = 'SIGNED_OFF'",
-                "distribution_enabled = false",
-                "content_status <> 'APPROVED'",
-                "VALIDATE CONSTRAINT checklist_pregnancy_v2_provenance_activation_ck");
+                "DROP CONSTRAINT IF EXISTS checklist_pregnancy_v2_provenance_activation_ck");
+        assertThat(migration).doesNotContain("ADD CONSTRAINT");
     }
 
     private static int count(List<SourceLeaf> leaves, int plan, String section) {
