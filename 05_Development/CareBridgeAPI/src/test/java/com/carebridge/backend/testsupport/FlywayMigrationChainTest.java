@@ -25,12 +25,12 @@ class FlywayMigrationChainTest {
                 .isEmpty();
         assertThat(manifest.malformedFiles()).isEmpty();
         assertThat(manifest.duplicateVersions()).isEmpty();
-        // The two baseline scripts are the only fixed anchors: everything after them is
+        // The baseline script is the fixed anchor: everything after it is
         // re-versioned whenever the canonical chain is rebuilt, so assert the append-only
         // *shape* (versioned, unique, strictly increasing) rather than specific filenames.
         assertThat(manifest.migrations())
                 .extracting(DatabaseGate0Support.MigrationFile::script)
-                .contains("V1__init_schema.sql", "V2__seed_reference_data.sql");
+                .contains("V1__init_schema.sql");
         assertThat(manifest.migrations())
                 .extracting(DatabaseGate0Support.MigrationFile::type)
                 .containsOnly("V");
