@@ -564,6 +564,55 @@ BEFORE INSERT OR UPDATE OF recipient_role, recipient_user_id, care_group_id,
 ON public.checklist_instances
 FOR EACH ROW EXECUTE FUNCTION public.checklist_validate_instance_recipient();
 
+CREATE OR REPLACE FUNCTION public.checklist_guard_approved_item_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+    parent_id uuid;
+    parent_status varchar(20);
+    parent_review_required boolean;
+    parent_reviewed_at timestamptz;
+BEGIN
+    IF coalesce(current_setting('carebridge.checklist_p1_p2_role', true), '') = 'MIGRATION' THEN
+        RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    END IF;
+
+    IF (TG_OP = 'DELETE' AND OLD.entry_type <> 'CHECKLIST_ENTRY')
+       OR (TG_OP = 'INSERT' AND NEW.entry_type <> 'CHECKLIST_ENTRY')
+       OR (TG_OP = 'UPDATE'
+           AND OLD.entry_type <> 'CHECKLIST_ENTRY'
+           AND NEW.entry_type <> 'CHECKLIST_ENTRY') THEN
+        RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    END IF;
+
+    IF TG_OP = 'UPDATE' AND OLD.parent_template_id IS DISTINCT FROM NEW.parent_template_id
+       AND EXISTS (
+           SELECT 1
+           FROM public.care_item_templates root
+           WHERE root.template_id IN (OLD.parent_template_id, NEW.parent_template_id)
+             AND root.entry_type = 'TEMPLATE_ROOT'
+             AND (root.content_status IN ('APPROVED', 'ARCHIVED')
+                  OR root.migration_reviewed_at IS NOT NULL)
+       ) THEN
+        RAISE EXCEPTION 'VERSION_IMMUTABLE';
+    END IF;
+
+    parent_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.parent_template_id ELSE NEW.parent_template_id END;
+    IF parent_id IS NULL THEN
+        RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    END IF;
+
+    SELECT content_status, migration_review_required, migration_reviewed_at
+    INTO parent_status, parent_review_required, parent_reviewed_at
+    FROM public.care_item_templates
+    WHERE template_id = parent_id AND entry_type = 'TEMPLATE_ROOT';
+
+    IF (parent_status IN ('APPROVED', 'ARCHIVED') AND parent_review_required = false)
+       OR parent_reviewed_at IS NOT NULL THEN
+        RAISE EXCEPTION 'VERSION_IMMUTABLE';
+    END IF;
+    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END $$;
+
 DO $$
 DECLARE
     v_tx timestamptz := transaction_timestamp();

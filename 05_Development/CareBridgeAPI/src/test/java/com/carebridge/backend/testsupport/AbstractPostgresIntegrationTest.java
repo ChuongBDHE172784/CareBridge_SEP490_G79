@@ -30,7 +30,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
         "spring.flyway.locations=classpath:db/migration,classpath:db/migration/phase2",
         // Production injects these session settings from the deployment
         // runner. Testcontainers must model the same pre-migration contract.
-        "spring.flyway.init-sql=select set_config('carebridge.checklist_v1_writes_frozen','true',false); select set_config('carebridge.checklist_p1_p2_role','MIGRATION',false)",
+        "spring.flyway.init-sql=DO $$ BEGIN PERFORM set_config('carebridge.checklist_v1_writes_frozen', 'true', false); PERFORM set_config('carebridge.checklist_p1_p2_role', 'MIGRATION', false); END $$;",
         "spring.flyway.baseline-on-migrate=true",
         "spring.flyway.out-of-order=true",
         "spring.jpa.hibernate.ddl-auto=validate",

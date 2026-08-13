@@ -70,6 +70,9 @@ public class User {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    @Column(name = "area", length = 100)
+    private String area;
+
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 

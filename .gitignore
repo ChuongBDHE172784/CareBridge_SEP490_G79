@@ -132,6 +132,9 @@ tools/
 ~$*
 *.docx.tmp
 *.pdf.tmp
+docs/IMU/
+docs/Present/
+docs/Report6/
 
 # Machine learning datasets and generated models
 03_MachineLearning/Dataset/*
@@ -183,7 +186,6 @@ Exercise-Correction/
 # Dedicated Edge profile for System Test automation - holds a live Google session
 .browser-profiles/
 .mcp.json.bak
-
 # Rendered standalone compose files. These are produced from templates on the
 # server and carry live credentials - database password, Zego secret, API keys.
 # They were untracked deliberately in a92f502a4 and a later merge put them back,

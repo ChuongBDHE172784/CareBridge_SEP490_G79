@@ -85,11 +85,27 @@ export interface RefreshTokenRequest {
 }
 
 export interface ForgotPasswordRequest {
-  email?: string;
-  phone?: string;
+  contact: string;
 }
 
 export interface ForgotPasswordResponse {
   message: string;
+  expiresIn: number;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 import type { UserRole } from '../../../shared/auth/authStore';

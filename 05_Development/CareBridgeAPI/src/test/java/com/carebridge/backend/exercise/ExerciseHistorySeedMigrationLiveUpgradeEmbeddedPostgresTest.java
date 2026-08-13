@@ -18,7 +18,7 @@ import org.junit.jupiter.api.condition.OS;
 class ExerciseHistorySeedMigrationLiveUpgradeEmbeddedPostgresTest {
 
     private static final String PRE_RECONCILIATION_VERSION = "20260810100000";
-    private static final String RECONCILIATION_VERSION = "20260810110000";
+    private static final String RECONCILIATION_VERSION = "20260810120000";
     private static final String FAILURE_MARKER =
             "EXERCISE_TEMPLATE_ENUM_RECONCILE_FAILED";
     private static final String SEEDED_EXERCISE_ID =

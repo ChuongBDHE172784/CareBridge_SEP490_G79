@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../../../shared/api/apiClient';
-import { login, loginWithPhone, registerExpert, registerUser, registerWithPhone } from './authApi';
+import {
+  changePassword,
+  forgotPassword,
+  login,
+  loginWithPhone,
+  registerExpert,
+  registerUser,
+  registerWithPhone,
+  resetPassword,
+} from './authApi';
 
-vi.mock('../../../shared/api/apiClient', () => ({ default: { post: vi.fn() } }));
+vi.mock('../../../shared/api/apiClient', () => ({ default: { post: vi.fn(), put: vi.fn() } }));
 vi.mock('../../../shared/auth/authStore', () => ({ useAuthStore: { getState: vi.fn() } }));
 
 describe('expert registration API', () => {
@@ -106,6 +115,50 @@ describe('expert registration API', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/api/v1/auth/phone/login', {
       idToken: 'firebase-id-token',
       deviceInfo: expect.any(String),
+    });
+  });
+
+  it('uses the backend contact contract for password recovery', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { data: { message: 'sent', expiresIn: 900 } },
+    });
+
+    await forgotPassword({ contact: 'user@example.com' });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/auth/forgot-password', {
+      contact: 'user@example.com',
+    });
+  });
+
+  it('submits the reset token and matching password fields', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { message: 'reset' } } });
+
+    await resetPassword({
+      token: 'reset-token',
+      newPassword: 'NewPassword1!',
+      confirmPassword: 'NewPassword1!',
+    });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/auth/reset-password', {
+      token: 'reset-token',
+      newPassword: 'NewPassword1!',
+      confirmPassword: 'NewPassword1!',
+    });
+  });
+
+  it('uses the authenticated password change endpoint', async () => {
+    vi.mocked(apiClient.put).mockResolvedValue({ data: { data: null } });
+
+    await changePassword({
+      oldPassword: 'CurrentPassword1!',
+      newPassword: 'NewPassword1!',
+      confirmPassword: 'NewPassword1!',
+    });
+
+    expect(apiClient.put).toHaveBeenCalledWith('/api/v1/auth/change-password', {
+      oldPassword: 'CurrentPassword1!',
+      newPassword: 'NewPassword1!',
+      confirmPassword: 'NewPassword1!',
     });
   });
 });

@@ -216,7 +216,7 @@ class ChecklistP1P2BackfillEmbeddedPostgresTest {
         try {
             var dataSource = postgres.getPostgresDatabase();
             EmbeddedPostgresRoleFixture.provision(dataSource);
-            assertThat(flyway(dataSource, "20260810110000").migrate().success).isTrue();
+            assertThat(flyway(dataSource, "20260810120000").migrate().success).isTrue();
             return postgres;
         } catch (Exception exception) {
             postgres.close();
