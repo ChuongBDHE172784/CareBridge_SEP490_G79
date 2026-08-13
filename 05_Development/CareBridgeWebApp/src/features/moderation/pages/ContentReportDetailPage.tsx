@@ -376,15 +376,6 @@ export default function ContentReportDetailPage() {
 	                    {submitting === 'SUSPEND' ? 'Đang xử lý...' : 'Đình chỉ 7 ngày'}
 	                  </button>
 
-	                  <button
-                    onClick={() => handleAction('DISMISS')}
-                    disabled={submitting !== null}
-                    title="Đóng báo cáo mà không đổi trạng thái nội dung — khác với Duyệt: nếu nội dung đang PENDING, nó vẫn giữ nguyên PENDING"
-                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-lg">block</span>
-                    {submitting === 'DISMISS' ? 'Đang xử lý...' : 'Bỏ qua báo cáo (không đổi trạng thái)'}
-                  </button>
 
                   <button
                     disabled
