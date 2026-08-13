@@ -141,6 +141,16 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
         foreground: const Color(0xFF28633C),
         background: const Color(0xFFDDF4E4),
       ),
+      'AI_PENDING' => (
+        label: 'Đang kiểm duyệt AI',
+        foreground: const Color(0xFF745600),
+        background: const Color(0xFFFFEFB8),
+      ),
+      'PENDING' => (
+        label: 'Chờ duyệt thủ công',
+        foreground: const Color(0xFF8A5300),
+        background: const Color(0xFFFFE8B5),
+      ),
       'HIDDEN' => (
         label: 'Đã ẩn',
         foreground: const Color(0xFF7C4B00),
@@ -242,7 +252,9 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
   Widget _buildQuestionCard(MyCommunityQuestion question) {
     final status = _statusStyle(question.status);
     final canOpen =
-        question.status == 'APPROVED' || question.status == 'PENDING';
+        question.status == 'APPROVED' ||
+        question.status == 'PENDING' ||
+        question.status == 'AI_PENDING';
     final canDelete =
         question.status != 'LOCKED' && question.status != 'DELETED';
     return Material(

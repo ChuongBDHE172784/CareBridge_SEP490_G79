@@ -65,6 +65,29 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
 
   bool get _canAnswerQuestion => canAnswerCommunityQuestion(_question?.status);
 
+  String get _questionStatusMessage {
+    final status = _question?.status;
+    if (status == 'AI_PENDING') {
+      return _isMyQuestion
+          ? 'Câu hỏi của bạn đang được AI kiểm duyệt nội dung...'
+          : 'Câu hỏi đang được AI kiểm duyệt nội dung. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.';
+    }
+    if (status == 'PENDING') {
+      return _isMyQuestion
+          ? 'Câu hỏi của bạn có dấu hiệu cần kiểm duyệt và đang chờ kiểm duyệt viên phê duyệt thủ công.'
+          : 'Câu hỏi đang chờ kiểm duyệt viên phê duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.';
+    }
+    if (status == 'HIDDEN') {
+      return _isMyQuestion
+          ? 'Câu hỏi này đã bị ẩn bởi kiểm duyệt viên do vi phạm tiêu chuẩn cộng đồng.'
+          : 'Câu hỏi này đã bị ẩn.';
+    }
+    if (status == 'LOCKED') {
+      return 'Câu hỏi đã bị khóa thảo luận bởi kiểm duyệt viên.';
+    }
+    return 'Câu hỏi đang chờ duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.';
+  }
+
   Future<void> _loadDetail() async {
     setState(() => _loading = true);
     try {
@@ -677,17 +700,49 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEFB8),
+                color: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                    ? const Color(0xFFFFDAD6)
+                    : _question?.status == 'PENDING'
+                        ? const Color(0xFFFFE8B5)
+                        : const Color(0xFFFFEFB8),
                 borderRadius: BorderRadius.circular(14),
+                border: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                    ? Border.all(color: const Color(0xFFFFB4AB))
+                    : _question?.status == 'PENDING'
+                        ? Border.all(color: const Color(0xFFFFD599))
+                        : null,
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.hourglass_top_rounded, color: Color(0xFF745600)),
-                  SizedBox(width: 10),
+                  Icon(
+                    _question?.status == 'HIDDEN'
+                        ? Icons.visibility_off_outlined
+                        : _question?.status == 'LOCKED'
+                            ? Icons.lock_outline
+                            : _question?.status == 'PENDING'
+                                ? Icons.admin_panel_settings_outlined
+                                : Icons.smart_toy_outlined,
+                    color: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                        ? const Color(0xFF93000A)
+                        : _question?.status == 'PENDING'
+                            ? const Color(0xFF8A5300)
+                            : const Color(0xFF745600),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Câu hỏi đang chờ duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.',
-                      style: TextStyle(color: Color(0xFF5C4300), height: 1.35),
+                      _questionStatusMessage,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _question?.status == 'HIDDEN' || _question?.status == 'LOCKED'
+                            ? const Color(0xFF93000A)
+                            : _question?.status == 'PENDING'
+                                ? const Color(0xFF8A5300)
+                                : const Color(0xFF5C4300),
+                        height: 1.35,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -871,8 +926,7 @@ class _AnswerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isOwnAnswer &&
-              (answer.status == 'PENDING' || answer.status == 'AI_PENDING')) ...[
+          if (isOwnAnswer && answer.status == 'AI_PENDING') ...[
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -884,18 +938,80 @@ class _AnswerCard extends StatelessWidget {
               child: const Row(
                 children: [
                   Icon(
-                    Icons.hourglass_top_rounded,
+                    Icons.smart_toy_outlined,
                     size: 16,
                     color: Color(0xFF856404),
                   ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Câu trả lời của bạn đang chờ AI kiểm duyệt nội dung...',
+                      'Câu trả lời của bạn đang được AI kiểm duyệt nội dung...',
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,
                         color: Color(0xFF856404),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (isOwnAnswer && answer.status == 'PENDING') ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFE8B5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFD599)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.admin_panel_settings_outlined,
+                    size: 16,
+                    color: Color(0xFF8A5300),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Câu trả lời của bạn có dấu hiệu cần kiểm duyệt và đang chờ kiểm duyệt viên phê duyệt thủ công.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: Color(0xFF8A5300),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (isOwnAnswer && answer.status == 'HIDDEN') ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDAD6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFB4AB)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.visibility_off_outlined,
+                    size: 16,
+                    color: Color(0xFF93000A),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Câu trả lời này đã bị ẩn bởi kiểm duyệt viên do vi phạm tiêu chuẩn cộng đồng.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: Color(0xFF93000A),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
