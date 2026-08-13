@@ -132,6 +132,9 @@ tools/
 ~$*
 *.docx.tmp
 *.pdf.tmp
+docs/IMU/
+docs/Present/
+docs/Report6/
 
 # Machine learning datasets and generated models
 03_MachineLearning/Dataset/*
