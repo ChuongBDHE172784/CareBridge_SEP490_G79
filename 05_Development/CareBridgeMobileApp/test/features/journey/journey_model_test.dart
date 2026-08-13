@@ -59,6 +59,7 @@ void main() {
         'journeyType': 'PREGNANCY',
         'pregnancyWeek': 20,
         'completedGestationalWeek': 20,
+        'completedGestationalDays': 4,
         'sourceWeekNumber': 21,
         'plan': 2,
         'gestationalDatingBasis': 'EDD',
@@ -67,6 +68,8 @@ void main() {
         'gestationalDatingRevision': 4,
       });
 
+      expect(dashboard.completedGestationalWeek, 20);
+      expect(dashboard.completedGestationalDays, 4);
       expect(dashboard.sourceWeekNumber, 21);
       expect(dashboard.plan, 2);
       expect(dashboard.datingBasis, 'EDD');

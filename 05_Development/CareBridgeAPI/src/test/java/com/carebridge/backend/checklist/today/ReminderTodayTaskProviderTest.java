@@ -10,6 +10,7 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.today.model.TaskAction;
+import com.carebridge.backend.checklist.today.model.TaskCadence;
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.policy.ReminderAccessPolicy;
 import com.carebridge.backend.checklist.today.provider.ReminderTodayTaskProvider;
@@ -23,6 +24,7 @@ import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
+import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
@@ -72,6 +74,27 @@ class ReminderTodayTaskProviderTest {
             assertThat(candidate.reminderType()).isEqualTo(ReminderType.APPOINTMENT);
             assertThat(candidate.allowedActions()).containsExactlyInAnyOrder(TaskAction.COMPLETE, TaskAction.SKIP);
         });
+    }
+
+    @Test
+    void mapsReminderRecurrenceToPresentationCadence() {
+        ReminderRepository reminders = mock(ReminderRepository.class);
+        CareGroupRepository groups = mock(CareGroupRepository.class);
+        Reminder reminder = Reminder.builder()
+                .id(UUID.fromString("00000000-0000-0000-0000-000000000406"))
+                .ownerUserId(OWNER)
+                .title("Daily medication")
+                .scheduledAt(Instant.parse("2026-08-03T01:00:00Z"))
+                .recurrenceType(RecurrenceType.DAILY)
+                .status(ReminderStatus.PENDING)
+                .build();
+        when(reminders.findByOwnerUserIdAndStatusNot(OWNER, ReminderStatus.CANCELLED))
+                .thenReturn(List.of(reminder));
+
+        assertThat(new ReminderTodayTaskProvider(reminders, groups)
+                .findAuthorizedTasks(OWNER)).singleElement()
+                .extracting(candidate -> candidate.cadence())
+                .isEqualTo(TaskCadence.DAILY);
     }
 
     @Test

@@ -1,5 +1,5 @@
 export type ContentType = 'ARTICLE' | 'FAQ' | 'CHECKLIST';
-export type ContentStage = 'PRE_PREGNANCY' | 'PREGNANCY' | 'POSTPARTUM';
+export type ContentStage = 'PRE_PREGNANCY' | 'PREGNANCY' | 'POSTPARTUM' | 'BABY_CARE';
 export type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED';
 export type ChecklistTemplateStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
 export type ChecklistTemplateType = 'MANDATORY' | 'OPTIONAL';
@@ -8,6 +8,8 @@ export type ChecklistRecipientRole = 'MOTHER' | 'FAMILY';
 export type ChecklistTargetSubject = 'MOTHER' | 'BABY';
 export type ChecklistSupportFunction =
   | 'HEALTH_RECORDS'
+  | 'MATERNAL_HEALTH_METRICS'
+  | 'MATERNAL_EXERCISES'
   | 'APPOINTMENTS'
   | 'REMINDERS'
   | 'JOURNEY'
@@ -32,6 +34,8 @@ export const CHECKLIST_SUPPORT_FUNCTION_OPTIONS: ReadonlyArray<{
   value: ChecklistSupportFunction;
   label: string;
 }> = [
+  { value: 'MATERNAL_HEALTH_METRICS', label: 'Đo chỉ số sức khỏe của mẹ' },
+  { value: 'MATERNAL_EXERCISES', label: 'Bài tập cho mẹ' },
   { value: 'HEALTH_RECORDS', label: 'Hồ sơ sức khỏe' },
   { value: 'APPOINTMENTS', label: 'Lịch hẹn' },
   { value: 'REMINDERS', label: 'Nhắc nhở' },
@@ -221,6 +225,9 @@ export interface ChecklistItem {
   targetSubject: ChecklistTargetSubject | null;
   description?: string | null;
   supportFunction?: ChecklistSupportFunction | null;
+  /** Authoring metadata for recurrence labels shown on the checklist item. */
+  repeatWeekly?: boolean | null;
+  repeatDaily?: boolean | null;
 }
 
 export interface ChecklistItemInput {
@@ -231,6 +238,8 @@ export interface ChecklistItemInput {
   targetSubject?: ChecklistTargetSubject | null;
   description?: string | null;
   supportFunction?: ChecklistSupportFunction | null;
+  repeatWeekly?: boolean | null;
+  repeatDaily?: boolean | null;
 }
 
 export interface CreateChecklistTemplatePayload {
@@ -242,6 +251,12 @@ export interface CreateChecklistTemplatePayload {
   stage: ContentStage | null;
   substage: ChecklistSubstage | null;
   displayOrder?: number;
+  scheduleType?: ChecklistScheduleType | null;
+  materializationPolicy?: ChecklistMaterializationPolicy | null;
+  scheduleGroupKey?: string | null;
+  scheduleContextType?: ChecklistCareContextType | null;
+  scheduleEndMode?: ChecklistScheduleEndMode | null;
+  weekBoundaryRule?: ChecklistWeekBoundaryRule | null;
   items: ChecklistItemInput[];
 }
 
@@ -255,6 +270,12 @@ export interface UpdateChecklistTemplatePayload {
   substage: ChecklistSubstage | null;
   status: ChecklistTemplateStatus;
   displayOrder?: number;
+  scheduleType?: ChecklistScheduleType | null;
+  materializationPolicy?: ChecklistMaterializationPolicy | null;
+  scheduleGroupKey?: string | null;
+  scheduleContextType?: ChecklistCareContextType | null;
+  scheduleEndMode?: ChecklistScheduleEndMode | null;
+  weekBoundaryRule?: ChecklistWeekBoundaryRule | null;
   // null/undefined = keep existing items unchanged; [] = clear all; non-empty = full replace
   items?: ChecklistItemInput[] | null;
 }
@@ -340,13 +361,15 @@ export interface PaginatedResponse<T> {
 export const STAGE_LABELS: Record<ContentStage, string> = {
   PRE_PREGNANCY: 'Chuẩn bị mang thai',
   PREGNANCY: 'Thai kỳ',
-  POSTPARTUM: 'Hậu sản & Chăm bé',
+  POSTPARTUM: 'Hậu sản',
+  BABY_CARE: 'Chăm bé',
 };
 
 export const STAGE_OPTIONS: ReadonlyArray<{ value: ContentStage; label: string }> = [
   { value: 'PRE_PREGNANCY', label: STAGE_LABELS.PRE_PREGNANCY },
   { value: 'PREGNANCY', label: STAGE_LABELS.PREGNANCY },
   { value: 'POSTPARTUM', label: STAGE_LABELS.POSTPARTUM },
+  { value: 'BABY_CARE', label: STAGE_LABELS.BABY_CARE },
 ];
 
 export const TYPE_LABELS: Record<ContentType, string> = {

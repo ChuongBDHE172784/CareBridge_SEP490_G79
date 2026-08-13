@@ -334,6 +334,30 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     final userTasks = sourceGroupedTasks
         .where((task) => task.origin != TodayTaskOrigin.systemTemplate)
         .toList(growable: false);
+    final postpartumTasks = systemTasks
+        .where((task) => task.stage == TodayChecklistStage.postpartum)
+        .toList(growable: false);
+    final babyCareTasks = systemTasks
+        .where(
+          (task) =>
+              task.stage == TodayChecklistStage.babyCare ||
+              (task.stage == TodayChecklistStage.unknown &&
+                  task.careContextType?.toUpperCase() == 'BABY'),
+        )
+        .toList(growable: false);
+    final babyCareGroups = <String, List<TodayTask>>{};
+    for (final task in babyCareTasks) {
+      final groupKey = task.careContextId?.trim().isNotEmpty == true
+          ? task.careContextId!
+          : 'unknown-baby';
+      babyCareGroups.putIfAbsent(groupKey, () => []).add(task);
+    }
+    final otherSystemTasks = systemTasks
+        .where(
+          (task) =>
+              !postpartumTasks.contains(task) && !babyCareTasks.contains(task),
+        )
+        .toList(growable: false);
 
     return Semantics(
       container: true,
@@ -403,17 +427,66 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               ),
               if (activeTabIndex == 0) ...[
                 if (systemTasks.isNotEmpty)
-                  _Section(
+                  Column(
                     key: const Key('today-system-tasks'),
-                    title: 'Gợi ý CareBridge',
-                    icon: Icons.auto_awesome_rounded,
-                    tasks: systemTasks,
-                    acting: _acting,
-                    onOpen: _openDetail,
-                    onAction: _act,
-                    onDelete: _delete,
-                    allowDelete: widget.audience == TodayTasksAudience.mother,
-                    showTitle: false,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (postpartumTasks.isNotEmpty)
+                        _Section(
+                          key: const Key('today-postpartum-tasks'),
+                          title: 'Hậu sản',
+                          icon: Icons.health_and_safety_outlined,
+                          tasks: postpartumTasks,
+                          acting: _acting,
+                          onOpen: _openDetail,
+                          onAction: _act,
+                          onDelete: _delete,
+                          allowDelete:
+                              widget.audience == TodayTasksAudience.mother,
+                        ),
+                      if (babyCareTasks.isNotEmpty)
+                        Column(
+                          key: const Key('today-baby-care-tasks'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: babyCareGroups.entries.map((entry) {
+                            final tasks = entry.value;
+                            final babyLabel = tasks
+                                .map((task) => task.careContextLabel?.trim())
+                                .whereType<String>()
+                                .firstWhere(
+                                  (label) => label.isNotEmpty,
+                                  orElse: () => 'Bé',
+                                );
+                            return _Section(
+                              key: Key('today-baby-care-${entry.key}'),
+                              title: 'Chăm bé · $babyLabel',
+                              icon: Icons.child_care_rounded,
+                              tasks: tasks,
+                              acting: _acting,
+                              onOpen: _openDetail,
+                              onAction: _act,
+                              onDelete: _delete,
+                              allowDelete:
+                                  widget.audience == TodayTasksAudience.mother,
+                            );
+                          }).toList(growable: false),
+                        ),
+                      if (otherSystemTasks.isNotEmpty)
+                        _Section(
+                          key: const Key('today-other-system-tasks'),
+                          title: 'Gợi ý CareBridge',
+                          icon: Icons.auto_awesome_rounded,
+                          tasks: otherSystemTasks,
+                          acting: _acting,
+                          onOpen: _openDetail,
+                          onAction: _act,
+                          onDelete: _delete,
+                          allowDelete:
+                              widget.audience == TodayTasksAudience.mother,
+                          showTitle:
+                              postpartumTasks.isNotEmpty || babyCareTasks.isNotEmpty,
+                        ),
+                    ],
                   )
                 else
                   const _EmptyTabState(
@@ -1010,8 +1083,8 @@ class _TodayTaskCard extends StatelessWidget {
       // A V2 task has no target subject.  Do not announce the legacy
       // user-created "My care" origin as if it were the task target.
       label: targetless
-          ? 'Xem chi tiết ${task.title}, ${task.targetLabel}, ${task.statusLabel}'
-          : 'Xem chi tiết ${task.title}, ${task.originLabel}, ${task.targetLabel}, ${task.statusLabel}',
+          ? 'Xem chi tiết ${task.title}, ${task.targetLabel}, ${task.statusLabel}${_cadenceAnnouncement(task)}'
+          : 'Xem chi tiết ${task.title}, ${task.originLabel}, ${task.targetLabel}, ${task.statusLabel}${_cadenceAnnouncement(task)}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1106,6 +1179,10 @@ class _TodayTaskCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (task.cadenceLabel != null) ...[
+                        const SizedBox(height: 6),
+                        _CadenceLabel(task: task),
+                      ],
                       if (task.careGroupLabel != null ||
                           task.careContextLabel != null) ...[
                         const SizedBox(height: 6),
@@ -1157,6 +1234,9 @@ class _TodayTaskCard extends StatelessWidget {
     );
   }
 
+  static String _cadenceAnnouncement(TodayTask task) =>
+      task.cadenceLabel == null ? '' : ', ${task.cadenceLabel}';
+
   TodayTaskAction? get _tapAction {
     if (task.isChecklist) {
       if (task.isCompleted &&
@@ -1174,6 +1254,31 @@ class _TodayTaskCard extends StatelessWidget {
       return TodayTaskAction.complete;
     }
     return null;
+  }
+}
+
+class _CadenceLabel extends StatelessWidget {
+  const _CadenceLabel({required this.task});
+
+  final TodayTask task;
+
+  @override
+  Widget build(BuildContext context) {
+    final cadence = task.cadence;
+    final icon = switch (cadence) {
+      TodayTaskCadence.daily => Icons.today_outlined,
+      TodayTaskCadence.weekly => Icons.date_range_outlined,
+      TodayTaskCadence.once => Icons.event_note_outlined,
+      TodayTaskCadence.unknown => Icons.event_note_outlined,
+    };
+    final label = task.cadenceLabel;
+    if (label == null) return const SizedBox.shrink();
+
+    // The surrounding task Semantics node already announces this value.  Keep
+    // the visual badge out of the child tree so screen readers do not repeat it.
+    return ExcludeSemantics(
+      child: _ContextLabel(icon: icon, text: label),
+    );
   }
 }
 

@@ -8,6 +8,7 @@ import com.carebridge.backend.checklist.audit.ChecklistAuditWriter;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.content.dto.request.ContentDecisionRequest;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateDecisionResponse;
@@ -41,7 +42,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateApprovalService {
 
-    /** Stable reason codes consumed by the admin reviewer; HTTP CNT-001 remains unchanged. */
+    /**
+     * Stable reason codes consumed by the admin reviewer; HTTP CNT-001 remains
+     * unchanged.
+     */
     public static final String ACTIVE_LEGACY_CONFLICT = "CHECKLIST_ACTIVE_LEGACY_CONFLICT";
     public static final String ACTIVE_SEQUENCE_CONFLICT = "CHECKLIST_ACTIVE_SEQUENCE_CONFLICT";
     public static final String REQUIRED_ITEM_MISSING = "CHECKLIST_REQUIRED_ITEM_MISSING";
@@ -80,14 +84,9 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
             throw ContentException.migrationReviewRequired();
         }
         if (approving && template.getMigrationReviewedAt() != null) {
-            // A technically reviewed Pregnancy V2 import still requires the
-            // explicit provenance/copy sign-off before any generic approve path
-            // can attempt to persist APPROVED. Keep the stable provenance error
-            // ahead of the database CHECK gate.
             requirePregnancyImportedProvenance(template);
             throw ContentException.migrationReviewRequired();
         }
-
         if (decision == ContentDecision.REJECT
                 && (request.reason() == null || request.reason().isBlank())) {
             throw ContentException.checklistTemplateDecisionReasonRequired();
@@ -256,8 +255,8 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                 if (item.getTargetSubject() != null) {
                     throw ContentException.itemTargetUnsupported();
                 }
-                if (item.getIsRequired() != null) {
-                    throw ContentException.itemRequirednessUnsupported();
+                if (item.getIsRequired() == null) {
+                    throw ContentException.itemRequirednessRequired();
                 }
             } else {
                 if (item.getTargetSubject() == null) {
@@ -267,6 +266,12 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                     throw ContentException.validationFailed(
                             "isRequired", "must be provided for contract version 1");
                 }
+            }
+            if ((template.getStage() == ContentStage.POSTPARTUM
+                    || template.getStage() == ContentStage.BABY_CARE)
+                    && Boolean.TRUE.equals(item.getIsActive())) {
+                validateStageLeafAnchor(template.getStage(), template.getEligibilityAnchorType(),
+                        item.getTargetSubject(), item.getDueAnchorType());
             }
         }
 
@@ -292,8 +297,8 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         }
         if (stage == ContentStage.PRE_PREGNANCY
                 && (anchor != ChecklistAnchorType.NONE
-                    || unit != ChecklistRangeUnit.DAY
-                    || start != 0 || end != 0)) {
+                        || unit != ChecklistRangeUnit.DAY
+                        || start != 0 || end != 0)) {
             throw ContentException.substageStageMismatch();
         }
         if (template.getSequencePosition() != null && template.getSequencePosition() < 0) {
@@ -304,11 +309,14 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         }
         if (template.getSequencePosition() != null && template.getSequencePosition() > 0
                 && (stage != ContentStage.PRE_PREGNANCY
-                    || scope != ChecklistRecipientScope.MOTHER
-                    || template.getTemplateType() != ChecklistTemplateType.MANDATORY)) {
+                        || scope != ChecklistRecipientScope.MOTHER
+                        || template.getTemplateType() != ChecklistTemplateType.MANDATORY)) {
             throw ContentException.substageStageMismatch();
         }
-        if (contractVersion != 2 && isPositiveSequenceTemplate(template)) {
+        // PRE_PREGNANCY sequence templates must contain at least one required
+        // leaf for both V1 and targetless V2.  The contract version changes
+        // target semantics, not the sequence advancement invariant.
+        if (isPositiveSequenceTemplate(template)) {
             boolean hasRequired = checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).stream()
                     .anyMatch(item -> Boolean.TRUE.equals(item.getIsRequired()));
             if (!hasRequired) {
@@ -316,6 +324,23 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                         "items", "a sequence checklist must contain at least one required item",
                         REQUIRED_ITEM_MISSING);
             }
+        }
+    }
+
+    private static void validateStageLeafAnchor(
+            ContentStage stage,
+            ChecklistAnchorType rootAnchor,
+            ChecklistTargetSubject targetSubject,
+            ChecklistAnchorType dueAnchor) {
+        ChecklistAnchorType expected = stage == ContentStage.BABY_CARE
+                ? ChecklistAnchorType.BIRTH_DATE : ChecklistAnchorType.DELIVERY_DATE;
+        ChecklistTargetSubject expectedSubject = stage == ContentStage.BABY_CARE
+                ? ChecklistTargetSubject.BABY : ChecklistTargetSubject.MOTHER;
+        if (rootAnchor != expected
+                || (targetSubject != null && targetSubject != expectedSubject)
+                || (dueAnchor != null && dueAnchor != expected)) {
+            throw ContentException.validationFailed(
+                    "items", "stage target and due anchor must match the lifecycle contract");
         }
     }
 
@@ -329,10 +354,8 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
     }
 
     /**
-     * Pregnancy V2 imports are recommendation copy, so technical migration
-     * review is intentionally not treated as clinical/copy sign-off.  Keep the
-     * activation boundary fail-closed when metadata is absent, malformed, or
-     * still carries the seed's pending provenance status.
+     * Pregnancy V2 imports are recommendation copy and remain blocked until
+     * their clinical/copy provenance is explicitly signed off.
      */
     private void requirePregnancyImportedProvenance(ChecklistTemplate template) {
         if (template.getStage() != ContentStage.PREGNANCY
@@ -363,10 +386,13 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
     }
 
     /**
-     * Approving a new version at an occupied position is a replacement, not a second
-     * active candidate. All cohort and chain checks complete before any existing row is
+     * Approving a new version at an occupied position is a replacement, not a
+     * second
+     * active candidate. All cohort and chain checks complete before any existing
+     * row is
      * archived/disabled, preserving the fail-closed approval boundary. The previous
-     * candidate is then archived as part of the same transaction so the partial unique
+     * candidate is then archived as part of the same transaction so the partial
+     * unique
      * index can enforce one active version per position.
      */
     private void prepareSequenceApproval(ChecklistTemplate template) {
@@ -484,7 +510,7 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                 && template.getStage() == ContentStage.PRE_PREGNANCY
                 && template.getTemplateType() == ChecklistTemplateType.MANDATORY
                 && (template.getRecipientScope() == ChecklistRecipientScope.MOTHER
-                    || template.getRecipientScope() == ChecklistRecipientScope.BOTH)
+                        || template.getRecipientScope() == ChecklistRecipientScope.BOTH)
                 && (template.getSequencePosition() == null || template.getSequencePosition() <= 0);
     }
 
@@ -494,14 +520,14 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                 && template.getTemplateType() == ChecklistTemplateType.MANDATORY
                 && Boolean.TRUE.equals(template.getDistributionEnabled())
                 && (template.getRecipientScope() == ChecklistRecipientScope.MOTHER
-                    || template.getRecipientScope() == ChecklistRecipientScope.BOTH);
+                        || template.getRecipientScope() == ChecklistRecipientScope.BOTH);
     }
 
     private boolean isAnchorCompatible(ContentStage stage, ChecklistAnchorType anchor) {
         return switch (stage) {
             case PREGNANCY -> anchor == ChecklistAnchorType.LMP || anchor == ChecklistAnchorType.EDD;
-            case POSTPARTUM -> anchor == ChecklistAnchorType.DELIVERY_DATE
-                    || anchor == ChecklistAnchorType.BIRTH_DATE;
+            case POSTPARTUM -> anchor == ChecklistAnchorType.DELIVERY_DATE;
+            case BABY_CARE -> anchor == ChecklistAnchorType.BIRTH_DATE;
             case PRE_PREGNANCY -> anchor == ChecklistAnchorType.NONE;
         };
     }

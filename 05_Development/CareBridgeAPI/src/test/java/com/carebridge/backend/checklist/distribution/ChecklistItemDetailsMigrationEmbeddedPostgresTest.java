@@ -21,6 +21,12 @@ class ChecklistItemDetailsMigrationEmbeddedPostgresTest {
     private static final Path MIGRATION = Path.of(
             "src", "main", "resources", "db", "migration",
             "V20260809110000__add_checklist_item_details_and_support_function.sql");
+    private static final Path WHITELIST_EXTENSION_MIGRATION = Path.of(
+            "src", "main", "resources", "db", "migration",
+            "V20260813110000__extend_checklist_support_function_whitelist.sql");
+    private static final Path MATERNAL_EXERCISES_WHITELIST_EXTENSION_MIGRATION = Path.of(
+            "src", "main", "resources", "db", "migration",
+            "V20260813120000__extend_checklist_support_function_whitelist_for_maternal_exercises.sql");
 
     @Test
     @Timeout(90)
@@ -42,12 +48,18 @@ class ChecklistItemDetailsMigrationEmbeddedPostgresTest {
             insertTask(dataSource, emptyTaskId, emptyItemId);
             insertTask(dataSource, untemplatedTaskId, null);
 
-            executeMigration(dataSource);
+            executeMigration(dataSource, MIGRATION);
+            executeMigration(dataSource, WHITELIST_EXTENSION_MIGRATION);
+            executeMigration(dataSource, MATERNAL_EXERCISES_WHITELIST_EXTENSION_MIGRATION);
 
             assertThat(descriptionSnapshot(dataSource, taskId))
                     .isEqualTo("Đọc hướng dẫn trước khi bắt đầu.");
             assertThat(descriptionSnapshot(dataSource, emptyTaskId)).isNull();
             assertThat(descriptionSnapshot(dataSource, untemplatedTaskId)).isNull();
+            assertThat(insertMaternalHealthMetricItem(dataSource)).isOne();
+            assertThat(insertMaternalHealthMetricTask(dataSource)).isOne();
+            assertThat(insertMaternalExerciseItem(dataSource)).isOne();
+            assertThat(insertMaternalExerciseTask(dataSource)).isOne();
         }
     }
 
@@ -92,10 +104,52 @@ class ChecklistItemDetailsMigrationEmbeddedPostgresTest {
         }
     }
 
-    private static void executeMigration(DataSource dataSource) throws Exception {
+    private static void executeMigration(DataSource dataSource, Path migration) throws Exception {
         try (Connection connection = dataSource.getConnection();
                 var statement = connection.createStatement()) {
-            statement.execute(Files.readString(MIGRATION));
+            statement.execute(Files.readString(migration));
+        }
+    }
+
+    private static int insertMaternalHealthMetricItem(DataSource dataSource) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+                var statement = connection.prepareStatement(
+                        "insert into care_item_templates (template_id, support_function_code) "
+                                + "values (?, 'MATERNAL_HEALTH_METRICS')")) {
+            statement.setObject(1, UUID.randomUUID());
+            return statement.executeUpdate();
+        }
+    }
+
+    private static int insertMaternalHealthMetricTask(DataSource dataSource) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+                var statement = connection.prepareStatement(
+                        "insert into checklist_task_instances "
+                                + "(checklist_task_instance_id, support_function_code) "
+                                + "values (?, 'MATERNAL_HEALTH_METRICS')")) {
+            statement.setObject(1, UUID.randomUUID());
+            return statement.executeUpdate();
+        }
+    }
+
+    private static int insertMaternalExerciseItem(DataSource dataSource) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+                var statement = connection.prepareStatement(
+                        "insert into care_item_templates (template_id, support_function_code) "
+                                + "values (?, 'MATERNAL_EXERCISES')")) {
+            statement.setObject(1, UUID.randomUUID());
+            return statement.executeUpdate();
+        }
+    }
+
+    private static int insertMaternalExerciseTask(DataSource dataSource) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+                var statement = connection.prepareStatement(
+                        "insert into checklist_task_instances "
+                                + "(checklist_task_instance_id, support_function_code) "
+                                + "values (?, 'MATERNAL_EXERCISES')")) {
+            statement.setObject(1, UUID.randomUUID());
+            return statement.executeUpdate();
         }
     }
 

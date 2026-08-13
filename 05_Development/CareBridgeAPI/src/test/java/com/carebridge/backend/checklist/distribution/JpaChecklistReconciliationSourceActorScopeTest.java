@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
+import com.carebridge.backend.baby.entity.BabyProfile;
+import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
@@ -152,6 +154,136 @@ class JpaChecklistReconciliationSourceActorScopeTest {
             assertThat(command.cadence().periodKey()).isEqualTo("W:G:0030:2026-07-30");
             assertThat(command.cadence().scheduleZone()).isEqualTo(ZONE);
         });
+    }
+
+    @Test
+    void dailyTemplateUsesTheEffectiveLocalDateAndPassedTimezoneForPeriodIdentity() {
+        template.setScheduleType(ChecklistScheduleType.DAILY);
+        template.setMaterializationPolicy(ChecklistMaterializationPolicy.EACH_DAY);
+        template.setScheduleGroupKey("PREGNANCY_DAILY");
+        template.setScheduleContextType(ChecklistCareContextType.JOURNEY);
+
+        List<ChecklistDistributionCommand> result =
+                source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).allSatisfy(command -> {
+            assertThat(command.cadence()).isNotNull();
+            assertThat(command.cadence().scheduleType()).isEqualTo(ChecklistScheduleType.DAILY);
+            assertThat(command.cadence().materializationPolicy())
+                    .isEqualTo(ChecklistMaterializationPolicy.EACH_DAY);
+            assertThat(command.cadence().periodKey()).isEqualTo("D:2026-07-31");
+            assertThat(command.cadence().scheduleZone()).isEqualTo(ZONE);
+        });
+    }
+
+    @Test
+    void postpartumRootAnchorSelectsOnlyTheCompatiblePersonalContext() {
+        UUID babyOne = UUID.randomUUID();
+        UUID babyTwo = UUID.randomUUID();
+        template.setStage(ContentStage.POSTPARTUM);
+        template.setRecipientScope(ChecklistRecipientScope.MOTHER);
+        template.setEligibilityAnchorType(ChecklistAnchorType.DELIVERY_DATE);
+        template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+        template.setEligibilityStartInclusive(0);
+        template.setEligibilityEndInclusive(90);
+        when(journeys.findCanonical(ACTOR)).thenReturn(Optional.of(
+                MotherJourney.builder().id(PERSONAL_JOURNEY).ownerUserId(ACTOR)
+                        .status(JourneyStatus.ACTIVE).journeyType(JourneyType.POSTPARTUM)
+                        .deliveryDate(DATE.minusDays(10)).build()));
+        when(babies.findByOwnerUserIdAndStatusOrderByCreatedAtAsc(ACTOR, BabyProfileStatus.ACTIVE))
+                .thenReturn(List.of(baby(babyOne), baby(babyTwo)));
+
+        assertThat(source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION))
+                .singleElement().satisfies(command -> {
+                    assertThat(command.contextType()).isEqualTo(ChecklistCareContextType.JOURNEY);
+                    assertThat(command.contextId()).isEqualTo(PERSONAL_JOURNEY);
+                });
+
+        template.setEligibilityAnchorType(ChecklistAnchorType.BIRTH_DATE);
+        template.setStage(ContentStage.BABY_CARE);
+        assertThat(source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION))
+                .hasSize(2).allSatisfy(command ->
+                        assertThat(command.contextType()).isEqualTo(ChecklistCareContextType.BABY));
+    }
+
+    @Test
+    void postpartumOncePerWindowPeriodUsesDeliveryWindowInsteadOfPregnancyDating() {
+        LocalDate deliveryDate = DATE.minusDays(10);
+        template.setStage(ContentStage.POSTPARTUM);
+        template.setRecipientScope(ChecklistRecipientScope.MOTHER);
+        template.setEligibilityAnchorType(ChecklistAnchorType.DELIVERY_DATE);
+        template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+        template.setEligibilityStartInclusive(0);
+        template.setEligibilityEndInclusive(0);
+        template.setScheduleType(ChecklistScheduleType.WEEKLY);
+        template.setMaterializationPolicy(ChecklistMaterializationPolicy.ONCE_PER_WINDOW);
+        when(journeys.findCanonical(ACTOR)).thenReturn(Optional.of(
+                MotherJourney.builder().id(PERSONAL_JOURNEY).ownerUserId(ACTOR)
+                        .status(JourneyStatus.ACTIVE).journeyType(JourneyType.POSTPARTUM)
+                        .lastMenstrualDate(LocalDate.of(2025, 10, 25))
+                        .deliveryDate(deliveryDate).build()));
+
+        assertThat(source.loadCandidatesForActor(ACTOR, deliveryDate, ZONE, CORRELATION))
+                .singleElement().satisfies(command ->
+                        assertThat(command.cadence().periodKey())
+                                .isEqualTo("O:" + deliveryDate + ":" + deliveryDate));
+    }
+
+    @Test
+    void postpartumFamilyRootAnchorSelectsOnlyLinkedCompatibleContext() {
+        UUID babyId = UUID.randomUUID();
+        template.setStage(ContentStage.POSTPARTUM);
+        template.setRecipientScope(ChecklistRecipientScope.FAMILY);
+        template.setEligibilityAnchorType(ChecklistAnchorType.BIRTH_DATE);
+        template.setStage(ContentStage.BABY_CARE);
+        template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+        template.setEligibilityStartInclusive(0);
+        template.setEligibilityEndInclusive(90);
+        CareGroup group = CareGroup.builder().id(GROUP).ownerUserId(OWNER).status(CareGroupStatus.ACTIVE)
+                .linkedJourneyId(FAMILY_JOURNEY).linkedBabyProfileId(babyId).build();
+        when(groups.findByIdAndStatus(GROUP, CareGroupStatus.ACTIVE)).thenReturn(Optional.of(group));
+        when(journeys.findById(FAMILY_JOURNEY)).thenReturn(Optional.of(
+                MotherJourney.builder().id(FAMILY_JOURNEY).ownerUserId(OWNER)
+                        .status(JourneyStatus.ACTIVE).journeyType(JourneyType.POSTPARTUM)
+                        .deliveryDate(DATE.minusDays(10)).build()));
+        when(babies.findById(babyId)).thenReturn(Optional.of(BabyProfile.builder().id(babyId).ownerUserId(OWNER)
+                .birthDate(DATE.minusDays(10)).status(BabyProfileStatus.ACTIVE).build()));
+
+        assertThat(source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION))
+                .singleElement().satisfies(command -> {
+                    assertThat(command.careGroupId()).isEqualTo(GROUP);
+                    assertThat(command.contextType()).isEqualTo(ChecklistCareContextType.BABY);
+                    assertThat(command.contextId()).isEqualTo(babyId);
+                });
+    }
+
+    @Test
+    void postpartumRootIsNotMaterializedWhenItsContextAnchorIsMissing() {
+        template.setStage(ContentStage.POSTPARTUM);
+        template.setRecipientScope(ChecklistRecipientScope.MOTHER);
+        template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+        template.setEligibilityStartInclusive(0);
+        template.setEligibilityEndInclusive(90);
+
+        template.setEligibilityAnchorType(ChecklistAnchorType.DELIVERY_DATE);
+        when(journeys.findCanonical(ACTOR)).thenReturn(Optional.of(
+                MotherJourney.builder().id(PERSONAL_JOURNEY).ownerUserId(ACTOR)
+                        .status(JourneyStatus.ACTIVE).journeyType(JourneyType.POSTPARTUM)
+                        .deliveryDate(null).build()));
+        assertThat(source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION)).isEmpty();
+
+        template.setEligibilityAnchorType(ChecklistAnchorType.BIRTH_DATE);
+        template.setRecipientScope(ChecklistRecipientScope.MOTHER);
+        when(babies.findByOwnerUserIdAndStatusOrderByCreatedAtAsc(ACTOR, BabyProfileStatus.ACTIVE))
+                .thenReturn(List.of(BabyProfile.builder().id(UUID.randomUUID()).ownerUserId(ACTOR)
+                        .birthDate(null).status(BabyProfileStatus.ACTIVE).build()));
+        assertThat(source.loadCandidatesForActor(ACTOR, DATE, ZONE, CORRELATION)).isEmpty();
+    }
+
+    private static BabyProfile baby(UUID id) {
+        return BabyProfile.builder().id(id).ownerUserId(ACTOR)
+                .birthDate(DATE.minusDays(10)).status(BabyProfileStatus.ACTIVE).build();
     }
 
     private static void assertActorOnlyPersonalAndFamily(List<ChecklistDistributionCommand> result) {

@@ -153,7 +153,8 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
                         taskLabels == null ? null : taskLabels.careContextLabel(), candidate.title(),
                         candidate.targetSubject(), candidate.origin(), candidate.status(), bucket,
                         candidate.allowedActions(), candidate.dueAt(), candidate.reminderType(),
-                        candidate.description(), candidate.supportFunction());
+                        candidate.description(), candidate.supportFunction(), candidate.cadence(),
+                        candidate.stage());
                 unique.putIfAbsent(candidate.taskKind() + ":" + candidate.taskId(), item);
         }
 

@@ -162,6 +162,22 @@ describe('ChecklistDetailPage version', () => {
     expect(screen.getByLabelText('Chức năng hỗ trợ mục 2: Không liên kết')).toBeTruthy();
   });
 
+  it('shows requiredness for V2 targetless items', async () => {
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(),
+      checklistContractVersion: 2,
+      items: [
+        { id: 'required-v2', itemText: 'Theo dõi chỉ số', order: 1, isRequired: true, targetSubject: null },
+        { id: 'optional-v2', itemText: 'Đọc thêm', order: 2, isRequired: false, targetSubject: null },
+      ],
+    });
+
+    render(<ChecklistDetailPage />);
+
+    expect(await screen.findByText('Thứ tự: 1 · Bắt buộc')).toBeTruthy();
+    expect(screen.getByText('Thứ tự: 2 · Không bắt buộc')).toBeTruthy();
+  });
+
   it('offers clone instead of direct edit for an approved immutable version', async () => {
     const user = userEvent.setup();
     const approved = { ...checklistDetail(), status: 'APPROVED' as const, distributionEnabled: true };
@@ -207,17 +223,19 @@ describe('ChecklistDetailPage version', () => {
     await waitFor(() => expect(harness.activateChecklistVersion).toHaveBeenCalledWith('lineage-1', 'version-3'));
   });
 
-  it('does not offer activation while copy provenance is still pending sign-off', async () => {
+  it('offers activation after technical review without a clinical/content sign-off gate', async () => {
+    const user = userEvent.setup();
     harness.fetchChecklistTemplateDetail.mockResolvedValue({
       ...checklistDetail(), status: 'PENDING_REVIEW', migrationReviewRequired: false,
       migrationReviewedAt: '2026-07-29T00:00:00Z', distributionEnabled: false,
       provenance: { provenanceStatus: 'PENDING_CLINICAL_COPY_SIGN_OFF' },
     });
+    harness.activateChecklistVersion.mockResolvedValue({ previousStatus: 'PENDING_REVIEW', newStatus: 'APPROVED' });
 
     render(<ChecklistDetailPage />);
     await screen.findByRole('heading', { name: /Checklist phiên bản ba/ });
 
-    expect(screen.queryByRole('button', { name: 'Activate reviewed version' })).toBeNull();
-    expect(screen.getByText(/chưa có sign-off clinical\/content/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Activate reviewed version' }));
+    await waitFor(() => expect(harness.activateChecklistVersion).toHaveBeenCalledWith('lineage-1', 'version-3'));
   });
 });

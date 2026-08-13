@@ -172,7 +172,7 @@ export default function ImportContentModal({
                 </div>
                 <p className="text-xs text-on-surface-variant m-0">
                   File mẫu bao gồm các cột: <strong className="text-primary">tiêu_đề (*)</strong>,{' '}
-                  <strong className="text-primary">giai_đoạn (*)</strong> (Chuẩn bị mang thai: PRE_PREGNANCY / Thai kỳ: PREGNANCY / Hậu sản: POSTPARTUM),{' '}
+                  <strong className="text-primary">giai_đoạn (*)</strong> (Chuẩn bị mang thai: PRE_PREGNANCY / Thai kỳ: PREGNANCY / Hậu sản: POSTPARTUM / Chăm bé: BABY_CARE),{' '}
                   <strong className="text-primary">nội_dung (*)</strong> (Hỗ trợ Rich HTML: h1-h4, bold, italic, danh sách, bảng, trích dẫn, link), tóm_tắt, danh_mục, tên_nguồn, link_nguồn, nhà_xuất_bản.
                 </p>
               </div>

@@ -322,10 +322,14 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
                                 : template.templateType == 'MANDATORY'
                                 ? 'Bắt buộc'
                                 : 'Khuyến nghị',
-                            isHighlight: !_isTargetlessV2 && template.templateType == 'MANDATORY',
+                            isHighlight:
+                                !_isTargetlessV2 &&
+                                template.templateType == 'MANDATORY',
                           ),
                         if (template.planNumber != null)
-                          _buildBadge('Plan ${template.planNumber} · ${template.section ?? 'chung'}'),
+                          _buildBadge(
+                            'Plan ${template.planNumber} · ${template.section ?? 'chung'}',
+                          ),
                         if (_windowLabel != null) _buildBadge(_windowLabel!),
                         if (_cadenceLabel != null) _buildBadge(_cadenceLabel!),
                       ],
@@ -477,9 +481,7 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
                     decoration: isImported ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                trailing: _isTargetlessV2
-                    ? _buildBadge('Khuyến nghị')
-                    : item.isRequired == true
+                trailing: item.isRequired == true
                     ? Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,

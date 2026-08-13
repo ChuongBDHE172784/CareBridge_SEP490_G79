@@ -1,8 +1,7 @@
 import 'dart:async';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
-html.AudioContext? _audioCtx;
+web.AudioContext? _audioCtx;
 Timer? _timer;
 String? _currentMode;
 
@@ -12,7 +11,7 @@ void startRingtoneWeb(String mode) {
   _currentMode = mode;
 
   try {
-    _audioCtx = html.AudioContext();
+    _audioCtx = web.AudioContext();
     if (_audioCtx?.state == 'suspended') {
       _audioCtx?.resume();
     }
@@ -21,16 +20,16 @@ void startRingtoneWeb(String mode) {
       final ctx = _audioCtx;
       if (ctx == null || ctx.state == 'closed') return;
       try {
-        final now = ctx.currentTime ?? 0;
+        final now = ctx.currentTime;
         final osc1 = ctx.createOscillator();
         final osc2 = ctx.createOscillator();
         final gain = ctx.createGain();
 
-        osc1.frequency?.setValueAtTime(440, now);
-        osc2.frequency?.setValueAtTime(480, now);
+        osc1.frequency.setValueAtTime(440, now);
+        osc2.frequency.setValueAtTime(480, now);
 
-        gain.gain?.setValueAtTime(0.12, now);
-        gain.gain?.exponentialRampToValueAtTime(0.001, now + 1.8);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
 
         osc1.connect(gain);
         osc2.connect(gain);
@@ -47,19 +46,19 @@ void startRingtoneWeb(String mode) {
       final ctx = _audioCtx;
       if (ctx == null || ctx.state == 'closed') return;
       try {
-        final now = ctx.currentTime ?? 0;
+        final now = ctx.currentTime;
         final osc1 = ctx.createOscillator();
         final osc2 = ctx.createOscillator();
         final gain = ctx.createGain();
 
-        osc1.frequency?.setValueAtTime(852, now);
-        osc2.frequency?.setValueAtTime(1209, now);
+        osc1.frequency.setValueAtTime(852, now);
+        osc2.frequency.setValueAtTime(1209, now);
 
-        gain.gain?.setValueAtTime(0.2, now);
-        gain.gain?.setValueAtTime(0.2, now + 0.4);
-        gain.gain?.setValueAtTime(0, now + 0.5);
-        gain.gain?.setValueAtTime(0.2, now + 0.6);
-        gain.gain?.exponentialRampToValueAtTime(0.001, now + 1.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.setValueAtTime(0.2, now + 0.4);
+        gain.gain.setValueAtTime(0, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now + 0.6);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
 
         osc1.connect(gain);
         osc2.connect(gain);

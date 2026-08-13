@@ -28,36 +28,39 @@ class _LoginScreenState extends State<LoginScreen> {
   static const _accentPrimary = AuthPalette.accentDeep;
 
   final _emailCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
-  AuthVerificationMethod _verificationMethod = AuthVerificationMethod.email;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (_isLoading) return;
-    if (_verificationMethod == AuthVerificationMethod.phone) {
-      _openPhoneVerification();
-      return;
-    }
-    final email = _emailCtrl.text.trim();
+    var identifier = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (identifier.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Vui lòng nhập đầy đủ thông tin.');
       return;
     }
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-      setState(() => _errorMessage = 'Vui lòng nhập địa chỉ email hợp lệ.');
+
+    if (identifier.startsWith('0') && identifier.length == 10) {
+      identifier = '+84${identifier.substring(1)}';
+    }
+
+    final isEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(identifier);
+    final isPhone = RegExp(r'^\+84[35789]\d{8}$').hasMatch(identifier);
+
+    if (!isEmail && !isPhone) {
+      setState(
+        () => _errorMessage = 'Vui lòng nhập địa chỉ email hoặc số điện thoại hợp lệ.',
+      );
       return;
     }
 
@@ -67,10 +70,17 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await (widget.authService ?? AuthService.instance).login(
-        email: email,
-        password: password,
-      );
+      if (isEmail) {
+        await (widget.authService ?? AuthService.instance).login(
+          email: identifier,
+          password: password,
+        );
+      } else {
+        await (widget.authService ?? AuthService.instance).login(
+          phone: identifier,
+          password: password,
+        );
+      }
       if (!mounted) return;
       _passwordCtrl.clear();
       context.go('/auth-landing');
@@ -110,15 +120,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _openPhoneVerification() {
-    final phone = _phoneCtrl.text.trim();
+  void _openPhoneVerificationFromSmsButton() {
+    final rawInput = _emailCtrl.text.trim();
+    String phone = rawInput;
+
+    if (phone.startsWith('0') && phone.length == 10) {
+      phone = '+84${phone.substring(1)}';
+    }
+
     if (!RegExp(r'^\+84[35789]\d{8}$').hasMatch(phone)) {
       setState(
         () => _errorMessage =
-            'Vui lòng nhập số điện thoại theo định dạng quốc tế, ví dụ +84912345678.',
+            'Vui lòng nhập số điện thoại hợp lệ vào ô bên trên để đăng nhập SMS (ví dụ: +84912345678 hoặc 0912345678).',
       );
       return;
     }
+
     setState(() => _errorMessage = null);
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -215,137 +232,67 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildVerificationMethodSelector(),
+        AuthTextField(
+          key: const Key('login-email-field'),
+          controller: _emailCtrl,
+          label: 'Email hoặc Số điện thoại',
+          hint: 'Nhập email hoặc số điện thoại',
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+        ),
         const SizedBox(height: 18),
-        if (_verificationMethod == AuthVerificationMethod.email)
-          AuthTextField(
-            key: const Key('login-email-field'),
-            controller: _emailCtrl,
-            label: 'Email',
-            hint: 'Nhập địa chỉ email',
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-          )
-        else
-          AuthTextField(
-            key: const Key('login-phone-field'),
-            controller: _phoneCtrl,
-            label: 'Số điện thoại',
-            hint: '+84912345678',
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.done,
-          ),
-        if (_verificationMethod == AuthVerificationMethod.email) ...[
-          const SizedBox(height: 18),
-          AuthTextField(
-            controller: _passwordCtrl,
-            label: 'Mật khẩu',
-            hint: 'Nhập mật khẩu',
-            obscureText: _obscurePassword,
-            suffixIcon: IconButton(
-              tooltip: _obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
-              onPressed: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
-              icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 20,
-                color: const Color(0xFF9C857C),
-              ),
+        AuthTextField(
+          controller: _passwordCtrl,
+          label: 'Mật khẩu',
+          hint: 'Nhập mật khẩu',
+          obscureText: _obscurePassword,
+          suffixIcon: IconButton(
+            tooltip: _obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
+            icon: Icon(
+              _obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              size: 20,
+              color: const Color(0xFF9C857C),
             ),
           ),
-        ],
+        ),
         const SizedBox(height: 4),
-        if (_verificationMethod == AuthVerificationMethod.email)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ForgotPasswordScreen(),
-                  ),
-                );
-              },
-              style: TextButton.styleFrom(
-                minimumSize: const Size(0, 44),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-              ),
-              child: const Text(
-                'Quên mật khẩu?',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: _accentPrimary,
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ForgotPasswordScreen(),
                 ),
+              );
+            },
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            ),
+            child: const Text(
+              'Quên mật khẩu?',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _accentPrimary,
               ),
             ),
           ),
+        ),
         const SizedBox(height: 16),
         AuthPrimaryButton(
           buttonKey: const Key('password-login-submit'),
-          label: _verificationMethod == AuthVerificationMethod.email
-              ? 'Đăng nhập'
-              : 'Tiếp tục bằng SMS',
+          label: 'Đăng nhập',
           onPressed: _submit,
           isLoading: _isLoading,
         ),
       ],
-    );
-  }
-
-  Widget _buildVerificationMethodSelector() {
-    return Semantics(
-      container: true,
-      label: 'Chọn phương thức đăng nhập',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Tiếp tục bằng',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AuthPalette.mutedStrong,
-            ),
-          ),
-          const SizedBox(height: 9),
-          SegmentedButton<AuthVerificationMethod>(
-            key: const Key('login-verification-method'),
-            segments: const [
-              ButtonSegment(
-                value: AuthVerificationMethod.email,
-                icon: Icon(Icons.mail_outline_rounded),
-                label: Text('Email'),
-              ),
-              ButtonSegment(
-                value: AuthVerificationMethod.phone,
-                icon: KeyedSubtree(
-                  key: Key('federated-phone-login'),
-                  child: Icon(Icons.sms_outlined),
-                ),
-                label: Text('SMS'),
-              ),
-            ],
-            selected: {_verificationMethod},
-            onSelectionChanged: _isLoading
-                ? null
-                : (selection) {
-                    setState(() {
-                      _verificationMethod = selection.first;
-                      _errorMessage = null;
-                    });
-                  },
-            style: const ButtonStyle(
-              minimumSize: WidgetStatePropertyAll(Size(0, 48)),
-              visualDensity: VisualDensity.standard,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -354,19 +301,38 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         const AuthDivider(),
         const SizedBox(height: 14),
-        _buildFederatedIconButton(
-          key: const Key('federated-google-login'),
-          tooltip: 'Tiếp tục với Google',
-          onPressed: _isLoading ? null : _federatedGoogleLogin,
-          child: const Text(
-            'G',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: _accentPrimary,
+        Row(
+          children: [
+            Expanded(
+              child: _buildFederatedIconButton(
+                key: const Key('federated-google-login'),
+                tooltip: 'Tiếp tục với Google',
+                onPressed: _isLoading ? null : _federatedGoogleLogin,
+                child: const Text(
+                  'G',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: _accentPrimary,
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildFederatedIconButton(
+                key: const Key('federated-phone-login'),
+                tooltip: 'Đăng nhập SMS',
+                onPressed: _isLoading ? null : _openPhoneVerificationFromSmsButton,
+                child: const Icon(
+                  Icons.sms_outlined,
+                  size: 22,
+                  color: _accentPrimary,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

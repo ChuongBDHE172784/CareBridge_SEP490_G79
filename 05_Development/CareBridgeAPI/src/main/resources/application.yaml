@@ -27,6 +27,9 @@ spring:
     out-of-order: true
     validate-on-migrate: false
     ignore-migration-patterns: "*:missing"
+    init-sqls:
+      - "SELECT set_config('carebridge.checklist_v1_writes_frozen', 'true', false);"
+      - "SELECT set_config('carebridge.checklist_p1_p2_role', 'MIGRATION', false);"
 
   docker:
     compose:
@@ -109,7 +112,7 @@ carebridge:
         flyway-username: ${CAREBRIDGE_FLYWAY_DB_USERNAME:}
         application-flyway-enabled: ${SPRING_FLYWAY_ENABLED:true}
   dev-seed:
-    enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
+    enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:true}
     password: ${CAREBRIDGE_DEV_SEED_PASSWORD:}
   security:
     jwt:

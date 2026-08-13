@@ -207,12 +207,18 @@ public class ContentException extends RuntimeException {
                 HttpStatus.BAD_REQUEST);
     }
 
-    /** Requiredness is a V1 authoring concern; V2 leaves are advisory copy only. */
-    public static ContentException itemRequirednessUnsupported() {
+    /** V2 leaves must carry an explicit boolean requiredness value. */
+    public static ContentException itemRequirednessRequired() {
         return new ContentException(
-                "ITEM_REQUIREDNESS_UNSUPPORTED",
-                "V2 recommendation checklist items cannot define requiredness",
+                "ITEM_REQUIREDNESS_REQUIRED",
+                "V2 recommendation checklist items must define requiredness",
                 HttpStatus.BAD_REQUEST);
+    }
+
+    /** @deprecated use {@link #itemRequirednessRequired()}. */
+    @Deprecated
+    public static ContentException itemRequirednessUnsupported() {
+        return itemRequirednessRequired();
     }
 
     public static ContentException versionImmutable() {

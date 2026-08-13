@@ -141,6 +141,43 @@ class ChecklistDistributionServiceTest {
     }
 
     @Test
+    void targetlessV2NonCadenceDistributionPersistsContractAndInteractiveSentinel() {
+        ChecklistDistributionCommand legacy = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)),
+                null);
+        ChecklistDistributionCommand v2 = new ChecklistDistributionCommand(
+                legacy.templateLineageId(), legacy.templateVersionId(), legacy.careGroupId(),
+                legacy.careGroupOwnerUserId(), legacy.contextType(), legacy.contextId(),
+                legacy.contextOwnerUserId(), legacy.stage(), legacy.substage(), legacy.lifecycleDates(),
+                legacy.effectiveDate(), legacy.timezone(), legacy.recipients(),
+                List.of(new ChecklistDistributionItem(ChecklistDistributionTestFactory.ITEM_VERSION_ID,
+                        "Recommendation", 1, true, null, null, null)),
+                legacy.correlationId(), legacy.gestationalDatingRevision(), legacy.cadence(), (short) 2);
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.empty());
+        when(instances.findAllByLogicalPersonalIdentity(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+        when(tasks.findByTaskKey(any())).thenReturn(Optional.empty());
+
+        var result = service.distribute(v2);
+
+        assertThat(result.createdInstances()).isOne();
+        assertThat(result.createdTasks()).isOne();
+        verify(instances).save(argThat(instance ->
+                instance.getChecklistContractVersion().equals((short) 2)
+                        && "v2".equals(instance.getKeyVersion())
+                        && "O:USER_CREATED".equals(instance.getPeriodKey())
+                        && "UTC".equals(instance.getScheduleZoneId())
+                        && instance.getMaterializationMode() == ChecklistMaterializationMode.INTERACTIVE
+                        && Boolean.TRUE.equals(instance.getWasActionable())));
+        verify(tasks).save(argThat(task -> task.getChecklistContractVersion().equals((short) 2)
+                && task.getTargetSubject() == null
+                && Boolean.TRUE.equals(task.getRequired())));
+    }
+
+    @Test
     void familyDistributionWithoutCareGroupIsRejected() {
         var command = command(ChecklistCareContextType.JOURNEY,
                 ChecklistDistributionTestFactory.CONTEXT_ID,
@@ -598,6 +635,57 @@ class ChecklistDistributionServiceTest {
         assertThat(policy.canAct(true, true, true)).isTrue();
         assertThat(policy.canRead(false, true, true)).isFalse();
         assertThat(policy.canAct(false, true, true)).isFalse();
+    }
+
+    @Test
+    void missingItemDueAnchorFailsBeforeAnyInstanceIsPersisted() {
+        ChecklistDistributionCommand base = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)), null);
+        ChecklistDistributionCommand invalid = new ChecklistDistributionCommand(
+                base.templateLineageId(), base.templateVersionId(), base.careGroupId(),
+                base.careGroupOwnerUserId(), base.contextType(), base.contextId(), base.contextOwnerUserId(),
+                base.stage(), base.substage(), base.lifecycleDates(), base.effectiveDate(), base.timezone(),
+                base.recipients(), List.of(new ChecklistDistributionItem(
+                        ChecklistDistributionTestFactory.ITEM_VERSION_ID, "Baby task", 1, true,
+                        ChecklistTargetSubject.BABY, ChecklistAnchorType.BIRTH_DATE, 0)),
+                base.correlationId(), base.gestationalDatingRevision());
+
+        ChecklistDistributionExecutionResult result = service.distributeDetailed(invalid);
+
+        assertThat(result.recipients()).singleElement().satisfies(recipient ->
+                assertThat(recipient.dispositionCode()).isEqualTo("ITEM_DUE_ANCHOR_MISSING"));
+        verify(instances, never()).save(any());
+        verify(tasks, never()).save(any());
+    }
+
+    @Test
+    void missingRootAnchorReturnsStableDispositionBeforePersistence() {
+        ChecklistDistributionCommand base = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)), null);
+        var postpartum = ChecklistLifecycleEligibilityValue.builder()
+                .stage(ContentStage.POSTPARTUM.name())
+                .anchorType(ChecklistAnchorType.DELIVERY_DATE)
+                .rangeUnit(ChecklistRangeUnit.DAY)
+                .startInclusive(0).endInclusive(42).active(true).build();
+        ChecklistDistributionCommand missing = new ChecklistDistributionCommand(
+                base.templateLineageId(), base.templateVersionId(), base.careGroupId(),
+                base.careGroupOwnerUserId(), base.contextType(), base.contextId(), base.contextOwnerUserId(),
+                ContentStage.POSTPARTUM, postpartum, new ChecklistLifecycleDates(null, null, null, null),
+                base.effectiveDate(), base.timezone(), base.recipients(), base.items(),
+                base.correlationId(), base.gestationalDatingRevision());
+
+        ChecklistDistributionExecutionResult result = service.distributeDetailed(missing);
+
+        assertThat(result.recipients()).singleElement().satisfies(recipient ->
+                assertThat(recipient.dispositionCode()).isEqualTo("LIFECYCLE_ANCHOR_MISSING"));
+        verify(instances, never()).save(any());
+        verify(tasks, never()).save(any());
     }
 
     private static ChecklistDistributionCommand command(

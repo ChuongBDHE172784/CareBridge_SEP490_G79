@@ -5,12 +5,14 @@ import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCandidate;
 import com.carebridge.backend.checklist.today.model.TaskAction;
+import com.carebridge.backend.checklist.today.model.TaskCadence;
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.policy.ReminderAccessPolicy;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
+import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
 import java.time.Instant;
 import java.util.Comparator;
@@ -99,7 +101,19 @@ public class ReminderTodayTaskProvider implements TodayTaskProvider {
                 reminder.getId(), reminder.getScheduledAt(), reminder.getOccurrenceGeneration());
         return new TodayTaskCandidate(TaskKind.REMINDER, occurrenceId, null, null,
                 resolveCareGroup(reminder, actorUserId), contextType, contextId, reminder.getTitle(), target,
-                origin, reminder.getStatus().name(), actions, dueAt, null, reminder.getReminderType());
+                origin, reminder.getStatus().name(), actions, dueAt, null, reminder.getReminderType(),
+                null, null, cadence(reminder.getRecurrenceType()));
+    }
+
+    private static TaskCadence cadence(RecurrenceType recurrenceType) {
+        if (recurrenceType == RecurrenceType.DAILY) {
+            return TaskCadence.DAILY;
+        }
+        if (recurrenceType == RecurrenceType.WEEKLY) {
+            return TaskCadence.WEEKLY;
+        }
+        return recurrenceType == null || recurrenceType == RecurrenceType.NONE
+                ? TaskCadence.ONCE : TaskCadence.UNKNOWN;
     }
 
     private UUID resolveCareGroup(Reminder reminder, UUID actorUserId) {

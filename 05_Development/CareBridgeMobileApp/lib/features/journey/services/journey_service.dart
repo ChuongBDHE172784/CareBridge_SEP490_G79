@@ -217,6 +217,7 @@ class JourneyService {
             datingBasis: response.datingBasis ?? request.datingBasis,
             canonicalLmp: _parseDate(response.canonicalLmp),
             completedGestationalWeek: response.completedGestationalWeek,
+            completedGestationalDays: response.completedGestationalDays,
             sourceWeekNumber: response.sourceWeekNumber,
             plan: response.plan,
             datingQuarantineReason: response.datingQuarantineReason,
@@ -372,6 +373,7 @@ class JourneyService {
           datingBasis: prior?.datingBasis,
           canonicalLmp: prior?.canonicalLmp,
           completedGestationalWeek: prior?.completedGestationalWeek,
+          completedGestationalDays: prior?.completedGestationalDays,
           sourceWeekNumber: prior?.sourceWeekNumber,
           plan: prior?.plan,
           datingQuarantineReason: prior?.datingQuarantineReason,
@@ -447,6 +449,8 @@ class JourneyService {
             ),
             completedGestationalWeek:
                 (body?['completedGestationalWeek'] as num?)?.toInt(),
+            completedGestationalDays:
+                (body?['completedGestationalDays'] as num?)?.toInt(),
             sourceWeekNumber: (body?['sourceWeekNumber'] as num?)?.toInt(),
             plan: (body?['plan'] as num?)?.toInt(),
             datingQuarantineReason:
@@ -549,6 +553,9 @@ class JourneyService {
       completedGestationalWeek: dashboard.hasActiveJourney
           ? dashboard.completedGestationalWeek
           : dashboard.completedGestationalWeek ?? fallback.completedGestationalWeek,
+      completedGestationalDays: dashboard.hasActiveJourney
+          ? dashboard.completedGestationalDays
+          : dashboard.completedGestationalDays ?? fallback.completedGestationalDays,
       sourceWeekNumber: dashboard.hasActiveJourney
           ? dashboard.sourceWeekNumber
           : dashboard.sourceWeekNumber ?? fallback.sourceWeekNumber,
@@ -618,6 +625,7 @@ class JourneyService {
         'status': dashboard.status,
         'pregnancyWeek': dashboard.pregnancyWeek,
         'completedGestationalWeek': dashboard.completedGestationalWeek,
+        'completedGestationalDays': dashboard.completedGestationalDays,
         'sourceWeekNumber': dashboard.sourceWeekNumber,
         'plan': dashboard.plan,
         'trimester': dashboard.trimester,
@@ -666,6 +674,8 @@ class JourneyService {
         pregnancyWeek: (data['pregnancyWeek'] as num?)?.toInt(),
         completedGestationalWeek:
             (data['completedGestationalWeek'] as num?)?.toInt(),
+        completedGestationalDays:
+            (data['completedGestationalDays'] as num?)?.toInt(),
         sourceWeekNumber: (data['sourceWeekNumber'] as num?)?.toInt(),
         plan: (data['plan'] as num?)?.toInt(),
         trimester: (data['trimester'] as num?)?.toInt(),
