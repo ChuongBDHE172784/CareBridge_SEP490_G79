@@ -37,6 +37,9 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
     @Value("${ai.triage-service.request-timeout-ms:8000}")
     private long requestTimeoutMs;
 
+    @Value("${ai.triage-service.internal-api-key:}")
+    private String internalApiKey;
+
     @Override
     public String triageChild(RunIntakeRequest request) {
         try {
@@ -119,11 +122,15 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
     }
 
     private String postJson(String path, Object payload) throws JsonProcessingException {
+        if (internalApiKey == null || internalApiKey.isBlank()) {
+            throw new IllegalStateException("AI triage internal client is disabled");
+        }
         String body = objectMapper.writeValueAsString(payload);
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(aiTriageServiceUrl + path))
                 .timeout(Duration.ofMillis(requestTimeoutMs))
                 .header("Content-Type", "application/json")
+                .header("X-CareBridge-Internal-Key", internalApiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         try {

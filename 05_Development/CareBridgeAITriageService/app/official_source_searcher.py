@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import html
+import ipaddress
 import json
 import re
+import socket
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -244,6 +246,8 @@ def _fetch_page(
     deadline = deadline or (time.monotonic() + REALTIME_SEARCH_TIMEOUT_SECONDS)
     if _remaining(deadline) <= 0:
         return None
+    if not _is_public_network_url(url, approved_domains):
+        return None
     try:
         request = Request(url, headers={"User-Agent": "CareBridgeAITriage/1.0"})
         with urlopen(request, timeout=_io_timeout(deadline)) as response:
@@ -253,7 +257,8 @@ def _fetch_page(
             if not any(value in content_type for value in ("text/html", "text/plain", "application/xhtml+xml")):
                 return None
             final_url = response.geturl()
-            if not is_whitelisted_url(final_url, approved_domains=approved_domains):
+            if (not is_whitelisted_url(final_url, approved_domains=approved_domains)
+                    or not _is_public_network_url(final_url, approved_domains)):
                 return None
             etag = response.headers.get("ETag")
             last_modified = response.headers.get("Last-Modified")
@@ -273,6 +278,31 @@ def _io_timeout(deadline: float) -> float:
 
 def _remaining(deadline: float) -> float:
     return deadline - time.monotonic()
+
+
+def _is_public_network_url(url: str, approved_domains: set[str] | None) -> bool:
+    """Fail closed when an approved hostname resolves to a non-public address."""
+
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            return False
+        if not is_whitelisted_url(url, approved_domains=approved_domains):
+            return False
+        addresses = {
+            item[4][0]
+            for item in socket.getaddrinfo(
+                parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM
+            )
+        }
+        if not addresses:
+            return False
+        return all(
+            ipaddress.ip_address(raw.split("%", 1)[0]).is_global
+            for raw in addresses
+        )
+    except (OSError, ValueError):
+        return False
 
 
 def _allowed_domain_for_url(url: str, approved_domains: set[str]) -> str:

@@ -170,9 +170,10 @@ class TriageV2SessionServiceTest {
             });
         }
 
-        service.start(startRequest("Em thay kho chiu"), USER);
-
-        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isEqualTo(1);
+        assertThatThrownBy(() -> service.start(startRequest("Em thay kho chiu"), USER))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE_V2_INVALID_WORKFLOW_RESPONSE");
+        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isZero();
     }
 
     @Test
@@ -237,14 +238,41 @@ class TriageV2SessionServiceTest {
 
     @Test
     void duplicateStartReturnsPersistedResponseWithoutCallingPythonAgain() throws Exception {
-        IntakeSession existing = persistedSession(2, "request_1234567890", "NEEDS_MORE_INFO");
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
         when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
-                .thenReturn(Optional.of(existing));
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        when(workflow.executeTurn(any())).thenAnswer(invocation ->
+                new TriageV2WorkflowClient.WorkflowResult(
+                        graphState(inserted, "NEEDS_MORE_INFO", false), "READY", "2.2.0", HASH));
 
+        service.start(startRequest("không gửi lại"), USER);
         var response = service.start(startRequest("không gửi lại"), USER);
 
-        assertThat(response.stateVersion()).isEqualTo(2);
-        verify(workflow, never()).executeTurn(any());
+        assertThat(response.stateVersion()).isEqualTo(1);
+        verify(workflow).executeTurn(any());
+    }
+
+    @Test
+    void duplicateStartWithDifferentContentIsRejected() {
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
+        when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        when(workflow.executeTurn(any())).thenAnswer(invocation ->
+                new TriageV2WorkflowClient.WorkflowResult(
+                        graphState(inserted, "NEEDS_MORE_INFO", false), "READY", "2.2.0", HASH));
+        service.start(startRequest("đau đầu"), USER);
+
+        assertThatThrownBy(() -> service.start(startRequest("đang co giật"), USER))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE_V2_IDEMPOTENCY_KEY_CONFLICT");
     }
 
     @Test
@@ -282,9 +310,12 @@ class TriageV2SessionServiceTest {
         AtomicReference<Map<String, Object>> payload = new AtomicReference<>();
         when(workflow.executeTurn(any())).thenAnswer(invocation -> {
             payload.set(invocation.getArgument(0));
+            Map<String, Object> nextState = graphState(
+                    new AtomicReference<>(existing), "YELLOW", false);
+            nextState.put("stateVersion", 1);
+            nextState.put("expectedStateVersion", 1);
             return new TriageV2WorkflowClient.WorkflowResult(
-                    graphState(new AtomicReference<>(existing), "YELLOW", false),
-                    "READY", "2.2.0", HASH);
+                    nextState, "READY", "2.2.0", HASH);
         });
 
         // The chat asks up to three questions per round, so all three answers arrive together and
@@ -335,6 +366,70 @@ class TriageV2SessionServiceTest {
         verify(workflow, never()).executeTurn(any());
     }
 
+    @Test
+    void exactContinuationReplayReturnsStoredResponseWithoutCallingPythonAgain() throws Exception {
+        IntakeSession existing = persistedSession(1, "prior_request_1234", "NEEDS_MORE_INFO");
+        when(repository.findForUpdateByIdAndUserId(existing.getId(), USER))
+                .thenReturn(Optional.of(existing));
+        when(workflow.executeTurn(any())).thenAnswer(invocation -> {
+            Map<String, Object> nextState = graphState(
+                    new AtomicReference<>(existing), "YELLOW", false);
+            nextState.put("stateVersion", 1);
+            nextState.put("expectedStateVersion", 1);
+            return new TriageV2WorkflowClient.WorkflowResult(
+                    nextState, "READY", "2.2.0", HASH);
+        });
+        TriageV2ContinueRequest request = new TriageV2ContinueRequest(
+                existing.getId(), 1, "khong biet", "message_1034567890",
+                "request_1034567890", List.of(), Map.of(), Map.of());
+
+        service.continueSession(request, USER);
+        var replay = service.continueSession(request, USER);
+
+        assertThat(replay.stateVersion()).isEqualTo(2);
+        verify(workflow).executeTurn(any());
+    }
+
+    @Test
+    void continuationReplayWithChangedContentIsRejected() throws Exception {
+        IntakeSession existing = persistedSession(1, "prior_request_1234", "NEEDS_MORE_INFO");
+        when(repository.findForUpdateByIdAndUserId(existing.getId(), USER))
+                .thenReturn(Optional.of(existing));
+        when(workflow.executeTurn(any())).thenAnswer(invocation -> {
+            Map<String, Object> nextState = graphState(
+                    new AtomicReference<>(existing), "YELLOW", false);
+            nextState.put("stateVersion", 1);
+            nextState.put("expectedStateVersion", 1);
+            return new TriageV2WorkflowClient.WorkflowResult(
+                    nextState, "READY", "2.2.0", HASH);
+        });
+        service.continueSession(new TriageV2ContinueRequest(
+                existing.getId(), 1, "khong biet", "message_1134567890",
+                "request_1134567890", List.of(), Map.of(), Map.of()), USER);
+
+        assertThatThrownBy(() -> service.continueSession(new TriageV2ContinueRequest(
+                existing.getId(), 1, "noi dung khac", "message_1134567890",
+                "request_1134567890", List.of(), Map.of(), Map.of()), USER))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE_V2_IDEMPOTENCY_KEY_CONFLICT");
+        verify(workflow).executeTurn(any());
+    }
+
+    @Test
+    void aRealButUnplannedQuestionIsRejectedBeforeTheWorkflowRuns() throws Exception {
+        IntakeSession existing = persistedSession(1, "prior_request_1234", "NEEDS_MORE_INFO");
+        when(repository.findForUpdateByIdAndUserId(existing.getId(), USER))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.continueSession(new TriageV2ContinueRequest(
+                existing.getId(), 1, "tra loi", "message_8234567890", "request_8234567890",
+                List.of(new TriageV2AnswerSelection("Q_VISUAL_CHANGE", "VISUAL_CHANGE_NO")),
+                Map.of(), Map.of()), USER))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE_V2_ANSWER_NOT_PLANNED");
+        verify(workflow, never()).executeTurn(any());
+    }
+
     @SuppressWarnings("unchecked")
     private static List<String> strings(Object value) {
         return value instanceof List<?> list
@@ -359,6 +454,43 @@ class TriageV2SessionServiceTest {
         assertThat(response.outcome()).isEqualTo("NEEDS_MORE_INFO");
         assertThat(response.outcome()).isNotIn("GREEN", "OUT_OF_SCOPE");
         assertThat(response.readiness().get("technicalStatus")).isEqualTo("FALLBACK_ONLY");
+    }
+
+    @Test
+    void pythonFailureStillEscalatesUnambiguousDangerFromFreeText() {
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
+        when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        when(workflow.executeTurn(any())).thenThrow(new IllegalStateException("down"));
+
+        var response = service.start(startRequest("Toi dang co giat"), USER);
+
+        assertThat(response.outcome()).isEqualTo("RED");
+        assertThat(response.stop()).isTrue();
+        assertThat(inserted.get().getStatus()).isEqualTo(IntakeStatus.FAILED);
+        assertThat(response.readiness().get("technicalStatus")).isEqualTo("FALLBACK_ONLY");
+    }
+
+    @Test
+    void continuationRechecksConsentBeforeCallingTheWorkflow() throws Exception {
+        IntakeSession existing = persistedSession(1, "prior_request_1234", "NEEDS_MORE_INFO");
+        when(repository.findForUpdateByIdAndUserId(existing.getId(), USER))
+                .thenReturn(Optional.of(existing));
+        org.mockito.Mockito.doThrow(new TriageException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "TRIAGE_CONSENT_REQUIRED", "Consent expired"))
+                .when(consent).ensureActiveConsent(USER);
+
+        assertThatThrownBy(() -> service.continueSession(new TriageV2ContinueRequest(
+                existing.getId(), 1, "khong biet", "message_9234567890", "request_9234567890",
+                List.of(), Map.of(), Map.of()), USER))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE_CONSENT_REQUIRED");
+        verify(workflow, never()).executeTurn(any());
     }
 
     @Test
@@ -442,11 +574,10 @@ class TriageV2SessionServiceTest {
             return new TriageV2WorkflowClient.WorkflowResult(state, "READY", "2.2.0", HASH);
         });
 
-        var response = service.start(startRequest("dau bung"), USER);
-
-        assertThat(response.outcome()).isEqualTo("NEEDS_MORE_INFO");
-        assertThat(response.readiness().get("technicalStatus")).isEqualTo("FALLBACK_ONLY");
-        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isEqualTo(1);
+        assertThatThrownBy(() -> service.start(startRequest("dau bung"), USER))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE_V2_INVALID_WORKFLOW_RESPONSE");
+        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isZero();
     }
 
     @Test
@@ -597,7 +728,7 @@ class TriageV2SessionServiceTest {
         state.put("triageOutcome", outcome);
         state.put("requiredAction", "ASK_CLARIFYING_QUESTIONS");
         state.put("stopConversation", false);
-        state.put("plannedQuestionIds", List.of());
+        state.put("plannedQuestionIds", List.of("Q_GLOBAL_DANGER", "Q_DIZZINESS"));
         state.put("scopeStatus", "UNKNOWN");
         state.put("pendingRiskStatuses", List.of());
         // workflowState() only trusts an envelope that carries these two: without them the state
@@ -610,9 +741,11 @@ class TriageV2SessionServiceTest {
                         "ASK_CLARIFYING_QUESTIONS", false, List.of(), "UNKNOWN", List.of(),
                         null, "2.2.0", HASH, List.of(), "Thông tin tham khảo",
                         Map.of("technicalStatus", "READY")), Map.class);
-        Map<String, Object> envelope = Map.of(
-                "contract", "triage-v2-1", "stateVersion", version,
-                "lastRequestId", requestId, "v2State", state, "publicResponse", publicResponse);
+        Map<String, Object> envelope = Map.ofEntries(
+                Map.entry("contract", "triage-v2-1"), Map.entry("stateVersion", version),
+                Map.entry("lastRequestId", requestId),
+                Map.entry("requestFingerprint", "legacy-fingerprint"),
+                Map.entry("v2State", state), Map.entry("publicResponse", publicResponse));
         return IntakeSession.builder().id(id).userId(USER).status(IntakeStatus.NEED_MORE_INFO)
                 .schemaVersion("triage-v2-1").resultJson(mapper.writeValueAsString(envelope))
                 .createdAt(Instant.now()).createdBy(USER).symptoms("TRIAGE_V2_REDACTED").build();

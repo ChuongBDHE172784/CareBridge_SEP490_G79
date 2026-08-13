@@ -373,9 +373,31 @@ def test_realtime_redirect_to_non_whitelisted_domain_is_rejected(monkeypatch):
         def read(self, _limit):
             return b"difficulty breathing guidance"
 
+    monkeypatch.setattr(
+        official_source_searcher.socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [(2, 1, 6, "", ("8.8.8.8", 443))],
+    )
     monkeypatch.setattr(official_source_searcher, "urlopen", lambda *_args, **_kwargs: RedirectedResponse())
 
     assert official_source_searcher._fetch_page("https://who.int/child-health") is None
+
+
+def test_realtime_private_destination_is_rejected_before_network_io(monkeypatch):
+    monkeypatch.setattr(
+        official_source_searcher.socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [(2, 1, 6, "", ("127.0.0.1", 443))],
+    )
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("private destination must not be fetched")
+
+    monkeypatch.setattr(official_source_searcher, "urlopen", fail_if_called)
+
+    assert official_source_searcher._fetch_page(
+        "https://who.int/child-health", approved_domains={"who.int"}
+    ) is None
 
 
 def test_realtime_search_does_not_change_risk(monkeypatch, tmp_path):

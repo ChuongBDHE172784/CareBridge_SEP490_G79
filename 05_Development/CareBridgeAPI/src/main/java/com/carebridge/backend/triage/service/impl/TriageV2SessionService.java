@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.nio.charset.StandardCharsets;
 import java.net.URI;
@@ -155,8 +156,10 @@ public class TriageV2SessionService implements ITriageV2SessionService {
     }
 
     @Override
-    public synchronized TriageV2SessionResponse start(TriageV2StartRequest request, UUID userId) {
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public TriageV2SessionResponse start(TriageV2StartRequest request, UUID userId) {
         requireEnabled();
+        String requestFingerprint = startFingerprint(request);
         rejectCallerAuthoredClinicalState(request.signals(), request.measurements(), request.journeyContext());
         validateSelectedProfile(request.profileId(), request.selectedTarget(), userId);
         consentService.ensureActiveConsent(userId);
@@ -169,7 +172,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         }
         IntakeSession existing = repository.findByUserIdAndClientRequestId(userId, request.requestId())
                 .orElse(null);
-        if (existing != null) return requireV2Replay(existing);
+        if (existing != null) return requireV2Replay(existing, requestFingerprint);
 
         IntakeSession candidate = IntakeSession.builder()
                 .id(UUID.randomUUID())
@@ -179,6 +182,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
                 .stage(null)
                 .clientRequestId(request.requestId())
                 .symptoms("TRIAGE_V2_REDACTED")
+                .contentHash(requestFingerprint)
                 .status(IntakeStatus.PROCESSING)
                 .disclaimer(disclaimerPolicy.disclaimerText())
                 .disclaimerVersion(disclaimerPolicy.currentVersion())
@@ -189,9 +193,10 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         writer.insertConversationIfAbsent(candidate);
         IntakeSession session = repository.findByUserIdAndClientRequestId(userId, request.requestId())
                 .orElseThrow(() -> new IllegalStateException("Triage V2 idempotency winner unavailable"));
-        if (!session.getId().equals(candidate.getId())) return requireV2Replay(session);
+        if (!session.getId().equals(candidate.getId())) return requireV2Replay(session, requestFingerprint);
 
-        return executeAndPersist(session, 0, request.requestId(), request.messageId(), request.message(),
+        return executeAndPersist(session, 0, request.requestId(), requestFingerprint,
+                request.messageId(), request.message(),
                 request.profileId(), request.selectedTarget(), journeyContext, null,
                 request.signals(), request.measurements(), List.of(), List.of(), userId);
     }
@@ -204,7 +209,10 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         structuredMeasurements(request.measurements());
         IntakeSession session = locked(request.sessionId(), userId);
         Map<String, Object> envelope = envelope(session);
-        if (request.requestId().equals(envelope.get("lastRequestId"))) return publicResponse(envelope);
+        String mutationFingerprint = continueFingerprint(request);
+        if (request.requestId().equals(envelope.get("lastRequestId"))) {
+            return requireContinueReplay(envelope, mutationFingerprint);
+        }
         int currentVersion = integer(envelope.get("stateVersion"), 0);
         if (request.expectedStateVersion() != currentVersion) {
             metrics.recordFailure(TriageV2Metrics.Failure.STATE_CONFLICT);
@@ -213,12 +221,20 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         if (session.getStatus() == IntakeStatus.COMPLETED || session.getStatus() == IntakeStatus.FAILED) {
             throw conflict("TRIAGE_V2_SESSION_TERMINAL");
         }
+        IndependentGlobalSafetyFallback.FallbackVerdict immediate =
+                fallback.screenWithLatestMessage(Map.of(), request.message());
+        if ("RED".equals(immediate.outcome())) {
+            return persistFallback(session, currentVersion, request.requestId(), mutationFingerprint,
+                    Map.of(), request.message());
+        }
+        consentService.ensureActiveConsent(userId);
         Map<String, Object> previousState = workflowState(envelope);
         // The only trusted route from an answer to a clinical belief. The client supplied nothing
         // but identifiers; everything below is derived here, on the server.
         DerivedAnswers derived = mapCanonicalAnswers(request, previousState);
 
-        return executeAndPersist(session, currentVersion, request.requestId(), request.messageId(),
+        return executeAndPersist(session, currentVersion, request.requestId(), mutationFingerprint,
+                request.messageId(),
                 request.message(), session.getBabyProfileId() != null ? session.getBabyProfileId()
                         : session.getMotherProfileId(), null, Map.of(), previousState,
                 derived.signals(), request.measurements(), derived.answeredQuestionIds(),
@@ -260,12 +276,22 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         List<String> answered = new ArrayList<>();
         List<String> optionCodes = new ArrayList<>();
         Set<String> seenQuestions = new LinkedHashSet<>();
+        Set<String> plannedQuestions = new LinkedHashSet<>(strings(priorState.get("plannedQuestionIds")));
 
         for (TriageV2AnswerSelection answer : request.answers()) {
             if (!seenQuestions.add(answer.questionId())) {
                 throw new TriageException(HttpStatus.UNPROCESSABLE_ENTITY,
                         "TRIAGE_V2_DUPLICATE_ANSWER",
                         "The same question was answered twice in one turn");
+            }
+            if (questionCatalog.question(answer.questionId()).isEmpty()) {
+                throw new TriageException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "TRIAGE_V2_UNKNOWN_QUESTION", "Unknown canonical question");
+            }
+            if (!plannedQuestions.contains(answer.questionId())) {
+                throw new TriageException(HttpStatus.CONFLICT,
+                        "TRIAGE_V2_ANSWER_NOT_PLANNED",
+                        "Answer does not belong to the current planned question set");
             }
             CanonicalAnswerMapper.AnswerMapping mapping = answerMapper.map(
                     answer.questionId(), answer.optionCode(), request.messageId(),
@@ -315,12 +341,14 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         priorState.put("requiredAction", "SESSION_CANCELLED");
         priorState.put("completionReason", "CANCELLED_BY_USER");
         TriageV2SessionResponse response = response(session.getId(), priorState, fallbackReadiness());
-        persist(session, priorState, response, "CANCELLED", current + 1, IntakeStatus.FAILED);
+        persist(session, priorState, response, "CANCELLED", null,
+                current + 1, IntakeStatus.FAILED);
         return response;
     }
 
     private TriageV2SessionResponse executeAndPersist(
-            IntakeSession session, int currentVersion, String requestId, String messageId,
+            IntakeSession session, int currentVersion, String requestId, String mutationFingerprint,
+            String messageId,
             String message, UUID profileId, String selectedTarget, Map<String, Object> journeyContext,
             Map<String, Object> previousState,
             Map<String, Object> signals, Map<String, Object> measurements,
@@ -328,7 +356,8 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         long started = System.nanoTime();
         String expectedHash = readinessService.registry().map(TriageRuleRegistry::rulesetSha256).orElse(null);
         if (!readinessService.isReady() || expectedHash == null) {
-            return persistFallback(session, currentVersion, requestId, signals);
+            return persistFallback(session, currentVersion, requestId, mutationFingerprint,
+                    signals, message);
         }
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sessionId", session.getId().toString());
@@ -348,8 +377,14 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         payload.put("submittedOptionCodes",
                 submittedOptionCodes == null ? List.of() : submittedOptionCodes);
         payload.put("expectedRulesetHash", expectedHash);
+        TriageV2WorkflowClient.WorkflowResult result;
         try {
-            TriageV2WorkflowClient.WorkflowResult result = workflowClient.executeTurn(payload);
+            result = workflowClient.executeTurn(payload);
+        } catch (RuntimeException unavailable) {
+            return persistFallback(session, currentVersion, requestId, mutationFingerprint,
+                    signals, message);
+        }
+        try {
             if (!"READY".equals(result.readiness()) || !expectedHash.equals(result.rulesetHash())) {
                 metrics.recordFailure(TriageV2Metrics.Failure.HASH_MISMATCH);
                 throw new IllegalStateException("Triage V2 ruleset handshake failed");
@@ -372,7 +407,8 @@ public class TriageV2SessionService implements ITriageV2SessionService {
             newState.put("expectedStateVersion", currentVersion + 1);
             TriageV2SessionResponse response = response(session.getId(), newState,
                     readinessService.statusReport());
-            persist(session, sanitizeState(newState), response, requestId, currentVersion + 1,
+            persist(session, sanitizeState(newState), response, requestId, mutationFingerprint,
+                    currentVersion + 1,
                     Boolean.TRUE.equals(newState.get("stopConversation"))
                             ? IntakeStatus.COMPLETED : IntakeStatus.NEED_MORE_INFO);
             metrics.recordTurn(text(newState.get("triageOutcome")),
@@ -380,14 +416,20 @@ public class TriageV2SessionService implements ITriageV2SessionService {
                     strings(newState.get("plannedQuestionIds")).size(),
                     "CONFLICTED".equals(text(newState.get("targetEntity"))));
             return response;
-        } catch (RuntimeException unavailable) {
-            return persistFallback(session, currentVersion, requestId, signals);
+        } catch (TriageException validationFailure) {
+            throw validationFailure;
+        } catch (IllegalArgumentException | IllegalStateException validationFailure) {
+            throw new TriageException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "TRIAGE_V2_INVALID_WORKFLOW_RESPONSE",
+                    "Triage V2 workflow returned an invalid response");
         }
     }
 
     private TriageV2SessionResponse persistFallback(
-            IntakeSession session, int currentVersion, String requestId, Map<String, Object> signals) {
-        IndependentGlobalSafetyFallback.FallbackVerdict verdict = fallback.screen(structuredSignals(signals));
+            IntakeSession session, int currentVersion, String requestId, String mutationFingerprint,
+            Map<String, Object> signals, String message) {
+        IndependentGlobalSafetyFallback.FallbackVerdict verdict =
+                fallback.screenWithLatestMessage(structuredSignals(signals), message);
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("sessionId", session.getId().toString());
         state.put("stateVersion", currentVersion + 1);
@@ -407,20 +449,26 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         state.put("rulesetHash", null);
         state.put("readingLinks", List.of());
         TriageV2SessionResponse response = response(session.getId(), state, fallbackReadiness());
-        persist(session, state, response, requestId, currentVersion + 1,
-                "RED".equals(verdict.outcome()) ? IntakeStatus.COMPLETED : IntakeStatus.NEED_MORE_INFO);
+        persist(session, state, response, requestId, mutationFingerprint, currentVersion + 1,
+                verdict.stopConversation() ? IntakeStatus.FAILED : IntakeStatus.NEED_MORE_INFO);
         metrics.recordFailure(TriageV2Metrics.Failure.FALLBACK);
         metrics.recordTurn(verdict.outcome(), 0, 0, false);
         return response;
     }
 
     private void persist(IntakeSession session, Map<String, Object> state,
-                         TriageV2SessionResponse response, String requestId, int version,
+                         TriageV2SessionResponse response, String requestId,
+                         String mutationFingerprint, int version,
                          IntakeStatus status) {
         Map<String, Object> envelope = new LinkedHashMap<>();
+        String requestFingerprint = persistedRequestFingerprint(session);
         envelope.put("contract", SCHEMA_VERSION);
+        envelope.put("requestFingerprint", requestFingerprint);
         envelope.put("stateVersion", version);
         envelope.put("lastRequestId", requestId);
+        if (mutationFingerprint != null) {
+            envelope.put("lastRequestFingerprint", mutationFingerprint);
+        }
         envelope.put("retentionUntil", Instant.now().plus(retentionDays, ChronoUnit.DAYS).toString());
         envelope.put("v2State", state);
         envelope.put("publicResponse", objectMapper.convertValue(response, new TypeReference<Map<String, Object>>() {}));
@@ -441,11 +489,73 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         }
     }
 
-    private TriageV2SessionResponse requireV2Replay(IntakeSession session) {
+    private TriageV2SessionResponse requireV2Replay(IntakeSession session, String requestFingerprint) {
         if (!SCHEMA_VERSION.equals(session.getSchemaVersion())) {
             throw conflict("TRIAGE_V2_IDEMPOTENCY_KEY_CONFLICT");
         }
-        return publicResponse(envelope(session));
+        Map<String, Object> stored = envelope(session);
+        Object storedFingerprint = stored.get("requestFingerprint");
+        if (!(storedFingerprint instanceof String value) || !value.equals(requestFingerprint)) {
+            throw conflict("TRIAGE_V2_IDEMPOTENCY_KEY_CONFLICT");
+        }
+        return publicResponse(stored);
+    }
+
+    private String persistedRequestFingerprint(IntakeSession session) {
+        if (session.getResultJson() != null && !session.getResultJson().isBlank()) {
+            try {
+                Map<String, Object> previous = objectMapper.readValue(
+                        session.getResultJson(), new TypeReference<>() {});
+                Object value = previous.get("requestFingerprint");
+                if (value instanceof String fingerprint && !fingerprint.isBlank()) return fingerprint;
+            } catch (Exception ignored) {
+                // The strict state parser will reject a corrupt envelope at its public boundary.
+            }
+        }
+        if (session.getContentHash() == null || session.getContentHash().isBlank()) {
+            throw new IllegalStateException("Missing Triage V2 request fingerprint");
+        }
+        return session.getContentHash();
+    }
+
+    private String startFingerprint(TriageV2StartRequest request) {
+        try {
+            Map<String, Object> canonical = new LinkedHashMap<>();
+            canonical.put("profileId", request.profileId());
+            canonical.put("selectedTarget", request.selectedTarget());
+            canonical.put("journeyContext", request.journeyContext());
+            canonical.put("message", request.message());
+            canonical.put("messageId", request.messageId());
+            canonical.put("consentContext", request.consentContext());
+            return sha256(objectMapper.writeValueAsString(canonical));
+        } catch (JsonProcessingException failure) {
+            throw new IllegalStateException("Could not fingerprint Triage V2 start request", failure);
+        }
+    }
+
+    private String continueFingerprint(TriageV2ContinueRequest request) {
+        try {
+            Map<String, Object> canonical = new LinkedHashMap<>();
+            canonical.put("sessionId", request.sessionId());
+            canonical.put("expectedStateVersion", request.expectedStateVersion());
+            canonical.put("message", request.message());
+            canonical.put("messageId", request.messageId());
+            canonical.put("answers", request.answers());
+            canonical.put("signals", request.signals());
+            canonical.put("measurements", request.measurements());
+            return sha256(objectMapper.writeValueAsString(canonical));
+        } catch (JsonProcessingException failure) {
+            throw new IllegalStateException("Could not fingerprint Triage V2 continuation", failure);
+        }
+    }
+
+    private TriageV2SessionResponse requireContinueReplay(
+            Map<String, Object> envelope, String mutationFingerprint) {
+        Object stored = envelope.get("lastRequestFingerprint");
+        if (!(stored instanceof String value) || !value.equals(mutationFingerprint)) {
+            throw conflict("TRIAGE_V2_IDEMPOTENCY_KEY_CONFLICT");
+        }
+        return publicResponse(envelope);
     }
 
     private IntakeSession locked(UUID id, UUID userId) {

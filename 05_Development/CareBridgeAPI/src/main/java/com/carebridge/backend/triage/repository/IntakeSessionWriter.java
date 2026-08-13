@@ -24,8 +24,8 @@ public class IntakeSessionWriter {
                     triage_session_id, user_id, baby_profile_id, mother_profile_id, stage,
                     client_request_id, journey_id, origin_dashboard, origin_reference_id,
                     continuation_token, continuation_expires_at, symptoms, status,
-                    created_at, created_by, disclaimer_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    created_at, created_by, disclaimer_version, content_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (user_id, client_request_id)
                     WHERE client_request_id IS NOT NULL
                     DO NOTHING
@@ -49,7 +49,8 @@ public class IntakeSessionWriter {
                 candidate.getCreatedBy(),
                 // CB-TRIAGE-CONSENT-IMP-001 (ADR-TDC-003): keep the DB-arbitrated insert path
                 // consistent with the repository.save path — sessions carry the stamped version.
-                candidate.getDisclaimerVersion());
+                candidate.getDisclaimerVersion(),
+                candidate.getContentHash());
         return new InsertResult(!insertedIds.isEmpty());
     }
 

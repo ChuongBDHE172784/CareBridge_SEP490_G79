@@ -94,6 +94,25 @@ class TriageServiceTest {
     }
 
     @Test
+    void runIntake_rejectsForeignBabyProfileBeforePersistenceOrAi() {
+        TriageService triageService = service();
+        com.carebridge.backend.baby.repository.BabyProfileRepository profiles =
+                mock(com.carebridge.backend.baby.repository.BabyProfileRepository.class);
+        ReflectionTestUtils.setField(triageService, "babyProfileRepository", profiles);
+        UUID foreignProfile = UUID.randomUUID();
+        var request = TriageTestFactory.makeRunIntakeRequest();
+        request.setStage(TriageStage.INFANT);
+        request.setBabyProfileId(foreignProfile);
+        when(profiles.findByIdAndOwnerUserId(foreignProfile, USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> triageService.runIntake(request, USER_ID))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE-017");
+        verifyNoInteractions(childTriageAiClient, triageGraphService, eventPublisher);
+        verify(intakeSessionRepository, never()).save(any());
+    }
+
+    @Test
     void runIntake_aiServiceUnavailable_shouldFallbackToJavaRules() {
         // TRIAGE-TC-004
         when(childTriageAiClient.triageChild(any()))
@@ -792,6 +811,34 @@ class TriageServiceTest {
         verify(childTriageAiClient, never()).continueIntake(any());
         verify(intakeSessionRepository, never()).save(any());
         verifyNoInteractions(triageGraphService, eventPublisher);
+    }
+
+    @Test
+    void continueConversation_rechecksDisclaimerConsentBeforeCallingAi() {
+        TriageService triageService = service();
+        com.carebridge.backend.triage.service.ITriageConsentService disclaimerConsent =
+                mock(com.carebridge.backend.triage.service.ITriageConsentService.class);
+        ReflectionTestUtils.setField(triageService, "triageConsentService", disclaimerConsent);
+        IntakeSession session = conversationSession(IntakeStatus.NEED_MORE_INFO, """
+                {"status":"ASK_MORE","mergedIntake":{"stage":"PREGNANCY"},
+                 "questions":[{"questionKey":"duration","text":"Bao lau?","answerType":"TEXT","options":[]}],"round":1}
+                """);
+        session.setStage(TriageStage.PREGNANCY);
+        when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID))
+                .thenReturn(Optional.of(session));
+        doThrow(new TriageException(HttpStatus.CONFLICT,
+                "TRIAGE_CONSENT_REQUIRED", "Consent expired"))
+                .when(disclaimerConsent).ensureActiveConsent(USER_ID);
+
+        assertThatThrownBy(() -> triageService.continueConversation(
+                ContinueIntakeConversationRequest.builder()
+                        .intakeSessionId(session.getId().toString())
+                        .newAnswers(Map.of("duration", "1 ngay"))
+                        .build(), USER_ID))
+                .isInstanceOf(TriageException.class)
+                .extracting("code").isEqualTo("TRIAGE_CONSENT_REQUIRED");
+        verify(childTriageAiClient, never()).continueIntake(any());
+        verify(intakeSessionRepository, never()).save(any());
     }
 
     @Test

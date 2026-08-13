@@ -27,6 +27,8 @@ import com.carebridge.backend.triage.policy.TriageRedFlagPreScreenPolicy;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.repository.IntakeSessionWriter;
 import com.carebridge.backend.triage.repository.TriageSessionEvidenceWriter;
+import com.carebridge.backend.baby.repository.BabyProfileRepository;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.HealthMemoryService;
 import com.carebridge.backend.triage.service.LifecycleBinding;
@@ -173,6 +175,12 @@ public class TriageService implements ITriageService {
     // collaborators above.
     @Autowired(required = false)
     private com.carebridge.backend.journey.service.IJourneyService journeyService;
+
+    @Autowired(required = false)
+    private BabyProfileRepository babyProfileRepository;
+
+    @Autowired(required = false)
+    private MotherJourneyRepository motherJourneyRepository;
 
     @Autowired
     public TriageService(
@@ -322,9 +330,9 @@ public class TriageService implements ITriageService {
     /**
      * CB-TRIAGE-CONSENT-IMP-001 (BR-TDC-004 / C3): elective-entry disclaimer gate. Throws
      * {@code TriageException(409, "TRIAGE_CONSENT_REQUIRED")} when no ACTIVE consent matches
-     * the current disclaimer version. Called from {@code runIntake} and
-     * {@code startConversation} ONLY — never from continueConversation, continuations, or any
-     * emergency/escalation path (BR-SAFETY). When the optional collaborator is absent
+     * the current disclaimer version. Called at elective entry and again before a non-emergency
+     * continuation sends new health data to the AI provider. Deterministic emergency escalation
+     * remains available before this gate (BR-SAFETY). When the optional collaborator is absent
      * (legacy unit-test constructors), behaviour is exactly pre-feature.
      */
     private void ensureDisclaimerConsent(UUID userId) {
@@ -345,7 +353,7 @@ public class TriageService implements ITriageService {
     }
 
     @Override
-    public synchronized IntakeConversationResponse startConversation(StartIntakeConversationRequest request, UUID userId) {
+    public IntakeConversationResponse startConversation(StartIntakeConversationRequest request, UUID userId) {
         // CB-TRIAGE-CONSENT-IMP-001 C3: disclaimer consent gate — FIRST statement, before any
         // validation or persistence (TDC-TC-07: no session row may leak before rejection).
         ensureDisclaimerConsent(userId);
@@ -355,6 +363,7 @@ public class TriageService implements ITriageService {
                 request.getBabyProfileId(), request.getMotherProfileId(), userId);
         ensurePostpartumEligible(stage, userId);
         validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
+        validateProfileOwnership(request.getBabyProfileId(), request.getMotherProfileId(), userId);
         LifecycleBinding requestedBinding = bindLifecycle(request, stage, userId);
         String clientRequestId = normalizeClientRequestId(request.getClientRequestId());
         IntakeSession existing = clientRequestId == null ? null : intakeSessionRepository
@@ -549,6 +558,8 @@ public class TriageService implements ITriageService {
             recordPreScreenAnnotation("conversation_continue", preScreen);
             canonical.put("preScreenFlags", preScreen.matchedKeywords());
         }
+        // Revocation takes effect before any new non-emergency health text is sent to Python.
+        ensureDisclaimerConsent(userId);
         Map<String, Object> envelope;
         try {
             envelope = readJsonObject(childTriageAiClient.continueIntake(canonical));
@@ -585,6 +596,7 @@ public class TriageService implements ITriageService {
         request.setGestationalWeeks(loadGestationalWeeksFailOpen(userId, stage));
         ensurePostpartumEligible(stage, userId);
         validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
+        validateProfileOwnership(request.getBabyProfileId(), request.getMotherProfileId(), userId);
         IntakeSession session = IntakeSession.builder()
                 .userId(userId)
                 .symptoms(snapshotRequest(request))
@@ -1553,6 +1565,19 @@ public class TriageService implements ITriageService {
         }
         if (requireProfile && ((stage.isPediatric() && babyProfileId == null) || (stage.isMaternal() && motherProfileId == null))) {
             throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-012", "A matching profile is required for the selected triage stage");
+        }
+    }
+
+    private void validateProfileOwnership(UUID babyProfileId, UUID motherProfileId, UUID userId) {
+        if (motherProfileId != null && motherJourneyRepository != null
+                && !motherProfileId.equals(motherJourneyRepository.findMotherCareSubjectId(userId))) {
+            throw new TriageException(HttpStatus.FORBIDDEN, "TRIAGE-017",
+                    "Selected mother profile does not belong to the current user");
+        }
+        if (babyProfileId != null && babyProfileRepository != null
+                && babyProfileRepository.findByIdAndOwnerUserId(babyProfileId, userId).isEmpty()) {
+            throw new TriageException(HttpStatus.FORBIDDEN, "TRIAGE-017",
+                    "Selected baby profile does not belong to the current user");
         }
     }
 

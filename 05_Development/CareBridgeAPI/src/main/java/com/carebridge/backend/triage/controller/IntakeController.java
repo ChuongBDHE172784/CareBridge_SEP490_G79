@@ -8,6 +8,7 @@ import com.carebridge.backend.triage.dto.request.ContinueIntakeConversationReque
 import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
 import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
 import com.carebridge.backend.triage.dto.response.TriageResultResponse;
+import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.service.ITriageService;
 import com.carebridge.backend.triage.service.ITriageContinuationService;
 import com.carebridge.backend.triage.dto.request.ContinuationTokenRequest;
@@ -38,6 +39,10 @@ public class IntakeController {
             @Valid @RequestBody RunIntakeRequest request,
             Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        if (request.getStage() == null) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-018",
+                    "A canonical triage stage is required");
+        }
         IntakeSessionResponse response = triageService.runIntake(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }

@@ -17,6 +17,7 @@ import '../services/triage_continuation_store.dart';
 
 /// Stages that describe the mother rather than the baby.
 const maternalTriageStages = {'PRECONCEPTION', 'PREGNANCY', 'POSTPARTUM'};
+const triageV2SupportedStages = {...maternalTriageStages, 'INFANT', 'TODDLER'};
 
 const _triageV2Enabled = bool.fromEnvironment(
   'AI_TRIAGE_V2_INTERNAL_ENABLED',
@@ -27,8 +28,7 @@ const _triageV2Enabled = bool.fromEnvironment(
 ///
 /// Two separate conditions have to hold, and only the first is met today:
 ///
-/// 1. Coverage — the V2 ruleset declares only the four maternal stages and holds no paediatric
-///    rule at all, so a baby must never be routed there.
+/// 1. Coverage — the V2 ruleset now declares maternal, infant, and toddler stages.
 /// 2. Experience — V2's current screen is an internal test harness (a target selector, a text box
 ///    and a submit button), not the chat this app actually offers. Handing a user from the chat to
 ///    that screen mid-journey is a downgrade, so the hand-off stays off until the chat itself can
@@ -36,7 +36,7 @@ const _triageV2Enabled = bool.fromEnvironment(
 ///
 /// Kept as a named predicate rather than deleted so the cutover has one place to switch on.
 bool isTriageV2CutoverCandidate(String stage) =>
-    _triageV2Enabled && maternalTriageStages.contains(stage);
+    _triageV2Enabled && triageV2SupportedStages.contains(stage);
 
 /// Deliberately false: see [isTriageV2CutoverCandidate] condition 2.
 bool shouldHandOffToTriageV2(String stage) => false;
@@ -83,6 +83,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   final Map<String, dynamic> _answers = {};
   late String _selectedStage;
   String? _sessionId;
+
   /// Non-null once this chat is being answered by the V2 engine.
   TriageV2Session? _v2Session;
   late final TriageV2Service _v2Service = TriageV2Service();
@@ -384,8 +385,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         accepted = await _requestTriageConsent(triageUserId);
       } catch (_) {
         if (mounted) {
-          setState(() => _error =
-              'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.');
+          setState(
+            () => _error =
+                'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.',
+          );
         }
         return;
       }
@@ -406,7 +409,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'Hiện chưa thể hoàn tất định hướng nguy cơ. Kết quả lỗi không được xem là mức an toàn.';
 
   Future<void> _sendV2Start(String text) async {
-    final session = await _v2Service.start(message: text, selectedTarget: 'MOTHER');
+    final session = await _v2Service.start(
+      message: text,
+      selectedTarget: 'MOTHER',
+    );
     if (!mounted) return;
     _v2Session = session;
     _applyResponse(_v2Response(session), userMessage: text);
@@ -426,7 +432,9 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       if (optionCode.isEmpty) continue;
       final known = TriageV2Question.fromId(entry.key).optionCodes;
       if (!known.contains(optionCode)) continue;
-      answers.add(TriageV2Answer(questionId: entry.key, optionCode: optionCode));
+      answers.add(
+        TriageV2Answer(questionId: entry.key, optionCode: optionCode),
+      );
     }
     try {
       final session = await _v2Service.continueSession(
@@ -436,7 +444,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       );
       if (!mounted) return;
       _v2Session = session;
-      _applyResponse(_v2Response(session), userMessage: _answersText(newAnswers));
+      _applyResponse(
+        _v2Response(session),
+        userMessage: _answersText(newAnswers),
+      );
     } on TriageV2StaleVersionFailure {
       // Another device advanced this session. Re-read rather than replay a stale version.
       try {
@@ -444,11 +455,15 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         if (!mounted) return;
         _v2Session = refreshed;
         _applyResponse(_v2Response(refreshed));
-        setState(() => _error =
-            'Phiên đã được cập nhật ở nơi khác. Vui lòng kiểm tra và gửi lại.');
+        setState(
+          () => _error =
+              'Phiên đã được cập nhật ở nơi khác. Vui lòng kiểm tra và gửi lại.',
+        );
       } catch (_) {
         if (mounted) {
-          setState(() => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.');
+          setState(
+            () => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.',
+          );
         }
       }
     } catch (_) {

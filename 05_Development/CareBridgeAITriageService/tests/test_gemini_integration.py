@@ -213,6 +213,12 @@ def test_timeout_and_malformed_output_fall_back_without_exception():
         text="Bé nói khó hiểu", child_age_months=8, allowed_codes={"fever"}
     ) is None
     assert len(timeout_sdk.models.calls) == settings().max_retries + 1
+    assert timeout_client.normalize_symptom_text(
+        text="Lượt kế tiếp trong lúc nhà cung cấp vẫn lỗi",
+        child_age_months=8,
+        allowed_codes={"fever"},
+    ) is None
+    assert len(timeout_sdk.models.calls) == settings().max_retries + 1
 
     malformed_sdk = FakeSdkClient([{"unexpected": "shape"}])
     malformed_client = GeminiClient(settings(), malformed_sdk)

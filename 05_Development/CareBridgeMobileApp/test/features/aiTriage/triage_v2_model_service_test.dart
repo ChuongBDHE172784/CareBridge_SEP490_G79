@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/network/api_client.dart';
@@ -54,34 +54,37 @@ void main() {
       );
     });
 
-    test('overlapping failed starts retain independent retry identities', () async {
-      final firstBodies = <String, Map<String, dynamic>>{};
-      final blockers = <String, Completer<dynamic>>{};
-      var firstWave = true;
-      final service = TriageV2Service(
-        postRequest: (_, body) {
-          final message = body['message'] as String;
-          if (firstWave) {
-            firstBodies[message] = Map<String, dynamic>.from(body);
-            return (blockers[message] = Completer<dynamic>()).future;
-          }
-          expect(body['requestId'], firstBodies[message]!['requestId']);
-          expect(body['messageId'], firstBodies[message]!['messageId']);
-          return Future.value({'data': _responseJson()});
-        },
-      );
+    test(
+      'overlapping failed starts retain independent retry identities',
+      () async {
+        final firstBodies = <String, Map<String, dynamic>>{};
+        final blockers = <String, Completer<dynamic>>{};
+        var firstWave = true;
+        final service = TriageV2Service(
+          postRequest: (_, body) {
+            final message = body['message'] as String;
+            if (firstWave) {
+              firstBodies[message] = Map<String, dynamic>.from(body);
+              return (blockers[message] = Completer<dynamic>()).future;
+            }
+            expect(body['requestId'], firstBodies[message]!['requestId']);
+            expect(body['messageId'], firstBodies[message]!['messageId']);
+            return Future.value({'data': _responseJson()});
+          },
+        );
 
-      final firstA = service.start(message: 'A', selectedTarget: 'MOTHER');
-      final firstB = service.start(message: 'B', selectedTarget: 'BABY');
-      blockers['A']!.completeError(StateError('offline'));
-      blockers['B']!.completeError(StateError('offline'));
-      await expectLater(firstA, throwsA(isA<TriageV2UnavailableFailure>()));
-      await expectLater(firstB, throwsA(isA<TriageV2UnavailableFailure>()));
+        final firstA = service.start(message: 'A', selectedTarget: 'MOTHER');
+        final firstB = service.start(message: 'B', selectedTarget: 'BABY');
+        blockers['A']!.completeError(StateError('offline'));
+        blockers['B']!.completeError(StateError('offline'));
+        await expectLater(firstA, throwsA(isA<TriageV2UnavailableFailure>()));
+        await expectLater(firstB, throwsA(isA<TriageV2UnavailableFailure>()));
 
-      firstWave = false;
-      await service.start(message: 'A', selectedTarget: 'MOTHER');
-      await service.start(message: 'B', selectedTarget: 'BABY');
-    });
+        firstWave = false;
+        await service.start(message: 'A', selectedTarget: 'MOTHER');
+        await service.start(message: 'B', selectedTarget: 'BABY');
+      },
+    );
 
     test('maps a stale version conflict without treating it as safe', () async {
       final service = TriageV2Service(
@@ -117,11 +120,22 @@ void main() {
 
   test('mobile catalogue renders every canonical V2 question', () {
     const ids = <String>[
-      'Q_BLEEDING_AMOUNT', 'Q_CLOTS', 'Q_DIZZINESS', 'Q_VISUAL_CHANGE',
-      'Q_BP_IF_KNOWN', 'Q_EPIGASTRIC_PAIN', 'Q_SWELLING', 'Q_PAIN_SEVERITY',
-      'Q_PREGNANCY_TEST', 'Q_GESTATIONAL_WEEK', 'Q_POSTPARTUM_DAY',
-      'Q_CLARIFY_TARGET_ENTITY', 'Q_CLARIFY_TARGET_FIRST', 'Q_CLARIFY_INTENT',
+      'Q_BLEEDING_AMOUNT',
+      'Q_CLOTS',
+      'Q_DIZZINESS',
+      'Q_VISUAL_CHANGE',
+      'Q_BP_IF_KNOWN',
+      'Q_EPIGASTRIC_PAIN',
+      'Q_SWELLING',
+      'Q_PAIN_SEVERITY',
+      'Q_PREGNANCY_TEST',
+      'Q_GESTATIONAL_WEEK',
+      'Q_POSTPARTUM_DAY',
+      'Q_CLARIFY_TARGET_ENTITY',
+      'Q_CLARIFY_TARGET_FIRST',
+      'Q_CLARIFY_INTENT',
       'Q_BABY_AGE_MONTHS',
+      'Q_CLARIFY_STAGE',
     ];
 
     for (final id in ids) {
@@ -129,6 +143,7 @@ void main() {
       expect(question.text, isNot(contains(id)));
       expect(question.optionCodes, isNotEmpty);
     }
+    expect(TriageV2Question.fromId('Q_GESTATIONAL_WEEK').answerType, 'NUMBER');
   });
 }
 

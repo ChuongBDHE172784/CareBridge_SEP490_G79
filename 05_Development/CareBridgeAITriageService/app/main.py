@@ -91,14 +91,22 @@ def _run_deterministic_readiness_probe() -> None:
         raise RuntimeError("deterministic RED precedence probe failed")
 
 
-@app.post("/triage/child", response_model=ChildTriageResponse)
+@app.post(
+    "/triage/child",
+    response_model=ChildTriageResponse,
+    dependencies=[Depends(require_internal_key)],
+)
 def triage_child(request: ChildTriageRequest) -> ChildTriageResponse:
     if request.stage is None:
         raise HTTPException(status_code=422, detail="A canonical triage stage is required")
     return run_triage(request)
 
 
-@app.post("/triage/intake/start", response_model=IntakeFlowResponse)
+@app.post(
+    "/triage/intake/start",
+    response_model=IntakeFlowResponse,
+    dependencies=[Depends(require_internal_key)],
+)
 def start_intake(request: IntakeStartRequest) -> IntakeFlowResponse:
     intake = _canonical_intake(request.currentIntake, request.stage)
     if request.initialText and not intake.parentFreeText:
@@ -117,7 +125,11 @@ def start_intake(request: IntakeStartRequest) -> IntakeFlowResponse:
     )
 
 
-@app.post("/triage/intake/continue", response_model=IntakeFlowResponse)
+@app.post(
+    "/triage/intake/continue",
+    response_model=IntakeFlowResponse,
+    dependencies=[Depends(require_internal_key)],
+)
 def continue_intake(request: IntakeContinueRequest) -> IntakeFlowResponse:
     merged = merge_answers(_canonical_intake(request.currentIntake, request.stage), request.newAnswers)
     return _build_intake_response(

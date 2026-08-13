@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
 
@@ -77,6 +78,21 @@ class IntakeControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"symptoms\":\"" + tooLong + "\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
+    void runIntake_requiresCanonicalStageAndRejectsImpossibleMeasurements() throws Exception {
+        for (String body : java.util.List.of(
+                "{\"symptoms\":\"test symptoms\"}",
+                "{\"symptoms\":\"test symptoms\",\"stage\":\"INFANT\",\"childAgeMonths\":241}",
+                "{\"symptoms\":\"test symptoms\",\"stage\":\"INFANT\",\"temperatureC\":51}")) {
+            mockMvc.perform(post(BASE_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(triageService);
     }
 
     @Test

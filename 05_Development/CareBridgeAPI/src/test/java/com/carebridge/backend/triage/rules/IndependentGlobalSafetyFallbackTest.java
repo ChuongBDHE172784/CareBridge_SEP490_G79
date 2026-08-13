@@ -71,6 +71,25 @@ class IndependentGlobalSafetyFallbackTest {
     }
 
     @Test
+    @DisplayName("Latest free text still detects a seizure when Python is unavailable")
+    void latestFreeTextDetectsGlobalDanger() {
+        assertThat(fallback.screenWithLatestMessage(Map.of(), "Bé đang co giật").outcome())
+                .isEqualTo("RED");
+        assertThat(fallback.screenWithLatestMessage(Map.of(), "Bé không co giật").outcome())
+                .isEqualTo("NEEDS_MORE_INFO");
+    }
+
+    @Test
+    @DisplayName("An earlier denial cannot hide a newly reported current danger")
+    void earlierNegationCannotHideCurrentDanger() {
+        var verdict = fallback.screenWithLatestMessage(Map.of(),
+                "Trước đó không co giật, nhưng bây giờ đang co giật");
+
+        assertThat(verdict.outcome()).isEqualTo("RED");
+        assertThat(verdict.reasonCodes()).contains("GLOBAL_IMMEDIATE_DANGER");
+    }
+
+    @Test
     @DisplayName("A historical signal is not treated as a current one")
     void historicalSignalIsNotCurrent() {
         var historical = fallback.screen(Map.of(

@@ -1,5 +1,7 @@
 package com.carebridge.backend.triage;
 
+import com.carebridge.backend.baby.entity.BabyProfile;
+import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.emergency.service.IEmergencyService;
 import com.carebridge.backend.journey.service.ILifecycleSafetyOutcomeProjector;
 import com.carebridge.backend.security.service.EmailService;
@@ -16,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 import static com.carebridge.backend.triage.TriagePreScreenTestFactory.MOTHER_ID;
 import static com.carebridge.backend.triage.TriagePreScreenTestFactory.makeOneShotRequest;
@@ -62,9 +66,12 @@ class TriageRedFlagPreScreenIntegrationTest {
     // pre-existing suites updated where the gate now applies). The mocked gate's
     // ensureActiveConsent is a no-op, i.e. "consent granted"; this test's subject is unchanged.
     @MockitoBean private com.carebridge.backend.triage.service.ITriageConsentService triageConsentService;
+    @MockitoBean private BabyProfileRepository babyProfileRepository;
 
     @Test
     void seededAdminRedRule_shortCircuitsOneShotIntake_whileInactiveRuleDoesNot() {
+        when(babyProfileRepository.findByIdAndOwnerUserId(any(), any()))
+                .thenReturn(Optional.of(new BabyProfile()));
         // Seed FX-001 (active RED/ESCALATE) and FX-002 (inactive) through the real repository.
         // saveAndFlush: with the red_flag_rules query space clean, Hibernate's auto-flush does
         // not try to flush the in-flight triage_sessions insert during the pre-screen SELECT

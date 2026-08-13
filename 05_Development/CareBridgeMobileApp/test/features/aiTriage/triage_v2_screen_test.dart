@@ -106,6 +106,86 @@ void main() {
     expect(find.textContaining('GREEN'), findsNothing);
   });
 
+  testWidgets('submits every selected answer in one V2 round', (tester) async {
+    var call = 0;
+    Map<String, dynamic>? continueBody;
+    final service = TriageV2Service(
+      postRequest: (_, body) async {
+        call++;
+        if (call == 1) {
+          return {
+            'data': _response(questions: ['Q_DIZZINESS', 'Q_VISUAL_CHANGE']),
+          };
+        }
+        continueBody = Map<String, dynamic>.from(body);
+        return {'data': _response(outcome: 'YELLOW', stop: true)};
+      },
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: TriageV2Screen(service: service)),
+    );
+    await tester.enterText(
+      find.byKey(const Key('triage-v2-message')),
+      'đau đầu',
+    );
+    await tester.tap(find.byKey(const Key('triage-v2-submit')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('triage-v2-option-DIZZINESS_NO')));
+    await tester.tap(
+      find.byKey(const Key('triage-v2-option-VISUAL_CHANGE_NO')),
+    );
+    await tester.tap(find.byKey(const Key('triage-v2-submit')));
+    await tester.pumpAndSettle();
+
+    expect(continueBody?['answers'], [
+      {'questionId': 'Q_DIZZINESS', 'optionCode': 'DIZZINESS_NO'},
+      {'questionId': 'Q_VISUAL_CHANGE', 'optionCode': 'VISUAL_CHANGE_NO'},
+    ]);
+  });
+
+  testWidgets('NUMBER question keeps a free-text input available', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var call = 0;
+    Map<String, dynamic>? continueBody;
+    final service = TriageV2Service(
+      postRequest: (_, body) async {
+        call++;
+        if (call == 1) {
+          return {
+            'data': _response(questions: ['Q_GESTATIONAL_WEEK']),
+          };
+        }
+        continueBody = Map<String, dynamic>.from(body);
+        return {'data': _response(outcome: 'YELLOW', stop: true)};
+      },
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: TriageV2Screen(service: service)),
+    );
+    await tester.enterText(
+      find.byKey(const Key('triage-v2-message')),
+      'đang mang thai',
+    );
+    await tester.tap(find.byKey(const Key('triage-v2-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('triage-v2-message')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('triage-v2-message')),
+      '31 tuần',
+    );
+    await tester.ensureVisible(find.byKey(const Key('triage-v2-submit')));
+    await tester.tap(find.byKey(const Key('triage-v2-submit')));
+    await tester.pumpAndSettle();
+
+    expect(continueBody?['message'], '31 tuần');
+    expect(continueBody?['answers'], isEmpty);
+  });
+
   testWidgets('mother and baby are handled in separate sessions', (
     tester,
   ) async {

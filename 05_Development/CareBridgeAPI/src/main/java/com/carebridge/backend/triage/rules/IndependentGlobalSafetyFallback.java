@@ -5,6 +5,8 @@ import org.springframework.stereotype.Component;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.text.Normalizer;
+import java.util.Locale;
 
 /**
  * A last-resort safety screen that keeps working when everything else is broken.
@@ -67,6 +69,14 @@ public class IndependentGlobalSafetyFallback {
      *                seizure is not a seizure happening now.
      */
     public FallbackVerdict screen(Map<String, Object> signals) {
+        return screenWithLatestMessage(signals, null);
+    }
+
+    /**
+     * Screen trusted structured signals and a bounded latest message. Text matching is deliberately
+     * limited to unambiguous global danger phrases so the fallback remains independent of Python.
+     */
+    public FallbackVerdict screenWithLatestMessage(Map<String, Object> signals, String latestMessage) {
         Map<String, String> matched = new LinkedHashMap<>();
         if (signals != null) {
             for (Map.Entry<String, String> entry : GLOBAL_DANGER_SIGNALS.entrySet()) {
@@ -76,6 +86,7 @@ public class IndependentGlobalSafetyFallback {
                 }
             }
         }
+        detectTextDanger(latestMessage, matched);
 
         if (!matched.isEmpty()) {
             boolean safetyOnly = matched.values().stream()
@@ -98,6 +109,66 @@ public class IndependentGlobalSafetyFallback {
                 List.of("TRIAGE_V2_UNAVAILABLE"),
                 List.of(),
                 "V2_UNAVAILABLE_NO_GLOBAL_SIGNAL");
+    }
+
+    private static void detectTextDanger(String message, Map<String, String> matched) {
+        if (message == null || message.isBlank()) return;
+        String text = fold(message.substring(0, Math.min(message.length(), 2000)));
+        addTextSignal(text, matched, "SEIZURE", "GLOBAL_IMMEDIATE_DANGER",
+                List.of("dang co giat", "bi co giat", "len con co giat", "is seizing", "having a seizure"),
+                List.of("khong co giat", "khong bi co giat", "not seizing", "no seizure"));
+        addTextSignal(text, matched, "ALTERED_CONSCIOUSNESS", "GLOBAL_IMMEDIATE_DANGER",
+                List.of("bat tinh", "khong danh thuc duoc", "mat y thuc", "unconscious", "cannot wake"),
+                List.of("khong bat tinh", "van tinh tao", "not unconscious"));
+        addTextSignal(text, matched, "SEVERE_BREATHING_DIFFICULTY", "GLOBAL_IMMEDIATE_DANGER",
+                List.of("khong tho duoc", "ngung tho", "tho rat kho", "cannot breathe", "stopped breathing"),
+                List.of("khong kho tho", "tho binh thuong", "breathing normally"));
+        addTextSignal(text, matched, "CYANOSIS", "CYANOSIS_EMERGENCY_SIGNAL",
+                List.of("tim tai", "moi tim", "blue lips", "turning blue"),
+                List.of("khong tim tai", "moi khong tim"));
+        addTextSignal(text, matched, "SELF_HARM_IDEATION", "SAFETY_RISK_SELF_OR_INFANT_HARM",
+                List.of("muon tu tu", "muon lam hai ban than", "suicidal", "harm myself"),
+                List.of("khong muon tu tu", "khong lam hai ban than"));
+        addTextSignal(text, matched, "HARM_TO_BABY_IDEATION", "SAFETY_RISK_SELF_OR_INFANT_HARM",
+                List.of("muon lam hai em be", "muon lam hai con", "harm my baby"),
+                List.of("khong muon lam hai em be", "khong lam hai con"));
+    }
+
+    private static void addTextSignal(String text, Map<String, String> matched,
+                                      String signal, String reason,
+                                      List<String> positives, List<String> negatives) {
+        if (positives.stream().anyMatch(positive ->
+                containsOccurrenceOutsideNegation(text, positive, negatives))) {
+            matched.putIfAbsent(signal, reason);
+        }
+    }
+
+    private static boolean containsOccurrenceOutsideNegation(
+            String text, String positive, List<String> negatives) {
+        for (int positiveAt = text.indexOf(positive); positiveAt >= 0;
+             positiveAt = text.indexOf(positive, positiveAt + 1)) {
+            int positiveEnd = positiveAt + positive.length();
+            boolean negated = false;
+            for (String negative : negatives) {
+                for (int negativeAt = text.indexOf(negative); negativeAt >= 0;
+                     negativeAt = text.indexOf(negative, negativeAt + 1)) {
+                    int negativeEnd = negativeAt + negative.length();
+                    if (positiveAt < negativeEnd && negativeAt < positiveEnd) {
+                        negated = true;
+                        break;
+                    }
+                }
+                if (negated) break;
+            }
+            if (!negated) return true;
+        }
+        return false;
+    }
+
+    private static String fold(String value) {
+        String normalized = Normalizer.normalize(value.toLowerCase(Locale.ROOT), Normalizer.Form.NFD);
+        return normalized.replaceAll("\\p{M}", "").replace('đ', 'd')
+                .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
     }
 
     /** True only for a signal the user reports as present AND current. */

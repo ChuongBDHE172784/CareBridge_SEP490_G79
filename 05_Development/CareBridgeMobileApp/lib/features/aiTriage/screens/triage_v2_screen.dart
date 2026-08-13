@@ -20,8 +20,7 @@ class _TriageV2ScreenState extends State<TriageV2Screen> {
   final _message = TextEditingController();
   TriageV2Session? _session;
   String _selectedTarget = 'UNKNOWN';
-  String? _selectedOption;
-  String? _selectedQuestionId;
+  final Map<String, String> _selectedOptions = {};
   bool _bothRequested = false;
   String? _firstTarget;
   bool _busy = false;
@@ -34,15 +33,22 @@ class _TriageV2ScreenState extends State<TriageV2Screen> {
   }
 
   Future<void> _submit() async {
-    final text = (_selectedOption ?? _message.text).trim();
+    final selectedCodes = _selectedOptions.values.toSet();
+    final selectedOption = selectedCodes.length == 1
+        ? selectedCodes.first
+        : null;
+    final typedText = _message.text.trim();
+    final text = typedText.isNotEmpty
+        ? typedText
+        : (_selectedOptions.isNotEmpty ? 'Đã trả lời các câu hỏi.' : '');
     if (text.isEmpty || _busy) return;
-    if (_selectedOption == 'CLARIFY_TARGET_BOTH') _bothRequested = true;
+    if (selectedOption == 'CLARIFY_TARGET_BOTH') _bothRequested = true;
     if (_bothRequested &&
         {
           'CLARIFY_TARGET_MOTHER',
           'CLARIFY_TARGET_BABY',
-        }.contains(_selectedOption)) {
-      _firstTarget = _selectedOption == 'CLARIFY_TARGET_MOTHER'
+        }.contains(selectedOption)) {
+      _firstTarget = selectedOption == 'CLARIFY_TARGET_MOTHER'
           ? 'MOTHER'
           : 'BABY';
     }
@@ -58,20 +64,19 @@ class _TriageV2ScreenState extends State<TriageV2Screen> {
               message: text,
               // Identifiers only. The server maps them to clinical meaning; the option code is
               // no longer smuggled through as free text for an extractor to guess at.
-              answers: (_selectedOption == null || _selectedQuestionId == null)
-                  ? const []
-                  : [
-                      TriageV2Answer(
-                        questionId: _selectedQuestionId!,
-                        optionCode: _selectedOption!,
-                      ),
-                    ],
+              answers: _selectedOptions.entries
+                  .map(
+                    (entry) => TriageV2Answer(
+                      questionId: entry.key,
+                      optionCode: entry.value,
+                    ),
+                  )
+                  .toList(growable: false),
             );
       if (!mounted) return;
       setState(() {
         _session = next;
-        _selectedOption = null;
-        _selectedQuestionId = null;
+        _selectedOptions.clear();
         _message.clear();
       });
     } on TriageV2StaleVersionFailure {
@@ -101,8 +106,7 @@ class _TriageV2ScreenState extends State<TriageV2Screen> {
     setState(() {
       _selectedTarget = _firstTarget == 'MOTHER' ? 'BABY' : 'MOTHER';
       _session = null;
-      _selectedOption = null;
-      _selectedQuestionId = null;
+      _selectedOptions.clear();
       _bothRequested = false;
       _firstTarget = null;
       _error = null;
@@ -319,12 +323,9 @@ class _TriageV2ScreenState extends State<TriageV2Screen> {
                         (code) => ChoiceChip(
                           key: Key('triage-v2-option-$code'),
                           label: Text(_optionLabel(code)),
-                          selected:
-                              _selectedOption == code &&
-                              _selectedQuestionId == id,
+                          selected: _selectedOptions[id] == code,
                           onSelected: (_) => setState(() {
-                            _selectedOption = code;
-                            _selectedQuestionId = id;
+                            _selectedOptions[id] = code;
                           }),
                         ),
                       )
@@ -342,7 +343,10 @@ class _TriageV2ScreenState extends State<TriageV2Screen> {
       session.questionIds.isEmpty ||
       session.questionIds
           .map(TriageV2Question.fromId)
-          .any((question) => question.optionCodes.isEmpty);
+          .any(
+            (question) =>
+                question.optionCodes.isEmpty || question.answerType == 'NUMBER',
+          );
 
   List<Widget> _buildVerifiedSources(TriageV2Session session) {
     if (session.citations.isEmpty) return const [];
@@ -415,8 +419,14 @@ String _optionLabel(String code) => switch (code) {
   'BLEEDING_HEAVY' => 'Nhiều, thấm ướt băng trong thời gian ngắn',
   'CLOTS_LARGE' => 'Có, cục lớn',
   'CLOTS_NONE' => 'Không',
-  'DIZZINESS_YES' || 'VISUAL_CHANGE_YES' || 'EPIGASTRIC_YES' || 'SWELLING_YES' => 'Có',
-  'DIZZINESS_NO' || 'VISUAL_CHANGE_NO' || 'EPIGASTRIC_NO' || 'SWELLING_NO' => 'Không',
+  'DIZZINESS_YES' ||
+  'VISUAL_CHANGE_YES' ||
+  'EPIGASTRIC_YES' ||
+  'SWELLING_YES' => 'Có',
+  'DIZZINESS_NO' ||
+  'VISUAL_CHANGE_NO' ||
+  'EPIGASTRIC_NO' ||
+  'SWELLING_NO' => 'Không',
   'BP_GTE_140_90' => 'Từ 140/90 trở lên',
   'BP_LT_140_90' => 'Dưới 140/90',
   'NO_DEVICE_OR_UNAWARE' => 'Tôi không có thiết bị đo / không rõ',
@@ -430,6 +440,12 @@ String _optionLabel(String code) => switch (code) {
   'INTENT_SYMPTOM_TRIAGE' => 'Tôi đang có triệu chứng và muốn được định hướng',
   'INTENT_GENERAL_INFO' => 'Tôi muốn tìm hiểu thông tin chung',
   'INTENT_SOURCE_LOOKUP' => 'Tôi muốn biết nguồn tham khảo',
+  'STAGE_PRECONCEPTION' => 'Chuẩn bị mang thai',
+  'STAGE_POSSIBLE_PREGNANCY' => 'Có thể đang mang thai',
+  'STAGE_PREGNANCY' => 'Đang mang thai',
+  'STAGE_POSTPARTUM_MOTHER' => 'Sau sinh',
+  'STAGE_INFANT_0_12M' => 'Bé 0–12 tháng',
+  'STAGE_TODDLER_12_24M' => 'Bé 12–24 tháng',
   'UNSURE' => 'Tôi không chắc',
   _ => code,
 };

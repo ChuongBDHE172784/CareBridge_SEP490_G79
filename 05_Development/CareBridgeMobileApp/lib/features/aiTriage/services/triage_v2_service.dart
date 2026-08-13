@@ -4,6 +4,7 @@ import 'dart:math';
 
 import '../../../core/network/api_client.dart';
 import '../models/triage_v2_session.dart';
+import 'triage_service.dart' show TriageConsentRequiredFailure;
 
 typedef TriageV2GetRequest = Future<dynamic> Function(String path);
 typedef TriageV2PostRequest =
@@ -29,7 +30,8 @@ class TriageV2Service {
        _delete = deleteRequest ?? ((path) => apiDelete(path));
 
   static const _base = '/api/internal/v2/triage/sessions';
-  static const _timeout = Duration(seconds: 8);
+  // Must exceed the backend's 15-second envelope so the server can return its controlled fallback.
+  static const _timeout = Duration(seconds: 17);
   final TriageV2GetRequest _get;
   final TriageV2PostRequest _post;
   final TriageV2DeleteRequest _delete;
@@ -46,6 +48,7 @@ class TriageV2Service {
       'target': selectedTarget,
       'profileId': profileId,
     });
+    _prunePending(_pendingStarts);
     final pending = _pendingStarts.putIfAbsent(
       fingerprint,
       () => _PendingMutation(fingerprint),
@@ -89,6 +92,7 @@ class TriageV2Service {
       'message': message,
       'answers': encodedAnswers,
     });
+    _prunePending(_pendingContinues);
     final pending = _pendingContinues.putIfAbsent(
       fingerprint,
       () => _PendingMutation(fingerprint),
@@ -131,6 +135,10 @@ class TriageV2Service {
       );
     } on ApiException catch (error) {
       if (error.statusCode == 409 &&
+          error.errorCode == 'TRIAGE_CONSENT_REQUIRED') {
+        throw const TriageConsentRequiredFailure();
+      }
+      if (error.statusCode == 409 &&
           error.errorCode == 'TRIAGE_V2_STATE_VERSION_CONFLICT') {
         throw const TriageV2StaleVersionFailure();
       }
@@ -141,15 +149,25 @@ class TriageV2Service {
       throw TriageV2UnavailableFailure(error);
     }
   }
+
+  void _prunePending(Map<String, _PendingMutation> pending) {
+    final cutoff = DateTime.now().subtract(const Duration(minutes: 5));
+    pending.removeWhere((_, value) => value.createdAt.isBefore(cutoff));
+    while (pending.length >= 32) {
+      pending.remove(pending.keys.first);
+    }
+  }
 }
 
 class _PendingMutation {
   _PendingMutation(this.fingerprint)
     : requestId = _newId(),
-      messageId = _newId();
+      messageId = _newId(),
+      createdAt = DateTime.now();
   final String fingerprint;
   final String requestId;
   final String messageId;
+  final DateTime createdAt;
 }
 
 String _newId() {

@@ -20,11 +20,13 @@ class HttpChildTriageAiClientTest {
     private static HttpServer server;
     private static int port;
     private static final AtomicReference<String> requestBody = new AtomicReference<>();
+    private static final AtomicReference<String> internalKey = new AtomicReference<>();
 
     @BeforeAll
     static void startServer() throws Exception {
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/triage/child", exchange -> {
+            internalKey.set(exchange.getRequestHeaders().getFirst("X-CareBridge-Internal-Key"));
             requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -48,6 +50,7 @@ class HttpChildTriageAiClientTest {
         HttpChildTriageAiClient client = new HttpChildTriageAiClient(mapper);
         ReflectionTestUtils.setField(client, "aiTriageServiceUrl", "http://127.0.0.1:" + port);
         ReflectionTestUtils.setField(client, "requestTimeoutMs", 2_000L);
+        ReflectionTestUtils.setField(client, "internalApiKey", "test-internal-key");
 
         client.triageChild(RunIntakeRequest.builder()
                 .stage(TriageStage.PREGNANCY)
@@ -57,6 +60,7 @@ class HttpChildTriageAiClientTest {
                 .build());
 
         var payload = mapper.readTree(requestBody.get());
+        assertThat(internalKey.get()).isEqualTo("test-internal-key");
         assertThat(payload.get("painSeverity").asText()).isEqualTo("vừa");
         assertThat(payload.get("urinarySymptoms").asText()).isEqualTo("tiểu buốt");
         assertThat(payload.get("hydrationStatus").asText()).isEqualTo("khô miệng");

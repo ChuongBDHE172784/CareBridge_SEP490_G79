@@ -200,17 +200,29 @@ class TriageV2Session {
 }
 
 class TriageV2Question {
-  const TriageV2Question(this.id, this.text, this.optionCodes);
+  const TriageV2Question(
+    this.id,
+    this.text,
+    this.optionCodes, {
+    this.answerType = 'SINGLE_CHOICE',
+  });
 
   final String id;
   final String text;
   final List<String> optionCodes;
+  final String answerType;
 
   static const _catalog = <String, TriageV2Question>{
     'Q_BLEEDING_AMOUNT': TriageV2Question(
       'Q_BLEEDING_AMOUNT',
       'Lượng máu ra hiện tại như thế nào?',
-      ['BLEEDING_NONE', 'BLEEDING_SPOTTING', 'BLEEDING_MODERATE', 'BLEEDING_HEAVY', 'UNSURE'],
+      [
+        'BLEEDING_NONE',
+        'BLEEDING_SPOTTING',
+        'BLEEDING_MODERATE',
+        'BLEEDING_HEAVY',
+        'UNSURE',
+      ],
     ),
     'Q_CLOTS': TriageV2Question(
       'Q_CLOTS',
@@ -256,11 +268,13 @@ class TriageV2Question {
       'Q_GESTATIONAL_WEEK',
       'Bạn đang mang thai khoảng bao nhiêu tuần?',
       ['UNSURE'],
+      answerType: 'NUMBER',
     ),
     'Q_POSTPARTUM_DAY': TriageV2Question(
       'Q_POSTPARTUM_DAY',
       'Bạn sinh em bé được bao nhiêu ngày rồi?',
       ['UNSURE'],
+      answerType: 'NUMBER',
     ),
     'Q_CLARIFY_TARGET_ENTITY': TriageV2Question(
       'Q_CLARIFY_TARGET_ENTITY',
@@ -281,7 +295,17 @@ class TriageV2Question {
       'Q_BABY_AGE_MONTHS',
       'Bé hiện được bao nhiêu tháng tuổi?',
       ['UNSURE'],
+      answerType: 'NUMBER',
     ),
+    'Q_CLARIFY_STAGE':
+        TriageV2Question('Q_CLARIFY_STAGE', 'Bạn đang hỏi cho giai đoạn nào?', [
+          'STAGE_PRECONCEPTION',
+          'STAGE_POSSIBLE_PREGNANCY',
+          'STAGE_PREGNANCY',
+          'STAGE_POSTPARTUM_MOTHER',
+          'STAGE_INFANT_0_12M',
+          'STAGE_TODDLER_12_24M',
+        ]),
     // Deterministic danger and safety screens. Without these the emergency signals could only be
     // reached through free-text extraction, so an LLM outage left the engine unable to see them.
     'Q_GLOBAL_DANGER': TriageV2Question(
