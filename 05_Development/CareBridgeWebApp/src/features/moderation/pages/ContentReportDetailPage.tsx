@@ -233,8 +233,23 @@ export default function ContentReportDetailPage() {
                     <h2 className="text-base font-bold text-on-surface m-0">Nội dung bị báo cáo</h2>
                   </div>
                   <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
-                    <p className="text-sm text-outline mb-1">{TARGET_TYPE_LABELS[item.targetType]}</p>
-                    <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{item.contentPreview}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/60 pb-3 mb-3">
+                      <span className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full bg-surface text-primary text-xs font-semibold">
+                        {TARGET_TYPE_LABELS[item.targetType]}
+                      </span>
+                      {item.authorName && (
+                        <span className="text-xs text-on-surface-variant flex items-center gap-1 font-medium">
+                          <span className="material-symbols-outlined text-sm">person</span>
+                          Tài khoản: <strong className="text-on-surface font-semibold">{item.authorName}</strong>
+                        </span>
+                      )}
+                    </div>
+                    {item.targetTitle && (
+                      <h3 className="text-base font-bold text-on-surface mb-2 mt-0">
+                        {item.targetTitle}
+                      </h3>
+                    )}
+                    <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap m-0">{item.contentPreview}</p>
                   </div>
                 </div>
               </div>

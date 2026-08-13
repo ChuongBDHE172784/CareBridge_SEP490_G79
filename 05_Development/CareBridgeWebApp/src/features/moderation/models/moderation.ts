@@ -30,6 +30,9 @@ export interface ModerationQueueItem {
   assignedModeratorId: string | null;
   revertedAt: string | null;
   revertedBy: string | null;
+  authorId?: string | null;
+  authorName?: string | null;
+  targetTitle?: string | null;
 }
 
 export interface ModerationQueuePage {
