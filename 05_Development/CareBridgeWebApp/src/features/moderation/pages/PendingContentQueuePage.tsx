@@ -153,12 +153,14 @@ export default function PendingContentQueuePage() {
   const filteredHistory = useMemo(() => {
     const query = search.trim().toLowerCase();
     return historyItems.filter((item) => {
+      if (!item.actionType) return false;
       const matchesAction = actionFilter === 'ALL' || item.actionType === actionFilter;
+      const actionLabel = ACTION_TYPE_LABELS[item.actionType] ?? item.actionType;
       const matchesQuery = query.length === 0
         || matchesText(item.contentPreview, query)
         || matchesText(item.reason, query)
         || matchesText(item.moderatorName, query)
-        || matchesText(ACTION_TYPE_LABELS[item.actionType], query)
+        || matchesText(actionLabel, query)
         || matchesText(TARGET_TYPE_LABELS[item.targetType], query);
       return matchesAction && matchesQuery;
     });
@@ -176,7 +178,7 @@ export default function PendingContentQueuePage() {
     switch (historySortKey) {
       case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
       case 'contentPreview': return item.contentPreview;
-      case 'actionType': return ACTION_TYPE_LABELS[item.actionType];
+      case 'actionType': return item.actionType ? (ACTION_TYPE_LABELS[item.actionType] ?? item.actionType) : '';
       case 'moderatorName': return item.moderatorName;
       case 'reason': return item.reason;
       case 'actionAt': return new Date(item.actionAt).getTime();
@@ -457,7 +459,7 @@ export default function PendingContentQueuePage() {
                             <td className="py-3.5 px-2">
                               <span className={`py-1 px-3 rounded-full text-xs font-semibold ${item.actionType === 'APPROVE' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#FCE8E6] text-[#C5221F]'
                                 }`}>
-                                {ACTION_TYPE_LABELS[item.actionType]}
+                                {item.actionType ? (ACTION_TYPE_LABELS[item.actionType] ?? item.actionType) : '—'}
                               </span>
                             </td>
                             <td className="py-3.5 px-2 text-[13px] text-on-surface-variant whitespace-nowrap">{item.moderatorName ?? '—'}</td>
