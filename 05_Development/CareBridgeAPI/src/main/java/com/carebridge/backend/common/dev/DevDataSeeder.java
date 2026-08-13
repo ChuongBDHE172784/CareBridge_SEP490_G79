@@ -7,6 +7,8 @@ import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,6 +24,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -29,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Opt-in synthetic development data seeder.
- * Only seeds user accounts and their basic or professional profile fields.
+ * Seeds the canonical development accounts/profiles and replays the idempotent community
+ * moderation demo migration after those account-owned rows are available.
  */
 @Slf4j
 @Component
@@ -161,6 +165,132 @@ public class DevDataSeeder implements ApplicationRunner {
         }
 
         seedVerifiedExpertProfiles(savedUsers);
+        seedCommunityModerationDemoData();
+    }
+
+    /**
+     * Flyway runs before this ApplicationRunner, so account-owned demo rows are skipped on a
+     * clean database. Replaying the consolidated, idempotent migration after the accounts and
+     * expert profiles have been flushed makes the dev dataset available on every startup.
+     */
+    private void seedCommunityModerationDemoData() {
+        ClassPathResource resource = new ClassPathResource(
+                "db/migration/V20260813220000__seed_ai_and_community_moderation_demo.sql");
+        if (!resource.exists()) {
+            log.warn("Community moderation demo migration is not available on the classpath");
+            return;
+        }
+
+        userRepository.flush();
+        expertProfileRepository.flush();
+        try (var inputStream = resource.getInputStream()) {
+            String script = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            int executed = 0;
+            for (String statement : splitSqlStatements(script)) {
+                if (!statement.isBlank()) {
+                    jdbcTemplate.execute(statement);
+                    executed++;
+                }
+            }
+            log.info("Replayed {} statements from the community moderation demo migration", executed);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to read community moderation demo migration", ex);
+        }
+    }
+
+    /** Split PostgreSQL SQL while preserving semicolons inside strings and dollar-quoted blocks. */
+    private List<String> splitSqlStatements(String script) {
+        List<String> statements = new java.util.ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        String dollarTag = null;
+        boolean singleQuoted = false;
+        boolean doubleQuoted = false;
+        boolean lineComment = false;
+        boolean blockComment = false;
+
+        for (int i = 0; i < script.length(); i++) {
+            char ch = script.charAt(i);
+            char next = i + 1 < script.length() ? script.charAt(i + 1) : '\0';
+            if (lineComment) {
+                current.append(ch);
+                if (ch == '\n') {
+                    lineComment = false;
+                }
+                continue;
+            }
+            if (blockComment) {
+                current.append(ch);
+                if (ch == '*' && next == '/') {
+                    current.append(next);
+                    i++;
+                    blockComment = false;
+                }
+                continue;
+            }
+            if (dollarTag != null) {
+                if (script.startsWith(dollarTag, i)) {
+                    current.append(dollarTag);
+                    i += dollarTag.length() - 1;
+                    dollarTag = null;
+                } else {
+                    current.append(ch);
+                }
+                continue;
+            }
+            if (singleQuoted) {
+                current.append(ch);
+                if (ch == '\'' && next == '\'') {
+                    current.append(next);
+                    i++;
+                } else if (ch == '\'') {
+                    singleQuoted = false;
+                }
+                continue;
+            }
+            if (doubleQuoted) {
+                current.append(ch);
+                if (ch == '"' && next == '"') {
+                    current.append(next);
+                    i++;
+                } else if (ch == '"') {
+                    doubleQuoted = false;
+                }
+                continue;
+            }
+            if (ch == '-' && next == '-') {
+                current.append(ch).append(next);
+                i++;
+                lineComment = true;
+            } else if (ch == '/' && next == '*') {
+                current.append(ch).append(next);
+                i++;
+                blockComment = true;
+            } else if (ch == '\'') {
+                current.append(ch);
+                singleQuoted = true;
+            } else if (ch == '"') {
+                current.append(ch);
+                doubleQuoted = true;
+            } else if (ch == '$') {
+                int end = script.indexOf('$', i + 1);
+                if (end > i && script.substring(i + 1, end).matches("[A-Za-z_][A-Za-z0-9_]*|")) {
+                    dollarTag = script.substring(i, end + 1);
+                    current.append(dollarTag);
+                    i = end;
+                } else {
+                    current.append(ch);
+                }
+            } else if (ch == ';') {
+                statements.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(ch);
+            }
+        }
+        if (!current.toString().isBlank()) {
+            statements.add(current.toString());
+        }
+        return statements;
     }
 
     private boolean synchronizeSeedAccount(User user, SeedAccount seed) {

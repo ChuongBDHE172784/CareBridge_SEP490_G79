@@ -79,16 +79,42 @@ class DevDataSeederPostgresIntegrationTest {
     private SmsService smsService;
 
     @Test
-    void seedsOnlyAccountsAndProfilesAndRemainsIdempotent() {
+    void seedsAccountsProfilesAndCommunityDemoAndRemainsIdempotent() {
         assertSeedAccountsAndProfiles();
         assertNoDomainFixtures();
+        assertCommunityModerationFixtures();
 
         List<Long> domainCountsBefore = domainTableCounts();
         seeder.run(new DefaultApplicationArguments(new String[0]));
 
         assertSeedAccountsAndProfiles();
         assertNoDomainFixtures();
+        assertCommunityModerationFixtures();
         assertThat(domainTableCounts()).isEqualTo(domainCountsBefore);
+    }
+
+    private void assertCommunityModerationFixtures() {
+        assertThat(count("SELECT count(*) FROM community_topics WHERE id::text LIKE 'c1000000-0000-4000-8000-%'"))
+                .isEqualTo(20L);
+        assertThat(count("SELECT count(*) FROM community_topics WHERE id::text LIKE 'c2000000-0000-4000-8000-%'"))
+                .isEqualTo(40L);
+        assertThat(count("SELECT count(*) FROM community_content WHERE content_id::text LIKE 'c3000000-0000-4000-8000-%'"))
+                .isEqualTo(64L);
+        assertThat(count("SELECT count(*) FROM community_content WHERE content_id::text LIKE 'c4000000-0000-4000-8000-%'"))
+                .isEqualTo(84L);
+        assertThat(count("SELECT count(*) FROM moderation_cases WHERE moderation_case_id::text LIKE 'c6000000-0000-4000-8000-%'"))
+                .isEqualTo(24L);
+        assertThat(count("SELECT count(*) FROM ai_content_scan_jobs WHERE job_id::text LIKE 'c7000000-0000-4000-8000-%'"))
+                .isEqualTo(44L);
+        assertThat(count("SELECT count(*) FROM ai_content_assessments WHERE assessment_id::text LIKE 'c8000000-0000-4000-8000-%'"))
+                .isEqualTo(24L);
+        assertThat(count("""
+                SELECT count(*) FROM community_content
+                 WHERE content_id::text LIKE 'c4000000-0000-4000-8000-%'
+                   AND experience_tag IS NOT NULL
+                   AND experience_tag NOT IN ('Trải nghiệm thực tế', 'Chăm sóc hằng ngày',
+                                              'Hỗ trợ tinh thần', 'Thông tin tham khảo')
+                """)).isZero();
     }
 
     private void assertSeedAccountsAndProfiles() {
