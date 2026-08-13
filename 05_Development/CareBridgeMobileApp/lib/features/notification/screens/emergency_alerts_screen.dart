@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
-import '../../familySync/models/care_group_model.dart';
-import '../../familySync/screens/care_group_invitation_screen.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../routing/consultation_notification_routing.dart';
 import 'notification_detail_screen.dart';
 
-class NotificationCenterScreen extends StatefulWidget {
-  const NotificationCenterScreen({super.key});
+/// Dedicated screen for displaying emergency & urgent health alerts from CareBridge.
+class EmergencyAlertsScreen extends StatefulWidget {
+  const EmergencyAlertsScreen({super.key});
 
   @override
-  State<NotificationCenterScreen> createState() =>
-      _NotificationCenterScreenState();
+  State<EmergencyAlertsScreen> createState() => _EmergencyAlertsScreenState();
 }
 
-class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
+class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
   static const _canvas = Color(0xFFF6F1EC);
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
@@ -24,25 +22,40 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outlineVariant = Color(0xFFD6C2BD);
   static const _surfaceLowest = Color(0xFFFFFFFF);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSecondaryContainer = Color(0xFF735E56);
+  static const _alertAccent = Color(0xFFD9534F);
+  static const _alertBg = Color(0xFFFFF0ED);
 
   bool _showUnreadOnly = false;
-  List<NotificationRecord> _all = [];
+  List<NotificationRecord> _alerts = [];
   bool _isLoading = true;
   String? _error;
 
   List<NotificationRecord> get _displayed =>
-      _showUnreadOnly ? _all.where((n) => n.isUnread).toList() : _all;
+      _showUnreadOnly ? _alerts.where((n) => n.isUnread).toList() : _alerts;
 
-  int get _unreadCount => _all.where((n) => n.isUnread).length;
+  int get _unreadCount => _alerts.where((n) => n.isUnread).length;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  static bool _isAlertNotification(NotificationRecord n) {
+    final type = n.type.toUpperCase();
+    final refType = n.referenceType?.toUpperCase() ?? '';
+    return type.contains('ALERT') ||
+        type.contains('HEALTH') ||
+        type.contains('EMERGENCY') ||
+        type.contains('SAFETY') ||
+        type.contains('LOCATION_SHARE') ||
+        type.contains('FALL') ||
+        refType.contains('ALERT') ||
+        refType.contains('HEALTH') ||
+        refType.contains('EMERGENCY') ||
+        refType.contains('SAFETY') ||
+        refType.contains('LOCATION_SHARE') ||
+        refType.contains('FALL');
   }
 
   Future<void> _load() async {
@@ -54,13 +67,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       final result = await NotificationService.instance.getNotifications();
       if (!mounted) return;
       setState(() {
-        _all = result;
+        _alerts = result.where(_isAlertNotification).toList();
         _isLoading = false;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Lỗi tải thông báo (${e.statusCode})';
+        _error = 'Lỗi tải cảnh báo (${e.statusCode})';
         _isLoading = false;
       });
     } catch (_) {
@@ -151,9 +164,22 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             ),
             const SizedBox(width: 8),
           ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: _alertBg,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              color: _alertAccent,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
           const Expanded(
             child: Text(
-              'Thông báo của bạn',
+              'Cảnh báo khẩn cấp',
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 20,
@@ -186,7 +212,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       child: Row(
         children: [
           _chip(
-            label: 'Tất cả',
+            label: 'Tất cả cảnh báo (${_alerts.length})',
             active: !_showUnreadOnly,
             onTap: () => setState(() => _showUnreadOnly = false),
           ),
@@ -227,7 +253,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           label,
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: active ? Colors.white : _onSurfaceVariant,
           ),
@@ -242,34 +268,6 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       onTap: () async {
         await _markAsRead(n);
         if (!mounted) return;
-        final conversationId = n.type.toUpperCase() == 'MESSAGE'
-            ? (n.metadata?['conversationId'] as String?)
-            : null;
-        if (conversationId != null) {
-          context.push('/direct-chat/$conversationId');
-          return;
-        }
-        final type = n.type.toUpperCase();
-        if (type == 'GROUP_INVITE' ||
-            type == 'CARE_GROUP_INVITATION' ||
-            type == 'FAMILY_SYNC') {
-          final groupId = n.referenceId ?? n.metadata?['groupId'] as String?;
-          if (groupId != null) {
-            final pendingInvite = PendingInvitation(
-              groupId: groupId,
-              groupName: n.metadata?['groupName'] as String? ?? 'Nhóm chăm sóc',
-              memberRole: 'MEMBER',
-            );
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    CareGroupInvitationScreen(invitation: pendingInvite),
-              ),
-            );
-            _load();
-            return;
-          }
-        }
         final consultationRoute = resolveNotificationRoute(n);
         if (consultationRoute != null) {
           context.push(consultationRoute);
@@ -283,18 +281,21 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         _load();
       },
       child: Opacity(
-        opacity: isUnread ? 1.0 : 0.8,
+        opacity: isUnread ? 1.0 : 0.85,
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: _surfaceLowest,
             borderRadius: BorderRadius.circular(24),
-            border: isUnread
-                ? Border(left: BorderSide(color: _primaryContainer, width: 4))
-                : null,
+            border: Border(
+              left: BorderSide(
+                color: isUnread ? _alertAccent : _primaryContainer,
+                width: 4,
+              ),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Color.fromRGBO(90, 70, 63, isUnread ? 0.06 : 0.04),
+                color: Color.fromRGBO(90, 70, 63, isUnread ? 0.08 : 0.04),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
@@ -310,7 +311,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: _primaryContainer,
+                      color: _alertAccent,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -318,7 +319,19 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildIcon(n),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _alertBg,
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: _alertAccent,
+                      size: 24,
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
@@ -377,84 +390,21 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     );
   }
 
-  Widget _buildIcon(NotificationRecord n) {
-    final type = n.type.toUpperCase();
-    final isUnread = n.isUnread;
-
-    IconData icon;
-    Color bgColor;
-    Color iconColor;
-
-    switch (type) {
-      case 'LOCATION_SHARE':
-        icon = Icons.share_location_rounded;
-        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
-        iconColor = isUnread ? _primary : _onSurfaceVariant;
-        break;
-      case 'VACCINATION':
-      case 'REMINDER':
-        icon = Icons.vaccines_outlined;
-        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
-        iconColor = isUnread ? _primary : _onSurfaceVariant;
-        break;
-      case 'APPOINTMENT':
-        icon = Icons.event_outlined;
-        bgColor = isUnread ? _secondaryContainer : _surfaceContainerLow;
-        iconColor = isUnread ? _onSecondaryContainer : _onSurfaceVariant;
-        break;
-      case 'COMMUNITY':
-      case 'MESSAGE':
-        icon = Icons.forum_outlined;
-        bgColor = _surfaceContainerLow;
-        iconColor = _onSurfaceVariant;
-        break;
-      case 'CONSULTATION':
-        icon = Icons.medical_services_outlined;
-        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
-        iconColor = isUnread ? _primary : _onSurfaceVariant;
-        break;
-      case 'GROUP_INVITE':
-      case 'CARE_GROUP':
-      case 'CARE_GROUP_INVITATION':
-      case 'FAMILY_SYNC':
-        icon = Icons.group_add_outlined;
-        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
-        iconColor = isUnread ? _primary : _onSurfaceVariant;
-        break;
-      case 'SYSTEM':
-        icon = Icons.update_outlined;
-        bgColor = _surfaceContainerLow;
-        iconColor = _onSurfaceVariant;
-        break;
-      default:
-        icon = Icons.notifications_outlined;
-        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
-        iconColor = isUnread ? _primary : _onSurfaceVariant;
-    }
-
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: bgColor),
-      child: Icon(icon, color: iconColor, size: 22),
-    );
-  }
-
   Widget _buildEmpty() {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.notifications_none_rounded,
+          const Icon(
+            Icons.warning_amber_rounded,
             color: _outlineVariant,
             size: 64,
           ),
           const SizedBox(height: 16),
           Text(
             _showUnreadOnly
-                ? 'Không có thông báo chưa đọc'
-                : 'Chưa có thông báo nào',
+                ? 'Không có cảnh báo khẩn cấp chưa đọc'
+                : 'Hiện không có cảnh báo khẩn cấp nào',
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 16,

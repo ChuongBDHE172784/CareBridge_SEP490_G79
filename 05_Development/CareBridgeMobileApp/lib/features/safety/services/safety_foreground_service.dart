@@ -28,6 +28,13 @@ DateTime? fallDetectorRearmAtFromTaskData(Object data) {
   return DateTime.tryParse(respondedAt)?.toUtc();
 }
 
+@visibleForTesting
+bool isFallDetectorAlertResponseStartData(Object data) {
+  if (data is! Map) return false;
+  return Map<String, dynamic>.from(data)['type'] ==
+      'begin_fall_detector_alert_response';
+}
+
 abstract class SafetyForegroundGateway {
   Future<bool> isRunning();
 
@@ -117,6 +124,11 @@ class SafetyForegroundServiceCoordinator {
       : const Stream.empty();
   bool get isRunning => _isRunning;
   bool get isSupported => _platformSupported();
+
+  void beginFallDetectorAlertResponse() {
+    if (!_platformSupported() || !_isRunning) return;
+    _sendTaskData({'type': 'begin_fall_detector_alert_response'});
+  }
 
   void rearmFallDetectorAfterResponse({DateTime? respondedAt}) {
     if (!_platformSupported() || !_isRunning) return;
@@ -410,6 +422,10 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
 
   @override
   void onReceiveData(Object data) {
+    if (isFallDetectorAlertResponseStartData(data)) {
+      _sensorService.beginAlertResponse();
+      return;
+    }
     final respondedAt = fallDetectorRearmAtFromTaskData(data);
     if (respondedAt != null) {
       _sensorService.rearmAfterAlertResponse(respondedAt);

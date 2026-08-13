@@ -31,6 +31,26 @@ Future<void> dispatchSafetyCountdownResult({
   }
 }
 
+Future<SafetyEvent> persistSafetyResponseThenRearm({
+  required void Function() beginResponse,
+  required Future<SafetyEvent> Function() persistResponse,
+  required void Function(SafetyEvent event) applyPersistedResponse,
+  required void Function() rearmDetector,
+  required Future<void> Function(SafetyEvent event) resolveEmergency,
+}) async {
+  beginResponse();
+  try {
+    final updated = await persistResponse();
+    applyPersistedResponse(updated);
+    rearmDetector();
+    await resolveEmergency(updated);
+    return updated;
+  } catch (_) {
+    rearmDetector();
+    rethrow;
+  }
+}
+
 SafetyEvent? selectNextOpenSafetyEvent(
   Iterable<SafetyEvent> events, {
   required String excludingId,
@@ -67,16 +87,56 @@ bool shouldReleaseSafetyCountdownOwnership({
   required String completedEventId,
 }) => activeEventId == completedEventId;
 
+/// Mirrors the backend's `DUPLICATE_FALL_WINDOW`: two detections this close
+/// together describe the same physical incident.
+const safetyDuplicateFallWindow = Duration(seconds: 10);
+
 bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {
   if (first.id == second.id ||
       first.eventType == 'SENSOR_SELF_TEST' ||
-      second.eventType == 'SENSOR_SELF_TEST') {
+      second.eventType == 'SENSOR_SELF_TEST' ||
+      !isPendingSafetyCountdown(first) ||
+      !isPendingSafetyCountdown(second) ||
+      first.responseType != null ||
+      second.responseType != null) {
     return false;
   }
   final firstAt = first.detectedAt;
   final secondAt = second.detectedAt;
   if (firstAt == null || secondAt == null) return false;
-  return firstAt.difference(secondAt).abs() <= const Duration(seconds: 10);
+  return firstAt.difference(secondAt).abs() <= safetyDuplicateFallWindow;
+}
+
+/// The response marker is captured from the device clock, so it only says
+/// *when* an alert was answered; it must never be compared against a backend
+/// `detectedAt`, because the API tolerates minutes of client clock skew and a
+/// skewed comparison would silently swallow a genuine new fall. Suppression
+/// therefore also requires [answeredEvent], so that "same incident" is decided
+/// between two backend timestamps, and the marker expires shortly after the
+/// response.
+const safetyAlertResponseStaleWindow = Duration(seconds: 30);
+
+bool isFallEventStaleAfterAlertResponse(
+  SafetyEvent event,
+  DateTime? responseStartedAt, {
+  SafetyEvent? answeredEvent,
+  DateTime? evaluatedAt,
+}) {
+  final detectedAt = event.detectedAt;
+  final answeredAt = answeredEvent?.detectedAt;
+  if (responseStartedAt == null || detectedAt == null || answeredAt == null) {
+    return false;
+  }
+  if (evaluatedAt != null &&
+      evaluatedAt.toUtc().difference(responseStartedAt.toUtc()) >
+          safetyAlertResponseStaleWindow) {
+    return false;
+  }
+  return event.id != answeredEvent!.id &&
+      event.eventType != 'SENSOR_SELF_TEST' &&
+      isPendingSafetyCountdown(event) &&
+      detectedAt.toUtc().difference(answeredAt.toUtc()).abs() <=
+          safetyDuplicateFallWindow;
 }
 
 typedef ReportDuplicateFalsePositive =
@@ -251,6 +311,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   final Set<String> _duplicateCleanupInFlight = {};
   String? _countdownEventId;
   SafetyEvent? _countdownEvent;
+  DateTime? _latestAlertResponseStartedAt;
+  SafetyEvent? _latestAlertResponseEvent;
   bool _loading = true;
   // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
   // streams; backend fall detection remains controlled by SafetyConfig.
@@ -419,6 +481,18 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    if (isFallEventStaleAfterAlertResponse(
+      event,
+      _latestAlertResponseStartedAt,
+      answeredEvent: _latestAlertResponseEvent,
+      evaluatedAt: DateTime.now(),
+    )) {
+      _suppressDuplicateEvent(event);
+      setState(() {
+        _events = [event, ..._events.where((item) => item.id != event.id)];
+      });
+      return;
+    }
     final active = _countdownEvent;
     if (active != null && isLikelyDuplicateFallEvent(active, event)) {
       _suppressDuplicateEvent(event);
@@ -496,6 +570,16 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     bool simulated = false,
     bool presentAsRealAlert = false,
   }) async {
+    if (!simulated &&
+        isFallEventStaleAfterAlertResponse(
+          event,
+          _latestAlertResponseStartedAt,
+          answeredEvent: _latestAlertResponseEvent,
+          evaluatedAt: DateTime.now(),
+        )) {
+      _suppressDuplicateEvent(event);
+      return;
+    }
     if (!mounted || _countdownEventId != null) {
       return;
     }
@@ -506,6 +590,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _countdownEventId = event.id;
     _countdownEvent = event;
     if (!simulated) _pendingRealEvents.remove(event.id);
+    // Suspend detection for as long as this alert is on screen. Handling the
+    // phone to answer it — and any retry of the same physical drop — must not
+    // mint a second event that would pop up straight after the user responds.
+    if (!simulated) _foregroundCoordinator.beginFallDetectorAlertResponse();
     final result = await showModalBottomSheet<SafetyCountdownResult>(
       context: context,
       isDismissible: false,
@@ -592,6 +680,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         );
       }
     } finally {
+      // Pairs the suspension above on every exit path, including timeout, the
+      // emergency route and a failed response, so detection can never stay
+      // switched off after an alert closes.
+      if (!simulated) _foregroundCoordinator.rearmFallDetectorAfterResponse();
       var authoritativeRefreshSucceeded = simulated;
       final queuedBeforeRefresh = simulated
           ? const <String>{}
@@ -702,24 +794,38 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
-    _foregroundCoordinator.rearmFallDetectorAfterResponse();
-    final updated = await _safetyService.confirmSafetyCheck(
-      event.id,
-      note: note,
+    await persistSafetyResponseThenRearm(
+      beginResponse: _beginFallDetectorAlertResponse,
+      persistResponse: () =>
+          _safetyService.confirmSafetyCheck(event.id, note: note),
+      applyPersistedResponse: _applyPersistedCountdownResponse,
+      rearmDetector: _foregroundCoordinator.rearmFallDetectorAfterResponse,
+      resolveEmergency: _resolveEventEmergency,
     );
-    await _resolveEventEmergency(updated);
   }
 
   Future<void> _reportEventFalsePositive(
     SafetyEvent event, {
     String? note,
   }) async {
-    _foregroundCoordinator.rearmFallDetectorAfterResponse();
-    final updated = await _safetyService.reportFalsePositive(
-      event.id,
-      note: note,
+    await persistSafetyResponseThenRearm(
+      beginResponse: _beginFallDetectorAlertResponse,
+      persistResponse: () =>
+          _safetyService.reportFalsePositive(event.id, note: note),
+      applyPersistedResponse: _applyPersistedCountdownResponse,
+      rearmDetector: _foregroundCoordinator.rearmFallDetectorAfterResponse,
+      resolveEmergency: _resolveEventEmergency,
     );
-    await _resolveEventEmergency(updated);
+  }
+
+  void _beginFallDetectorAlertResponse() {
+    _latestAlertResponseStartedAt = DateTime.now().toUtc();
+    _latestAlertResponseEvent = _countdownEvent;
+    _foregroundCoordinator.beginFallDetectorAlertResponse();
+  }
+
+  void _applyPersistedCountdownResponse(SafetyEvent event) {
+    if (_countdownEvent?.id == event.id) _countdownEvent = event;
   }
 
   Future<void> _resolveEventEmergency(SafetyEvent event) async {

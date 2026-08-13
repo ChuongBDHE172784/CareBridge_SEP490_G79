@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/safety/models/imu_diagnostics_model.dart';
 import 'package:untitled/features/safety/models/safety_config_model.dart';
@@ -5,6 +7,54 @@ import 'package:untitled/features/safety/screens/safety_monitoring_screen.dart';
 import 'package:untitled/features/safety/widgets/safety_countdown_sheet.dart';
 
 void main() {
+  test('persists a safety response before rearming fall detection', () async {
+    final response = Completer<SafetyEvent>();
+    final order = <String>[];
+    const updated = SafetyEvent(
+      id: 'fall-1',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 10,
+      status: 'CONFIRMED_SAFE',
+      responseType: 'CONFIRMED_SAFE',
+    );
+
+    final operation = persistSafetyResponseThenRearm(
+      beginResponse: () => order.add('begin'),
+      persistResponse: () {
+        order.add('persist');
+        return response.future;
+      },
+      applyPersistedResponse: (_) => order.add('apply'),
+      rearmDetector: () => order.add('rearm'),
+      resolveEmergency: (_) async => order.add('resolve'),
+    );
+
+    expect(order, ['begin', 'persist']);
+    response.complete(updated);
+    expect(await operation, same(updated));
+    expect(order, ['begin', 'persist', 'apply', 'rearm', 'resolve']);
+  });
+
+  test('rearms fall detection if persisting the response fails', () async {
+    final order = <String>[];
+
+    await expectLater(
+      persistSafetyResponseThenRearm(
+        beginResponse: () => order.add('begin'),
+        persistResponse: () async {
+          order.add('persist');
+          throw StateError('offline');
+        },
+        applyPersistedResponse: (_) => order.add('apply'),
+        rearmDetector: () => order.add('rearm'),
+        resolveEmergency: (_) async => order.add('resolve'),
+      ),
+      throwsStateError,
+    );
+
+    expect(order, ['begin', 'persist', 'rearm']);
+  });
+
   test('every simulated outcome performs zero external writes', () async {
     for (final result in <SafetyCountdownResult>[
       const SafetyCountdownResult.safe(),
@@ -37,6 +87,122 @@ void main() {
       onEmergency: () async {},
     );
     expect(safeWrites, 1);
+  });
+
+  test('rejects an open fall delivered after its alert was answered', () {
+    final respondedAt = DateTime.utc(2026, 8, 13, 10, 0, 10);
+    final answered = SafetyEvent(
+      id: 'answered-fall',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'CONFIRMED_SAFE',
+      responseType: 'CONFIRMED_SAFE',
+      detectedAt: respondedAt.subtract(const Duration(seconds: 2)),
+    );
+    final stale = SafetyEvent(
+      id: 'stale-fall',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'OPEN',
+      detectedAt: respondedAt.subtract(const Duration(seconds: 1)),
+    );
+    final laterFall = SafetyEvent(
+      id: 'new-fall',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'OPEN',
+      detectedAt: respondedAt.add(const Duration(seconds: 30)),
+    );
+
+    expect(
+      isFallEventStaleAfterAlertResponse(
+        stale,
+        respondedAt,
+        answeredEvent: answered,
+      ),
+      isTrue,
+    );
+    expect(
+      isFallEventStaleAfterAlertResponse(
+        laterFall,
+        respondedAt,
+        answeredEvent: answered,
+      ),
+      isFalse,
+    );
+  });
+
+  test('never suppresses a fall because of client clock skew', () {
+    // The API tolerates a client clock running minutes ahead of the server, so
+    // a device-clock response marker must not decide that a backend-stamped
+    // fall from a different incident is stale.
+    final serverNow = DateTime.utc(2026, 8, 13, 10);
+    final skewedResponseMarker = serverNow.add(const Duration(minutes: 1));
+    final answered = SafetyEvent(
+      id: 'answered-fall',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'CONFIRMED_SAFE',
+      responseType: 'CONFIRMED_SAFE',
+      detectedAt: serverNow,
+    );
+    final genuineNewFall = SafetyEvent(
+      id: 'new-fall',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'OPEN',
+      detectedAt: serverNow.add(const Duration(seconds: 20)),
+    );
+
+    expect(
+      isFallEventStaleAfterAlertResponse(
+        genuineNewFall,
+        skewedResponseMarker,
+        answeredEvent: answered,
+        evaluatedAt: skewedResponseMarker,
+      ),
+      isFalse,
+    );
+  });
+
+  test('stops suppressing once the response marker has expired', () {
+    final respondedAt = DateTime.utc(2026, 8, 13, 10);
+    final answered = SafetyEvent(
+      id: 'answered-fall',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'CONFIRMED_SAFE',
+      responseType: 'CONFIRMED_SAFE',
+      detectedAt: respondedAt,
+    );
+    final sameIncident = SafetyEvent(
+      id: 'stale-fall',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'OPEN',
+      detectedAt: respondedAt.add(const Duration(seconds: 1)),
+    );
+
+    expect(
+      isFallEventStaleAfterAlertResponse(
+        sameIncident,
+        respondedAt,
+        answeredEvent: answered,
+        evaluatedAt: respondedAt.add(const Duration(seconds: 5)),
+      ),
+      isTrue,
+    );
+    expect(
+      isFallEventStaleAfterAlertResponse(
+        sameIncident,
+        respondedAt,
+        answeredEvent: answered,
+        evaluatedAt: respondedAt.add(
+          safetyAlertResponseStaleWindow + const Duration(seconds: 1),
+        ),
+      ),
+      isFalse,
+    );
   });
 
   test('sensor rehearsal routes safe action to onSafe', () async {
@@ -172,6 +338,27 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  test('does not suppress a new fall after the previous alert is safe', () {
+    final previous = SafetyEvent(
+      id: 'fall-1',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 9,
+      status: 'CONFIRMED_SAFE',
+      responseType: 'CONFIRMED_SAFE',
+      respondedAt: DateTime.utc(2026, 8, 13, 10, 0, 1),
+      detectedAt: DateTime.utc(2026, 8, 13, 10),
+    );
+    final nextFall = SafetyEvent(
+      id: 'fall-2',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 10,
+      status: 'OPEN',
+      detectedAt: DateTime.utc(2026, 8, 13, 10, 0, 2),
+    );
+
+    expect(isLikelyDuplicateFallEvent(previous, nextFall), isFalse);
   });
 
   test('countdown presentation rejects expired and terminal events', () {
