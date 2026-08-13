@@ -23,6 +23,7 @@ const CONFIRM_CONFIG: Partial<Record<ResolutionOutcome, { title: string; icon: s
   WARN: { title: 'Cảnh cáo người dùng này?', icon: 'warning', tone: 'default' },
   RESTRICT: { title: 'Hạn chế đăng bài 7 ngày?', icon: 'speaker_notes_off', tone: 'danger' },
   SUSPEND: { title: 'Đình chỉ tài khoản 7 ngày?', icon: 'person_off', tone: 'danger' },
+  ESCALATE: { title: 'Chuyển tuyến xử lý lên Quản trị viên hệ thống (System Admin)?', icon: 'forward', tone: 'default' },
 };
 
 export default function ContentReportDetailPage() {
@@ -133,7 +134,7 @@ export default function ContentReportDetailPage() {
   // actions); the rest (APPROVE/DISMISS) execute immediately as before.
   const handleAction = (outcome: ResolutionOutcome) => {
     if (!item) return;
-    if (['HIDE', 'LOCK', 'REQUEST_REVISION', 'WARN', 'SUSPEND', 'RESTRICT'].includes(outcome) && !reason.trim()) {
+    if (['HIDE', 'LOCK', 'REQUEST_REVISION', 'WARN', 'SUSPEND', 'RESTRICT', 'ESCALATE'].includes(outcome) && !reason.trim()) {
       setActionError('Cần nhập ghi chú/lý do cho hành động này.');
       return;
     }
@@ -378,12 +379,13 @@ export default function ContentReportDetailPage() {
 
 
                   <button
-                    disabled
-                    title="Backend chưa có outcome chuyển tuyến (escalate)"
-                    className="mb-4 flex h-9 w-full cursor-not-allowed items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-on-surface-variant opacity-40"
+                    onClick={() => handleAction('ESCALATE')}
+                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
+                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Chuyển tuyến xử lý lên System Admin'}
+                    className="mb-4 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-outline-variant bg-transparent px-3.5 text-xs font-semibold text-on-surface hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-lg">forward</span>
-                    Chuyển tuyến
+                    {submitting === 'ESCALATE' ? 'Đang xử lý...' : 'Chuyển tuyến lên Admin'}
                   </button>
 
                   <textarea
