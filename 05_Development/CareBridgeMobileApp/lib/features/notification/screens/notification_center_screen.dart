@@ -6,6 +6,7 @@ import '../../familySync/screens/care_group_invitation_screen.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../routing/consultation_notification_routing.dart';
+import '../notification_type_display.dart';
 import 'notification_detail_screen.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
@@ -418,6 +419,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       case 'CARE_GROUP_INVITATION':
       case 'FAMILY_SYNC':
         icon = Icons.group_add_outlined;
+        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
+        iconColor = isUnread ? _primary : _onSurfaceVariant;
+        break;
+      case 'EPDS_RESULT':
+        icon = notificationCenterIcon(type)!;
         bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
         iconColor = isUnread ? _primary : _onSurfaceVariant;
         break;

@@ -4,6 +4,7 @@ import {
   AI_CLASSIFICATION_LABELS,
   AI_RECOMMENDED_ACTION_LABELS,
   AI_SEVERITY_LABELS,
+  formatPolicyName,
 } from '../models/moderation';
 import { submitAiFeedback } from '../services/moderationApi';
 
@@ -108,7 +109,9 @@ export default function AiAssessmentCard({ assessment, onFeedbackSubmitted }: {
                 {assessment.matches.map((match) => (
                   <div key={match.policyCode} className="rounded-md border border-outline-variant p-3">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-on-surface">{match.policyCode}</span>
+                      <span className="text-xs font-semibold text-on-surface">
+                        {formatPolicyName(match.policyCode, match.category)}
+                      </span>
                       <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${SEVERITY_STYLES[match.severity] ?? ''}`}>
                         {AI_SEVERITY_LABELS[match.severity]}
                       </span>

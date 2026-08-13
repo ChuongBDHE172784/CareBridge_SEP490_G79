@@ -76,6 +76,40 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
     List<CareGroupMember> findAcceptedFamilyMembersForEmergencyAlerts(
             @Param("ownerUserId") UUID ownerUserId);
 
+    /**
+     * Eligible Family recipients for an EPDS screening result (CB-EPDS-IMP-001).
+     *
+     * <p>Returns member rows (not user ids) so each row's {@code permission_json} and care-group
+     * scope are available for the {@code QUICK_NOTE_EPDS} consent filter.
+     *
+     * <p><strong>Duplicate rows are expected and intentional.</strong> Care-group uniqueness is
+     * enforced only on {@code (owner_user_id, group_name)}, so a mother may own several ACTIVE
+     * groups and one Family user may be an ACCEPTED member of more than one. This query
+     * deliberately omits {@code GROUP BY} because the consent check needs every row's permissions;
+     * the caller must filter by consent first and only then de-duplicate by user id
+     * (TDS §5.2 step order, §5.5 duplicate-recipient hazard).
+     *
+     * <p>The {@code role = 'FAMILY'} join also excludes the mother herself, who owns the group and
+     * is the subject of the screening.
+     */
+    @Query(value = """
+            SELECT cgm.*
+              FROM care_groups cg
+              JOIN care_group_members cgm
+                ON cgm.care_group_id = cg.care_group_id
+              JOIN users u
+                ON u.user_id = cgm.user_id
+             WHERE cg.owner_user_id = :ownerUserId
+               AND cg.status = 'ACTIVE'
+               AND cgm.invitation_status = 'ACCEPTED'
+               AND u.role = 'FAMILY'
+               AND u.enabled = TRUE
+               AND u.locked = FALSE
+             ORDER BY cgm.care_group_id ASC, cgm.user_id ASC
+            """, nativeQuery = true)
+    List<CareGroupMember> findAcceptedFamilyMembersForEpdsAlerts(
+            @Param("ownerUserId") UUID ownerUserId);
+
     boolean existsByCareGroupIdAndUserIdAndInviteStatus(UUID careGroupId, UUID userId, InviteStatus status);
 
     /** A delegated Family account may act in the Mother's direct conversation only while its
