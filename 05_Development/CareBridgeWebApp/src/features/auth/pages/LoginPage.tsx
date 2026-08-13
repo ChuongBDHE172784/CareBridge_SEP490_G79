@@ -186,12 +186,7 @@ export default function LoginPage() {
                 Đăng ký chuyên gia
               </a>
             </p>
-            <p className="text-sm leading-5 text-on-surface-variant m-0">
-              Cần trợ giúp?{' '}
-              <a href="#" className="text-primary font-medium no-underline hover:underline">
-                Hỗ trợ kỹ thuật
-              </a>
-            </p>
+
           </div>
         </div>
       </main>
