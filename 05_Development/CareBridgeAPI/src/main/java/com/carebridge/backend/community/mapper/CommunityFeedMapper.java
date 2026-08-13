@@ -25,6 +25,7 @@ public class CommunityFeedMapper {
                 hasExpertAnswer,
                 isBookmarked,
                 isLiked,
+                q.getStatus() != null ? q.getStatus().name() : null,
                 q.getCreatedAt()
         );
     }

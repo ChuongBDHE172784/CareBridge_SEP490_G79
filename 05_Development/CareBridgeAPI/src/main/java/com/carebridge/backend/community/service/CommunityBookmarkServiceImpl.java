@@ -106,10 +106,10 @@ public class CommunityBookmarkServiceImpl implements CommunityBookmarkService {
         // Batch check like state to avoid N+1
         Set<UUID> likedIds = likeRepository.findLikedQuestionIds(userId, questionIds);
 
-        // Map bookmarks to feed items (skip if question not found or not APPROVED)
+        // Map bookmarks to feed items (skip if question not found or not APPROVED / LOCKED)
         List<CommunityFeedItemResponse> items = bookmarkPage.stream()
                 .map(b -> questionMap.get(b.getQuestionId()))
-                .filter(q -> q != null && q.getStatus() == QuestionStatus.APPROVED)
+                .filter(q -> q != null && (q.getStatus() == QuestionStatus.APPROVED || q.getStatus() == QuestionStatus.LOCKED))
                 .map(q -> {
                     String topicName = topicNames.getOrDefault(q.getTopicId(), "");
                     boolean hasExpert = expertAnsweredIds.contains(q.getId());
