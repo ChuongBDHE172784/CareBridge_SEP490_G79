@@ -230,6 +230,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       ),
       child: Scaffold(
         backgroundColor: _canvas,
+        floatingActionButton: _buildEmergencyMapFab(),
         body: Stack(
           children: [
             RefreshIndicator(
@@ -414,6 +415,74 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     );
   }
 
+  String _resolveEmergencyStage() {
+    final journeyType =
+        _snapshot?.selectedGroupDetail?.motherJourney?.journeyType;
+    if (journeyType != null) {
+      switch (journeyType) {
+        case 'PRECONCEPTION':
+        case 'PRE_PREGNANCY':
+          return 'PRECONCEPTION';
+        case 'PREGNANCY':
+          return 'PREGNANCY';
+        case 'POSTPARTUM':
+          return 'POSTPARTUM';
+        case 'INFANT':
+        case 'BABY_CARE':
+          return 'INFANT';
+        case 'TODDLER':
+          return 'TODDLER';
+      }
+    }
+    return 'PREGNANCY';
+  }
+
+  void _openEmergencyMap() {
+    final stage = _resolveEmergencyStage();
+    context.push('/emergency/map?mode=manual&stage=$stage');
+  }
+
+  Widget _buildEmergencyMapFab() {
+    return Semantics(
+      button: true,
+      label: 'Tìm bệnh viện gần đây bằng TrackAsia Map',
+      child: SizedBox.square(
+        key: const Key('family-emergency-map-fab'),
+        dimension: 64,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: _error.withValues(alpha: 0.38),
+                blurRadius: 18,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: _error,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: const Key('family-emergency-map-action'),
+              customBorder: const CircleBorder(),
+              onTap: _openEmergencyMap,
+              child: const Center(
+                child: Icon(
+                  Icons.local_hospital_outlined,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildShortcuts() {
     return Row(
       children: [
@@ -432,6 +501,14 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
             icon: Icons.menu_book_outlined,
             label: 'Nội dung & FAQ',
             onTap: _openFamilyContent,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ShortcutButton(
+            icon: Icons.local_hospital_outlined,
+            label: 'Cơ sở y tế',
+            onTap: _openEmergencyMap,
           ),
         ),
       ],

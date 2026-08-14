@@ -19,6 +19,7 @@ interface CommunityQuestion {
   hasExpertAnswer: boolean;
   status?: string;
   createdAt: string;
+  updatedAt?: string;
   imageUrls?: string[];
 }
 
@@ -34,6 +35,7 @@ interface AnswerItem {
   likeCount: number;
   liked: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface PendingAnswerImage {
@@ -59,23 +61,50 @@ interface CommunityQuestionDetail {
   likeCount: number;
   isLiked: boolean;
   createdAt: string;
+  updatedAt?: string;
   answers?: AnswerItem[];
 }
 
-function timeAgo(iso: string): string {
+function formatDateTime(iso?: string | null): string {
   if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins} phút trước`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  const days = Math.floor(hours / 24);
-  return `${days} ngày trước`;
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d);
+  } catch {
+    return iso;
+  }
+}
+
+function timeAgo(iso?: string | null): string {
+  if (!iso) return '—';
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    if (diff < 0 || diff < 60000) return 'Vừa xong';
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins} phút trước`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} giờ trước`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} ngày trước`;
+    if (days < 30) return `${Math.floor(days / 7)} tuần trước`;
+    if (days < 365) return `${Math.floor(days / 30)} tháng trước`;
+    return formatDateTime(iso);
+  } catch {
+    return formatDateTime(iso);
+  }
 }
 
 function getStageLabel(stage: string): string {
+  if (stage === 'PRE_PREGNANCY') return 'Chuẩn bị mang thai';
   if (stage === 'PREGNANCY') return 'Thai kỳ';
-  if (stage === 'POSTPARTUM') return 'Sau sinh';
+  if (stage === 'POSTPARTUM' || stage === 'BABY_CARE') return 'Hậu sản & Chăm bé';
   return stage || 'Cộng đồng';
 }
 
@@ -377,8 +406,9 @@ export default function ExpertQuestionQueuePage() {
               className="py-1.5 px-3 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none cursor-pointer"
             >
               <option value="">Tất cả giai đoạn</option>
+              <option value="PRE_PREGNANCY">Chuẩn bị mang thai</option>
               <option value="PREGNANCY">Thai kỳ</option>
-              <option value="POSTPARTUM">Sau sinh</option>
+              <option value="POSTPARTUM">Hậu sản & Chăm bé</option>
             </select>
 
             {/* Topic Filter */}
@@ -580,10 +610,15 @@ export default function ExpertQuestionQueuePage() {
                       <div className="text-xs font-bold text-on-surface">
                         {detail?.anonymous ? 'Người dùng ẩn danh' : detail?.authorDisplay || 'Mẹ bầu CareBridge'}
                       </div>
-                      <div className="text-[11px] text-outline">
-                        {detail?.pregnancyWeek && `Tuần thai: ${detail.pregnancyWeek} `}
-                        {detail?.babyAgeMonths && `Tuổi bé: ${detail.babyAgeMonths} tháng `}
-                        • {timeAgo(detail?.createdAt || selectedSummary?.createdAt || '')}
+                      <div className="text-[11px] text-outline flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {detail?.pregnancyWeek && <span>Tuần thai: {detail.pregnancyWeek} •</span>}
+                        {detail?.babyAgeMonths && <span>Tuổi bé: {detail.babyAgeMonths} tháng •</span>}
+                        <span>Đăng: {formatDateTime(detail?.createdAt || selectedSummary?.createdAt || '')} ({timeAgo(detail?.createdAt || selectedSummary?.createdAt || '')})</span>
+                        {detail?.updatedAt && detail.updatedAt !== detail.createdAt && (
+                          <span className="text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 text-[10px]">
+                            Đã sửa: {formatDateTime(detail.updatedAt)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -658,14 +693,21 @@ export default function ExpertQuestionQueuePage() {
                               : 'border-outline-variant/50 bg-surface'
                           }`}
                         >
-                          <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center justify-between text-xs gap-2 flex-wrap">
                             <span className="font-bold flex items-center gap-1">
                               {ans.expertLabeled && (
                                 <span className="material-symbols-outlined text-sm text-emerald-700">verified</span>
                               )}
                               {ans.authorDisplay || (ans.expertLabeled ? 'Chuyên gia' : 'Thành viên')}
                             </span>
-                            <span className="text-[11px] opacity-75">{timeAgo(ans.createdAt)}</span>
+                            <div className="text-[11px] opacity-75 flex items-center gap-1.5">
+                              <span>Đăng: {formatDateTime(ans.createdAt)} ({timeAgo(ans.createdAt)})</span>
+                              {ans.updatedAt && ans.updatedAt !== ans.createdAt && (
+                                <span className="text-[10px] text-amber-700 bg-amber-50 px-1 py-0.2 rounded border border-amber-200" title={`Sửa lúc: ${formatDateTime(ans.updatedAt)}`}>
+                                  Đã sửa: {formatDateTime(ans.updatedAt)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <p className="text-xs leading-relaxed whitespace-pre-line m-0">{ans.body}</p>
                           {ans.imageUrls.length > 0 && (
