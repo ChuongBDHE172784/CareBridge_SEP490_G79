@@ -35,7 +35,7 @@ public class GeminiHttpClient implements GeminiClient {
             @Value("${carebridge.gemini.enabled:false}") boolean enabled,
             @Value("${carebridge.gemini.api-key:}") String apiKey,
             @Value("${carebridge.gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
-            @Value("${carebridge.gemini.model:gemini-flash-latest}") String model,
+            @Value("${carebridge.gemini.model:gemini-flash-lite-latest}") String model,
             @Value("${carebridge.gemini.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${carebridge.gemini.timeout-ms:5000}") int readTimeoutMs) {
         this.enabled = enabled;
@@ -119,11 +119,17 @@ public class GeminiHttpClient implements GeminiClient {
         if (!(partsObj instanceof List<?> parts) || parts.isEmpty()) {
             return null;
         }
-        Object firstPart = parts.get(0);
-        if (!(firstPart instanceof Map<?, ?> part)) {
-            return null;
+        for (Object item : parts) {
+            if (item instanceof Map<?, ?> part) {
+                if (Boolean.TRUE.equals(part.get("thought"))) {
+                    continue;
+                }
+                Object text = ((Map<String, Object>) part).get("text");
+                if (text instanceof String s && !s.isBlank()) {
+                    return s;
+                }
+            }
         }
-        Object text = ((Map<String, Object>) part).get("text");
-        return text instanceof String s ? s : null;
+        return null;
     }
 }
