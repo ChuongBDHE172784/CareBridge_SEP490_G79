@@ -186,7 +186,7 @@ class CanonicalAnswerMapperTest {
     void unknownQuestionIsRejected() {
         assertThatThrownBy(() -> map("Q_NOT_A_REAL_QUESTION", "YES"))
                 .isInstanceOf(TriageException.class)
-                .hasFieldOrPropertyWithValue("code", "TRIAGE_V2_UNKNOWN_QUESTION");
+                .hasFieldOrPropertyWithValue("code", "TRIAGE_UNKNOWN_QUESTION");
     }
 
     @Test
@@ -194,7 +194,7 @@ class CanonicalAnswerMapperTest {
     void optionQuestionMismatchIsRejected() {
         assertThatThrownBy(() -> map("Q_DIZZINESS", "BLEEDING_HEAVY"))
                 .isInstanceOf(TriageException.class)
-                .hasFieldOrPropertyWithValue("code", "TRIAGE_V2_OPTION_QUESTION_MISMATCH");
+                .hasFieldOrPropertyWithValue("code", "TRIAGE_OPTION_QUESTION_MISMATCH");
     }
 
     @Test
@@ -202,7 +202,7 @@ class CanonicalAnswerMapperTest {
     void invalidOptionIsRejected() {
         assertThatThrownBy(() -> map("Q_DIZZINESS", "TOTALLY_MADE_UP"))
                 .isInstanceOf(TriageException.class)
-                .hasFieldOrPropertyWithValue("code", "TRIAGE_V2_OPTION_QUESTION_MISMATCH");
+                .hasFieldOrPropertyWithValue("code", "TRIAGE_OPTION_QUESTION_MISMATCH");
     }
 
     @Test
@@ -211,7 +211,7 @@ class CanonicalAnswerMapperTest {
         assertThatThrownBy(() -> mapper.map("Q_BLEEDING_AMOUNT", "BLEEDING_HEAVY",
                 "msg-000000000001", TargetEntity.BABY, CareStage.INFANT_0_12M, Map.of()))
                 .isInstanceOf(TriageException.class)
-                .hasFieldOrPropertyWithValue("code", "TRIAGE_V2_ANSWER_ENTITY_MISMATCH");
+                .hasFieldOrPropertyWithValue("code", "TRIAGE_ANSWER_ENTITY_MISMATCH");
     }
 
     @Test
@@ -220,7 +220,7 @@ class CanonicalAnswerMapperTest {
         assertThatThrownBy(() -> mapper.map("Q_BLEEDING_AMOUNT", "BLEEDING_HEAVY",
                 "msg-000000000001", TargetEntity.UNKNOWN, CareStage.UNKNOWN, Map.of()))
                 .isInstanceOf(TriageException.class)
-                .hasFieldOrPropertyWithValue("code", "TRIAGE_V2_ANSWER_ENTITY_MISMATCH");
+                .hasFieldOrPropertyWithValue("code", "TRIAGE_ANSWER_ENTITY_MISMATCH");
     }
 
     @Test
@@ -241,7 +241,7 @@ class CanonicalAnswerMapperTest {
         assertThatThrownBy(() -> mapper.map("Q_SAFETY_SELF_HARM", "SELF_HARM_NONE",
                 "msg-000000000001", TargetEntity.BABY, CareStage.INFANT_0_12M, Map.of()))
                 .isInstanceOf(TriageException.class)
-                .hasFieldOrPropertyWithValue("code", "TRIAGE_V2_ANSWER_ENTITY_MISMATCH");
+                .hasFieldOrPropertyWithValue("code", "TRIAGE_ANSWER_ENTITY_MISMATCH");
     }
 
     @Test

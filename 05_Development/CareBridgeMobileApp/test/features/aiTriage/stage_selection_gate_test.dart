@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/aiTriage/models/triage_entry_context.dart';
-import 'package:untitled/features/aiTriage/models/triage_intake_flow_model.dart';
+import 'package:untitled/features/aiTriage/models/triage_session.dart';
 import 'package:untitled/features/aiTriage/screens/symptom_intake_screen.dart';
 import 'package:untitled/features/aiTriage/services/triage_service.dart';
 
@@ -12,33 +12,51 @@ import 'package:untitled/features/aiTriage/services/triage_service.dart';
 /// `_start()` refuses to send. Ticking a chip during that window told the user the stage
 /// was already picked, so their first send was rejected for a reason the screen appeared
 /// to contradict — and it only worked once they touched a chip.
-class _RecordingTriageService extends TriageService {
+class _RecordingTriageSessionService extends TriageSessionService {
   final List<Map<String, dynamic>> calls = [];
 
   @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
+  Future<TriageSession> start({
+    required String message,
+    required String selectedTarget,
+    required String selectedStage,
+    String? profileId,
+    Map<String, dynamic> lifecycleBinding = const {},
   }) async {
-    calls.add(Map<String, dynamic>.from(currentIntake));
-    return IntakeFlowResponse(
-      status: 'ASK_MORE',
-      intakeSessionId: '11111111-1111-1111-1111-111111111111',
-      stage: currentIntake['stage'] as String? ?? 'UNKNOWN',
-      mergedIntake: currentIntake,
-      round: 2,
-      triageResult: null,
+    calls.add({
+      'message': message,
+      'target': selectedTarget,
+      'stage': selectedStage,
+      'profileId': profileId,
+      'lifecycleBinding': lifecycleBinding,
+    });
+    return TriageSession(
+      sessionId: '11111111-1111-1111-1111-111111111111',
+      stateVersion: 1,
+      target: selectedTarget,
+      intent: 'SYMPTOM_ASSESSMENT',
+      stage: selectedStage,
+      outcome: 'NEEDS_MORE_INFO',
+      action: 'ASK_CLARIFYING_QUESTIONS',
+      stop: false,
+      questionIds: const [],
+      questionDetails: const [],
+      scope: 'IN_SCOPE',
+      pendingRisks: const [],
+      citations: const [],
+      disclaimer: 'AI Triage khong thay the chan doan cua nhan vien y te.',
+      readiness: const {'technicalStatus': 'READY'},
     );
   }
 }
 
 Future<void> _pumpUnscopedEntry(
   WidgetTester tester,
-  _RecordingTriageService triage,
+  _RecordingTriageSessionService triage,
 ) => tester.pumpWidget(
   MaterialApp(
     home: SymptomIntakeScreen(
-      triageService: triage,
+      triageSessionService: triage,
       entryContext: const TriageEntryContext(requiresStageSelection: true),
     ),
   ),
@@ -58,7 +76,7 @@ void main() {
   testWidgets('no stage chip reads as chosen before the user picks one', (
     tester,
   ) async {
-    await _pumpUnscopedEntry(tester, _RecordingTriageService());
+    await _pumpUnscopedEntry(tester, _RecordingTriageSessionService());
 
     expect(_tickedChipLabels(tester), isEmpty);
   });
@@ -66,7 +84,7 @@ void main() {
   testWidgets('picking a stage lets the very first send through', (
     tester,
   ) async {
-    final triage = _RecordingTriageService();
+    final triage = _RecordingTriageSessionService();
     await _pumpUnscopedEntry(tester, triage);
 
     await tester.tap(find.widgetWithText(ChoiceChip, 'Đang mang thai'));
@@ -85,7 +103,7 @@ void main() {
   testWidgets('sending without picking a stage is still refused', (
     tester,
   ) async {
-    final triage = _RecordingTriageService();
+    final triage = _RecordingTriageSessionService();
     await _pumpUnscopedEntry(tester, triage);
 
     await tester.enterText(find.byType(TextField).first, 'Tôi bị đau bụng');
@@ -101,13 +119,15 @@ void main() {
   testWidgets('the missing step is stated before the user types, not after', (
     tester,
   ) async {
-    await _pumpUnscopedEntry(tester, _RecordingTriageService());
+    await _pumpUnscopedEntry(tester, _RecordingTriageSessionService());
 
     expect(find.byKey(const Key('triage-stage-required-hint')), findsOneWidget);
     expect(_sendButton(tester).onPressed, isNull);
     expect(find.textContaining(_stageError), findsNothing);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Bé 0-12 tháng'));
+    final infantStage = find.widgetWithText(ChoiceChip, 'Bé 0-12 tháng');
+    await tester.ensureVisible(infantStage);
+    await tester.tap(infantStage);
     await tester.pump();
 
     expect(find.byKey(const Key('triage-stage-required-hint')), findsNothing);
@@ -115,11 +135,11 @@ void main() {
   });
 
   testWidgets('an entry with a trusted stage is never blocked', (tester) async {
-    final triage = _RecordingTriageService();
+    final triage = _RecordingTriageSessionService();
     await tester.pumpWidget(
       MaterialApp(
         home: SymptomIntakeScreen(
-          triageService: triage,
+          triageSessionService: triage,
           entryContext: const TriageEntryContext.postpartum(),
         ),
       ),
@@ -131,6 +151,6 @@ void main() {
     await tester.tap(find.byKey(const Key('triage-chat-send')));
     await tester.pump();
 
-    expect(triage.calls.single['stage'], 'POSTPARTUM');
+    expect(triage.calls.single['stage'], 'POSTPARTUM_MOTHER');
   });
 }

@@ -52,7 +52,7 @@ class IndependentGlobalSafetyFallbackTest {
 
         assertThat(verdict.outcome()).isEqualTo("NEEDS_MORE_INFO");
         assertThat(verdict.outcome()).isNotIn("GREEN", "OUT_OF_SCOPE", "YELLOW");
-        assertThat(verdict.completionReason()).isEqualTo("V2_UNAVAILABLE_NO_GLOBAL_SIGNAL");
+        assertThat(verdict.completionReason()).isEqualTo("ENGINE_UNAVAILABLE_NO_GLOBAL_SIGNAL");
     }
 
     @Test
@@ -68,6 +68,25 @@ class IndependentGlobalSafetyFallbackTest {
         var verdict = fallback.screen(Map.of("SEIZURE", "ABSENT", "CYANOSIS", "ABSENT"));
         assertThat(verdict.outcome()).isEqualTo("NEEDS_MORE_INFO");
         assertThat(verdict.matchedSignals()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Latest free text still detects a seizure when Python is unavailable")
+    void latestFreeTextDetectsGlobalDanger() {
+        assertThat(fallback.screenWithLatestMessage(Map.of(), "Bé đang co giật").outcome())
+                .isEqualTo("RED");
+        assertThat(fallback.screenWithLatestMessage(Map.of(), "Bé không co giật").outcome())
+                .isEqualTo("NEEDS_MORE_INFO");
+    }
+
+    @Test
+    @DisplayName("An earlier denial cannot hide a newly reported current danger")
+    void earlierNegationCannotHideCurrentDanger() {
+        var verdict = fallback.screenWithLatestMessage(Map.of(),
+                "Trước đó không co giật, nhưng bây giờ đang co giật");
+
+        assertThat(verdict.outcome()).isEqualTo("RED");
+        assertThat(verdict.reasonCodes()).contains("GLOBAL_IMMEDIATE_DANGER");
     }
 
     @Test

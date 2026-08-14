@@ -4,7 +4,7 @@ Extracted from ``risk_rules`` so it has exactly one implementation. V1 scores ma
 flags with it; V2 uses it as a deterministic floor under Gemini extraction. Keeping two copies
 of Vietnamese phrase matching in one codebase is how the two engines would drift apart on the
 question that matters most, and V2 may not import ``app.risk_rules`` (see
-``tests/test_triage_v2_dependency_boundaries.py``) — so the shared piece lives here, depending
+``tests/test_triage_dependency_boundaries.py``) — so the shared piece lives here, depending
 on neither.
 
 Nothing in this module decides an outcome. It reports which danger phrases a message contains,

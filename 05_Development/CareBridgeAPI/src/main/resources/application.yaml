@@ -231,11 +231,9 @@ carebridge:
     read-timeout-ms: ${CAREBRIDGE_COMPREFACE_READ_TIMEOUT_MS:8000}
 
   triage:
-    v2:
-      # Internal/shadow boundary only. Public enablement is a separate release decision.
-      internal-enabled: ${CAREBRIDGE_TRIAGE_V2_INTERNAL_ENABLED:false}
-      shadow-enabled: ${CAREBRIDGE_TRIAGE_V2_SHADOW_ENABLED:false}
-      retention-days: ${CAREBRIDGE_TRIAGE_V2_RETENTION_DAYS:30}
+    engine:
+      enabled: ${CAREBRIDGE_TRIAGE_ENGINE_ENABLED:true}
+      retention-days: ${CAREBRIDGE_TRIAGE_RETENTION_DAYS:30}
     health-memory:
       # CB-TRIAGE-THMC-IMP-001 (ADR-THMC-002/003). ttl-days default 30 is Open —
       # pending Document Owner/DPO confirmation.
@@ -251,8 +249,8 @@ carebridge:
       # Bumping the version forces fleet-wide re-consent (BR-TDC-002); verify against the
       # deployment checklist (TDS §11.4) before changing. Wording is Open pending product/DPO
       # sign-off (not a legal text yet).
-      version: ${CAREBRIDGE_TRIAGE_DISCLAIMER_VERSION:AI_TRIAGE_DISCLAIMER_V1}
-      text: ${CAREBRIDGE_TRIAGE_DISCLAIMER_TEXT:Tôi hiểu rằng AI Triage chỉ mang tính chất tham khảo, không chẩn đoán bệnh, không kê đơn và không thay thế nhân viên y tế. Trong tình huống khẩn cấp, hãy liên hệ cấp cứu ngay.}
+      version: ${CAREBRIDGE_TRIAGE_DISCLAIMER_VERSION:AI_TRIAGE_DISCLAIMER_V2}
+      text: ${CAREBRIDGE_TRIAGE_DISCLAIMER_TEXT:Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường.}
 
 ai:
   triage-service:

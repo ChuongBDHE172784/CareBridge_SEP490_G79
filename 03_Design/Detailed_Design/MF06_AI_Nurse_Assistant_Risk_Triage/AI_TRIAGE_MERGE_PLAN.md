@@ -1,9 +1,13 @@
 # Merging the two triage engines into one
 
-**Status** Draft for decision · **Written** 2026-08-08 · **Author** Claude (survey + measurement)
+**Status** Implemented locally, verification pending commit · **Written** 2026-08-08 · **Updated** 2026-08-13
 
 Goal: one engine, and the `V2` suffix gone from files, classes and endpoints. Versions belong
 in git history and in artifact `rulesetVersion`, not in identifiers.
+
+The approved cutover has now been implemented on the working tree: one canonical mobile session
+flow, one Java authority service/client, and one Python deterministic graph. Historical session
+projection remains intentionally version-aware; the survey below is retained as the decision record.
 
 This document records what is actually there, measured, so the decision is made on facts.
 It does not authorise any of the steps below.

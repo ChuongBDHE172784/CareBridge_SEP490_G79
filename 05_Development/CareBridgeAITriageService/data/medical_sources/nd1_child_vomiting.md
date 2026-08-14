@@ -12,6 +12,7 @@ applicableStages: [INFANT, TODDLER]
 lastReviewed: 2026-07-18
 sourceType: official_hospital_guidance
 sourceStatus: APPROVED
+publisherTrustStatus: IDENTIFIED_NOT_VALIDATED
 sourceVersion: '1.0'
 approvedAt: 2026-07-18
 approvedBy: CareBridge development team internal review (DEV_REVIEWED; no clinician participated)

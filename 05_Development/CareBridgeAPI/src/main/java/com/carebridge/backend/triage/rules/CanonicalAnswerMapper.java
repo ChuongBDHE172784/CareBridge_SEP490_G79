@@ -133,7 +133,7 @@ public class CanonicalAnswerMapper {
      * makes the class ambiguous to inject and container startup fails.
      */
     @Autowired
-    public CanonicalAnswerMapper(QuestionCatalog catalog, TriageV2ReadinessService readinessService) {
+    public CanonicalAnswerMapper(QuestionCatalog catalog, TriageReadinessService readinessService) {
         this(catalog, MAPPING_RESOURCE, readinessService.registry()
                 .map(registry -> registry.signalDisplayText().keySet())
                 .orElse(null));
@@ -217,11 +217,11 @@ public class CanonicalAnswerMapper {
             Map<String, Object> existingSignals) {
 
         QuestionCatalog.Question question = catalog.question(questionId)
-                .orElseThrow(() -> reject("TRIAGE_V2_UNKNOWN_QUESTION",
+                .orElseThrow(() -> reject("TRIAGE_UNKNOWN_QUESTION",
                         "Answered question is not in the canonical catalogue"));
 
         if (question.options().stream().noneMatch(option -> option.optionCode().equals(optionCode))) {
-            throw reject("TRIAGE_V2_OPTION_QUESTION_MISMATCH",
+            throw reject("TRIAGE_OPTION_QUESTION_MISMATCH",
                     "Chosen option does not belong to the answered question");
         }
         if (!question.targetEntities().isEmpty() && !question.targetEntities().contains(targetEntity)) {
@@ -232,12 +232,12 @@ public class CanonicalAnswerMapper {
             boolean answerableWithoutTarget =
                     question.mayRunWithoutResolvedTarget() && !targetEntity.isResolved();
             if (!answerableWithoutTarget) {
-                throw reject("TRIAGE_V2_ANSWER_ENTITY_MISMATCH",
+                throw reject("TRIAGE_ANSWER_ENTITY_MISMATCH",
                         "Answered question does not apply to this session's target entity");
             }
         }
         if (!question.applicableStages().isEmpty() && !question.applicableStages().contains(stage)) {
-            throw reject("TRIAGE_V2_ANSWER_STAGE_MISMATCH",
+            throw reject("TRIAGE_ANSWER_STAGE_MISMATCH",
                     "Answered question does not apply to this session's stage");
         }
 

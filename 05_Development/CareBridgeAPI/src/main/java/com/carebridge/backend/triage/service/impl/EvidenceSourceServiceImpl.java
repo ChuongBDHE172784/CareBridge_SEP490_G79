@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
+import java.net.InetAddress;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -24,6 +25,8 @@ import java.util.UUID;
 public class EvidenceSourceServiceImpl implements EvidenceSourceService {
     private static final Set<String> BLOCKED_HOST_FRAGMENTS = Set.of(
             "facebook.", "tiktok.", "reddit.", "quora.", "youtube.", "shopee.", "lazada.");
+    private static final Set<String> REVIEW_STATUSES = Set.of(
+            "PENDING_REVIEW", "APPROVED", "REJECTED", "ARCHIVED");
 
     private final EvidenceSourceRepository evidenceSourceRepository;
     private final EvidenceSourceReviewLogRepository reviewLogRepository;
@@ -87,14 +90,33 @@ public class EvidenceSourceServiceImpl implements EvidenceSourceService {
         EvidenceSource source = evidenceSourceRepository.findById(id)
                 .orElseThrow(() -> new TriageException(HttpStatus.NOT_FOUND, "EVIDENCE-004", "Evidence source not found"));
         String previous = source.getStatus();
-        source.setStatus(newStatus);
+        String next = newStatus == null ? "" : newStatus.trim().toUpperCase(Locale.ROOT);
+        if (!REVIEW_STATUSES.contains(next) || !isAllowedTransition(previous, next)) {
+            throw new TriageException(HttpStatus.CONFLICT, "EVIDENCE-005",
+                    "Evidence source status transition is not allowed");
+        }
+        if ("APPROVED".equals(next) && actorUserId != null && actorUserId.equals(source.getAddedBy())) {
+            throw new TriageException(HttpStatus.FORBIDDEN, "EVIDENCE-006",
+                    "Evidence source proposer cannot approve their own proposal");
+        }
+        source.setStatus(next);
         source.setReviewedBy(actorUserId);
         source.setReviewedAt(Instant.now());
         source.setNotes(notes);
         source.setUpdatedAt(Instant.now());
         EvidenceSource saved = evidenceSourceRepository.save(source);
-        logChange(id, previous, newStatus, notes, actorUserId, actorRole);
+        logChange(id, previous, next, notes, actorUserId, actorRole);
         return saved;
+    }
+
+    private boolean isAllowedTransition(String previous, String next) {
+        if (previous == null || previous.equals(next)) return false;
+        return switch (previous) {
+            case "PENDING_REVIEW" -> Set.of("APPROVED", "REJECTED").contains(next);
+            case "APPROVED" -> "ARCHIVED".equals(next);
+            case "REJECTED" -> "PENDING_REVIEW".equals(next);
+            default -> false;
+        };
     }
 
     @Override
@@ -137,13 +159,59 @@ public class EvidenceSourceServiceImpl implements EvidenceSourceService {
         try {
             URI uri = URI.create(value);
             if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
-                    || "localhost".equalsIgnoreCase(uri.getHost())) {
+                    || "localhost".equalsIgnoreCase(uri.getHost())
+                    || !resolvesOnlyToPublicAddresses(uri.getHost())) {
                 throw new IllegalArgumentException();
             }
             return uri;
         } catch (Exception exception) {
             throw new TriageException(HttpStatus.BAD_REQUEST, "EVIDENCE-001", "Evidence source must be a valid HTTPS URL");
         }
+    }
+
+    private boolean resolvesOnlyToPublicAddresses(String host) {
+        try {
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            if (addresses.length == 0) return false;
+            for (InetAddress address : addresses) {
+                if (!isPublicAddress(address)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception failure) {
+            return false;
+        }
+    }
+
+    private boolean isPublicAddress(InetAddress address) {
+        if (address.isAnyLocalAddress() || address.isLoopbackAddress()
+                || address.isLinkLocalAddress() || address.isSiteLocalAddress()
+                || address.isMulticastAddress()) {
+            return false;
+        }
+        byte[] raw = address.getAddress();
+        if (raw.length == 4) {
+            int a = Byte.toUnsignedInt(raw[0]);
+            int b = Byte.toUnsignedInt(raw[1]);
+            int c = Byte.toUnsignedInt(raw[2]);
+            return a != 0 && a != 10 && a != 127
+                    && !(a == 100 && b >= 64 && b <= 127)
+                    && !(a == 169 && b == 254)
+                    && !(a == 172 && b >= 16 && b <= 31)
+                    && !(a == 192 && b == 0 && c == 0)
+                    && !(a == 192 && b == 0 && c == 2)
+                    && !(a == 192 && b == 168)
+                    && !(a == 198 && (b == 18 || b == 19))
+                    && !(a == 198 && b == 51 && c == 100)
+                    && !(a == 203 && b == 0 && c == 113)
+                    && a < 224;
+        }
+        int first = Byte.toUnsignedInt(raw[0]);
+        boolean globalUnicast = (first & 0xe0) == 0x20;
+        boolean documentation = first == 0x20 && Byte.toUnsignedInt(raw[1]) == 0x01
+                && Byte.toUnsignedInt(raw[2]) == 0x0d && Byte.toUnsignedInt(raw[3]) == 0xb8;
+        return globalUnicast && !documentation;
     }
 
     private String normalizeHost(URI uri) {

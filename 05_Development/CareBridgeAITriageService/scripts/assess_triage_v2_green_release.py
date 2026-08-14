@@ -12,8 +12,8 @@ SERVICE_ROOT = Path(__file__).resolve().parents[1]
 if str(SERVICE_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVICE_ROOT))
 
-from app.triage_v2.evidence_retrieval import corpus_inventory
-from app.triage_v2.green_release_status import GreenReleaseEvidence, assess_green_release
+from app.triage.evidence_retrieval import corpus_inventory
+from app.triage.green_release_status import GreenReleaseEvidence, assess_green_release
 
 
 def main() -> int:

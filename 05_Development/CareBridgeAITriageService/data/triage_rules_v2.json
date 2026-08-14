@@ -10,7 +10,9 @@
       "PRECONCEPTION",
       "POSSIBLE_PREGNANCY",
       "PREGNANCY",
-      "POSTPARTUM_MOTHER"
+      "POSTPARTUM_MOTHER",
+      "INFANT_0_12M",
+      "TODDLER_12_24M"
     ],
     "outcomes": [
       "RED",

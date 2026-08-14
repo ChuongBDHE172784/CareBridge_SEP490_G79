@@ -24,16 +24,18 @@ public class TriageDisclaimerPolicy {
     public static final String SCOPE_TYPE = "TRIAGE";                    // ≤ varchar(50)
     public static final String SCOPE_TEXT = "ELECTIVE_AI_TRIAGE_INTAKE_ONLY";
     public static final String PURPOSE = "AI_TRIAGE_GUIDANCE";           // ≤ varchar(255)
+    public static final String REQUIRED_TEXT =
+            "Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp "
+                    + "Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường.";
 
     private final String version;
     private final String text;
 
     public TriageDisclaimerPolicy(
-            @Value("${carebridge.triage.disclaimer.version:AI_TRIAGE_DISCLAIMER_V1}") String version,
+            @Value("${carebridge.triage.disclaimer.version:AI_TRIAGE_DISCLAIMER_V2}") String version,
             @Value("${carebridge.triage.disclaimer.text:"
-                    + "Tôi hiểu rằng AI Triage chỉ mang tính chất tham khảo, không chẩn đoán bệnh, "
-                    + "không kê đơn và không thay thế nhân viên y tế. Trong tình huống khẩn cấp, "
-                    + "hãy liên hệ cấp cứu ngay.}") String text) {
+                    + "Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp "
+                    + "Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường.}") String text) {
         this.version = version;
         this.text = text;
     }
