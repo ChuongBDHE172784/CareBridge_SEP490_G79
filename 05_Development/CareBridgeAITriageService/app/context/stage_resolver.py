@@ -43,6 +43,20 @@ _POSTPARTUM = re.compile(r"\b(?:sau sinh|hau san|moi sinh|sinh em be duoc)\b")
 _NEGATED_STAGE_PREFIX = re.compile(
     r"(?:^|\s)(?:khong|chua)(?:\s+phai)?(?:\s+o)?(?:\s+giai\s+doan)?\s*$"
 )
+#: The writer saying they do not know which stage they are in. Measured 2026-08-11: "chưa xác
+#: định có đang mang thai hay sau sinh" resolved to POSTPARTUM_MOTHER, because `_POSTPARTUM`
+#: fires on "sau sinh" without a number while the pregnancy half needs one, so the alternation
+#: was invisible and only one side of it matched. Deciding a stage the user has just said they
+#: cannot name is the same class of error as guessing the subject: it picks the thresholds.
+_STAGE_UNCERTAINTY = re.compile(
+    r"\b(?:chua\s+(?:xac\s+dinh|ro|biet|chac)|khong\s+(?:ro|biet|chac)|"
+    r"chang\s+ro|khong\s+r[oõ]\s+la|phan\s+van|dang\s+nghi\s+ngo)\b"
+)
+#: Both maternal stages offered as alternatives in one breath.
+_STAGE_ALTERNATION = re.compile(
+    r"\b(?:bau|mang\s+thai)\b[^.!?;]{0,40}\b(?:hay|hoac)\b[^.!?;]{0,20}\b(?:sau\s+sinh|hau\s+san)\b"
+    r"|\b(?:sau\s+sinh|hau\s+san)\b[^.!?;]{0,40}\b(?:hay|hoac)\b[^.!?;]{0,20}\b(?:bau|mang\s+thai)\b"
+)
 
 _ONES = {
     "khong": 0,
@@ -177,6 +191,12 @@ def _stage_from_latest_message(
 ) -> StageResolution | None:
     folded = _fold(latest_user_message)
     if not folded:
+        return None
+
+    if _STAGE_UNCERTAINTY.search(folded) or _STAGE_ALTERNATION.search(folded):
+        # No message clue rather than a conflict: the writer is not contradicting themselves,
+        # they simply do not know yet. Returning None lets journey context answer if it can, and
+        # otherwise leaves the stage unresolved so the clarification path asks.
         return None
 
     stages: set[CareStage] = set()

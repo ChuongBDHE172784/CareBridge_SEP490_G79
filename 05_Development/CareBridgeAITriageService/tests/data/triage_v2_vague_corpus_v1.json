@@ -1578,9 +1578,14 @@
     ],
     "expectedReasonCodes": [],
     "expectedPendingRule": null,
-    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn.",
+    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn. Chủ đề đổi giữa phiên: hai lượt đầu người dùng nói về mình, lượt cuối chuyển sang bé ('Bé vẫn khó ở'). expectedTargetByTurn ghi rõ điều đó để câu hỏi dành cho mẹ ở lượt 2 không bị tính là sai đối tượng, trong khi target cuối phiên vẫn là BABY. Hồ sơ BABY mâu thuẫn với câu mở đầu được giữ nguyên để tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
-    "knownDefect": "F-P1-2"
+    "knownDefect": "F-P1-2",
+    "expectedTargetByTurn": [
+      "MOTHER",
+      "MOTHER",
+      "BABY"
+    ]
   },
   {
     "id": "vague_035",
@@ -1749,9 +1754,14 @@
     ],
     "expectedReasonCodes": [],
     "expectedPendingRule": null,
-    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn.",
+    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn. Chủ đề đổi giữa phiên: hai lượt đầu người dùng nói về mình, lượt cuối chuyển sang bé ('Bé vẫn khó ở'). expectedTargetByTurn ghi rõ điều đó để câu hỏi dành cho mẹ ở lượt 2 không bị tính là sai đối tượng, trong khi target cuối phiên vẫn là BABY. Hồ sơ BABY mâu thuẫn với câu mở đầu được giữ nguyên để tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
-    "knownDefect": "F-P1-2"
+    "knownDefect": "F-P1-2",
+    "expectedTargetByTurn": [
+      "MOTHER",
+      "MOTHER",
+      "BABY"
+    ]
   },
   {
     "id": "vague_037",
@@ -1920,9 +1930,14 @@
     ],
     "expectedReasonCodes": [],
     "expectedPendingRule": null,
-    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn.",
+    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn. Chủ đề đổi giữa phiên: hai lượt đầu người dùng nói về mình, lượt cuối chuyển sang bé ('Bé vẫn khó ở'). expectedTargetByTurn ghi rõ điều đó để câu hỏi dành cho mẹ ở lượt 2 không bị tính là sai đối tượng, trong khi target cuối phiên vẫn là BABY. Hồ sơ BABY mâu thuẫn với câu mở đầu được giữ nguyên để tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
-    "knownDefect": "F-P1-2"
+    "knownDefect": "F-P1-2",
+    "expectedTargetByTurn": [
+      "MOTHER",
+      "MOTHER",
+      "BABY"
+    ]
   },
   {
     "id": "vague_039",
@@ -2091,9 +2106,14 @@
     ],
     "expectedReasonCodes": [],
     "expectedPendingRule": null,
-    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn.",
+    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn. Chủ đề đổi giữa phiên: hai lượt đầu người dùng nói về mình, lượt cuối chuyển sang bé ('Bé vẫn khó ở'). expectedTargetByTurn ghi rõ điều đó để câu hỏi dành cho mẹ ở lượt 2 không bị tính là sai đối tượng, trong khi target cuối phiên vẫn là BABY. Hồ sơ BABY mâu thuẫn với câu mở đầu được giữ nguyên để tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
-    "knownDefect": "F-P1-2"
+    "knownDefect": "F-P1-2",
+    "expectedTargetByTurn": [
+      "MOTHER",
+      "MOTHER",
+      "BABY"
+    ]
   },
   {
     "id": "vague_041",
@@ -2433,9 +2453,14 @@
     ],
     "expectedReasonCodes": [],
     "expectedPendingRule": null,
-    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn.",
+    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn. Chủ đề đổi giữa phiên: hai lượt đầu người dùng nói về mình, lượt cuối chuyển sang bé ('Bé vẫn khó ở'). expectedTargetByTurn ghi rõ điều đó để câu hỏi dành cho mẹ ở lượt 2 không bị tính là sai đối tượng, trong khi target cuối phiên vẫn là BABY. Hồ sơ BABY mâu thuẫn với câu mở đầu được giữ nguyên để tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
-    "knownDefect": "F-P1-2"
+    "knownDefect": "F-P1-2",
+    "expectedTargetByTurn": [
+      "MOTHER",
+      "MOTHER",
+      "BABY"
+    ]
   },
   {
     "id": "vague_045",
@@ -2604,9 +2629,14 @@
     ],
     "expectedReasonCodes": [],
     "expectedPendingRule": null,
-    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn.",
+    "rationale": "Hội thoại ba lượt phải mang theo sàng lọc nguy hiểm đã trả lời và ngữ cảnh mục tiêu. Câu đã trả lời không được xuất hiện lại; sau vòng cuối phải kết thúc hữu hạn bằng định hướng an toàn. Chủ đề đổi giữa phiên: hai lượt đầu người dùng nói về mình, lượt cuối chuyển sang bé ('Bé vẫn khó ở'). expectedTargetByTurn ghi rõ điều đó để câu hỏi dành cho mẹ ở lượt 2 không bị tính là sai đối tượng, trong khi target cuối phiên vẫn là BABY. Hồ sơ BABY mâu thuẫn với câu mở đầu được giữ nguyên để tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
-    "knownDefect": "F-P1-2"
+    "knownDefect": "F-P1-2",
+    "expectedTargetByTurn": [
+      "MOTHER",
+      "MOTHER",
+      "BABY"
+    ]
   },
   {
     "id": "vague_047",
@@ -3152,20 +3182,17 @@
     "turns": [],
     "geminiMode": "OFF",
     "expectedTarget": "MOTHER",
-    "expectedStage": "POSTPARTUM_MOTHER",
+    "expectedStage": "PREGNANCY",
     "expectedSafetyQuestions": [],
-    "acceptableFocusedQuestions": [
-      "Q_BLEEDING_AMOUNT",
-      "Q_CLOTS",
-      "Q_DIZZINESS"
-    ],
+    "acceptableFocusedQuestions": [],
     "acceptableFirstQuestions": [],
     "forbiddenQuestions": [
       "Q_BABY_FEEDING",
       "Q_BABY_HYDRATION",
       "Q_BABY_TEMPERATURE",
       "Q_BABY_AGE_MONTHS",
-      "Q_POSTPARTUM_DAY"
+      "Q_POSTPARTUM_DAY",
+      "Q_CLOTS"
     ],
     "maxTurns": 3,
     "allowedDispositions": [
@@ -3175,7 +3202,7 @@
       "PREG_NEURO_DANGER"
     ],
     "expectedPendingRule": null,
-    "rationale": "Thông điệp mô tả trực tiếp dấu hiệu nguy hiểm hiện tại theo rule chuẩn. Hệ thống phải dừng câu hỏi và đưa disposition RED mà không chờ Gemini.",
+    "rationale": "Hồ sơ ghi hậu sản ngày 6 nhưng người dùng vừa nói 'Em bầu 31 tuần'. Lời nhập mới nhất thắng journey/profile (stage_resolver), nên stage phải là PREGNANCY. Đau đầu dữ dội kèm nhìn mờ đủ PREG_NEURO_DANGER, phải RED tất định mà không chờ Gemini và không hỏi Q_POSTPARTUM_DAY. Profile mâu thuẫn được giữ nguyên để case này tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
     "knownDefect": null
   },
@@ -8355,30 +8382,26 @@
     "message": "Em sau sinh đau đầu nhẹ, không nhìn mờ.",
     "turns": [],
     "geminiMode": "5XX",
-    "expectedTarget": "BABY",
-    "expectedStage": "INFANT_0_12M",
+    "expectedTarget": "MOTHER",
+    "expectedStage": "POSTPARTUM_MOTHER",
     "expectedSafetyQuestions": [
       "Q_GLOBAL_DANGER"
     ],
     "acceptableFocusedQuestions": [
-      "Q_BABY_TEMPERATURE",
-      "Q_BABY_FEEDING",
-      "Q_BABY_HYDRATION"
+      "Q_SAFETY_SELF_HARM",
+      "Q_POSTPARTUM_DAY",
+      "Q_BLEEDING_AMOUNT"
     ],
     "acceptableFirstQuestions": [
       "Q_GLOBAL_DANGER"
     ],
     "forbiddenQuestions": [
-      "Q_BLEEDING_AMOUNT",
-      "Q_CLOTS",
-      "Q_DIZZINESS",
-      "Q_VISUAL_CHANGE",
-      "Q_BP_IF_KNOWN",
-      "Q_EPIGASTRIC_PAIN",
-      "Q_SWELLING",
+      "Q_BABY_FEEDING",
+      "Q_BABY_HYDRATION",
+      "Q_BABY_TEMPERATURE",
+      "Q_BABY_AGE_MONTHS",
       "Q_GESTATIONAL_WEEK",
-      "Q_POSTPARTUM_DAY",
-      "Q_BABY_AGE_MONTHS"
+      "Q_PREGNANCY_TEST"
     ],
     "maxTurns": 3,
     "allowedDispositions": [
@@ -8386,7 +8409,7 @@
     ],
     "expectedReasonCodes": [],
     "expectedPendingRule": null,
-    "rationale": "Fixture Gemini 5XX phải không tạo network client. Luồng deterministic vẫn phải sàng lọc nguy hiểm, giữ target/stage từ hồ sơ và fail-closed khi extraction không có kết quả.",
+    "rationale": "Fixture Gemini 5XX phải không tạo network client. Hồ sơ ghi BABY/INFANT nhưng người dùng vừa nói 'Em sau sinh', nên explicit latest message thắng dù Gemini 5XX: target MOTHER, stage POSTPARTUM_MOTHER. Luồng deterministic vẫn sàng lọc nguy hiểm và fail-closed khi extraction không có kết quả. Profile mâu thuẫn được giữ nguyên để case này tiếp tục kiểm thử precedence.",
     "clinicalReviewStatus": "PENDING",
     "knownDefect": null
   },

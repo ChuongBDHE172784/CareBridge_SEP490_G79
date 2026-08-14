@@ -42,6 +42,15 @@ class FilterContext:
     safety_screen_status: object = "INCOMPLETE"
 
 
+#: Entity-agnostic danger screens. They carry no target or stage precondition, so they are safe
+#: to consider in any turn; keeping the list derived from the catalogue rather than hard-coded
+#: means adding another screen to the contract is enough.
+_GLOBAL_DANGER_SCREEN_IDS: tuple[str, ...] = tuple(
+    question_id for question_id, question in CATALOG.items()
+    if question.is_global_danger_screen
+)
+
+
 def _clarification_for(context: FilterContext) -> tuple[str, ...]:
     """Return context clarification plus any still-required entity-agnostic danger screen."""
 
@@ -146,7 +155,16 @@ def eligible_questions(
             and CATALOG[question_id].question_id not in context.asked_question_ids
         )
 
-    candidates: Iterable[str] = candidate_question_ids or CATALOG.keys()
+    # A caller-supplied candidate list comes from the rules that are currently pending, and no
+    # rule declares the entity-agnostic danger screen among its questionIds. Taking that list
+    # literally therefore dropped the screen from every turn where any rule was pending —
+    # measured 2026-08-11 as safety-question coverage falling from 100% to 98%. The screen is
+    # appended rather than special-cased downstream: `is_eligible` still decides, so once its
+    # signals are answered or the screen is complete it stops being returned on its own.
+    candidates: Iterable[str] = (
+        [*candidate_question_ids, *_GLOBAL_DANGER_SCREEN_IDS]
+        if candidate_question_ids else CATALOG.keys()
+    )
     eligible = [
         CATALOG[question_id] for question_id in dict.fromkeys(candidates)
         if question_id in CATALOG and is_eligible(CATALOG[question_id], context)

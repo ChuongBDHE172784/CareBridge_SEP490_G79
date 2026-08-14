@@ -31,6 +31,7 @@ from app.danger_phrases import (
     MATERNAL_VISUAL_DISTURBANCE_PHRASES,
     normalized_text,
     text_contains_any,
+    text_contains_any_current,
 )
 
 #: Phrase group -> the global signal it evidences. Self-harm reports IDEATION, never
@@ -103,7 +104,12 @@ def detect_danger_signals(
         if text_contains_any(text, *phrases)
     }
     for phrases, code in _stage_groups(stage, stage_source):
-        if code not in detected and text_contains_any(text, *phrases):
+        # Current-only. Measured 2026-08-11: "Trước đây em hay nhìn mờ lúc mang thai, hiện giờ
+        # em chỉ đau đầu thôi" produced VISUAL_DISTURBANCE, which completed the pre-eclampsia
+        # conjunction from a sentence about a previous pregnancy — and, because a pending rule
+        # supplies the planner's candidate list, pushed the global danger screen out of the turn.
+        # The entity-agnostic groups above keep their unconditional reading on purpose.
+        if code not in detected and text_contains_any_current(text, *phrases):
             detected[code] = dict(_OBSERVATION)
     return detected
 

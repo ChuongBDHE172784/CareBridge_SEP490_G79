@@ -72,6 +72,10 @@ _CASE_FIELDS = {
     "maxTurns", "allowedDispositions", "expectedReasonCodes", "expectedPendingRule",
     "rationale", "clinicalReviewStatus", "knownDefect",
 }
+#: Only for conversations whose subject or stage legitimately changes mid-session. One entry per
+#: authored turn, oracle-stated. Absent on the vast majority of cases, where the single
+#: expectedTarget/expectedStage covers the whole conversation.
+_OPTIONAL_CASE_FIELDS = {"expectedTargetByTurn", "expectedStageByTurn"}
 _TURN_FIELDS = {"message", "signals", "measurements", "answeredQuestionIds"}
 _DISPOSITIONS = {"RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE"}
 
@@ -453,8 +457,14 @@ def validate_vague_cases(cases: list[object]) -> None:
             errors.append(f"duplicate id: {case_id}")
         else:
             seen[str(case_id)] = case
-        unknown_fields = set(case) - _CASE_FIELDS
+        unknown_fields = set(case) - _CASE_FIELDS - _OPTIONAL_CASE_FIELDS
         missing_fields = _CASE_FIELDS - set(case)
+        for field in _OPTIONAL_CASE_FIELDS & set(case):
+            value = case[field]
+            if type(value) is not list or not all(type(item) is str for item in value):
+                errors.append(f"{label}.{field} must be a list of strings")
+            elif len(value) != len(case.get("turns") or []) + 1:
+                errors.append(f"{label}.{field} must have one entry per authored turn")
         if unknown_fields:
             errors.append(f"{label} unknown fields: {sorted(unknown_fields)}")
         if missing_fields:
@@ -753,6 +763,8 @@ def _evaluate_vague_case(case: dict[str, object], index: int) -> dict[str, objec
         trajectory,
         expected_target=str(case["expectedTarget"]),
         expected_stage=str(case["expectedStage"]),
+        expected_target_by_turn=case.get("expectedTargetByTurn"),
+        expected_stage_by_turn=case.get("expectedStageByTurn"),
     )
     acceptable_first = case["acceptableFirstQuestions"]
     actual_first = trajectory[0]["questions"][0] if trajectory[0]["questions"] else None
@@ -904,14 +916,39 @@ def _repeated_questions(trajectory: list[dict[str, object]]) -> set[str]:
     return repeated
 
 
+def _turn_expectation(by_turn: object, index: int, fallback: str) -> str:
+    """The oracle's value for this turn, or the single whole-session value."""
+
+    if type(by_turn) is list and index < len(by_turn) and type(by_turn[index]) is str:
+        return by_turn[index]
+    return fallback
+
+
 def _wrong_context_questions(
-    trajectory: list[dict[str, object]], *, expected_target: str, expected_stage: str
+    trajectory: list[dict[str, object]], *, expected_target: str, expected_stage: str,
+    expected_target_by_turn: object = None, expected_stage_by_turn: object = None,
 ) -> tuple[set[str], set[str]]:
     wrong_entity: set[str] = set()
     wrong_stage: set[str] = set()
     all_targets = {"MOTHER", "BABY"}
     all_stages = {item.value for item in CareStage}
-    for turn in trajectory:
+    unresolved = {"UNKNOWN", "CONFLICTED"}
+    # Scored against the oracle, deliberately — see
+    # test_wrong_context_questions_are_scored_against_oracle_not_engine_prediction.
+    # Judging a question against the context the engine held when it asked was tried and
+    # reverted on 2026-08-11: it measures whether the engine was internally consistent, while
+    # what matters is what the person on the other end was actually asked. If the subject is a
+    # mother and the engine believed it was assessing her baby, "bé bú thế nào?" was still put
+    # to a mother.
+    #
+    # `expected_target_by_turn` exists for the one case a single value cannot express: a
+    # conversation whose subject legitimately changes. "Em thấy khó chịu, chắc là tình trạng
+    # của mẹ" followed later by "Bé vẫn khó ở" is about the mother and then about the baby, and
+    # a maternal question in turn two was right when it was asked. Still the oracle's answer,
+    # not the engine's — the fixture states the change, the engine does not get to claim it.
+    for index, turn in enumerate(trajectory):
+        target = _turn_expectation(expected_target_by_turn, index, expected_target)
+        stage = _turn_expectation(expected_stage_by_turn, index, expected_stage)
         for question_id in turn["questions"]:
             question = CATALOG.get(question_id)
             if question is None:
@@ -920,13 +957,13 @@ def _wrong_context_questions(
                 continue
             targets = {_value(item) for item in question.target_entities}
             stages = {_value(item) for item in question.applicable_stages}
-            if expected_target in all_targets and targets and expected_target not in targets:
+            if target in all_targets and targets and target not in targets:
                 wrong_entity.add(question_id)
-            elif expected_target in {"UNKNOWN", "CONFLICTED"} and targets and targets != all_targets:
+            elif target in unresolved and targets and targets != all_targets:
                 wrong_entity.add(question_id)
-            if expected_stage not in {"UNKNOWN", "CONFLICTED"} and stages and expected_stage not in stages:
+            if stage not in unresolved and stages and stage not in stages:
                 wrong_stage.add(question_id)
-            elif expected_stage in {"UNKNOWN", "CONFLICTED"} and stages and stages != all_stages:
+            elif stage in unresolved and stages and stages != all_stages:
                 wrong_stage.add(question_id)
     return wrong_entity, wrong_stage
 

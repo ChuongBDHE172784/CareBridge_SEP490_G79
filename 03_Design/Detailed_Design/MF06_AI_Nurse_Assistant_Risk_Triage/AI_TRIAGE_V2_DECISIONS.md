@@ -447,3 +447,42 @@ is unknown, and does not apply once a profile has stated it.
 no question that resolves them stay refused under D-030.
 **Impact** `app/triage_v2/deterministic_signals.py`. Expected to close most of the RED recall gap; the
 remainder is free-text numerics ("Bé hai tháng đo được 38,2 độ"), which is parsing, not a clinical claim.
+
+## D-033 — The latest message outranks a stored profile; two oracles are corrected, the resolver is not
+**Date** 2026-08-11 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-11.
+**Problem** The vague corpus and the engine disagreed about who a session is about. Two fixtures gave a
+profile that contradicted the message — `gemini_failure_018` ("Em sau sinh đau đầu nhẹ" with a BABY/INFANT
+profile) and `maternal_004` ("Em bầu 31 tuần" with a POSTPARTUM/day-6 journey) — and their oracles sided
+with the profile. The engine sided with the message, so both failed on target/stage, and the disagreement
+kept `wrongEntityQuestionRate` and `wrongStageQuestionRate` off zero.
+**Decision** The oracles are wrong and were corrected; precedence is unchanged. What the user just typed is
+direct evidence about who is unwell now. A profile is context chosen earlier and may be stale or simply
+mis-tapped. Inverting the order would produce the more dangerous error: paediatric thresholds applied to a
+postpartum mother, or postpartum rules applied to a pregnancy. The existing order is already stated at
+`app/context/target_entity_resolver.py:8` and `app/context/stage_resolver.py:139`.
+**Corrected** `gemini_failure_018` to MOTHER / POSTPARTUM_MOTHER, `maternal_004` to MOTHER / PREGNANCY,
+each with its focused and forbidden question lists and rationale brought in line. The contradictory
+profiles are **kept** in both fixtures on purpose: they are what makes these cases test precedence at all.
+**Not done** No resolver change, no move to profile-wins, no silent substitution of the profile for the
+user's words. A profile/message mismatch may be recorded for audit; it may not decide the subject.
+**Corpus digest** The corpus SHA moves from `24c92fec…` to `19e50a96…`. Baselines either side of that
+boundary are not directly comparable; the expectation digest changes with it by design.
+**Impact** `tests/data/triage_v2_vague_corpus_v1.json` only. `gemini_failure_018` now passes fully;
+`maternal_004` still fails on disposition because the phrase list does not cover "đầu đau dữ dội" (word
+order) or "nhìn mọi thứ nhòe đi", which is a lexicon-coverage limitation, not an oracle one.
+**Follow-up, and two retractions** Six further fixtures (`vague_034/036/038/040/044/046`) were first
+read as carrying the same oracle defect, and a stale profile was reported as taking a message-derived
+target back on the following turn. Both readings were wrong and are withdrawn. Their turn three is
+"Bé vẫn khó ở", so the user genuinely changes subject: the oracle's final BABY is right and the engine's
+MOTHER → MOTHER → BABY is right. The drift was an artefact of an artificial probe — after turn one the
+node stops passing `selected_profile_entity`, because the source is no longer `EXPLICIT_SELECTED_PROFILE`,
+so the profile never gets a second chance. What those six actually exposed is that one `expectedTarget`
+cannot describe a conversation that changes subject, which is an oracle-model limit, not an engine or an
+oracle-value defect. Fixed by adding an optional `expectedTargetByTurn` / `expectedStageByTurn`, stated by
+the fixture and still scored against the oracle rather than against what the engine believed.
+**Also fixed under this ruling** "chưa xác định có đang mang thai hay sau sinh" resolved to
+POSTPARTUM_MOTHER, because the postpartum matcher fires without a number while the pregnancy half needs
+one, so the alternation was invisible and only one side matched. A stage the writer has just said they
+cannot name is now left unresolved.
+**Measured after all of it** safety-question coverage 100%, forbidden 0%, wrong-entity 0%, wrong-stage 0%,
+repeated 0%, unsupported GREEN 0; target accuracy 76.9%, stage accuracy 65.0%. Corpus SHA `9023d858…`.
