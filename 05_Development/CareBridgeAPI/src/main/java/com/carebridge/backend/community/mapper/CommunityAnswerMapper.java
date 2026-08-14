@@ -47,9 +47,9 @@ public CommunityAnswerResponse toResponse(CommunityAnswer entity, boolean liked)
 public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorDisplay, boolean liked, UUID expertProfileId) {
  String finalAuthorDisplay;
  if (entity.isExpertLabeled()) {
- finalAuthorDisplay = "Chuyên gia";
+  finalAuthorDisplay = (authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Chuyên gia";
  } else {
- finalAuthorDisplay = (authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Thành viên";
+  finalAuthorDisplay = (authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Thành viên";
  }
  return CommunityAnswerResponse.builder()
  .id(entity.getId())

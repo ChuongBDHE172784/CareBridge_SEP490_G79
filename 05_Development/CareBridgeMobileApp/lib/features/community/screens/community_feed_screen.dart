@@ -50,7 +50,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   // Filter states
   String? _selectedTopicId; // null = "Tất cả chủ đề"
   String? _selectedStage; // null = "Tất cả giai đoạn"
-  bool _verifiedOnly = false;
+  bool? _expertFilter; // null = "Tất cả", true = "Có chuyên gia", false = "Chưa có chuyên gia"
 
   bool get _canCreateQuestion {
     final role = AuthState.instance.role;
@@ -128,7 +128,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             : _searchCtrl.text.trim(),
         topicId: _selectedTopicId,
         stage: _selectedStage,
-        hasExpertAnswer: _verifiedOnly ? true : null,
+        hasExpertAnswer: _expertFilter,
         page: _page,
       );
 
@@ -215,7 +215,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           _searchCtrl.text.isNotEmpty ||
                                   _selectedTopicId != null ||
                                   _selectedStage != null ||
-                                  _verifiedOnly
+                                  _expertFilter != null
                               ? 'Không tìm thấy câu hỏi phù hợp.'
                               : 'Chưa có bài viết nào.',
                           style: const TextStyle(
@@ -600,38 +600,93 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           ),
           const SizedBox(width: 8),
 
-          // Filter Chip: Expert verified
-          GestureDetector(
-            onTap: () {
-              setState(() => _verifiedOnly = !_verifiedOnly);
+          // Dropdown 3: Expert Filter
+          PopupMenuButton<String>(
+            initialValue: _expertFilter == null
+                ? ''
+                : (_expertFilter! ? 'true' : 'false'),
+            onSelected: (val) {
+              setState(() {
+                if (val == 'true') {
+                  _expertFilter = true;
+                } else if (val == 'false') {
+                  _expertFilter = false;
+                } else {
+                  _expertFilter = null;
+                }
+              });
               _search(refresh: true);
             },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: '',
+                child: Text(
+                  'Tất cả',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'true',
+                child: Text(
+                  'Có chuyên gia',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'false',
+                child: Text(
+                  'Chưa có chuyên gia',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                ),
+              ),
+            ],
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: _verifiedOnly ? _primary : _surfaceContainerLowest,
+                color: _expertFilter != null
+                    ? _primary
+                    : _surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(99),
-                border: _verifiedOnly
+                border: _expertFilter != null
                     ? null
                     : Border.all(color: _outlineVariant),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Icon(
+                    Icons.verified_outlined,
+                    size: 15,
+                    color: _expertFilter != null
+                        ? Colors.white
+                        : _onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
-                    'Chuyên gia',
+                    _expertFilter == null
+                        ? 'Chuyên gia'
+                        : (_expertFilter!
+                            ? 'Có chuyên gia'
+                            : 'Chưa có chuyên gia'),
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: _verifiedOnly ? Colors.white : _onSurfaceVariant,
+                      color: _expertFilter != null
+                          ? Colors.white
+                          : _onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 2),
                   Icon(
-                    Icons.verified,
-                    size: 14,
-                    color: _verifiedOnly ? Colors.white : _onSurfaceVariant,
+                    Icons.arrow_drop_down,
+                    size: 18,
+                    color: _expertFilter != null
+                        ? Colors.white
+                        : _onSurfaceVariant,
                   ),
                 ],
               ),

@@ -119,6 +119,51 @@ void main() {
       expect(find.text('chat:conv-123'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'displays email and phone number below title when present in profile',
+    (tester) async {
+      final service = _ScriptedDirectChatServiceWithContact();
+      DirectChatService.instance = service;
+
+      final router = GoRouter(
+        initialLocation: '/expert/public/expert-profile-contact',
+        routes: [
+          GoRoute(
+            path: '/expert/public/:expertProfileId',
+            builder: (_, state) => ExpertPublicProfileScreen(
+              expertProfileId: state.pathParameters['expertProfileId']!,
+              availabilityService: _EmptyAvailabilityService(),
+            ),
+          ),
+        ],
+      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      expect(find.text('BS. Trần Thị B'), findsOneWidget);
+      expect(find.text('Bác sĩ Nhi khoa'), findsOneWidget);
+      expect(find.text('dr.binh@carebridge.vn'), findsOneWidget);
+      expect(find.text('0901000003'), findsOneWidget);
+      expect(find.byIcon(Icons.email_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.phone_outlined), findsOneWidget);
+    },
+  );
+}
+
+class _ScriptedDirectChatServiceWithContact extends _ScriptedDirectChatService {
+  @override
+  Future<Map<String, dynamic>> getExpertProfile(String expertProfileId) async =>
+      {
+        'expertProfileId': expertProfileId,
+        'displayName': 'BS. Trần Thị B',
+        'professionalTitle': 'Bác sĩ Nhi khoa',
+        'specialty': 'Nhi khoa',
+        'email': 'dr.binh@carebridge.vn',
+        'phoneNumber': '0901000003',
+        'verificationStatus': 'APPROVED',
+        'consultationEligible': true,
+      };
 }
 
 class _ScriptedDirectChatServiceWithConversation

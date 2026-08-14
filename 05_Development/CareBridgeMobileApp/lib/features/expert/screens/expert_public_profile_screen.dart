@@ -178,6 +178,8 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 final workplace = profile['workplace'] as String?;
                 final experienceYears = profile['experienceYears']?.toString();
                 final ratingAvg = profile['ratingAvg']?.toString();
+                final email = (profile['email'] as String?)?.trim();
+                final phone = ((profile['phoneNumber'] ?? profile['phone']) as String?)?.trim();
                 final consultationScope =
                     profile['consultationScope'] as String?;
                 final isVerified = profile['verificationStatus'] == 'APPROVED';
@@ -246,6 +248,58 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
+                              ),
+                            ],
+                            if ((email != null && email.isNotEmpty) ||
+                                (phone != null && phone.isNotEmpty)) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 16,
+                                runSpacing: 6,
+                                children: [
+                                  if (email != null && email.isNotEmpty)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.email_outlined,
+                                          size: 15,
+                                          color: _onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          email,
+                                          style: const TextStyle(
+                                            color: _onSurfaceVariant,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  if (phone != null && phone.isNotEmpty)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.phone_outlined,
+                                          size: 15,
+                                          color: _onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          phone,
+                                          style: const TextStyle(
+                                            color: _onSurfaceVariant,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ],
                               ),
                             ],
                             const SizedBox(height: 16),

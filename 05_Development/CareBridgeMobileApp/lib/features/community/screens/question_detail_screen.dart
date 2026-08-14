@@ -345,12 +345,18 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   }
 
   String _formatTimeAgo(String iso) {
+    if (iso.isEmpty) return '';
     try {
-      final dt = DateTime.parse(iso);
-      final diff = DateTime.now().difference(dt);
+      final dt = DateTime.parse(iso).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.isNegative || diff.inMinutes < 1) return 'Vừa xong';
       if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
       if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-      return '${diff.inDays} ngày trước';
+      if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+      if (diff.inDays < 30) return '${(diff.inDays / 7).floor()} tuần trước';
+      if (diff.inDays < 365) return '${(diff.inDays / 30).floor()} tháng trước';
+      return '${(diff.inDays / 365).floor()} năm trước';
     } catch (_) {
       return '';
     }
@@ -1084,11 +1090,18 @@ class _AnswerCard extends StatelessWidget {
                               '/expert/public/${answer.expertProfileId}',
                             )
                           : null,
-                      child: Row(
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        runSpacing: 2,
                         children: [
                           Text(
                             answer.expertLabeled
-                                ? 'Chuyên gia'
+                                ? (answer.authorDisplay != null &&
+                                        answer.authorDisplay!.isNotEmpty &&
+                                        answer.authorDisplay != 'Chuyên gia'
+                                    ? answer.authorDisplay!
+                                    : 'Chuyên gia')
                                 : (answer.authorDisplay ?? 'Thành viên'),
                             style: TextStyle(
                               fontSize: 13,
@@ -1102,12 +1115,37 @@ class _AnswerCard extends StatelessWidget {
                               decorationColor: const Color(0xFFC98C7B),
                             ),
                           ),
-                          if (hasExpertProfileId)
+                          if (answer.expertLabeled) ...[
                             const Icon(
                               Icons.verified,
                               size: 14,
                               color: Color(0xFF845143),
                             ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8EEE9),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: const Color(0xFFC98C7B)
+                                      .withValues(alpha: 0.5),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: const Text(
+                                'Chuyên gia',
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF845143),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

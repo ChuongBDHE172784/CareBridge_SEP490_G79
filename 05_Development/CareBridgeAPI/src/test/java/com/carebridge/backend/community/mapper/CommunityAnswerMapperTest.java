@@ -30,4 +30,44 @@ class CommunityAnswerMapperTest {
         assertThat(response.getImageUrls()).containsExactlyElementsOf(imageUrls);
         assertThat(entity.getImageUrls()).isNotSameAs(imageUrls);
     }
+
+    @Test
+    void toResponse_expertLabeled_preservesAuthorDisplayNameAndExpertProfileId() {
+        UUID authorId = UUID.randomUUID();
+        UUID questionId = UUID.randomUUID();
+        UUID expertProfileId = UUID.randomUUID();
+        CommunityAnswer entity = CommunityAnswer.builder()
+                .id(UUID.randomUUID())
+                .authorId(authorId)
+                .questionId(questionId)
+                .body("Câu trả lời chuyên môn từ bác sĩ")
+                .expertLabeled(true)
+                .build();
+
+        CommunityAnswerResponse response = mapper.toResponse(
+                entity, "BS. CKII Nguyễn Văn A", false, expertProfileId);
+
+        assertThat(response.isExpertLabeled()).isTrue();
+        assertThat(response.getAuthorDisplay()).isEqualTo("BS. CKII Nguyễn Văn A");
+        assertThat(response.getExpertProfileId()).isEqualTo(expertProfileId);
+    }
+
+    @Test
+    void toResponse_expertLabeledWithoutAuthorDisplay_fallsBackToChuyenGia() {
+        UUID expertProfileId = UUID.randomUUID();
+        CommunityAnswer entity = CommunityAnswer.builder()
+                .id(UUID.randomUUID())
+                .authorId(UUID.randomUUID())
+                .questionId(UUID.randomUUID())
+                .body("Câu trả lời chuyên môn")
+                .expertLabeled(true)
+                .build();
+
+        CommunityAnswerResponse response = mapper.toResponse(
+                entity, null, false, expertProfileId);
+
+        assertThat(response.isExpertLabeled()).isTrue();
+        assertThat(response.getAuthorDisplay()).isEqualTo("Chuyên gia");
+        assertThat(response.getExpertProfileId()).isEqualTo(expertProfileId);
+    }
 }
