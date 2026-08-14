@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../models/posture_event_model.dart';
 import '../services/exercise_service.dart';
 import '../services/exercise_feedback_analyzer.dart';
+import '../services/exercise_voice_feedback.dart';
 import '../services/posture_camera_source.dart';
 import '../services/posture_event_streamer.dart';
 import 'exercise_session_result_screen.dart';
@@ -29,6 +30,9 @@ class ExerciseSessionScreen extends StatefulWidget {
   /// Injectable source for deterministic tests or another pose provider.
   final PostureCameraSource? postureCameraSource;
 
+  /// Injectable boundary so widget tests never invoke the platform TTS plugin.
+  final ExerciseVoiceFeedback? voiceFeedback;
+
   const ExerciseSessionScreen({
     super.key,
     required this.exerciseId,
@@ -43,6 +47,7 @@ class ExerciseSessionScreen extends StatefulWidget {
     this.postureLandmarkFrames,
     this.enableRealtimePostureCamera = false,
     this.postureCameraSource,
+    this.voiceFeedback,
   });
 
   @override
@@ -73,6 +78,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   bool _cameraStarting = false;
   bool _pauseChanging = false;
   late final ExerciseFeedbackAnalyzer _feedbackAnalyzer;
+  late final ExerciseVoiceFeedbackAnnouncer _voiceFeedbackAnnouncer;
   ExerciseFeedbackMetrics? _latestFeedbackMetrics;
   DateTime? _lastMetricsUiUpdateAt;
   bool _hasValidMetricsFrame = false;
@@ -91,6 +97,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     _feedbackAnalyzer = ExerciseFeedbackAnalyzer(
       exerciseId: widget.exerciseId,
       exerciseTitle: widget.exerciseTitle,
+    );
+    _voiceFeedbackAnnouncer = ExerciseVoiceFeedbackAnnouncer(
+      voice: widget.voiceFeedback ?? SystemExerciseVoiceFeedback(),
     );
     _isPaused = widget.initialStatus.toUpperCase() == 'PAUSED';
     _elapsedSeconds = DateTime.now()
@@ -244,21 +253,25 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   void _applyPostureFeedback(PostureFeedback feedback) {
     if (!mounted || _isPaused || _isCompleting) return;
     final severity = feedback.severity.toUpperCase();
+    _feedbackAnalyzer.applyFeedback(feedback);
     final warning =
         severity == 'WARNING' ||
         severity == 'CRITICAL' ||
-        feedback.postureCode == 'MODEL_UNAVAILABLE';
-    _feedbackAnalyzer.applyFeedback(feedback);
+        _feedbackAnalyzer.hasFeedbackError;
     _cameraSource?.setFeedbackError(warning);
+    final feedbackText = feedback.feedbackText?.trim();
     setState(() {
       _postureGood = !warning;
       // postureCode is a machine identifier (GOOD_FORM, MODEL_UNAVAILABLE, a raw
       // model label): never show it. An empty feedbackText means the server-owned
       // feedback level is SILENT, so only the overlay colour conveys the result.
-      _postureStatus = feedback.feedbackText?.trim().isNotEmpty == true
-          ? feedback.feedbackText!.trim()
+      _postureStatus = feedbackText?.isNotEmpty == true
+          ? feedbackText!
           : 'Đang theo dõi tư thế...';
     });
+    if (warning && feedbackText?.isNotEmpty == true) {
+      unawaited(_voiceFeedbackAnnouncer.announce(feedbackText!));
+    }
   }
 
   String _postureErrorText(Object error) {
@@ -292,6 +305,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       // resume.  PostureEventStreamer suppresses callbacks after stop(); the
       // same instance can be started again once the server accepts resume.
       if (pausing) {
+        await _voiceFeedbackAnnouncer.stop();
         await streamer?.stop();
         await ExerciseService.instance.pauseSession(widget.sessionId);
       } else {
@@ -348,6 +362,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     if (mounted) {
       setState(() => _isCompleting = true);
     }
+    await _voiceFeedbackAnnouncer.stop();
     _postureStreamer?.dispose();
     await _postureFramesSubscription?.cancel();
     _postureFramesSubscription = null;
@@ -387,6 +402,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     _postureFramesSubscription?.cancel();
     _cameraErrorsSubscription?.cancel();
     unawaited(_cameraSource?.dispose());
+    unawaited(_voiceFeedbackAnnouncer.dispose());
     super.dispose();
   }
 

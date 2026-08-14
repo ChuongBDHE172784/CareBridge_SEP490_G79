@@ -647,3 +647,17 @@
   gates; preserve the provenance check before returning the generic migration-path error.
 - Migration repair must fail closed for ambiguous legacy roots: archive/disable the source,
   create a disabled Draft replacement marked review-required, and preserve runtime history.
+
+## 2026-08-14 - Exercise detail media and spoken posture feedback
+
+- A single exercise `mediaUrl` is sufficient when product scope permits one media item;
+  local demo overrides should be deterministic by exercise identity/title and return null
+  for exercises without approved media instead of inventing placeholders as data.
+- Pin `video_player` exactly to the Flutter baseline supported by the repository; a caret
+  constraint can resolve to a newer package whose SDK requirements exceed the intended
+  deployment toolchain.
+- High-frequency posture warnings need both a global speech throttle and an exact-message
+  dedupe window. Keep TTS behind an injectable boundary, preserve visual feedback as the
+  authority, and stop speech on pause, completion, and disposal.
+- Nullable values are not promoted reliably across asynchronous gaps and compound assignment;
+  bind the fetched exercise detail to a final non-null local before starting the session.

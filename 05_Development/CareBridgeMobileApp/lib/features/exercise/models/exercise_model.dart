@@ -77,6 +77,43 @@ class ExerciseDetail {
           json['supportsPostureAnalysis'] as bool? ?? false,
     );
   }
+
+  /// Local demo media takes precedence for the two supported exercises.
+  /// Plank and Squat intentionally have no detail media yet.
+  String? get detailMediaUrl => ExerciseMediaAssets.forExercise(title);
+
+  List<String> get instructionSteps {
+    final source = instructionContent.trim().isNotEmpty
+        ? instructionContent.trim()
+        : description.trim();
+    if (source.isEmpty) return const [];
+
+    final lines = source
+        .split(RegExp(r'(?:\r?\n)+|(?<=[.!?])\s+'))
+        .map(
+          (step) => step.replaceFirst(RegExp(r'^\s*\d+[.)-]?\s*'), '').trim(),
+        )
+        .where((step) => step.isNotEmpty)
+        .toList(growable: false);
+    return lines.isEmpty ? [source] : lines;
+  }
+}
+
+abstract final class ExerciseMediaAssets {
+  static const bicepCurl = 'assets/exercises/bicep-curl.mp4';
+  static const lunge = 'assets/exercises/lunge.mp4';
+
+  static String? forExercise(String title) {
+    final normalized = title
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (normalized.contains('bicep curl')) return bicepCurl;
+    if (normalized.contains('lunge')) return lunge;
+    return null;
+  }
 }
 
 class ExerciseSafetyCheck {
