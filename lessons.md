@@ -661,3 +661,24 @@
   authority, and stop speech on pause, completion, and disposal.
 - Nullable values are not promoted reliably across asynchronous gaps and compound assignment;
   bind the fetched exercise detail to a final non-null local before starting the session.
+
+## 2026-08-14 - Database Design to conceptual ERD projection
+
+- Re-baseline a large Draw.io source immediately before transforming it. The clean source
+  advanced from 62 tables/147 edges to 63 tables/149 edges because
+  `account_lock_appeals` was legitimately added between turns.
+- Draw.io table-child geometries use absolute pixel widths. After removing a datatype
+  cell, set the attribute-name cell width to its parent detail container width; `width=1`
+  means one pixel, not 100 percent. XML/count checks cannot catch this clipping, so render
+  and inspect a focused crop before approval.
+- The Draw.io CLI `--page-index` is one-based in this environment: the appended fourteenth
+  diagram exports with `--page-index 14`. The Electron CLI may return a non-zero status
+  even after creating the PNG, so verify the output file and inspect it instead of trusting
+  the exit code alone.
+- Keep PowerShell 5 transformation helpers ASCII-only or add an explicit compatible
+  encoding marker; construct non-ASCII separators such as the middle dot at runtime.
+  Guard every write with the current SHA-256 and validate the complete temporary XML before
+  copying it over the exact workspace target.
+- For content-based table widths, measure rendered labels with their actual font weight,
+  round to a stable pixel grid, and preserve each table center while updating every nested
+  row/detail/name geometry; changing only the outer table width causes clipping or drift.
