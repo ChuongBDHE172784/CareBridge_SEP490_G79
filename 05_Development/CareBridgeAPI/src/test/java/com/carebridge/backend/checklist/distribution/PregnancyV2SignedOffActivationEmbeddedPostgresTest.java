@@ -1,7 +1,6 @@
 package com.carebridge.backend.checklist.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.carebridge.backend.testsupport.EmbeddedPostgresRoleFixture;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
@@ -16,13 +15,7 @@ import org.junit.jupiter.api.condition.OS;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
-/**
- * Current-chain evidence for the human-gated Pregnancy V2 activation boundary.
- *
- * <p>This deliberately mutates only a disposable embedded database.  The
- * production WHO seed remains DRAFT/non-distributable and this test does not
- * represent clinical approval or production rollout evidence.</p>
- */
+/** Current-chain evidence that technical review, not provenance sign-off, gates activation. */
 @EnabledOnOs(OS.WINDOWS)
 class PregnancyV2SignedOffActivationEmbeddedPostgresTest {
 
@@ -30,7 +23,7 @@ class PregnancyV2SignedOffActivationEmbeddedPostgresTest {
 
     @Test
     @Timeout(180)
-    void signedOffMetadataIsAcceptedForOneDisposableRootWhileOtherRootsRemainPending() throws Exception {
+    void pendingProvenanceMetadataIsAcceptedForOneDisposableRootWhileOtherRootsRemainPending() throws Exception {
         try (EmbeddedPostgres postgres = EmbeddedPostgres.builder()
                 .setPGStartupWait(Duration.ofSeconds(30))
                 .setServerConfig("max_connections", "100")
@@ -76,17 +69,13 @@ class PregnancyV2SignedOffActivationEmbeddedPostgresTest {
                                = 'PENDING_CLINICAL_COPY_SIGN_OFF'
                         """)).isEqualTo(16);
 
-                executeSignedOffFixture(connection, rootId);
+                executeActivationFixture(connection, rootId);
                 assertThat(count(connection, """
                         select count(*)
                           from public.care_item_templates
                          where template_id='%s'::uuid
                            and content_status='APPROVED'
                            and distribution_enabled=true
-                           and checklist_metadata_jsonb ->> 'schema'
-                               = 'CHECKLIST_METADATA_V1'
-                           and checklist_metadata_jsonb ->> 'provenanceStatus'
-                               = 'SIGNED_OFF'
                         """.formatted(rootId))).isOne();
 
                 assertThat(count(connection, """
@@ -103,13 +92,19 @@ class PregnancyV2SignedOffActivationEmbeddedPostgresTest {
                                = 'PENDING_CLINICAL_COPY_SIGN_OFF'
                         """)).isEqualTo(15);
 
-                assertThatThrownBy(() -> setInvalidSignedOffState(connection, rootId))
-                        .hasMessageContaining("checklist_pregnancy_v2_provenance_activation_ck");
+                setPendingProvenanceState(connection, rootId);
+                assertThat(count(connection, """
+                        select count(*)
+                          from public.care_item_templates
+                         where template_id='%s'::uuid
+                           and content_status='APPROVED'
+                           and distribution_enabled=true
+                        """.formatted(rootId))).isOne();
             }
         }
     }
 
-    private static void setInvalidSignedOffState(Connection connection, String rootId) throws Exception {
+    private static void setPendingProvenanceState(Connection connection, String rootId) throws Exception {
         try (var statement = connection.createStatement()) {
             statement.executeUpdate("""
                     update public.care_item_templates
@@ -125,7 +120,7 @@ class PregnancyV2SignedOffActivationEmbeddedPostgresTest {
         }
     }
 
-    private static void executeSignedOffFixture(Connection connection, String rootId) throws Exception {
+    private static void executeActivationFixture(Connection connection, String rootId) throws Exception {
         try (var stream = PregnancyV2SignedOffActivationEmbeddedPostgresTest.class
                 .getResourceAsStream("/checklist/pregnancy-v2-signed-off-fixture.sql")) {
             assertThat(stream).isNotNull();

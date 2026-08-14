@@ -5,7 +5,9 @@ import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.model.ChecklistSupportFunction;
 import com.carebridge.backend.checklist.today.model.TaskAction;
+import com.carebridge.backend.checklist.today.model.TaskCadence;
 import com.carebridge.backend.checklist.today.model.TaskKind;
+import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import java.time.Instant;
 import java.util.Set;
@@ -28,7 +30,62 @@ public record TodayTaskCandidate(
         Instant terminalAt,
         ReminderType reminderType,
         String description,
-        ChecklistSupportFunction supportFunction) {
+        ChecklistSupportFunction supportFunction,
+        TaskCadence cadence,
+        ContentStage stage) {
+
+    public TodayTaskCandidate {
+        cadence = cadence == null ? TaskCadence.ONCE : cadence;
+    }
+
+    /** Compatibility constructor for callers before lifecycle stage was exposed. */
+    public TodayTaskCandidate(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            Instant terminalAt,
+            ReminderType reminderType,
+            String description,
+            ChecklistSupportFunction supportFunction,
+            TaskCadence cadence) {
+        this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
+                careContextId, title, targetSubject, origin, status, allowedActions,
+                dueAt, terminalAt, reminderType, description, supportFunction, cadence, null);
+    }
+
+    /** Compatibility constructor for providers that expose task detail but not cadence. */
+    public TodayTaskCandidate(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            Instant terminalAt,
+            ReminderType reminderType,
+            String description,
+            ChecklistSupportFunction supportFunction) {
+        this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
+                careContextId, title, targetSubject, origin, status, allowedActions,
+                dueAt, terminalAt, reminderType, description, supportFunction, TaskCadence.ONCE, null);
+    }
 
     /** Compatibility constructor for providers that do not expose task detail. */
     public TodayTaskCandidate(
@@ -49,7 +106,7 @@ public record TodayTaskCandidate(
             ReminderType reminderType) {
         this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
                 careContextId, title, targetSubject, origin, status, allowedActions,
-                dueAt, terminalAt, reminderType, null, null);
+                dueAt, terminalAt, reminderType, null, null, TaskCadence.ONCE, null);
     }
 
     public TodayTaskCandidate(
@@ -68,7 +125,7 @@ public record TodayTaskCandidate(
             Instant dueAt) {
         this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
                 careContextId, title, targetSubject, origin, status, allowedActions, dueAt, null, null,
-                null, null);
+                null, null, TaskCadence.ONCE, null);
     }
 
     public TodayTaskCandidate(
@@ -88,6 +145,6 @@ public record TodayTaskCandidate(
             Instant terminalAt) {
         this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
                 careContextId, title, targetSubject, origin, status, allowedActions, dueAt, terminalAt, null,
-                null, null);
+                null, null, TaskCadence.ONCE, null);
     }
 }

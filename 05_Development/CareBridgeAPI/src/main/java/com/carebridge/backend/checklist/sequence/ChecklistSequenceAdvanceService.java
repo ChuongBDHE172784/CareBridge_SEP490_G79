@@ -224,7 +224,8 @@ public class ChecklistSequenceAdvanceService {
                 new ChecklistLifecycleDates(null, null, null, null),
                 java.time.LocalDate.now(clock), DEFAULT_ZONE,
                 List.of(new ChecklistDistributionRecipient(actorOwner(current), ChecklistRecipientRole.MOTHER,
-                        true, true, true)), items, correlationId);
+                        true, true, true)), items, correlationId, null, null,
+                successor.getChecklistContractVersion());
     }
 
     private ChecklistDistributionItem item(ChecklistItem item) {

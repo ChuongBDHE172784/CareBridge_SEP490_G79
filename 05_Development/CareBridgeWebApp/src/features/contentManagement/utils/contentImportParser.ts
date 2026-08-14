@@ -20,13 +20,16 @@ const STAGE_MAP: Record<string, ContentStage> = {
   PRE_PREGNANCY: 'PRE_PREGNANCY',
   PREGNANCY: 'PREGNANCY',
   POSTPARTUM: 'POSTPARTUM',
+  BABY_CARE: 'BABY_CARE',
   'CHUẨN BỊ MANG THAI': 'PRE_PREGNANCY',
   'MANG THAI': 'PREGNANCY',
   'SAU SINH': 'POSTPARTUM',
+  'CHĂM BÉ': 'BABY_CARE',
   'CHUẨN_BỊ_MANG_THAI': 'PRE_PREGNANCY',
   'CHUA_BI_MANG_THAI': 'PRE_PREGNANCY',
   'MANG_THAI': 'PREGNANCY',
   'SAU_SINH': 'POSTPARTUM',
+  'CHAM_BE': 'BABY_CARE',
 };
 
 /**
@@ -37,7 +40,7 @@ export function generateContentTemplate(type: ContentType): string {
 
   const headers = [
     'tiêu_đề (*Bắt buộc)',
-    'giai_đoạn (*Bắt buộc: Chuẩn bị mang thai [PRE_PREGNANCY] / Thai kỳ [PREGNANCY] / Hậu sản [POSTPARTUM])',
+    'giai_đoạn (*Bắt buộc: Chuẩn bị mang thai [PRE_PREGNANCY] / Thai kỳ [PREGNANCY] / Hậu sản [POSTPARTUM] / Chăm bé [BABY_CARE])',
     'nội_dung (*Bắt buộc)',
     'tóm_tắt (Không bắt buộc)',
     'danh_mục (Không bắt buộc - Tên danh mục)',
@@ -131,8 +134,8 @@ function parseExcelFile(file: File, topics: CommunityTopic[]): Promise<ParsedImp
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         const rawMatrix: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-        
-        const matrix: string[][] = rawMatrix.map(row => 
+
+        const matrix: string[][] = rawMatrix.map(row =>
           Array.isArray(row) ? row.map(cell => (cell == null ? '' : String(cell))) : []
         );
 
@@ -152,7 +155,7 @@ function parseTextFileContent(
   topics: CommunityTopic[],
 ): ParsedImportRow[] {
   // Strip BOM if present
-  let cleanText = text.replace(/^\uFEFF/, '').trim();
+  const cleanText = text.replace(/^\uFEFF/, '').trim();
   if (!cleanText) return [];
 
   let matrix: string[][];
@@ -229,7 +232,7 @@ function processImportMatrix(
       if (STAGE_MAP[normalizedStageKey]) {
         parsedStage = STAGE_MAP[normalizedStageKey];
       } else {
-        errors.push(`Giai đoạn "${rawStage}" không hợp lệ. Phải là: Chuẩn bị mang thai (PRE_PREGNANCY), Thai kỳ (PREGNANCY), hoặc Hậu sản (POSTPARTUM).`);
+        errors.push(`Giai đoạn "${rawStage}" không hợp lệ. Phải là: Chuẩn bị mang thai (PRE_PREGNANCY), Thai kỳ (PREGNANCY), Hậu sản (POSTPARTUM), hoặc Chăm bé (BABY_CARE).`);
       }
     }
 

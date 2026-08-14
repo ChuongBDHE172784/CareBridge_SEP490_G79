@@ -1,17 +1,23 @@
 package com.carebridge.backend.checklist.distribution;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class EnsureEligibleChecklistAssignmentsServiceTest {
 
@@ -65,6 +71,33 @@ class EnsureEligibleChecklistAssignmentsServiceTest {
         var ordered = inOrder(executor);
         ordered.verify(executor).execute(first);
         ordered.verify(executor).execute(later);
+    }
+
+    @Test
+    void dailyCatchUpReplaysSevenLocalDatesWithoutWeeklyDuplicate() {
+        ChecklistReconciliationSource source = mock(ChecklistReconciliationSource.class);
+        EnsureEligibleChecklistAssignmentExecutor executor = mock(EnsureEligibleChecklistAssignmentExecutor.class);
+        when(source.loadCandidatesForActor(any(), any(), any(), any())).thenAnswer(invocation -> {
+            LocalDate requestedDate = invocation.getArgument(1);
+            ChecklistDistributionCommand daily = command(12).withCadence(ChecklistCadenceMetadata.interactive(
+                    ChecklistScheduleType.DAILY, ChecklistMaterializationPolicy.EACH_DAY,
+                    "D:" + requestedDate, ZONE));
+            return List.of(daily);
+        });
+
+        service(source, executor).ensureCatchUpAssignments(ACTOR, DATE, ZONE, CORRELATION, 1);
+
+        ArgumentCaptor<ChecklistDistributionCommand> captured = ArgumentCaptor.forClass(ChecklistDistributionCommand.class);
+        verify(executor, times(7)).execute(captured.capture());
+        assertThat(captured.getAllValues()).allMatch(candidate ->
+                candidate.cadence() != null
+                        && candidate.cadence().scheduleType() == ChecklistScheduleType.DAILY
+                        && candidate.cadence().materializationMode()
+                                == com.carebridge.backend.checklist.model.ChecklistMaterializationMode.CATCH_UP);
+        assertThat(captured.getAllValues().stream()
+                .map(candidate -> candidate.cadence().periodKey())
+                .distinct()).hasSize(7);
+        verify(source, times(8)).loadCandidatesForActor(any(), any(), any(), any());
     }
 
     private static EnsureEligibleChecklistAssignmentsService service(

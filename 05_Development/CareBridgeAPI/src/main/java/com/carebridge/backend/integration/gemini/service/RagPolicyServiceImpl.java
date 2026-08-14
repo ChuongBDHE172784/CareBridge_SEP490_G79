@@ -51,6 +51,7 @@ public class RagPolicyServiceImpl implements RagPolicyService {
             case PRE_PREGNANCY -> UserStage.PRE_PREGNANCY;
             case PREGNANCY -> UserStage.PREGNANCY;
             case POSTPARTUM -> UserStage.POSTPARTUM;
+            case BABY_CARE -> throw new IllegalArgumentException("BABY_CARE is outside maternal RAG");
         };
     }
 }

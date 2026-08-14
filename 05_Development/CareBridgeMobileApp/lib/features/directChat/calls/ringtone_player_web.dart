@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:web/web.dart' as web;
 
 // Migrated from `dart:html` + `dart:web_audio`: `AudioContext` was removed from

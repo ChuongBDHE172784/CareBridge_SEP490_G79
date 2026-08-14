@@ -100,7 +100,10 @@ public class OptionalChecklistTemplateImportService {
                 List.of(new ChecklistDistributionRecipient(
                         actorUserId, ChecklistRecipientRole.MOTHER, true, true, true)),
                 items,
-                UUID.randomUUID());
+                UUID.randomUUID(),
+                null,
+                null,
+                template.getChecklistContractVersion());
         ChecklistDistributionResult result = distributionService.distribute(command);
         if (result.conflicts() > 0 || result.failures() > 0 || result.deniedRecipients() > 0
                 || result.createdTasks() + result.existingTasks() == 0) {

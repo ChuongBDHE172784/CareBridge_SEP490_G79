@@ -9,36 +9,17 @@ import 'package:untitled/features/auth/screens/login_screen.dart';
 
 void main() {
   testWidgets(
-    'FED-LOGIN-TC-007-MOB exposes Google and Email/SMS login methods',
+    'FED-LOGIN-TC-007-MOB exposes Google and SMS login buttons',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
-      final methodSelector = find.byKey(const Key('login-verification-method'));
       expect(find.byKey(const Key('federated-google-login')), findsOneWidget);
-      expect(methodSelector, findsOneWidget);
-      expect(
-        find.descendant(
-          of: methodSelector,
-          matching: find.byKey(const Key('federated-phone-login')),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('federated-phone-login')), findsOneWidget);
       expect(find.byTooltip('Tiếp tục với Google'), findsOneWidget);
+      expect(find.byTooltip('Đăng nhập SMS'), findsOneWidget);
       expect(find.text('G'), findsOneWidget);
-      expect(
-        find.descendant(of: methodSelector, matching: find.text('Email')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: methodSelector, matching: find.text('SMS')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: methodSelector,
-          matching: find.byIcon(Icons.sms_outlined),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byIcon(Icons.sms_outlined), findsOneWidget);
+      expect(find.byKey(const Key('login-verification-method')), findsNothing);
+      expect(find.text('Email hoặc Số điện thoại'), findsOneWidget);
     },
   );
 

@@ -6,6 +6,7 @@ import '../models/registration_draft.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_ui.dart';
 import 'login_screen.dart';
+import 'phone_verification_screen.dart';
 import 'registration_verification_method_screen.dart';
 
 /// CB-002 — Register Account (UC-01)
@@ -54,8 +55,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool get _hasValidEmail =>
       RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailCtrl.text.trim());
 
-  bool get _hasValidPhone =>
-      RegExp(r'^\+84[35789]\d{8}$').hasMatch(_phoneCtrl.text.trim());
+  bool get _hasValidPhone {
+    String phone = _phoneCtrl.text.trim();
+    if (phone.startsWith('0') && phone.length == 10) {
+      phone = '+84${phone.substring(1)}';
+    }
+    return RegExp(r'^\+84[35789]\d{8}$').hasMatch(phone);
+  }
 
   bool get _hasMinLength => _passwordCtrl.text.length >= 8;
   bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(_passwordCtrl.text);
@@ -69,7 +75,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final name = _nameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
-    final phone = _phoneCtrl.text.trim();
+    var phone = _phoneCtrl.text.trim();
+    if (phone.startsWith('0') && phone.length == 10) {
+      phone = '+84${phone.substring(1)}';
+    }
     final password = _passwordCtrl.text;
     final confirmPassword = _confirmPasswordCtrl.text;
 
@@ -88,7 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_hasValidPhone) {
       setState(
         () => _errorMessage =
-            'Số điện thoại cần là số di động Việt Nam dạng +84xxxxxxxxx.',
+            'Số điện thoại cần là số di động Việt Nam (ví dụ: 0912345678 hoặc +84912345678).',
       );
       return;
     }
@@ -434,6 +443,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  void _openPhoneVerificationFromSmsButton() {
+    final name = _nameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final rawPhone = _phoneCtrl.text.trim();
+    final password = _passwordCtrl.text;
+
+    String phone = rawPhone;
+    if (phone.startsWith('0') && phone.length == 10) {
+      phone = '+84${phone.substring(1)}';
+    }
+
+    if (!RegExp(r'^\+84[35789]\d{8}$').hasMatch(phone)) {
+      setState(
+        () => _errorMessage =
+            'Vui lòng nhập số điện thoại hợp lệ vào ô bên trên để đăng ký SMS (ví dụ: +84912345678 hoặc 0912345678).',
+      );
+      return;
+    }
+
+    final draft = RegistrationDraft(
+      name: name.isNotEmpty ? name : 'Người dùng CareBridge',
+      email: email,
+      phone: phone,
+      password: password.isNotEmpty ? password : 'CareBridge@123',
+      role: widget.isExpert ? 'EXPERT' : null,
+    );
+    RegistrationDraftStore.set(draft);
+
+    setState(() => _errorMessage = null);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PhoneVerificationScreen.registration(
+          phoneNumber: phone,
+          authService: widget.authService ?? AuthService.instance,
+        ),
+      ),
+    );
+  }
+
   Future<void> _federatedGoogleRegistration() async {
     if (_isLoading) return;
     setState(() {
@@ -467,19 +515,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         const AuthDivider(label: 'hoặc đăng ký nhanh'),
         const SizedBox(height: 14),
-        _buildFederatedIconButton(
-          key: const Key('federated-google-register'),
-          tooltip: 'Đăng ký với Google',
-          onPressed: _isLoading ? null : _federatedGoogleRegistration,
-          child: const Text(
-            'G',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AuthPalette.accentDeep,
+        Row(
+          children: [
+            Expanded(
+              child: _buildFederatedIconButton(
+                key: const Key('federated-google-register'),
+                tooltip: 'Đăng ký với Google',
+                onPressed: _isLoading ? null : _federatedGoogleRegistration,
+                child: const Text(
+                  'G',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AuthPalette.accentDeep,
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildFederatedIconButton(
+                key: const Key('federated-phone-register'),
+                tooltip: 'Đăng ký bằng SMS',
+                onPressed: _isLoading ? null : _openPhoneVerificationFromSmsButton,
+                child: const Icon(
+                  Icons.sms_outlined,
+                  size: 22,
+                  color: AuthPalette.accentDeep,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

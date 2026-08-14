@@ -26,7 +26,7 @@ public final class PostureFeedbackMessages {
 
     private static final String UNRECOGNIZED_LABEL = "Chưa đánh giá được";
 
-    private static final String DEGRADED_PREFIX = "Đang dùng phân tích dự phòng: ";
+    private static final String DEGRADED_PREFIX = "";
 
     private static final String RULE_FALLBACK_MARKER = "_RULE_FALLBACK_";
 

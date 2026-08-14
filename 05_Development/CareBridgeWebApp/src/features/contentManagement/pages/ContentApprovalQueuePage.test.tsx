@@ -167,7 +167,7 @@ describe('ContentApprovalQueuePage sequence context', () => {
     });
   });
 
-  it('blocks the generic publish action while Pregnancy V2 provenance is pending', async () => {
+  it('allows System Admin to publish Pregnancy V2 without a clinical/content sign-off gate', async () => {
     harness.fetchAdminChecklists.mockResolvedValue({
       content: [
         {
@@ -185,12 +185,15 @@ describe('ContentApprovalQueuePage sequence context', () => {
     const title = await screen.findByText('WHO Plan 1');
     const row = title.closest('tr');
     expect(row).not.toBeNull();
-    expect(within(row!).getByTitle('Chưa thể xuất bản: cần sign-off clinical/content')).toHaveProperty('disabled', true);
-    expect(within(row!).getByRole('status').textContent).toMatch(/sign-off/);
-    expect(harness.decideChecklistTemplate).not.toHaveBeenCalled();
+    const publishButton = within(row!).getByRole('button', { name: /Xuất bản/i });
+    expect(publishButton).toHaveProperty('disabled', false);
+    fireEvent.click(publishButton);
+    const confirmButtons = await screen.findAllByRole('button', { name: /Xuất bản/i });
+    fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+    await waitFor(() => expect(harness.decideChecklistTemplate).toHaveBeenCalledWith('pregnancy-v2', 'APPROVE', undefined));
   });
 
-  it('excludes unsigned Pregnancy V2 checklists from batch publish', async () => {
+  it('includes Pregnancy V2 checklists in batch publish without a clinical/content sign-off gate', async () => {
     harness.fetchStaffContentList.mockResolvedValue({
       content: [
         {
@@ -218,12 +221,10 @@ describe('ContentApprovalQueuePage sequence context', () => {
     expect(await screen.findByText('Bài viết hợp lệ')).toBeTruthy();
     fireEvent.click(screen.getAllByRole('button', { name: /Xuất bản tất cả/i })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: /Xuất bản tất cả/i })[1]);
-    fireEvent.click(screen.getByRole('button', { name: /Xuất bản \(1 mục\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Xuất bản \(2 mục\)/i }));
 
-    await waitFor(() => {
-      expect(harness.decideContent).toHaveBeenCalledWith('article-eligible', 'APPROVE');
-    });
-    expect(harness.decideChecklistTemplate).not.toHaveBeenCalled();
+    await waitFor(() => expect(harness.decideContent).toHaveBeenCalledWith('article-eligible', 'APPROVE'));
+    await waitFor(() => expect(harness.decideChecklistTemplate).toHaveBeenCalledWith('pregnancy-v2', 'APPROVE'));
   });
 });
 

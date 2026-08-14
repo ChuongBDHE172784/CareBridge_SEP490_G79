@@ -11,6 +11,7 @@ import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCandidate;
 import com.carebridge.backend.checklist.today.model.TaskAction;
+import com.carebridge.backend.checklist.today.model.TaskCadence;
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.model.TaskTimeBucket;
 import com.carebridge.backend.checklist.today.provider.TodayTaskProvider;
@@ -109,6 +110,20 @@ class UnifiedTodayTaskServiceTest {
     }
 
     @Test
+    void preservesCadenceWhenProjectingTodayCandidates() {
+        TodayTaskProvider provider = provider(TaskKind.CHECKLIST, List.of(
+                candidate(TaskKind.CHECKLIST, 7, "PENDING", "2026-08-03T02:00:00Z",
+                        TaskCadence.WEEKLY)));
+
+        var result = new UnifiedTodayTaskServiceImpl(List.of(provider), CLOCK)
+                .getTodayTasks(ACTOR, LocalDate.of(2026, 8, 3), "Asia/Ho_Chi_Minh");
+
+        assertThat(result.sections().today()).singleElement()
+                .extracting(item -> item.cadence())
+                .isEqualTo(TaskCadence.WEEKLY);
+    }
+
+    @Test
     void requestMaterializationAndResponseShareOneCorrelationId() {
         EnsureEligibleChecklistAssignmentsService ensure = mock(EnsureEligibleChecklistAssignmentsService.class);
         var result = new UnifiedTodayTaskServiceImpl(List.of(), null, ensure, CLOCK)
@@ -131,13 +146,18 @@ class UnifiedTodayTaskServiceTest {
     }
 
     private static TodayTaskCandidate candidate(TaskKind kind, int suffix, String status, String dueAt) {
+        return candidate(kind, suffix, status, dueAt, TaskCadence.ONCE);
+    }
+
+    private static TodayTaskCandidate candidate(
+            TaskKind kind, int suffix, String status, String dueAt, TaskCadence cadence) {
         return new TodayTaskCandidate(kind,
                 UUID.fromString("00000000-0000-0000-0000-0000000004%02d".formatted(suffix)),
                 UUID.fromString("00000000-0000-0000-0000-000000000501"), null, GROUP,
                 ChecklistCareContextType.JOURNEY, CONTEXT, "Task " + suffix,
                 ChecklistTargetSubject.MOTHER, ChecklistOrigin.SYSTEM_TEMPLATE, status,
                 Set.of(TaskAction.COMPLETE), dueAt == null ? null : Instant.parse(dueAt), null,
-                kind == TaskKind.REMINDER ? ReminderType.MEDICATION : null);
+                kind == TaskKind.REMINDER ? ReminderType.MEDICATION : null, null, null, cadence);
     }
 
     private static TodayTaskCandidate candidateWithTerminalAt(

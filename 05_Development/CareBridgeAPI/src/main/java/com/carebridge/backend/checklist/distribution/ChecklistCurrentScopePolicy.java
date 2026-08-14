@@ -129,7 +129,7 @@ public class ChecklistCurrentScopePolicy {
             return false;
         }
         ContentStage stage = template.getStage();
-        if (stage != null && stage != ContentStage.POSTPARTUM) {
+        if (stage != ContentStage.BABY_CARE) {
             return false;
         }
         ChecklistLifecycleDates dates = new ChecklistLifecycleDates(null, null, null, baby.getBirthDate());
@@ -152,25 +152,15 @@ public class ChecklistCurrentScopePolicy {
             if (!sameWindow || instance.getPeriodKey() == null) {
                 return sameWindow;
             }
-            if (template.getScheduleType() == ChecklistScheduleType.WEEKLY
-                    && template.getMaterializationPolicy() == ChecklistMaterializationPolicy.EACH_WEEK) {
-                LocalDate canonicalLmp = dates.lastMenstrualDate() != null
-                        ? dates.lastMenstrualDate()
-                        : dates.estimatedDueDate() == null
-                                ? null : dates.estimatedDueDate().minusDays(280);
-                if (canonicalLmp == null) {
-                    return false;
-                }
-                long completedWeek = ChronoUnit.DAYS.between(canonicalLmp, effectiveDate) / 7;
-                return instance.getPeriodKey().equals(String.format(
-                        java.util.Locale.ROOT, "W:G:%04d:%s", completedWeek, decision.windowStart()));
+            String expectedPeriodKey = ChecklistPeriodIdentity.periodKey(
+                    template.getScheduleType(), template.getMaterializationPolicy(),
+                    decision, effectiveDate);
+            boolean cadenceConfigured = template.getScheduleType() != null
+                    || template.getMaterializationPolicy() != null;
+            if (cadenceConfigured && expectedPeriodKey == null) {
+                return false;
             }
-            if (template.getScheduleType() == ChecklistScheduleType.WEEKLY
-                    && template.getMaterializationPolicy() == ChecklistMaterializationPolicy.ONCE_PER_WINDOW) {
-                String end = decision.windowEnd() == null ? "EXIT" : decision.windowEnd().toString();
-                return instance.getPeriodKey().equals("O:" + decision.windowStart() + ":" + end);
-            }
-            return true;
+            return expectedPeriodKey == null || instance.getPeriodKey().equals(expectedPeriodKey);
         } catch (IllegalArgumentException ignored) {
             return false;
         }

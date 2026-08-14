@@ -1,6 +1,11 @@
 package com.carebridge.backend.content.dto.request;
 
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
+import com.carebridge.backend.checklist.model.ChecklistScheduleEndMode;
+import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.fasterxml.jackson.annotation.JsonAlias;
@@ -20,8 +25,14 @@ public record CreateChecklistTemplateRequest(
         ContentStage stage,
         @Valid ChecklistSubstageRequest substage,
         // §11.2: empty/null both valid — an empty draft shell is allowed (matches existing seed data)
-        @Valid List<ChecklistItemRequest> items,
-        @JsonAlias("sequencePosition") Integer displayOrder
+        List<@Valid ChecklistItemRequest> items,
+        @JsonAlias("sequencePosition") Integer displayOrder,
+        ChecklistScheduleType scheduleType,
+        ChecklistMaterializationPolicy materializationPolicy,
+        String scheduleGroupKey,
+        ChecklistCareContextType scheduleContextType,
+        ChecklistScheduleEndMode scheduleEndMode,
+        ChecklistWeekBoundaryRule weekBoundaryRule
 ) {
 
     public CreateChecklistTemplateRequest(
@@ -31,7 +42,8 @@ public record CreateChecklistTemplateRequest(
             ContentStage stage,
             ChecklistSubstageRequest substage,
             List<ChecklistItemRequest> items) {
-        this(name, description, ChecklistTemplateType.MANDATORY, null, recipientRoles, stage, substage, items, 0);
+        this(name, description, ChecklistTemplateType.MANDATORY, null, recipientRoles, stage, substage, items, 0,
+                null, null, null, null, null, null);
     }
 
     /** Legacy constructor retained for existing callers while V2 metadata is adopted. */
@@ -41,7 +53,8 @@ public record CreateChecklistTemplateRequest(
             ContentStage stage,
             List<ChecklistItemRequest> items) {
         this(name, description, ChecklistTemplateType.MANDATORY, null,
-                Set.of(ChecklistRecipientRole.MOTHER), stage, null, items, 0);
+                Set.of(ChecklistRecipientRole.MOTHER), stage, null, items, 0,
+                null, null, null, null, null, null);
     }
 
     public CreateChecklistTemplateRequest(
@@ -54,7 +67,23 @@ public record CreateChecklistTemplateRequest(
             ChecklistSubstageRequest substage,
             List<ChecklistItemRequest> items) {
         this(name, description, templateType, checklistContractVersion,
-                recipientRoles, stage, substage, items, 0);
+                recipientRoles, stage, substage, items, 0,
+                null, null, null, null, null, null);
+    }
+
+    /** Compatibility constructor retaining the pre-cadence canonical shape. */
+    public CreateChecklistTemplateRequest(
+            String name,
+            String description,
+            ChecklistTemplateType templateType,
+            Short checklistContractVersion,
+            Set<ChecklistRecipientRole> recipientRoles,
+            ContentStage stage,
+            ChecklistSubstageRequest substage,
+            List<ChecklistItemRequest> items,
+            Integer displayOrder) {
+        this(name, description, templateType, checklistContractVersion, recipientRoles, stage, substage, items,
+                displayOrder, null, null, null, null, null, null);
     }
 
     /** Compatibility constructor retaining the pre-contract-version argument order. */
@@ -66,7 +95,8 @@ public record CreateChecklistTemplateRequest(
             ContentStage stage,
             ChecklistSubstageRequest substage,
             List<ChecklistItemRequest> items) {
-        this(name, description, templateType, null, recipientRoles, stage, substage, items, 0);
+        this(name, description, templateType, null, recipientRoles, stage, substage, items, 0,
+                null, null, null, null, null, null);
     }
 
     /** Compatibility constructor retaining the pre-contract-version argument order. */
@@ -79,6 +109,7 @@ public record CreateChecklistTemplateRequest(
             ChecklistSubstageRequest substage,
             List<ChecklistItemRequest> items,
             Integer displayOrder) {
-        this(name, description, templateType, null, recipientRoles, stage, substage, items, displayOrder);
+        this(name, description, templateType, null, recipientRoles, stage, substage, items, displayOrder,
+                null, null, null, null, null, null);
     }
 }

@@ -100,7 +100,7 @@ void main() {
     );
   });
 
-  testWidgets('renders V2 recommendations without requiredness semantics', (
+  testWidgets('renders V2 requiredness from each checklist item', (
     WidgetTester tester,
   ) async {
     final v2 = ChecklistTemplate(
@@ -121,20 +121,29 @@ void main() {
           id: 'v2-item',
           itemText: 'Duy trì hành vi hằng ngày',
           order: 1,
-          isRequired: null,
+          isRequired: true,
+        ),
+        ChecklistItem(
+          id: 'v2-optional-item',
+          itemText: 'Tham khảo thêm nội dung',
+          order: 2,
+          isRequired: false,
         ),
       ],
     );
 
-    await tester.pumpWidget(MaterialApp(
-      home: ChecklistDetailScreen(template: v2, journeyId: 'journey-123'),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChecklistDetailScreen(template: v2, journeyId: 'journey-123'),
+      ),
+    );
 
     expect(find.text('Nội dung khuyến nghị'), findsOneWidget);
     expect(find.text('Plan 2 · WEEKLY'), findsOneWidget);
     expect(find.text('Tuần 20–24'), findsOneWidget);
     expect(find.text('Theo tuần'), findsWidgets);
-    expect(find.text('Cần thiết'), findsNothing);
+    expect(find.text('Cần thiết'), findsOneWidget);
+    expect(find.text('Khuyến nghị'), findsNothing);
   });
 
   testWidgets(
@@ -166,7 +175,9 @@ void main() {
       final buttonWidget = tester.widget<ElevatedButton>(
         find.ancestor(
           of: find.text('Thêm vào danh sách việc cần làm'),
-          matching: find.byWidgetPredicate((widget) => widget is ElevatedButton),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is ElevatedButton,
+          ),
         ),
       );
       expect(buttonWidget.onPressed, isNull);
