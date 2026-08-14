@@ -52,7 +52,7 @@ class IndependentGlobalSafetyFallbackTest {
 
         assertThat(verdict.outcome()).isEqualTo("NEEDS_MORE_INFO");
         assertThat(verdict.outcome()).isNotIn("GREEN", "OUT_OF_SCOPE", "YELLOW");
-        assertThat(verdict.completionReason()).isEqualTo("V2_UNAVAILABLE_NO_GLOBAL_SIGNAL");
+        assertThat(verdict.completionReason()).isEqualTo("ENGINE_UNAVAILABLE_NO_GLOBAL_SIGNAL");
     }
 
     @Test

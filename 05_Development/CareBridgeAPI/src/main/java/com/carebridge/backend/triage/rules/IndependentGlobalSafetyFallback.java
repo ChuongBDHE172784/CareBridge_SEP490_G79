@@ -106,9 +106,9 @@ public class IndependentGlobalSafetyFallback {
                 "NEEDS_MORE_INFO",
                 true,
                 ACTION_UNAVAILABLE,
-                List.of("TRIAGE_V2_UNAVAILABLE"),
+                List.of("TRIAGE_UNAVAILABLE"),
                 List.of(),
-                "V2_UNAVAILABLE_NO_GLOBAL_SIGNAL");
+                "ENGINE_UNAVAILABLE_NO_GLOBAL_SIGNAL");
     }
 
     private static void detectTextDanger(String message, Map<String, String> matched) {

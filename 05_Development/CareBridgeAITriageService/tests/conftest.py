@@ -1,6 +1,6 @@
 import pytest
 
-from app import evidence_registry_client, official_source_searcher, source_retriever
+from app import evidence_registry_client
 from app.evidence_registry_client import ApprovedEvidenceSource
 
 
@@ -22,5 +22,3 @@ def approved_evidence_registry(monkeypatch):
         return tuple(source for source in sources if stage.upper() in source.applicable_stages)
 
     monkeypatch.setattr(evidence_registry_client, "approved_sources_for_stage", approved)
-    monkeypatch.setattr(source_retriever, "approved_sources_for_stage", approved)
-    monkeypatch.setattr(official_source_searcher, "approved_sources_for_stage", approved)

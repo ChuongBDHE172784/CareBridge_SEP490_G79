@@ -12,6 +12,7 @@ symptoms: [fever, high_fever, headache, difficulty_breathing, cyanosis, seizure,
 lastReviewed: 2026-08-04
 sourceType: official_hospital_guidance
 sourceStatus: APPROVED
+publisherTrustStatus: IDENTIFIED_NOT_VALIDATED
 sourceVersion: '1.0'
 approvedAt: 2026-08-04
 approvedBy: CareBridge development team internal review (DEV_REVIEWED; no clinician participated)

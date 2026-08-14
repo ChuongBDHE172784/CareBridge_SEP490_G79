@@ -181,10 +181,10 @@ class GeminiClient:
             return None
         return result
 
-    def extract_triage_v2(self, *, text: str, deadline: float | None = None):
+    def extract_triage(self, *, text: str, deadline: float | None = None):
         """V2 fact extraction only; its schema has no outcome/action/URL fields."""
 
-        from app.triage_v2.extraction import EXTRACTION_SYSTEM, TriageV2Extraction
+        from app.triage.extraction import EXTRACTION_SYSTEM, TriageExtraction
 
         safe_text = sanitize_symptom_text(text)
         if not self.enabled or not safe_text:
@@ -194,7 +194,7 @@ class GeminiClient:
             ensure_ascii=False,
         )
         return self._generate(
-            prompt, TriageV2Extraction, EXTRACTION_SYSTEM, 0.0, deadline=deadline
+            prompt, TriageExtraction, EXTRACTION_SYSTEM, 0.0, deadline=deadline
         )
 
     def compose_followup_questions(
@@ -359,7 +359,7 @@ class GeminiClient:
                 self._warn("request_deadline_exhausted")
                 break
             try:
-                from app.triage_v2.extraction import gemini_transport_schema
+                from app.triage.extraction import gemini_transport_schema
 
                 config = types.GenerateContentConfig(
                     system_instruction=system_instruction,

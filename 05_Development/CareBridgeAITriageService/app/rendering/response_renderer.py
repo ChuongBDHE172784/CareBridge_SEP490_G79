@@ -36,8 +36,8 @@ BANNED_PHRASES = (
 )
 
 DISCLAIMER = (
-    "Thông tin này chỉ mang tính tham khảo, không phải chẩn đoán và không thay thế "
-    "nhân viên y tế."
+    "Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp "
+    "Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường."
 )
 
 

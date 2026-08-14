@@ -163,7 +163,7 @@ public class TriageConsentService implements ITriageConsentService {
     @Override
     @Transactional(readOnly = true)
     public void ensureActiveConsent(UUID userId) {
-        // GATE (BR-TDC-004 / C3): callers are TriageService.runIntake()/startConversation() ONLY.
+        // GATE (BR-TDC-004 / C3): canonical elective start/non-emergency continuation only.
         boolean effective = repository.existsByOwnerUserIdAndPolicyVersionAndStatus(
                 userId, policy.currentVersion(), STATUS_ACTIVE);
         if (!effective) {

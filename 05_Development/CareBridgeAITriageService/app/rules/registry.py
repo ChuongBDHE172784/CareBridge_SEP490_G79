@@ -37,11 +37,11 @@ REQUIRED_RULE_MANIFEST_PATH = DATA_DIR / "required_rule_manifest.json"
 #: legacy stage strings leaking in while no paediatric rule existed. They are admitted now that
 #: the paediatric rules are present and stage-scoped; entity separation is still enforced per rule,
 #: so a maternal threshold can never be evaluated against a baby.
-V2_STAGES = (
+TRIAGE_STAGES = (
     "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER",
     "INFANT_0_12M", "TODDLER_12_24M",
 )
-V2_OUTCOMES = ("RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE")
+TRIAGE_OUTCOMES = ("RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE")
 RELEASABLE_STATUSES = ("ACTIVE",)
 SKIPPABLE_STATUSES = ("DRAFT", "RETIRED", "DISABLED")
 
@@ -234,12 +234,12 @@ def _validate_rule(payload: Mapping[str, Any], today: date) -> str | None:
         return "releasable rule has no approvedAt timestamp"
     if not isinstance(payload["ruleVersion"], str) or payload["ruleVersion"].count(".") != 2:
         return f"malformed ruleVersion {payload.get('ruleVersion')!r}"
-    if payload["outcome"] not in V2_OUTCOMES:
+    if payload["outcome"] not in TRIAGE_OUTCOMES:
         return f"outcome {payload['outcome']!r} is outside the V2 contract"
     stages = payload["stages"]
     if not isinstance(stages, list) or not stages:
         return "stages must be a non-empty array"
-    unsupported = [stage for stage in stages if stage not in V2_STAGES]
+    unsupported = [stage for stage in stages if stage not in TRIAGE_STAGES]
     if unsupported:
         return f"stages outside V2 scope: {unsupported}"
     if not isinstance(payload["priority"], int) or not 0 <= payload["priority"] <= 100:

@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  */
 /*
  * Deliberately NOT a @Component: it cannot exist without a valid registry, and a missing
- * evaluator is exactly the signal callers need. Obtain it via TriageV2ReadinessService,
+ * evaluator is exactly the signal callers need. Obtain it via TriageReadinessService,
  * which returns Optional.empty() whenever the rule set failed to load.
  */
 public class TriageRuleEvaluator {
@@ -89,7 +89,7 @@ public class TriageRuleEvaluator {
             String primaryPendingRiskStatus,
             String completionReason,
             List<Map<String, Object>> auditMismatches,
-            String triageV2Readiness) {
+            String triageReadiness) {
 
         public List<String> suppressedRuleIds() {
             return allMatchedRules.stream()
@@ -430,7 +430,7 @@ public class TriageRuleEvaluator {
     }
 
     private String calcContextDatasetStatus(String stage, Map<String, Object> context) {
-        if (!TriageRuleRegistry.V2_STAGES.contains(stage)) {
+        if (!TriageRuleRegistry.TRIAGE_STAGES.contains(stage)) {
             return DatasetStatus.INCOMPLETE.name();
         }
         if ("PREGNANCY".equals(stage) && context.get("postpartum_day") != null) {

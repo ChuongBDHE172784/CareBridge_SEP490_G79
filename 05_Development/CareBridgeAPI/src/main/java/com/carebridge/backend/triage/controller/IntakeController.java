@@ -2,13 +2,8 @@ package com.carebridge.backend.triage.controller;
 
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
-import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
-import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
-import com.carebridge.backend.triage.dto.request.ContinueIntakeConversationRequest;
-import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
 import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
 import com.carebridge.backend.triage.dto.response.TriageResultResponse;
-import com.carebridge.backend.triage.exception.TriageException;
 import com.carebridge.backend.triage.service.ITriageService;
 import com.carebridge.backend.triage.service.ITriageContinuationService;
 import com.carebridge.backend.triage.dto.request.ContinuationTokenRequest;
@@ -16,7 +11,6 @@ import com.carebridge.backend.triage.dto.response.ContinuationDescriptor;
 import com.carebridge.backend.triage.dto.response.ContinuationAcknowledgementResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -33,20 +27,6 @@ public class IntakeController {
     private final ITriageService triageService;
     private final ITriageContinuationService continuationService;
 
-    @PostMapping
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
-    public ResponseEntity<ApiResponse<IntakeSessionResponse>> runIntake(
-            @Valid @RequestBody RunIntakeRequest request,
-            Principal principal) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        if (request.getStage() == null) {
-            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-018",
-                    "A canonical triage stage is required");
-        }
-        IntakeSessionResponse response = triageService.runIntake(request, userId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
-    }
-
     @GetMapping("/{sessionId}")
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<TriageResultResponse>> getResult(
@@ -61,24 +41,6 @@ public class IntakeController {
     public ResponseEntity<ApiResponse<List<IntakeSessionResponse>>> listSessions(Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(triageService.listSessions(userId)));
-    }
-
-    @PostMapping("/conversation/start")
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
-    public ResponseEntity<ApiResponse<IntakeConversationResponse>> startConversation(
-            @Valid @RequestBody StartIntakeConversationRequest request,
-            Principal principal) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        return ResponseEntity.ok(ApiResponse.success(triageService.startConversation(request, userId)));
-    }
-
-    @PostMapping("/conversation/continue")
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
-    public ResponseEntity<ApiResponse<IntakeConversationResponse>> continueConversation(
-            @Valid @RequestBody ContinueIntakeConversationRequest request,
-            Principal principal) {
-        UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        return ResponseEntity.ok(ApiResponse.success(triageService.continueConversation(request, userId)));
     }
 
     @PostMapping("/continuations/resolve")

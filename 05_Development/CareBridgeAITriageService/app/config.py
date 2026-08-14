@@ -79,8 +79,8 @@ OFFICIAL_SOURCES_FILE = BASE_DIR / "data" / "official_sources.json"
 RULE_SOURCE_MAPPING_FILE = BASE_DIR / "data" / "triage_rule_source_mapping.json"
 
 DISCLAIMER = (
-    "CareBridge không chẩn đoán bệnh, không kê thuốc và không thay thế bác sĩ hoặc cấp cứu. "
-    "Nếu trẻ có dấu hiệu nặng, hãy liên hệ cơ sở y tế hoặc cấp cứu ngay."
+    "Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp "
+    "Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường."
 )
 
 RISK_COLORS = {
@@ -95,7 +95,7 @@ RISK_COLORS = {
 # of truth for medical evidence approval.
 EVIDENCE_REGISTRY_URL = (os.getenv("AI_TRIAGE_EVIDENCE_REGISTRY_URL") or "").rstrip("/")
 EVIDENCE_REGISTRY_INTERNAL_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
-TRIAGE_V2_INTERNAL_API_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
+TRIAGE_INTERNAL_API_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
 EVIDENCE_REGISTRY_CACHE_SECONDS = _int_env("AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS", 300, 30, 3600)
 # A failed lookup is remembered too, on a much shorter TTL. Without this, one unreachable
 # registry cost a full connect timeout per candidate source per turn — measured at 13 lookups

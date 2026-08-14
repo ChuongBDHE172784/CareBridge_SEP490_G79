@@ -38,7 +38,7 @@ import java.util.Set;
 /*
  * Deliberately NOT a @Component. Its constructor throws on any integrity problem, which is
  * correct for the engine but wrong as a Spring bean: context creation would fail and a bad
- * triage artifact would take every unrelated module down with it. TriageV2ReadinessService
+ * triage artifact would take every unrelated module down with it. TriageReadinessService
  * constructs it and converts failure into a readiness state.
  */
 public class TriageRuleRegistry {
@@ -54,17 +54,17 @@ public class TriageRuleRegistry {
      * admitted now that the paediatric rules are present and stage-scoped; entity separation is
      * still enforced per rule, so a maternal threshold can never be evaluated against a baby.
      */
-    static final Set<String> V2_STAGES = Set.of(
+    static final Set<String> TRIAGE_STAGES = Set.of(
             "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER",
             "INFANT_0_12M", "TODDLER_12_24M");
-    static final Set<String> V2_OUTCOMES = Set.of(
+    static final Set<String> TRIAGE_OUTCOMES = Set.of(
             "RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE");
     static final Set<String> RELEASABLE_STATUSES = Set.of("ACTIVE");
     static final Set<String> SKIPPABLE_STATUSES = Set.of("DRAFT", "RETIRED", "DISABLED");
 
     /**
      * Legacy artifacts (ruleset &lt;= 2.1.0) carried {@code status: "APPROVED"}. That name reads
-     * as clinical approval, which never happened — see AI_TRIAGE_V2_DECISIONS.md D-011. The
+     * as clinical approval, which never happened — see AI_TRIAGE_DECISIONS.md D-011. The
      * value is still accepted so older artifacts load, but it maps to a RELEASE flag only and
      * never to any validation claim.
      */
@@ -298,7 +298,7 @@ public class TriageRuleRegistry {
             return "malformed ruleVersion " + ruleVersion;
         }
         String outcome = payload.get("outcome").asText();
-        if (!V2_OUTCOMES.contains(outcome)) {
+        if (!TRIAGE_OUTCOMES.contains(outcome)) {
             return "outcome " + outcome + " is outside the V2 contract";
         }
         JsonNode stages = payload.get("stages");
@@ -306,7 +306,7 @@ public class TriageRuleRegistry {
             return "stages must be a non-empty array";
         }
         for (JsonNode stage : stages) {
-            if (!V2_STAGES.contains(stage.asText())) {
+            if (!TRIAGE_STAGES.contains(stage.asText())) {
                 // Pediatric or any other legacy stage must never enter the reproductive graph.
                 return "stage outside V2 scope: " + stage.asText();
             }

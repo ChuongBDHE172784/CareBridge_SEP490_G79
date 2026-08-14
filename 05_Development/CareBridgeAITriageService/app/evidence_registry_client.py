@@ -29,6 +29,18 @@ class ApprovedEvidenceSource:
 _CACHE: dict[str, tuple[float, tuple[ApprovedEvidenceSource, ...], bool]] = {}
 
 
+def cached_approved_sources_for_stage(stage: str) -> tuple[ApprovedEvidenceSource, ...]:
+    """Return only a fresh successful cache entry, without performing network I/O."""
+
+    stage = stage.upper()
+    cached = _CACHE.get(stage)
+    if cached is None or not cached[2]:
+        return ()
+    if time.monotonic() - cached[0] >= EVIDENCE_REGISTRY_CACHE_SECONDS:
+        return ()
+    return cached[1]
+
+
 def _remember(
     stage: str, sources: tuple[ApprovedEvidenceSource, ...], *, succeeded: bool
 ) -> tuple[ApprovedEvidenceSource, ...]:

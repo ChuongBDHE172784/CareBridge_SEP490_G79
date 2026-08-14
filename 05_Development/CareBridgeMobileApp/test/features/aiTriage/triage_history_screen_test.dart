@@ -40,7 +40,8 @@ void main() {
 
     expect(find.text('Lịch sử AI Triage'), findsOneWidget);
     expect(find.text('Đang mang thai'), findsOneWidget);
-    expect(find.text('Kết quả YELLOW'), findsOneWidget);
+    expect(find.text('Kết quả Vàng'), findsOneWidget);
+    expect(find.textContaining('YELLOW'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('triage-history-$sessionId')));
     await tester.pumpAndSettle();

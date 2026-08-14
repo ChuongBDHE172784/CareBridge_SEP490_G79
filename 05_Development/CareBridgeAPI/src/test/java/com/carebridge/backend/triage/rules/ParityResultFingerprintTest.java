@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Full-result parity: Java and Python must agree on EVERY result field, not just the four
  * mandatory ones.
  *
- * <p>The per-vector assertions in {@link TriageRuleParityV2Test} check the optional lists by
+ * <p>The per-vector assertions in {@link TriageRuleParityTest} check the optional lists by
  * containment, so an extra reason code or blocker appearing on one runtime only would pass
  * unnoticed. Here both runtimes canonicalise the complete result for all shared vectors and
  * hash it; any divergence changes the digest on one side and fails.
