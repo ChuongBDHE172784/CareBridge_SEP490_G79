@@ -57,6 +57,10 @@ public class ExpertProfile {
     @Column(name = "facility_id")
     private UUID facilityId;
 
+    /** province_id from /api/v1/master-data/provinces - a short string, not a UUID. */
+    @Column(name = "workplace_province_id", length = 16)
+    private String workplaceProvinceId;
+
     @Column(name = "consultation_scope", columnDefinition = "text")
     private String consultationScope;
 

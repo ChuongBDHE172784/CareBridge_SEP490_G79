@@ -33,10 +33,17 @@ public class DirectChatAttachmentAccessService {
      * media into public content by altering multipart parameters.
      */
     @Transactional
-    public UploadFileResponse upload(UUID conversationId, UUID currentUserId, MultipartFile file, FileKind kind) {
+    public UploadFileResponse upload(UUID conversationId, UUID currentUserId, MultipartFile file) {
         DirectConversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(DirectChatException::conversationNotFound);
         policy.assertIsParticipant(currentUserId, conversation);
+        // The kind is read from the file's magic bytes, not from the caller. The client used
+        // to declare it via ?kind=, and the upload was rejected outright whenever that guess
+        // disagreed with the actual content - picking a PDF from the image button, or an
+        // image from the paperclip, failed with a 415 the sender could not act on. Which
+        // storage the file lands in - Cloudinary for images, R2 for documents - now follows
+        // from the content alone, decided here and never negotiated with the client.
+        FileKind kind = fileService.detectKind(file);
         FilePurpose purpose = kind == FileKind.IMAGE
                 ? FilePurpose.DIRECT_CHAT_IMAGE
                 : FilePurpose.DIRECT_CHAT_DOCUMENT;

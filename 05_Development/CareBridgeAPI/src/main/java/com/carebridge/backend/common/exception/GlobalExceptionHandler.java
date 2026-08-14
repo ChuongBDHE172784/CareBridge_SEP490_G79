@@ -38,6 +38,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.LinkedHashMap;
@@ -93,6 +94,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid request body", request);
+    }
+
+    // A caller who forgets a query parameter used to get 500 INTERNAL_ERROR, because
+    // this exception had no handler and fell through to handleGeneric. Found on
+    // 11/08/2026: GET /api/v1/map/nearby-facilities without lat answered 500, which
+    // reads as "the server is broken" when the request was simply wrong.
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameter(
+            MissingServletRequestParameterException ex, HttpServletRequest request) {
+        logger.warn("Missing request parameter: path={}, parameter={}",
+                request.getRequestURI(), ex.getParameterName());
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "Required parameter '" + ex.getParameterName() + "' is missing", request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

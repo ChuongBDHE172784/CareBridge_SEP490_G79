@@ -341,7 +341,14 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       });
       _armMapStyleWatchdog(_mapGeneration);
       await _syncMapAnnotations();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      // This used to be `catch (_)`, which threw the reason away. On 11/08/2026
+      // the screen came up completely blank and there was nothing anywhere -
+      // no message on screen, no line in the console - to say why. Keep the
+      // reassuring text for the user, but let the reason reach the log so the
+      // next blank screen can be diagnosed instead of guessed at.
+      debugPrint('Emergency map: loading nearby facilities failed: $error');
+      debugPrintStack(stackTrace: stackTrace, label: 'emergency-map-load');
       if (mounted && generation == _loadGeneration) {
         setState(() {
           _loading = false;
