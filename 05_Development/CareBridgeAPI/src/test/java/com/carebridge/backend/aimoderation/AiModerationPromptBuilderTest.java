@@ -43,6 +43,8 @@ class AiModerationPromptBuilderTest {
         // No diagnoses, no punishments — humans decide
         assertThat(prompt).contains("must NOT give medical diagnoses");
         assertThat(prompt).contains("humans make every final decision");
+        // Explanations in Vietnamese
+        assertThat(prompt).contains("MUST be written in Vietnamese");
         // Policy line present
         assertThat(prompt).contains("SPAM_ADVERTISING | SPAM_ADVERTISING | MEDIUM |");
     }
