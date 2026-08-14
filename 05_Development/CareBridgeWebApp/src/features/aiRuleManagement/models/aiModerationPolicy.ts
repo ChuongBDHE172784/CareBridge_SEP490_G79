@@ -66,6 +66,9 @@ export interface AiModerationStatus {
   enabled: boolean;
   configured: boolean;
   model: string;
+  /** What Google reported running, once a call has succeeded. `model` is normally an
+   *  alias - gemini-flash-latest - so this is the only place the release shows. */
+  resolvedModel?: string | null;
   state: 'DISABLED' | 'NOT_CONFIGURED' | 'READY';
   businessToggleEnabled: boolean;
   queuedJobs: number;

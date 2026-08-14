@@ -98,7 +98,8 @@ class AiModerationAdminControllerSecurityTest {
     @WithMockUser(username = "11111111-1111-1111-1111-111111111111", roles = "MODERATOR")
     void status_asModerator_returns200() throws Exception {
         when(statusService.status()).thenReturn(new AiModerationStatusResponse(
-                true, true, "gemini-1.5-flash", "READY", true, 3, 1, 0, Instant.now(), "hash", 11));
+                true, true, "gemini-flash-latest", "gemini-3.7-flash", "READY", true, 3, 1, 0,
+                Instant.now(), "hash", 11));
 
         mockMvc.perform(get(STATUS_URL)).andExpect(status().isOk());
     }
@@ -137,7 +138,8 @@ class AiModerationAdminControllerSecurityTest {
     @WithMockUser(username = "11111111-1111-1111-1111-111111111111", roles = "SYSTEM_ADMIN")
     void status_neverExposesApiKey() throws Exception {
         when(statusService.status()).thenReturn(new AiModerationStatusResponse(
-                true, true, "gemini-1.5-flash", "READY", true, 3, 1, 0, Instant.now(), "hash", 11));
+                true, true, "gemini-flash-latest", "gemini-3.7-flash", "READY", true, 3, 1, 0,
+                Instant.now(), "hash", 11));
         mockMvc.perform(get(STATUS_URL))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.not(Matchers.containsString("apiKey"))))

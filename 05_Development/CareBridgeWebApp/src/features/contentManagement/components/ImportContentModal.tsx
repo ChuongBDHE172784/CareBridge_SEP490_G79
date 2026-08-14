@@ -38,15 +38,6 @@ export default function ImportContentModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchTopics()
-        .then(setTopics)
-        .catch(() => setTopics([]));
-      resetState();
-    }
-  }, [isOpen]);
-
   const resetState = () => {
     setSelectedFile(null);
     setParsedRows([]);
@@ -56,6 +47,16 @@ export default function ImportContentModal({
     setPreviewRow(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTopics()
+        .then(setTopics)
+        .catch(() => setTopics([]));
+      resetState();
+    }
+  }, [isOpen]);
+
 
   if (!isOpen) return null;
 

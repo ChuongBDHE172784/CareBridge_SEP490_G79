@@ -10,6 +10,7 @@ export interface ExpertProfileResponse {
 	hospitalId: string;
 	specialty?: string | null;
 	workplace?: string | null;
+	workplaceProvinceId?: string | null;
 	consultationScope: string;
 	verificationStatus: string;
 	trustStatus?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
@@ -67,6 +68,7 @@ export interface IdentityAttemptResponse {
 	professionalTitle?: string;
 	experienceYears?: number;
 	workplace?: string;
+	workplaceProvinceId?: string;
 	consultationScope?: string;
 	selfieFileId?: string;
 	identityFrontFileId?: string;
@@ -118,6 +120,7 @@ export interface DocumentReviewResponse {
 	professionalTitle?: string;
 	experienceYears?: number | null;
 	workplace?: string;
+	workplaceProvinceId?: string;
 	phone?: string;
 	email?: string;
 	ratingAvg?: number | null;
@@ -265,8 +268,12 @@ export async function getWards(params: { districtId?: string; provinceId?: strin
 	return data.data;
 }
 
-export async function searchTrackAsiaHospitals(q: string): Promise<any[]> {
-	const { data } = await apiClient.get('/api/v1/master-data/hospitals/search/trackasia', { params: { q } });
+// provinceId narrows the search to one province. With no q the server browses that
+// province instead, so choosing a province alone already produces a list to pick from.
+export async function searchTrackAsiaHospitals(q: string, provinceId?: string): Promise<any[]> {
+	const { data } = await apiClient.get('/api/v1/master-data/hospitals/search/trackasia', {
+		params: { q, ...(provinceId ? { provinceId } : {}) },
+	});
 	return data.data;
 }
 

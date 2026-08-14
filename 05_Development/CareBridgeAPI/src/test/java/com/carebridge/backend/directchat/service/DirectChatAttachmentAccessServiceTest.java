@@ -90,15 +90,34 @@ class DirectChatAttachmentAccessServiceTest {
         MockMultipartFile image = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[] {1, 2});
         UploadFileResponse response = UploadFileResponse.builder().fileId(FILE_ID).build();
         when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation));
+        when(fileService.detectKind(image)).thenReturn(FileKind.IMAGE);
         when(fileService.uploadWithPurpose(any(), any(), any(), any(), any())).thenReturn(response);
 
-        UploadFileResponse actual = service.upload(CONVERSATION_ID, FAMILY_ID, image, FileKind.IMAGE);
+        UploadFileResponse actual = service.upload(CONVERSATION_ID, FAMILY_ID, image);
 
         assertThat(actual.getFileId()).isEqualTo(FILE_ID);
         verify(policy).assertIsParticipant(FAMILY_ID, conversation);
         verify(fileService).uploadWithPurpose(
                 image, FAMILY_ID, FileKind.IMAGE,
                 com.carebridge.backend.file.enums.FilePurpose.DIRECT_CHAT_IMAGE,
+                com.carebridge.backend.file.enums.FileAccessMode.PRIVATE);
+    }
+
+    @Test
+    void participantUpload_routesDocumentsByContentNotByCallerHint() {
+        DirectConversation conversation = conversation();
+        // Named like an image on purpose: the routing must follow the bytes, not the name.
+        MockMultipartFile doc = new MockMultipartFile("file", "report.jpg", "image/jpeg", new byte[] {1, 2});
+        UploadFileResponse response = UploadFileResponse.builder().fileId(FILE_ID).build();
+        when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation));
+        when(fileService.detectKind(doc)).thenReturn(FileKind.DOCUMENT);
+        when(fileService.uploadWithPurpose(any(), any(), any(), any(), any())).thenReturn(response);
+
+        service.upload(CONVERSATION_ID, FAMILY_ID, doc);
+
+        verify(fileService).uploadWithPurpose(
+                doc, FAMILY_ID, FileKind.DOCUMENT,
+                com.carebridge.backend.file.enums.FilePurpose.DIRECT_CHAT_DOCUMENT,
                 com.carebridge.backend.file.enums.FileAccessMode.PRIVATE);
     }
 
