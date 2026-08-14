@@ -23,7 +23,7 @@ public class CareFacilityController {
     private final ICareFacilityService careFacilityService;
 
     @GetMapping("/nearby-facilities")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<NearbyResponse>> searchNearby(
             @RequestParam BigDecimal lat,
             @RequestParam BigDecimal lng,
@@ -47,7 +47,7 @@ public class CareFacilityController {
 
     // UC-79: View Route, ETA and Quick Call/Navigate
     @PostMapping("/route")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<RouteResponse>> getRoute(@Valid @RequestBody RouteRequest request) {
         return ResponseEntity.ok(ApiResponse.success(careFacilityService.getRoute(request)));
     }

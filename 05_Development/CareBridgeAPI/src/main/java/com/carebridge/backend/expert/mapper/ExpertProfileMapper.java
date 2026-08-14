@@ -47,6 +47,10 @@ public class ExpertProfileMapper {
 	}
 
 	public ExpertProfileDetailResponse toDetailResponse(ExpertProfile entity, String displayName, String avatarUrl) {
+		return toDetailResponse(entity, displayName, avatarUrl, null, null);
+	}
+
+	public ExpertProfileDetailResponse toDetailResponse(ExpertProfile entity, String displayName, String avatarUrl, String email, String phone) {
 		return ExpertProfileDetailResponse.builder()
 			.expertProfileId(entity.getExpertProfileId())
 			.userId(entity.getUserId())
@@ -65,6 +69,9 @@ public class ExpertProfileMapper {
 			.ratingAvg(entity.getRatingAvg())
 			.consultationFeeVnd(entity.getConsultationFeeVnd() != null ? java.math.BigDecimal.valueOf(entity.getConsultationFeeVnd()) : null)
 			.avatarUrl(avatarUrl)
+			.email(email)
+			.phoneNumber(phone)
+			.phone(phone)
 			.createdAt(entity.getCreatedAt())
 			.updatedAt(entity.getUpdatedAt())
 			.build();

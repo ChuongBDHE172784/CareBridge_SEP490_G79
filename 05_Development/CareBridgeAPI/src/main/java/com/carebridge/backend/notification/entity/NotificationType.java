@@ -9,5 +9,7 @@ public enum NotificationType {
     // ADR-MEDI-004 — direct-chat message alert (CB-EXPCHAT-IMP-001)
     MESSAGE,
     GROUP_INVITE,
-    CONTENT_REVIEW
+    CONTENT_REVIEW,
+    // CB-EPDS-IMP-001 — EPDS screening result delivered to consented care-group family members
+    EPDS_RESULT
 }

@@ -15,6 +15,9 @@ class AuthState extends ChangeNotifier {
 
   static final AuthState instance = AuthState._();
 
+  /// Marks a restored session whose access token must be refreshed before use.
+  static const _expiredAccessTokenSentinel = 'expired';
+
   final TokenStorage _storage;
 
   String? _accessToken;
@@ -294,6 +297,67 @@ class AuthState extends ChangeNotifier {
     await _storage.clear(expectedUserId: userId);
     return true;
   });
+
+  /// Re-reads credentials from the shared secure storage.
+  ///
+  /// The safety foreground task runs in its own isolate holding its own copy
+  /// of this state, so whichever side loses a refresh race keeps a refresh
+  /// token the backend has already rotated away. Re-hydrating from the shared
+  /// store lets the loser adopt the winner's session. A storage failure keeps
+  /// whatever is already in memory: only an explicit sign-out ends a session.
+  Future<bool> restoreSessionFromSharedStorage() =>
+      _serializeCredentialMutation(_restoreFromSharedStorage);
+
+  /// Adopts credentials that another isolate rotated after the refresh token
+  /// carried by this isolate was rejected. Returns false when the stored token
+  /// is still the rejected one, which means the session really is invalid.
+  Future<bool> adoptRotatedCredentials({
+    required int expectedGeneration,
+    required String expectedUserId,
+    required String? rejectedRefreshToken,
+  }) => _serializeCredentialMutation(() async {
+    if (!matchesSession(
+      generation: expectedGeneration,
+      userId: expectedUserId,
+    )) {
+      return false;
+    }
+    if (!await _restoreFromSharedStorage()) return false;
+    final adoptedRefreshToken = _refreshToken;
+    return _userId == expectedUserId &&
+        _accessToken != null &&
+        _accessToken != _expiredAccessTokenSentinel &&
+        adoptedRefreshToken != null &&
+        adoptedRefreshToken != rejectedRefreshToken;
+  });
+
+  /// Token rotation deliberately preserves the session generation, so requests
+  /// already in flight for this session stay valid across the adoption.
+  Future<bool> _restoreFromSharedStorage() async {
+    try {
+      final tokens = await _storage.load();
+      final access = tokens['accessToken'];
+      final refresh = tokens['refreshToken'];
+      if (access == null && refresh == null) {
+        _clearCredentialsInMemory();
+        _isRestoring = false;
+        notifyListeners();
+        return false;
+      }
+      _accessToken = access != null && !_isJwtExpired(access)
+          ? access
+          : _expiredAccessTokenSentinel;
+      _refreshToken = refresh;
+      _userId = tokens['userId'] ?? _userId;
+      _role = tokens['role'] ?? _role;
+      _isRestoring = false;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      debugPrint('[AuthState] shared storage reload failed; session kept');
+      return false;
+    }
+  }
 
   /// Compatibility entry point for older tests and callers.
   Future<void> clearWithReason(String reason) =>

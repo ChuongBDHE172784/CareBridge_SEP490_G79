@@ -1,7 +1,6 @@
 package com.carebridge.backend.checklist.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.carebridge.backend.testsupport.EmbeddedPostgresRoleFixture;
 
@@ -50,7 +49,7 @@ class ChecklistFlywayEmbeddedPostgresTest {
                          limit 1
                         """)) {
                     assertThat(currentVersion.next()).isTrue();
-                    assertThat(currentVersion.getString(1)).isEqualTo("20260812130000");
+                        assertThat(currentVersion.getString(1)).isEqualTo("20260813140000");
                 }
                 try (var version = statement.executeQuery("show server_version")) {
                     assertThat(version.next()).isTrue();
@@ -94,7 +93,7 @@ class ChecklistFlywayEmbeddedPostgresTest {
                                                   and stage = 'PREGNANCY'
                                                   and checklist_contract_version = 2
                                                   and target_subject is null
-                                                  and is_required is null) as targetless_leaves,
+                                                  and is_required is not null) as required_leaves,
                                count(*) filter (where entry_type = 'TEMPLATE_ROOT'
                                                   and stage = 'PREGNANCY'
                                                   and checklist_contract_version = 2
@@ -117,7 +116,7 @@ class ChecklistFlywayEmbeddedPostgresTest {
                     assertThat(pregnancy.getInt("roots")).isEqualTo(16);
                     assertThat(pregnancy.getInt("targetless_roots")).isEqualTo(16);
                     assertThat(pregnancy.getInt("leaves")).isEqualTo(62);
-                    assertThat(pregnancy.getInt("targetless_leaves")).isEqualTo(62);
+                    assertThat(pregnancy.getInt("required_leaves")).isEqualTo(62);
                     assertThat(pregnancy.getInt("daily_roots")).isZero();
                     assertThat(pregnancy.getInt("pending")).isEqualTo(16);
                     assertThat(pregnancy.getInt("plan_two_start")).isEqualTo(20);
@@ -144,19 +143,18 @@ class ChecklistFlywayEmbeddedPostgresTest {
                                 + "migration_reviewed_by = '10000000-0000-0000-0000-000000000001'::uuid, "
                                 + "distribution_enabled = false, approved_at = null, approved_by = null"
                                 + rootPredicate);
-                assertThatThrownBy(() -> statement.executeUpdate(
+                statement.executeUpdate(
                         "update public.care_item_templates "
                                 + "set content_status = 'APPROVED', distribution_enabled = true, "
                                 + "approved_at = now(), "
                                 + "approved_by = '10000000-0000-0000-0000-000000000001'::uuid"
-                                + rootPredicate))
-                        .hasMessageContaining("checklist_pregnancy_v2_provenance_activation_ck");
-                try (var stillPending = statement.executeQuery(
+                                + rootPredicate);
+                try (var activated = statement.executeQuery(
                         "select content_status, distribution_enabled "
                                 + "from public.care_item_templates" + rootPredicate)) {
-                    assertThat(stillPending.next()).isTrue();
-                    assertThat(stillPending.getString("content_status")).isEqualTo("PENDING_REVIEW");
-                    assertThat(stillPending.getBoolean("distribution_enabled")).isFalse();
+                    assertThat(activated.next()).isTrue();
+                    assertThat(activated.getString("content_status")).isEqualTo("APPROVED");
+                    assertThat(activated.getBoolean("distribution_enabled")).isTrue();
                 }
             }
         }

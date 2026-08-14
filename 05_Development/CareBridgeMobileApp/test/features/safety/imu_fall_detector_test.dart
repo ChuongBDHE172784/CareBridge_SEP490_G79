@@ -286,27 +286,77 @@ void main() {
     },
   );
 
-  test('cancels a soft-fall candidate on post-impact strong rotation', () {
+  test('cancels a soft-fall candidate on sustained post-impact rotation', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
     detector.addSample(
       sample(at: const Duration(milliseconds: 100), acceleration: 30),
     );
 
-    detector.addSample(
-      sample(
-        at: const Duration(milliseconds: 400),
-        acceleration: 9.81,
-        gyro: 2.6,
+    FallCandidate? candidate;
+    var cancelled = false;
+    for (var offset = 400; offset <= 3200 && !cancelled; offset += 100) {
+      candidate ??= detector.addSample(
+        sample(
+          at: Duration(milliseconds: offset),
+          acceleration: 9.81,
+          gyro: 2.6,
+        ),
+      );
+      cancelled =
+          detector.latestDecision.reason ==
+          ImuDetectorDecisionReason.excessiveMovement;
+    }
+
+    expect(candidate, isNull);
+    expect(cancelled, isTrue);
+    expect(detector.phase, FallDetectionPhase.idle);
+  });
+
+  test('accepts a 50 cm drop that rebounds before coming to rest', () {
+    final detector = ImuFallDetector();
+    detector.addSample(sample(at: Duration.zero, acceleration: 2));
+    final impact = sample(
+      at: const Duration(milliseconds: 100),
+      acceleration: 30,
+    );
+    detector.addSample(impact);
+
+    // The phone bounces off the surface: it is briefly airborne again and then
+    // strikes a second time, both outside the 250 ms settling grace.
+    expect(
+      detector.addSample(
+        sample(
+          at: const Duration(milliseconds: 400),
+          acceleration: 0.5,
+          gyro: 1.2,
+        ),
       ),
+      isNull,
+    );
+    expect(detector.phase, FallDetectionPhase.impact);
+    expect(
+      detector.addSample(
+        sample(
+          at: const Duration(milliseconds: 500),
+          acceleration: 24,
+          gyro: 1.0,
+        ),
+      ),
+      isNull,
     );
 
-    expect(detector.phase, FallDetectionPhase.idle);
-    expect(
-      detector.latestDecision.reason,
-      ImuDetectorDecisionReason.excessiveMovement,
+    final candidate = completeImmobility(
+      detector,
+      impactAt: const Duration(milliseconds: 500),
     );
-    expect(completeImmobility(detector), isNull);
+
+    expect(candidate, isNotNull);
+    expect(candidate!.impactSample, same(impact));
+    expect(
+      candidate.stationarySampleRatio,
+      greaterThanOrEqualTo(ImuFallDetector.minimumSoftLandingStationaryRatio),
+    );
   });
 
   test('fails safe when gyroscope data is stale', () {
@@ -435,7 +485,7 @@ void main() {
   });
 
   test(
-    'alert response clears partial phases but preserves a three-second cooldown',
+    'alert response clears partial phases, debounces, then rearms the next fall',
     () {
       final detector = ImuFallDetector();
       detector.addSample(sample(at: Duration.zero, acceleration: 2));
@@ -456,22 +506,29 @@ void main() {
       detector.rearmAfterAlertResponse(respondedAt);
       expect(detector.phase, FallDetectionPhase.idle);
 
+      // Handling the phone to answer the alert must not raise a second alert.
       detector.addSample(
-        sample(at: const Duration(milliseconds: 7200), acceleration: 2),
+        sample(at: const Duration(milliseconds: 5300), acceleration: 2),
       );
       expect(detector.phase, FallDetectionPhase.idle);
-      expect(
-        detector.latestDecision.reason,
-        ImuDetectorDecisionReason.cooldown,
+      expect(detector.latestDecision.reason, ImuDetectorDecisionReason.cooldown);
+
+      // A genuine later fall is detected again once the debounce has elapsed.
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 7400), acceleration: 2),
+      );
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 7500), acceleration: 30),
+      );
+      final nextCandidate = completeImmobility(
+        detector,
+        impactAt: const Duration(milliseconds: 7500),
       );
 
-      detector.addSample(
-        sample(at: const Duration(milliseconds: 7400), acceleration: 9.81),
-      );
-      expect(detector.phase, FallDetectionPhase.idle);
+      expect(nextCandidate, isNotNull);
       expect(
         detector.latestDecision.reason,
-        ImuDetectorDecisionReason.awaitingFreeFall,
+        ImuDetectorDecisionReason.accepted,
       );
     },
   );

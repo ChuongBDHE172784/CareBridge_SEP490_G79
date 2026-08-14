@@ -114,7 +114,7 @@ class CommunityBookmarkServiceImplTest {
         when(likeRepository.findLikedQuestionIds(eq(USER_ID), anyCollection())).thenReturn(Set.of());
         when(feedMapper.toFeedItem(any(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean()))
                 .thenReturn(new CommunityFeedItemResponse(QUESTION_ID, "title", "topic", "author",
-                        null, null, 0, 0, false, true, false, null));
+                        null, null, 0, 0, false, true, false, "APPROVED", null));
 
         PaginatedResponse<CommunityFeedItemResponse> result = bookmarkService.getBookmarkedQuestions(USER_ID, 0, 20);
 
@@ -143,10 +143,10 @@ class CommunityBookmarkServiceImplTest {
         when(likeRepository.findLikedQuestionIds(eq(USER_ID), anyCollection())).thenReturn(Set.of(QUESTION_ID));
         when(feedMapper.toFeedItem(eq(question1), any(), any(), anyBoolean(), eq(true), eq(true)))
                 .thenReturn(new CommunityFeedItemResponse(QUESTION_ID, "title", "topic", "author",
-                        null, null, 0, 0, false, true, true, null));
+                        null, null, 0, 0, false, true, true, "APPROVED", null));
         when(feedMapper.toFeedItem(eq(question2), any(), any(), anyBoolean(), eq(true), eq(false)))
                 .thenReturn(new CommunityFeedItemResponse(question2Id, "title2", "topic", "author",
-                        null, null, 0, 0, false, true, false, null));
+                        null, null, 0, 0, false, true, false, "APPROVED", null));
 
         PaginatedResponse<CommunityFeedItemResponse> result = bookmarkService.getBookmarkedQuestions(USER_ID, 0, 20);
 

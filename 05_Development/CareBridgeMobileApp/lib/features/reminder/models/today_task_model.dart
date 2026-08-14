@@ -24,6 +24,34 @@ enum TodayTaskSkipReason { notApplicable, userChoice, lifecycleChanged }
 
 enum TodayTaskSourceType { reminder, careTask, checklist, unknown }
 
+enum TodayChecklistStage { prePregnancy, pregnancy, postpartum, babyCare, unknown }
+
+extension TodayChecklistStageApi on TodayChecklistStage {
+  static TodayChecklistStage fromApi(String? value) => switch (value?.trim().toUpperCase()) {
+    'PRE_PREGNANCY' => TodayChecklistStage.prePregnancy,
+    'PREGNANCY' => TodayChecklistStage.pregnancy,
+    'POSTPARTUM' => TodayChecklistStage.postpartum,
+    'BABY_CARE' => TodayChecklistStage.babyCare,
+    _ => TodayChecklistStage.unknown,
+  };
+
+  String? get label => switch (this) {
+    TodayChecklistStage.prePregnancy => 'Chuẩn bị mang thai',
+    TodayChecklistStage.pregnancy => 'Thai kỳ',
+    TodayChecklistStage.postpartum => 'Hậu sản',
+    TodayChecklistStage.babyCare => 'Chăm bé',
+    TodayChecklistStage.unknown => null,
+  };
+}
+
+/// Presentation-level cadence exposed by the Today task contract.
+///
+/// The server normally sends the canonical `cadence` value.  Older or
+/// transitional responses may only expose `scheduleType` and
+/// `materializationPolicy`; [TodayTaskCadenceApi.fromApi] accepts both shapes
+/// without making the card infer a cadence from a due date.
+enum TodayTaskCadence { once, daily, weekly, unknown }
+
 enum TodaySequenceState {
   active,
   readyToAdvance,
@@ -130,6 +158,85 @@ extension TodayTaskSourceTypeExtension on TodayTaskSourceType {
       };
 }
 
+extension TodayTaskCadenceApi on TodayTaskCadence {
+  /// Parses the canonical cadence first, then the compatibility metadata.
+  ///
+  /// Returning [TodayTaskCadence.unknown] when no field is present is
+  /// intentional: a missing schedule must not be presented as a one-off task.
+  static TodayTaskCadence fromApi(
+    dynamic value, {
+    dynamic scheduleType,
+    dynamic materializationPolicy,
+  }) {
+    final canonical = _parse(value);
+    if (canonical != null) return canonical;
+    return _parse(scheduleType) ??
+        _parse(materializationPolicy) ??
+        TodayTaskCadence.unknown;
+  }
+
+  static TodayTaskCadence? _parse(dynamic value) {
+    if (value is TodayTaskCadence) return value;
+    if (value is Map) {
+      for (final key in const [
+        'cadence',
+        'type',
+        'scheduleType',
+        'materializationPolicy',
+      ]) {
+        final parsed = _parse(value[key]);
+        if (parsed != null) return parsed;
+      }
+      return null;
+    }
+    if (value == null) return null;
+    final normalized = value
+        .toString()
+        .trim()
+        .toUpperCase()
+        .replaceAll('-', '_')
+        .replaceAll(' ', '_');
+    return switch (normalized) {
+      'DAILY' ||
+      'EACH_DAY' ||
+      'DAY' ||
+      'EVERY_DAY' ||
+      'REPEAT_DAILY' => TodayTaskCadence.daily,
+      'WEEKLY' ||
+      'EACH_WEEK' ||
+      'WEEK' ||
+      'EVERY_WEEK' ||
+      'REPEAT_WEEKLY' => TodayTaskCadence.weekly,
+      'ONCE' ||
+      'ONE_TIME' ||
+      'SINGLE' ||
+      'NONE' ||
+      'NO_REPEAT' ||
+      'NON_RECURRING' ||
+      'SET' ||
+      'LEGACY' ||
+      'LEGACY_WINDOW' ||
+      'SEQUENCE_STEP' ||
+      'ONCE_PER_WINDOW' => TodayTaskCadence.once,
+      _ => null,
+    };
+  }
+
+  String get apiValue => switch (this) {
+    TodayTaskCadence.once => 'ONCE',
+    TodayTaskCadence.daily => 'DAILY',
+    TodayTaskCadence.weekly => 'WEEKLY',
+    TodayTaskCadence.unknown => 'UNKNOWN',
+  };
+
+  String? get displayLabel => switch (this) {
+    TodayTaskCadence.once => 'Không lặp',
+    TodayTaskCadence.daily => 'Hằng ngày',
+    TodayTaskCadence.weekly => 'Hằng tuần',
+    TodayTaskCadence.unknown => null,
+  };
+}
+
 extension TodayTaskActionApi on TodayTaskAction {
   static TodayTaskAction? fromApi(String? value) =>
       switch (value?.toUpperCase()) {
@@ -178,6 +285,8 @@ class TodayTask {
   final TodayTaskTarget target;
   final TodayTaskOrigin origin;
   final TodayTimeBucket bucket;
+  final TodayTaskCadence cadence;
+  final TodayChecklistStage stage;
   final Set<TodayTaskAction> allowedActions;
 
   const TodayTask({
@@ -204,6 +313,8 @@ class TodayTask {
     required this.target,
     required this.origin,
     required this.bucket,
+    this.cadence = TodayTaskCadence.unknown,
+    this.stage = TodayChecklistStage.unknown,
     required this.allowedActions,
   });
 
@@ -230,6 +341,8 @@ class TodayTask {
     // state neutral instead of presenting it as a mother-targeted task.
     TodayTaskTarget.unknown => isChecklist ? 'Khuyến nghị' : 'My care',
   };
+
+  String? get cadenceLabel => cadence.displayLabel;
 
   String get statusLabel => switch (taskStatus) {
     TodayTaskStatus.pending => 'Đang chờ',
@@ -301,6 +414,12 @@ class TodayTask {
         'UPCOMING': TodayTimeBucket.upcoming,
         'UNSCHEDULED': TodayTimeBucket.unscheduled,
       }, TodayTimeBucket.unknown),
+      cadence: TodayTaskCadenceApi.fromApi(
+        json['cadence'],
+        scheduleType: json['scheduleType'],
+        materializationPolicy: json['materializationPolicy'],
+      ),
+      stage: TodayChecklistStageApi.fromApi(json['stage']?.toString()),
       allowedActions: actions,
     );
   }

@@ -29,6 +29,7 @@ import com.carebridge.backend.content.entity.ContentDecision;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
+import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
@@ -224,6 +225,152 @@ class ChecklistTemplateApprovalServiceImplTest {
         assertEquals("CNT-001", error.getCode());
         verify(checklistTemplateRepository, never()).save(any());
         verify(checklistAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void decide_postpartumRejectsMotherLeafOnBirthDateRoot() {
+        ChecklistTemplate template = makeTemplate(t -> {
+            t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            t.setStage(com.carebridge.backend.content.entity.ContentStage.POSTPARTUM);
+            t.setRecipientScope(ChecklistRecipientScope.MOTHER);
+            t.setEligibilityAnchorType(ChecklistAnchorType.BIRTH_DATE);
+            t.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            t.setEligibilityEndInclusive(30);
+        });
+        ChecklistItem item = ChecklistItem.builder().template(template).itemText("Mother").order(1)
+                .checklistContractVersion((short) 1).targetSubject(ChecklistTargetSubject.MOTHER)
+                .isRequired(true).build();
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of(item));
+
+        assertThrows(ContentException.class, () -> service.decide(TEMPLATE_ID,
+                new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+        verify(checklistTemplateRepository, never()).save(any());
+    }
+
+    @Test
+    void decide_postpartumAllowsInactiveIncompatibleLeaf() {
+        ChecklistTemplate template = makeTemplate(t -> {
+            t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            t.setStage(com.carebridge.backend.content.entity.ContentStage.POSTPARTUM);
+            t.setRecipientScope(ChecklistRecipientScope.MOTHER);
+            t.setEligibilityAnchorType(ChecklistAnchorType.DELIVERY_DATE);
+            t.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            t.setEligibilityEndInclusive(30);
+        });
+        ChecklistItem item = ChecklistItem.builder().template(template).itemText("Old").order(1)
+                .checklistContractVersion((short) 1).targetSubject(ChecklistTargetSubject.BABY)
+                .isRequired(true).isActive(false).build();
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of(item));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(i -> i.getArgument(0));
+
+        assertEquals(ChecklistTemplateStatus.APPROVED, service.decide(TEMPLATE_ID,
+                new ContentDecisionRequest(ContentDecision.APPROVE, null), principal).newStatus());
+    }
+
+    @Test
+    void decide_postpartumAllowsCompatibleV1BabyLeaf() {
+        ChecklistTemplate template = babyCareTemplate((short) 1);
+        ChecklistItem item = postpartumItem(template, ChecklistTargetSubject.BABY,
+                ChecklistAnchorType.BIRTH_DATE, true, (short) 1);
+        stubSuccessfulApproval(template, List.of(item));
+
+        assertEquals(ChecklistTemplateStatus.APPROVED, service.decide(TEMPLATE_ID,
+                new ContentDecisionRequest(ContentDecision.APPROVE, null), principal).newStatus());
+    }
+
+    @Test
+    void decide_postpartumAllowsCompatibleV1MotherLeaf() {
+        ChecklistTemplate template = postpartumTemplate(ChecklistAnchorType.DELIVERY_DATE, (short) 1);
+        ChecklistItem item = postpartumItem(template, ChecklistTargetSubject.MOTHER,
+                ChecklistAnchorType.DELIVERY_DATE, true, (short) 1);
+        stubSuccessfulApproval(template, List.of(item));
+
+        assertEquals(ChecklistTemplateStatus.APPROVED, service.decide(TEMPLATE_ID,
+                new ContentDecisionRequest(ContentDecision.APPROVE, null), principal).newStatus());
+    }
+
+    @Test
+    void decide_postpartumRejectsPersistentlyInvalidNoneDueAnchor() {
+        ChecklistTemplate template = postpartumTemplate(ChecklistAnchorType.DELIVERY_DATE, (short) 1);
+        ChecklistItem item = postpartumItem(template, ChecklistTargetSubject.MOTHER,
+                ChecklistAnchorType.NONE, true, (short) 1);
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of(item));
+
+        assertThrows(ContentException.class, () -> service.decide(TEMPLATE_ID,
+                new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+        verify(checklistTemplateRepository, never()).save(any());
+    }
+
+    @Test
+    void decide_postpartumAllowsCompatibleV2TargetlessLeaf() {
+        ChecklistTemplate template = babyCareTemplate((short) 2);
+        ChecklistItem item = postpartumItem(template, null, ChecklistAnchorType.BIRTH_DATE, true, (short) 2);
+        stubSuccessfulApproval(template, List.of(item));
+
+        assertEquals(ChecklistTemplateStatus.APPROVED, service.decide(TEMPLATE_ID,
+                new ContentDecisionRequest(ContentDecision.APPROVE, null), principal).newStatus());
+    }
+
+    @Test
+    void decide_postpartumRejectsMixedMotherAndBabyRoot() {
+        ChecklistTemplate template = postpartumTemplate(ChecklistAnchorType.DELIVERY_DATE, (short) 1);
+        ChecklistItem mother = postpartumItem(template, ChecklistTargetSubject.MOTHER,
+                ChecklistAnchorType.DELIVERY_DATE, true, (short) 1);
+        ChecklistItem baby = postpartumItem(template, ChecklistTargetSubject.BABY,
+                ChecklistAnchorType.BIRTH_DATE, true, (short) 1);
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID))
+                .thenReturn(List.of(mother, baby));
+
+        assertThrows(ContentException.class, () -> service.decide(TEMPLATE_ID,
+                new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+        verify(checklistTemplateRepository, never()).save(any());
+    }
+
+    private ChecklistTemplate postpartumTemplate(ChecklistAnchorType anchor, short contractVersion) {
+        return makeTemplate(t -> {
+            t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            t.setStage(com.carebridge.backend.content.entity.ContentStage.POSTPARTUM);
+            t.setRecipientScope(ChecklistRecipientScope.MOTHER);
+            t.setEligibilityAnchorType(anchor);
+            t.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            t.setEligibilityStartInclusive(0);
+            t.setEligibilityEndInclusive(30);
+            t.setChecklistContractVersion(contractVersion);
+        });
+    }
+
+    private ChecklistTemplate babyCareTemplate(short contractVersion) {
+        return makeTemplate(t -> {
+            t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            t.setStage(com.carebridge.backend.content.entity.ContentStage.BABY_CARE);
+            t.setRecipientScope(ChecklistRecipientScope.MOTHER);
+            t.setEligibilityAnchorType(ChecklistAnchorType.BIRTH_DATE);
+            t.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            t.setEligibilityStartInclusive(0);
+            t.setEligibilityEndInclusive(30);
+            t.setChecklistContractVersion(contractVersion);
+        });
+    }
+
+    private static ChecklistItem postpartumItem(
+            ChecklistTemplate template,
+            ChecklistTargetSubject target,
+            ChecklistAnchorType dueAnchor,
+            boolean active,
+            short contractVersion) {
+        return ChecklistItem.builder().template(template).itemText("Postpartum item").order(1)
+                .checklistContractVersion(contractVersion).targetSubject(target).isRequired(true)
+                .dueAnchorType(dueAnchor).isActive(active).build();
+    }
+
+    private void stubSuccessfulApproval(ChecklistTemplate template, List<ChecklistItem> items) {
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(items);
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(i -> i.getArgument(0));
     }
 
     @Test

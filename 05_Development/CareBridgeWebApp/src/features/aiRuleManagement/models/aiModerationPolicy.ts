@@ -173,3 +173,14 @@ export const POLICY_TARGET_TYPE_LABELS: Record<PolicyTargetType, string> = {
   ANSWER: 'Câu trả lời',
   CONTENT: 'Nội dung thư viện',
 };
+
+export function formatPolicyName(policyCode: string, category?: string): string {
+  if (policyCode && AI_VIOLATION_CATEGORY_LABELS[policyCode as AiViolationCategory]) {
+    return AI_VIOLATION_CATEGORY_LABELS[policyCode as AiViolationCategory];
+  }
+  if (category && AI_VIOLATION_CATEGORY_LABELS[category as AiViolationCategory]) {
+    return AI_VIOLATION_CATEGORY_LABELS[category as AiViolationCategory];
+  }
+  return policyCode;
+}
+

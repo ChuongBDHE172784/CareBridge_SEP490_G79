@@ -16,13 +16,10 @@ public class ContentStageConverter implements AttributeConverter<ContentStage, S
         if (dbData == null || dbData.isBlank()) {
             return null;
         }
-        if ("BABY_CARE".equalsIgnoreCase(dbData)) {
-            return ContentStage.POSTPARTUM;
-        }
         try {
-            return ContentStage.valueOf(dbData.toUpperCase());
+            return ContentStage.valueOf(dbData.toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            return ContentStage.POSTPARTUM;
+            throw new IllegalArgumentException("Unknown content stage: " + dbData, e);
         }
     }
 }

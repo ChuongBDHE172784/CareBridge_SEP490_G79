@@ -3,7 +3,7 @@ export type ReportStatus = 'PENDING' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
 export type ReportSource = 'USER' | 'AUTOMATED';
 export type CasePriority = 'NORMAL' | 'HIGH' | 'URGENT';
 export type ReportCategory = 'INACCURATE_INFORMATION' | 'DISGUISED_ADVERTISING' | 'HARASSMENT' | 'UNSAFE_ADVICE' | 'SPAM' | 'OTHER';
-export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
+export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'ESCALATE';
 export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'ESCALATE' | 'UNDO';
 
 // actionType values a moderator can undo from the "Đã xử lý" tab — REQUEST_REVISION/WARN/SUSPEND/
@@ -30,6 +30,11 @@ export interface ModerationQueueItem {
   assignedModeratorId: string | null;
   revertedAt: string | null;
   revertedBy: string | null;
+  authorId?: string | null;
+  authorName?: string | null;
+  authorEmail?: string | null;
+  authorPhone?: string | null;
+  targetTitle?: string | null;
 }
 
 export interface ModerationQueuePage {
@@ -343,3 +348,29 @@ export const AI_RECOMMENDED_ACTION_LABELS: Record<AiRecommendedAction, string> =
   PRIORITY_REVIEW: 'Ưu tiên xem xét',
   ESCALATE: 'Đề nghị chuyển cấp',
 };
+
+export const AI_VIOLATION_CATEGORY_LABELS: Record<string, string> = {
+  SPAM_ADVERTISING: 'Spam / quảng cáo trá hình',
+  HARASSMENT_BULLYING: 'Quấy rối, bắt nạt',
+  HATE_SPEECH: 'Ngôn từ thù ghét',
+  CHILD_SAFETY: 'An toàn trẻ em',
+  SELF_HARM_ENCOURAGEMENT: 'Cổ suý tự hại',
+  DANGEROUS_MEDICAL_ADVICE: 'Lời khuyên y khoa nguy hiểm',
+  EXPERT_IMPERSONATION: 'Giả mạo chuyên gia',
+  HARMFUL_MISINFORMATION: 'Thông tin sai lệch gây hại',
+  PII_DOXXING: 'Lộ thông tin cá nhân',
+  SCAM_FRAUD: 'Lừa đảo',
+  PROMPT_INJECTION: 'Thao túng bộ phân loại',
+  OTHER: 'Khác',
+};
+
+export function formatPolicyName(policyCode: string, category?: string): string {
+  if (policyCode && AI_VIOLATION_CATEGORY_LABELS[policyCode]) {
+    return AI_VIOLATION_CATEGORY_LABELS[policyCode];
+  }
+  if (category && AI_VIOLATION_CATEGORY_LABELS[category]) {
+    return AI_VIOLATION_CATEGORY_LABELS[category];
+  }
+  return policyCode;
+}
+

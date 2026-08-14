@@ -143,17 +143,17 @@ class ChecklistLifecycleEligibilityServiceTest {
     void consolidatedPostpartumSupportsBirthDateAndRejectsMalformedRanges() {
         var birth = LocalDate.of(2026, 6, 1);
         var dates = new ChecklistLifecycleDates(LocalDate.of(2025, 9, 1), null, null, birth);
-        var baby = substage("BABY_DAY_0_28", ContentStage.POSTPARTUM,
+        var baby = substage("BABY_DAY_0_28", ContentStage.BABY_CARE,
                 ChecklistAnchorType.BIRTH_DATE, ChecklistRangeUnit.DAY, 0, 28);
-        assertThat(service.evaluate(ContentStage.POSTPARTUM, baby, dates, birth.plusDays(28)).eligible()).isTrue();
+        assertThat(service.evaluate(ContentStage.BABY_CARE, baby, dates, birth.plusDays(28)).eligible()).isTrue();
 
-        var negative = substage("BAD", ContentStage.POSTPARTUM,
+        var negative = substage("BAD", ContentStage.BABY_CARE,
                 ChecklistAnchorType.BIRTH_DATE, ChecklistRangeUnit.DAY, -1, 2);
-        assertThatThrownBy(() -> service.evaluate(ContentStage.POSTPARTUM, negative, dates, birth))
+        assertThatThrownBy(() -> service.evaluate(ContentStage.BABY_CARE, negative, dates, birth))
                 .isInstanceOf(IllegalArgumentException.class);
-        var reversed = substage("BAD2", ContentStage.POSTPARTUM,
+        var reversed = substage("BAD2", ContentStage.BABY_CARE,
                 ChecklistAnchorType.BIRTH_DATE, ChecklistRangeUnit.DAY, 3, 2);
-        assertThatThrownBy(() -> service.evaluate(ContentStage.POSTPARTUM, reversed, dates, birth))
+        assertThatThrownBy(() -> service.evaluate(ContentStage.BABY_CARE, reversed, dates, birth))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -10,6 +10,8 @@ class JourneyDashboard {
   /// This is deliberately distinct from [sourceWeekNumber], which is the
   /// one-based week used to select the checklist plan.
   final int? completedGestationalWeek;
+  /// Remainder days (0 to 6) in the current completed gestational week.
+  final int? completedGestationalDays;
   /// One-based source week returned by the server for checklist selection.
   final int? sourceWeekNumber;
   /// Server-selected WHO checklist plan for [sourceWeekNumber].
@@ -38,6 +40,7 @@ class JourneyDashboard {
     this.status,
     this.pregnancyWeek,
     this.completedGestationalWeek,
+    this.completedGestationalDays,
     this.sourceWeekNumber,
     this.plan,
     this.trimester,
@@ -219,6 +222,7 @@ class JourneyDashboard {
       status: json['status'] as String?,
       pregnancyWeek: json['pregnancyWeek'] as int?,
       completedGestationalWeek: (json['completedGestationalWeek'] as num?)?.toInt(),
+      completedGestationalDays: (json['completedGestationalDays'] as num?)?.toInt(),
       sourceWeekNumber: (json['sourceWeekNumber'] as num?)?.toInt(),
       plan: (json['plan'] as num?)?.toInt(),
       trimester: json['trimester'] as int?,
@@ -356,6 +360,7 @@ class CreateJourneyResponse {
   final String? datingBasis;
   final String? canonicalLmp;
   final int? completedGestationalWeek;
+  final int? completedGestationalDays;
   final int? sourceWeekNumber;
   final int? plan;
   final String? datingQuarantineReason;
@@ -375,6 +380,7 @@ class CreateJourneyResponse {
     this.datingBasis,
     this.canonicalLmp,
     this.completedGestationalWeek,
+    this.completedGestationalDays,
     this.sourceWeekNumber,
     this.plan,
     this.datingQuarantineReason,
@@ -398,6 +404,8 @@ class CreateJourneyResponse {
       canonicalLmp: json['canonicalLmp']?.toString(),
       completedGestationalWeek:
           (json['completedGestationalWeek'] as num?)?.toInt(),
+      completedGestationalDays:
+          (json['completedGestationalDays'] as num?)?.toInt(),
       sourceWeekNumber: (json['sourceWeekNumber'] as num?)?.toInt(),
       plan: (json['plan'] as num?)?.toInt(),
       datingQuarantineReason:

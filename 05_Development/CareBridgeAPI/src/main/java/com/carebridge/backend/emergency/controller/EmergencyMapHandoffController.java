@@ -23,7 +23,7 @@ public class EmergencyMapHandoffController {
     private final IEmergencyMapHandoffService emergencyMapHandoffService;
 
     @PostMapping("/handoff")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<EmergencyHandoffResponse>> createHandoff(
             Principal principal,
             @Valid @RequestBody CreateEmergencyHandoffRequest request) {
@@ -44,7 +44,7 @@ public class EmergencyMapHandoffController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<List<EmergencyHandoffResponse>>> getMyHandoffs(Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(emergencyMapHandoffService.getMyHandoffs(userId)));

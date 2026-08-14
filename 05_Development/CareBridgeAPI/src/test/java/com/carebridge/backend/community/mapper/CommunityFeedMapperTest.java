@@ -89,5 +89,6 @@ class CommunityFeedMapperTest {
         assertThat(response.hasExpertAnswer()).isTrue();
         assertThat(response.bookmarked()).isTrue();
         assertThat(response.liked()).isTrue();
+        assertThat(response.status()).isEqualTo("APPROVED");
     }
 }

@@ -10,7 +10,10 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
-/** Implements the normative named-anchor calendar algorithm for checklist eligibility. */
+/**
+ * Implements the normative named-anchor calendar algorithm for checklist
+ * eligibility.
+ */
 public class ChecklistLifecycleEligibilityService {
 
     private static final long PREGNANCY_TERM_DAYS = 280;
@@ -41,9 +44,9 @@ public class ChecklistLifecycleEligibilityService {
         }
         LocalDate start = add(anchor, substage.getRangeUnit(), substage.getStartInclusive());
         // Integer.MAX_VALUE is the persisted open-ended sentinel used by a
-        // stage-exit Plan (currently pregnancy Plan 8).  Do not feed it into
+        // stage-exit Plan (currently pregnancy Plan 8). Do not feed it into
         // LocalDate.plusWeeks/plusDays: that overflows before the lifecycle
-        // exit can close the occurrence.  A null end is also the existing
+        // exit can close the occurrence. A null end is also the existing
         // representation for an active stage-exit window.
         boolean openEnded = substage.getEndInclusive() == Integer.MAX_VALUE;
         LocalDate end = openEnded ? null
@@ -86,6 +89,13 @@ public class ChecklistLifecycleEligibilityService {
                 .toInstant();
     }
 
+    public boolean hasAnchor(ChecklistAnchorType anchorType, ChecklistLifecycleDates dates) {
+        if (anchorType == null || anchorType == ChecklistAnchorType.NONE || dates == null) {
+            return false;
+        }
+        return anchorDate(anchorType, dates) != null;
+    }
+
     private static void validate(ContentStage stage, ChecklistLifecycleEligibility substage) {
         if (stage == null || substage == null || substage.getStage() == null
                 || !stage.name().equals(substage.getStage())) {
@@ -102,8 +112,8 @@ public class ChecklistLifecycleEligibilityService {
         ChecklistAnchorType anchor = Objects.requireNonNull(substage.getAnchorType(), "Anchor is required");
         boolean valid = switch (stage) {
             case PREGNANCY -> anchor == ChecklistAnchorType.LMP || anchor == ChecklistAnchorType.EDD;
-            case POSTPARTUM -> anchor == ChecklistAnchorType.DELIVERY_DATE
-                    || anchor == ChecklistAnchorType.BIRTH_DATE;
+            case POSTPARTUM -> anchor == ChecklistAnchorType.DELIVERY_DATE;
+            case BABY_CARE -> anchor == ChecklistAnchorType.BIRTH_DATE;
             default -> false;
         };
         if (!valid) {

@@ -15,7 +15,7 @@ import { SortableTableHeader, type SortDirection } from '../../contentManagement
 import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 
 type Tab = 'PENDING' | 'PROCESSED';
-type ReportSortKey = 'reason' | 'source' | 'targetType' | 'contentPreview' | 'status' | 'reportedAt';
+type ReportSortKey = 'reason' | 'source' | 'targetType' | 'contentPreview' | 'authorName' | 'status' | 'reportedAt';
 type SourceFilter = 'ALL' | ReportSource;
 type PriorityFilter = 'ALL' | CasePriority;
 type TargetFilter = 'ALL' | ReportTargetType;
@@ -99,6 +99,10 @@ export default function ReportsQueuePage() {
     return items.filter((item) => {
       return query.length === 0
         || matchesText(item.contentPreview, query)
+        || matchesText(item.targetTitle, query)
+        || matchesText(item.authorName, query)
+        || matchesText(item.authorEmail, query)
+        || matchesText(item.authorPhone, query)
         || matchesText(formatReportReason(item.reportReason), query)
         || matchesText(TARGET_TYPE_LABELS[item.targetType], query)
         || matchesText(REPORT_SOURCE_LABELS[item.reportSource], query)
@@ -112,6 +116,7 @@ export default function ReportsQueuePage() {
       case 'source': return REPORT_SOURCE_LABELS[item.reportSource];
       case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
       case 'contentPreview': return item.contentPreview;
+      case 'authorName': return item.authorName ?? '';
       case 'status': return tab === 'PENDING'
         ? (item.status === 'IN_REVIEW' ? 'Đang xem xét' : item.reportCount)
         : REPORT_STATUS_LABELS[item.status];
@@ -330,7 +335,8 @@ export default function ReportsQueuePage() {
                           ['reason', 'LÝ DO'],
                           ['source', 'NGUỒN'],
                           ['targetType', 'LOẠI'],
-                          ['contentPreview', 'NỘI DUNG XEM TRƯỚC'],
+                          ['contentPreview', 'NỘI DUNG / TIÊU ĐỀ'],
+                          ['authorName', 'TÀI KHOẢN ĐĂNG'],
                           ['status', tab === 'PENDING' ? 'TRẠNG THÁI / LƯỢT' : 'KẾT QUẢ'],
                           ['reportedAt', 'THỜI GIAN'],
                         ] as const).map(([key, label]) => (
@@ -376,7 +382,37 @@ export default function ReportsQueuePage() {
                             </span>
                           </td>
                           <td className="py-3.5 px-2 max-w-[340px] cursor-pointer" onClick={() => goToDetail(item)}>
-                            <div className="text-sm text-on-surface line-clamp-2">{item.contentPreview}</div>
+                            {item.targetTitle && (
+                              <div className="font-semibold text-sm text-on-surface mb-0.5 flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[15px] text-primary shrink-0">help_outline</span>
+                                <span className="truncate">{item.targetTitle}</span>
+                              </div>
+                            )}
+                            <div className="text-xs text-on-surface-variant line-clamp-2">{item.contentPreview}</div>
+                          </td>
+                          <td className="py-3.5 px-2 cursor-pointer" onClick={() => goToDetail(item)}>
+                            <div className="flex flex-col gap-0.5 max-w-[200px]">
+                              <div className="text-xs font-semibold text-on-surface flex items-center gap-1.5 truncate">
+                                <span className="material-symbols-outlined text-base text-outline shrink-0">account_circle</span>
+                                <span className="truncate">{item.authorName || item.authorEmail || item.authorPhone || '—'}</span>
+                              </div>
+                              {(item.authorEmail || item.authorPhone) && (
+                                <div className="text-[11px] text-on-surface-variant flex flex-col gap-0.5 pl-5 truncate">
+                                  {item.authorEmail && (
+                                    <span className="truncate flex items-center gap-1 text-outline" title={item.authorEmail}>
+                                      <span className="material-symbols-outlined text-[12px] shrink-0">mail</span>
+                                      <span className="truncate">{item.authorEmail}</span>
+                                    </span>
+                                  )}
+                                  {item.authorPhone && (
+                                    <span className="truncate flex items-center gap-1 text-outline" title={item.authorPhone}>
+                                      <span className="material-symbols-outlined text-[12px] shrink-0">phone</span>
+                                      <span className="truncate">{item.authorPhone}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3.5 px-2 cursor-pointer whitespace-nowrap" onClick={() => goToDetail(item)}>
                             {tab === 'PENDING' ? (
@@ -437,7 +473,7 @@ export default function ReportsQueuePage() {
                       ))}
                       {pagedItems.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="py-12 text-center text-outline">
+                          <td colSpan={8} className="py-12 text-center text-outline">
                             {tab === 'PENDING' ? 'Không có báo cáo nào phù hợp bộ lọc.' : 'Không có báo cáo đã xử lý phù hợp bộ lọc.'}
                           </td>
                         </tr>

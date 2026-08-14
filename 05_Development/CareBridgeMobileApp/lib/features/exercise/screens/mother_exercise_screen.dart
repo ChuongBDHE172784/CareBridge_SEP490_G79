@@ -5,6 +5,7 @@ import '../models/exercise_model.dart';
 import '../services/exercise_service.dart';
 import 'exercise_history_screen.dart';
 import 'exercise_session_screen.dart';
+import 'exercise_detail_screen.dart';
 import 'enable_posture_camera_sheet.dart';
 import 'pre_exercise_safety_check_screen.dart';
 
@@ -84,7 +85,31 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
     }
   }
 
-  Future<void> _startExercise(ExerciseSummary exercise) async {
+  Future<void> _openExerciseDetail(ExerciseSummary exercise) async {
+    try {
+      final detail = await ExerciseService.instance.getExerciseDetail(
+        exercise.id,
+      );
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ExerciseDetailScreen(
+            exercise: detail,
+            onStart: () => _startExercise(exercise, detail: detail),
+          ),
+        ),
+      );
+    } on ApiException catch (e) {
+      _showMessage('Không thể tải chi tiết bài tập (${e.statusCode}).');
+    } catch (_) {
+      _showMessage('Không thể tải chi tiết bài tập. Vui lòng thử lại.');
+    }
+  }
+
+  Future<void> _startExercise(
+    ExerciseSummary exercise, {
+    ExerciseDetail? detail,
+  }) async {
     final cleared = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => PreExerciseSafetyCheckScreen(
@@ -98,9 +123,8 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
 
     setState(() => _startingExerciseId = exercise.id);
     try {
-      final detail = await ExerciseService.instance.getExerciseDetail(
-        exercise.id,
-      );
+      final resolvedDetail = detail ??= await ExerciseService.instance
+          .getExerciseDetail(exercise.id);
       final safetyCheck = await ExerciseService.instance.submitSafetyCheck(
         exercise.id,
       );
@@ -118,7 +142,7 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
       if (!mounted) return;
 
       var enableRealtimePostureCamera = false;
-      if (detail.supportsPostureAnalysis) {
+      if (resolvedDetail.supportsPostureAnalysis) {
         enableRealtimePostureCamera = await EnablePostureCameraSheet.show(
           context,
         );
@@ -128,14 +152,14 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ExerciseSessionScreen(
-            exerciseId: detail.id,
-            exerciseTitle: detail.title,
-            instruction: detail.instructionContent.isNotEmpty
-                ? detail.instructionContent
-                : detail.description,
-            mediaUrl: detail.mediaUrl,
-            safetyWarning: detail.safetyWarning,
-            durationMinutes: detail.durationMinutes,
+            exerciseId: resolvedDetail.id,
+            exerciseTitle: resolvedDetail.title,
+            instruction: resolvedDetail.instructionContent.isNotEmpty
+                ? resolvedDetail.instructionContent
+                : resolvedDetail.description,
+            mediaUrl: resolvedDetail.mediaUrl,
+            safetyWarning: resolvedDetail.safetyWarning,
+            durationMinutes: resolvedDetail.durationMinutes,
             sessionId: session.id,
             initialStatus: session.status,
             initialStartedAt: session.startedAt,
@@ -179,7 +203,9 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(24),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x0A845143),
@@ -194,6 +220,7 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
                   if (canPop) ...[
                     IconButton(
                       key: const Key('mother-exercise-back-button'),
+                      tooltip: 'Quay lại',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: const Icon(
@@ -279,7 +306,9 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
                       const Padding(
                         padding: EdgeInsets.only(top: 72),
                         child: Center(
-                          child: CircularProgressIndicator(color: _primaryContainer),
+                          child: CircularProgressIndicator(
+                            color: _primaryContainer,
+                          ),
                         ),
                       )
                     else if (_error != null)
@@ -589,7 +618,9 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
             width: double.infinity,
             height: 48,
             child: FilledButton.icon(
-              onPressed: isStarting ? null : () => _startExercise(exercise),
+              onPressed: isStarting
+                  ? null
+                  : () => _openExerciseDetail(exercise),
               style: FilledButton.styleFrom(
                 backgroundColor: _primaryContainer,
                 disabledBackgroundColor: _primaryContainer.withValues(
@@ -608,7 +639,7 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
                     )
                   : const Icon(Icons.play_arrow_rounded, color: Colors.white),
               label: Text(
-                isStarting ? 'Đang chuẩn bị...' : 'Bắt đầu an toàn',
+                isStarting ? 'Đang tải...' : 'Xem hướng dẫn',
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 15,

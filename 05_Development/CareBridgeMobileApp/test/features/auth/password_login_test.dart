@@ -39,6 +39,30 @@ void main() {
     },
   );
 
+  testWidgets(
+    'local phone input 0xxxxxxxxx auto-converts to +84xxxxxxxxx on submit',
+    (tester) async {
+      final requests = <({String path, Map<String, dynamic> body})>[];
+      final service = _authService((path, body) async {
+        requests.add((path: path, body: Map.of(body)));
+        return _authResponse;
+      });
+
+      await _pumpAndSubmit(
+        tester,
+        service: service,
+        identifier: '0912345678',
+        password: 'Password@123',
+      );
+
+      expect(requests, hasLength(1));
+      expect(requests.single.body, {
+        'phone': '+84912345678',
+        'password': 'Password@123',
+      });
+    },
+  );
+
   test('legacy phone password service remains on the canonical endpoint', () async {
     final requests = <({String path, Map<String, dynamic> body})>[];
     final service = _authService((path, body) async {

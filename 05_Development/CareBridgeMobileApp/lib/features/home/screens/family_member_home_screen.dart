@@ -18,7 +18,10 @@ import '../../directChat/screens/expert_directory_screen.dart';
 import '../../familySync/screens/my_care_groups_screen.dart';
 import '../../familySync/screens/family_quick_note_history_screen.dart';
 import '../../familySync/services/family_home_service.dart';
+import '../../notification/models/notification_model.dart';
+import '../../notification/screens/emergency_alerts_screen.dart';
 import '../../notification/screens/notification_center_screen.dart';
+import '../../notification/screens/notification_detail_screen.dart';
 import '../../notification/services/notification_service.dart';
 import '../../recommendation/models/recommendation_model.dart';
 import '../../recommendation/services/recommendation_service.dart';
@@ -111,8 +114,9 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadRecommendations() async {
+  Future<void> _loadRecommendations({String? careGroupId}) async {
     final generation = ++_recommendationLoadGeneration;
+    final targetGroupId = careGroupId ?? _selectedCareGroupId;
     String? accountId;
     try {
       accountId = AuthState.instance.userId;
@@ -124,7 +128,10 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     try {
       final response =
           await (widget.recommendationLoader?.call() ??
-              _recommendationService.getContent(limit: 3));
+              _recommendationService.getContent(
+                limit: 3,
+                careGroupId: targetGroupId,
+              ));
       if (!mounted || generation != _recommendationLoadGeneration) return;
       if (accountId != null && accountId != AuthState.instance.userId) return;
       setState(() {
@@ -145,6 +152,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
 
   Future<void> _load() async {
     final generation = ++_loadGeneration;
+    final previousCareGroupId = _selectedCareGroupId;
     final todayRefresh = _todayTasksController.refresh();
     final recommendationRefresh = _loadRecommendations();
     String? currentAccountId;
@@ -176,6 +184,10 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         _selectedCareGroupId = snapshot.selectedCareGroupId;
         _loading = false;
       });
+      if (previousCareGroupId != snapshot.selectedCareGroupId &&
+          snapshot.selectedCareGroupId != null) {
+        unawaited(_loadRecommendations(careGroupId: snapshot.selectedCareGroupId));
+      }
     } catch (error) {
       if (!mounted || generation != _loadGeneration) return;
       String? activeAccountId;
@@ -218,6 +230,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       ),
       child: Scaffold(
         backgroundColor: _canvas,
+        floatingActionButton: _buildEmergencyMapFab(),
         body: Stack(
           children: [
             RefreshIndicator(
@@ -320,6 +333,25 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     );
   }
 
+  void _openNotificationCenter() {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => const NotificationCenterScreen(),
+          ),
+        )
+        .then((_) {
+          String? currentAccountId;
+          try {
+            currentAccountId = AuthState.instance.userId;
+          } catch (_) {}
+          _checkUnread(
+            generation: _loadGeneration,
+            accountId: currentAccountId,
+          );
+        });
+  }
+
   Widget _buildHeader() {
     return Row(
       children: [
@@ -360,22 +392,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
             IconButton(
               key: const Key('family-notification-bell'),
               tooltip: 'Thông báo',
-              onPressed: () => Navigator.of(context)
-                  .push(
-                    MaterialPageRoute(
-                      builder: (_) => const NotificationCenterScreen(),
-                    ),
-                  )
-                  .then((_) {
-                    String? currentAccountId;
-                    try {
-                      currentAccountId = AuthState.instance.userId;
-                    } catch (_) {}
-                    _checkUnread(
-                      generation: _loadGeneration,
-                      accountId: currentAccountId,
-                    );
-                  }),
+              onPressed: _openNotificationCenter,
               icon: const Icon(Icons.notifications, size: 28, color: _primary),
             ),
             if (_hasUnread)
@@ -395,6 +412,74 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  String _resolveEmergencyStage() {
+    final journeyType =
+        _snapshot?.selectedGroupDetail?.motherJourney?.journeyType;
+    if (journeyType != null) {
+      switch (journeyType) {
+        case 'PRECONCEPTION':
+        case 'PRE_PREGNANCY':
+          return 'PRECONCEPTION';
+        case 'PREGNANCY':
+          return 'PREGNANCY';
+        case 'POSTPARTUM':
+          return 'POSTPARTUM';
+        case 'INFANT':
+        case 'BABY_CARE':
+          return 'INFANT';
+        case 'TODDLER':
+          return 'TODDLER';
+      }
+    }
+    return 'PREGNANCY';
+  }
+
+  void _openEmergencyMap() {
+    final stage = _resolveEmergencyStage();
+    context.push('/emergency/map?mode=manual&stage=$stage');
+  }
+
+  Widget _buildEmergencyMapFab() {
+    return Semantics(
+      button: true,
+      label: 'Tìm bệnh viện gần đây bằng TrackAsia Map',
+      child: SizedBox.square(
+        key: const Key('family-emergency-map-fab'),
+        dimension: 64,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: _error.withValues(alpha: 0.38),
+                blurRadius: 18,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: _error,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: const Key('family-emergency-map-action'),
+              customBorder: const CircleBorder(),
+              onTap: _openEmergencyMap,
+              child: const Center(
+                child: Icon(
+                  Icons.local_hospital_outlined,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -418,8 +503,35 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
             onTap: _openFamilyContent,
           ),
         ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ShortcutButton(
+            icon: Icons.local_hospital_outlined,
+            label: 'Cơ sở y tế',
+            onTap: _openEmergencyMap,
+          ),
+        ),
       ],
     );
+  }
+
+  void _openAlertsNotificationCenter() {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => const EmergencyAlertsScreen(),
+          ),
+        )
+        .then((_) {
+          String? currentAccountId;
+          try {
+            currentAccountId = AuthState.instance.userId;
+          } catch (_) {}
+          _checkUnread(
+            generation: _loadGeneration,
+            accountId: currentAccountId,
+          );
+        });
   }
 
   Widget _buildGlobalAggregate(FamilyHomeAggregate aggregate) {
@@ -437,28 +549,17 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             _AggregateCard(
-              key: const Key('family-global-overdue'),
-              label: 'Quá hạn',
-              value: aggregate.overdue,
-              icon: Icons.warning_amber_rounded,
-            ),
-            _AggregateCard(
               key: const Key('family-global-due-soon'),
               label: 'Sắp đến hạn',
               value: aggregate.dueSoon,
               icon: Icons.schedule_outlined,
             ),
             _AggregateCard(
-              key: const Key('family-global-in-progress'),
-              label: 'Đang làm',
-              value: aggregate.inProgress,
-              icon: Icons.pending_actions_outlined,
-            ),
-            _AggregateCard(
               key: const Key('family-global-alerts'),
               label: 'Cảnh báo',
               value: aggregate.alerts,
               icon: Icons.notifications_active_outlined,
+              onTap: _openAlertsNotificationCenter,
             ),
           ],
         ),
@@ -952,6 +1053,29 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   Widget _buildAlertCard(FamilyHomeAlert alert) {
     return _DashboardCard(
       key: Key('family-alert-${alert.id}'),
+      onTap: () async {
+        String? currentUserId;
+        try {
+          currentUserId = AuthState.instance.userId;
+        } catch (_) {}
+        final record = NotificationRecord(
+          id: alert.id,
+          userId: currentUserId ?? '',
+          title: alert.title,
+          body: alert.body,
+          type: 'HEALTH_ALERT',
+          status: 'SENT',
+          isRead: alert.read,
+          createdAt: alert.createdAt ?? DateTime.now(),
+          metadata: {'careGroupId': alert.careGroupId},
+        );
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => NotificationDetailScreen(notification: record),
+          ),
+        );
+        if (mounted) await _load();
+      },
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: Icon(
@@ -1355,7 +1479,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       MaterialPageRoute(
         builder: (_) => VerifiedContentDetailScreen(
           contentId: contentId,
-          mode: ContentBrowseMode.lifecycle,
+          mode: ContentBrowseMode.generic,
           contentService: ContentService.instance,
         ),
       ),
@@ -1402,15 +1526,18 @@ class _AggregateCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    this.onTap,
   });
 
   final String label;
   final int value;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return _DashboardCard(
+      onTap: onTap,
       child: Row(
         children: [
           Icon(icon, color: _FamilyMemberHomeScreenState._primary),
@@ -1584,13 +1711,14 @@ class _ShortcutButton extends StatelessWidget {
 }
 
 class _DashboardCard extends StatelessWidget {
-  const _DashboardCard({super.key, required this.child});
+  const _DashboardCard({super.key, required this.child, this.onTap});
 
   final Widget child;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final container = Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1600,6 +1728,17 @@ class _DashboardCard extends StatelessWidget {
         border: Border.all(color: const Color(0x1F845143)),
       ),
       child: child,
+    );
+
+    if (onTap == null) return container;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: container,
+      ),
     );
   }
 }

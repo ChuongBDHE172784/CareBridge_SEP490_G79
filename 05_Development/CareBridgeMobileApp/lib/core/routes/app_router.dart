@@ -20,6 +20,7 @@ import '../../features/journey/screens/journey_setup_screen.dart';
 import '../../features/journey/screens/postpartum_recovery_setup_screen.dart';
 import '../../features/journey/services/journey_onboarding_service.dart';
 import '../../features/recommendation/screens/recommendation_profile_screen.dart';
+import '../../features/exercise/screens/mother_exercise_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
@@ -179,6 +180,7 @@ String? resolveAppRedirect({
     '/journey-setup',
     '/postpartum-recovery-setup',
     '/recommendation-profile',
+    '/mother-exercise',
   };
   const motherOrFamilyChecklistRoutes = {
     '/checklists/history',
@@ -354,6 +356,10 @@ final GoRouter appRouter = GoRouter(
         if (task is! TodayTask) return const _InvalidRouteScreen();
         return ChecklistTaskDetailScreen(task: task);
       },
+    ),
+    GoRoute(
+      path: '/mother-exercise',
+      builder: (context, state) => const MotherExerciseScreen(),
     ),
     GoRoute(
       path: '/checklists/detail',

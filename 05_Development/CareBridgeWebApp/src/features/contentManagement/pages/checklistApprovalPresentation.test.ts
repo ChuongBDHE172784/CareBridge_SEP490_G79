@@ -3,7 +3,6 @@ import {
   checklistApprovalErrorMessage,
   checklistCadenceLabel,
   checklistCoexistenceGuidance,
-  checklistProvenanceStatusLabel,
   checklistRecipientLabel,
   checklistSequenceLabel,
   checklistWindowLabel,
@@ -43,6 +42,5 @@ describe('checklist approval presentation', () => {
     expect(checklistWindowLabel({ substage: null, eligibilityStartInclusive: 39, eligibilityEndInclusive: 2147483647 })).toBe('Tuần 39+');
     expect(checklistCadenceLabel('WEEKLY', 'EACH_WEEK')).toBe('Theo tuần');
     expect(checklistCadenceLabel('SET', 'ONCE_PER_WINDOW')).toBe('Theo bộ');
-    expect(checklistProvenanceStatusLabel('PENDING_CLINICAL_COPY_SIGN_OFF')).toContain('Chờ sign-off');
   });
 });

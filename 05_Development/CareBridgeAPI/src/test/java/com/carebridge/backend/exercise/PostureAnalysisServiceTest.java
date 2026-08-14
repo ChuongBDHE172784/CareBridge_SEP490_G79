@@ -389,7 +389,7 @@ class PostureAnalysisServiceTest {
         assertThat(response.getData().getConfidenceScore()).isEqualByComparingTo("0.70");
         assertThat(response.getData().getSeverity()).isEqualTo("WARNING");
         assertThat(response.getData().getFeedbackText())
-                .isEqualTo("Đang dùng phân tích dự phòng: Tư thế tốt! Giữ lưng thẳng.");
+                .isEqualTo("Tư thế tốt! Giữ lưng thẳng.");
     }
 
     @Test

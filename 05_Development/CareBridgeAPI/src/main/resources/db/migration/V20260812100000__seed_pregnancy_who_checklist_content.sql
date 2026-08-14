@@ -6,7 +6,7 @@
 -- the source/copy attestation and clinical-copy review gate is completed.
 -- template_type = MANDATORY only selects system-template distribution; it does
 -- not make the recommendation clinically required. V2 leaves keep
--- target_subject and is_required NULL.
+-- target_subject remains NULL; requiredness is explicit for every V2 leaf.
 -- The eight "/ngày" recommendations remain children of WEEKLY roots; no
 -- pregnancy DAILY root is created.
 
@@ -17,7 +17,8 @@ SET LOCAL search_path = public, extensions, pg_catalog;
 -- already-applied constraint in a forward migration rather than editing its
 -- Flyway source.
 ALTER TABLE public.care_item_templates
-    DROP CONSTRAINT IF EXISTS checklist_template_cadence_shape_ck;
+    DROP CONSTRAINT IF EXISTS checklist_template_cadence_shape_ck,
+    DROP CONSTRAINT IF EXISTS care_item_templates_target_ck;
 
 ALTER TABLE public.care_item_templates
     ADD CONSTRAINT checklist_template_cadence_shape_ck CHECK (
@@ -312,7 +313,7 @@ SELECT
     item_id, root_id, 'CHECKLIST_ENTRY', item_text, NULL, display_order,
     'PREGNANCY', true, 1, '{}'::jsonb,
     timestamptz '2026-08-12 00:00:00+07', timestamptz '2026-08-12 00:00:00+07',
-    NULL, NULL, 2, metadata,
+    NULL, TRUE, 2, metadata,
     encode(sha256(convert_to(metadata::text, 'UTF8')), 'hex')
 FROM item_payload
 ON CONFLICT (template_id) DO NOTHING;

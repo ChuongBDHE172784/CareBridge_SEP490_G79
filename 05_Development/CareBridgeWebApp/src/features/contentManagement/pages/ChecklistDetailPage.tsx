@@ -13,7 +13,6 @@ import { CHECKLIST_STATUS_LABELS, CHECKLIST_SUPPORT_FUNCTION_OPTIONS, STAGE_LABE
 import {
   checklistCadenceLabel,
   checklistCoexistenceGuidance,
-  checklistProvenanceStatusLabel,
   checklistRecipientLabel,
   checklistSequenceLabel,
   checklistWindowLabel,
@@ -195,7 +194,6 @@ export default function ChecklistDetailPage() {
 
   const editable = detail.status === 'DRAFT' || detail.status === 'PENDING_REVIEW';
   const isTargetlessV2 = detail.checklistContractVersion === 2;
-  const provenanceSignedOff = detail.provenance?.provenanceStatus === 'SIGNED_OFF';
 
   return (
     <main data-testid="checklist-detail-page" className="min-h-screen bg-background p-8 font-sans">
@@ -289,17 +287,13 @@ export default function ChecklistDetailPage() {
             <section aria-label="Trạng thái dữ liệu checklist" className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-950">
                 <span aria-hidden="true" className="material-symbols-outlined text-lg">{detail.checklistQuarantineReasonCode ? 'lock' : 'fact_check'}</span>
-                {detail.checklistQuarantineReasonCode ? 'Đang cách ly' : 'Trạng thái provenance'}
+                {detail.checklistQuarantineReasonCode ? 'Đang cách ly' : 'Thông tin nguồn checklist'}
               </div>
               {detail.checklistQuarantineReasonCode && <p className="mb-2 text-sm text-amber-900">Lý do: {detail.checklistQuarantineReasonCode}</p>}
               {detail.migrationReviewRequired && <p className="mb-2 text-sm text-amber-900">Phiên bản nhập cần được rà soát trước khi phân phối.</p>}
-              {!detail.migrationReviewRequired && detail.migrationReviewedAt != null && !provenanceSignedOff && (
-                <p className="mb-2 text-sm text-amber-900">Đã rà soát kỹ thuật nhưng chưa có sign-off clinical/content; chưa thể kích hoạt.</p>
-              )}
               {detail.provenance && (
                 <dl className="grid grid-cols-1 gap-2 text-xs text-amber-950 sm:grid-cols-2">
                   <div><dt className="font-semibold">Nguồn</dt><dd className="break-words">{detail.provenance.sourceArtifactPath ?? 'Chưa có'}</dd></div>
-                  <div><dt className="font-semibold">Sign-off</dt><dd>{checklistProvenanceStatusLabel(detail.provenance.provenanceStatus)}</dd></div>
                   <div><dt className="font-semibold">Import batch</dt><dd className="break-words">{detail.provenance.importBatchId ?? 'Chưa có'}</dd></div>
                   <div><dt className="font-semibold">Manifest hash</dt><dd className="break-words">{detail.provenance.renderedManifestHash ?? 'Chưa có'}</dd></div>
                 </dl>
@@ -333,17 +327,13 @@ export default function ChecklistDetailPage() {
               <ul className="flex flex-col gap-2.5 p-0 m-0 list-none">
                 {[...detail.items].sort((a, b) => a.order - b.order).map(item => (
                   <li key={item.id} className="flex items-start gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4">
-                    {!isTargetlessV2 && (
-                      <span className="material-symbols-outlined mt-0.5 text-xl text-primary">
-                        {item.isRequired ? 'check_box' : 'check_box_outline_blank'}
-                      </span>
-                    )}
+                    <span className="material-symbols-outlined mt-0.5 text-xl text-primary">
+                      {item.isRequired ? 'check_box' : 'check_box_outline_blank'}
+                    </span>
                     <div className="min-w-0 flex-1 break-words">
                       <div className="text-sm font-semibold text-on-surface">{item.itemText}</div>
                       <div className="mt-0.5 text-xs text-outline">
-                        {isTargetlessV2
-                          ? `Thứ tự: ${item.order} · Nội dung khuyến nghị`
-                          : `Thứ tự: ${item.order} · ${item.isRequired ? 'Bắt buộc' : 'Không bắt buộc'}`}
+                        {`Thứ tự: ${item.order} · ${item.isRequired ? 'Bắt buộc' : 'Không bắt buộc'}`}
                       </div>
                       {item.description && (
                         <div className="mt-3 rounded-xl border border-surface-container-highest bg-background/70 p-3">
@@ -455,7 +445,7 @@ export default function ChecklistDetailPage() {
               {versionAction === 'review' ? 'Đang xác nhận...' : 'Xác nhận rà soát dữ liệu nhập cũ'}
             </button>
           )}
-          {canReview && !detail.migrationReviewRequired && detail.migrationReviewedAt != null && provenanceSignedOff && !detail.distributionEnabled
+          {canReview && !detail.migrationReviewRequired && detail.migrationReviewedAt != null && !detail.distributionEnabled
             && detail.status === 'PENDING_REVIEW' && (
             <button
               aria-label="Activate reviewed version"

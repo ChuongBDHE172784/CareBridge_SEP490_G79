@@ -57,6 +57,7 @@ public class JourneyDashboardResponse {
     private String gestationalDatingQuarantineReasonCode;
     private LocalDate canonicalLmp;
     private Integer completedGestationalWeek;
+    private Integer completedGestationalDays;
     private Integer sourceWeekNumber;
     private Integer plan;
 

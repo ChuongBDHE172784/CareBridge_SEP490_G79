@@ -193,37 +193,45 @@ class NotificationDetailScreen extends StatelessWidget {
   }
 
   Widget _buildActions(BuildContext context) {
+    // EPDS results have no detail destination for a Family account: the screening
+    // itself is not family-visible, and resolveNotificationRoute returns null, so the
+    // button would only close the screen. The notification body already carries the
+    // whole message, so the primary action is omitted for this type.
+    final hasPrimaryAction = notification.type.toUpperCase() != 'EPDS_RESULT';
+
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton(
-            onPressed: () {
-              final route = resolveNotificationRoute(notification);
-              if (route != null) {
-                context.push(route);
-              } else {
-                Navigator.of(context).pop();
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: _primaryContainer,
-              foregroundColor: Colors.white,
-              shape: const StadiumBorder(),
-              elevation: 0,
-            ),
-            child: Text(
-              _getPrimaryActionLabel(),
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+        if (hasPrimaryAction) ...[
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton(
+              onPressed: () {
+                final route = resolveNotificationRoute(notification);
+                if (route != null) {
+                  context.push(route);
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: _primaryContainer,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                elevation: 0,
+              ),
+              child: Text(
+                _getPrimaryActionLabel(),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -285,6 +293,8 @@ class NotificationDetailScreen extends StatelessWidget {
         return 'Yêu cầu tư vấn';
       case 'LOCATION_SHARE':
         return 'Vị trí của Mother';
+      case 'EPDS_RESULT':
+        return 'Kết quả sàng lọc EPDS';
       default:
         return 'Thông báo';
     }

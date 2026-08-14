@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -904,7 +903,6 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 class _MethodCard extends StatelessWidget {
   const _MethodCard({
     super.key,
-    this.authorityHint,
     required this.badge,
     required this.title,
     required this.subtitle,
@@ -916,7 +914,6 @@ class _MethodCard extends StatelessWidget {
   });
 
   final String badge;
-  final String? authorityHint;
   final String title;
   final String subtitle;
   final IconData icon;
@@ -934,11 +931,7 @@ class _MethodCard extends StatelessWidget {
     return Semantics(
       selected: selected,
       button: true,
-      label: [
-        title,
-        subtitle,
-        if (authorityHint != null) authorityHint!,
-      ].join('. '),
+      label: '$title. $subtitle',
       onTap: onTap,
       child: ExcludeSemantics(
         child: AnimatedContainer(
@@ -1062,10 +1055,7 @@ class _MethodCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      [
-                        subtitle,
-                        if (authorityHint != null) authorityHint!,
-                      ].join(' '),
+                      subtitle,
                       style: const TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
@@ -1080,95 +1070,6 @@ class _MethodCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _NumberWheel extends StatelessWidget {
-  const _NumberWheel({
-    required this.min,
-    required this.max,
-    required this.value,
-    required this.label,
-    required this.onChanged,
-  });
-
-  final int min;
-  final int max;
-  final int value;
-  final String label;
-  final ValueChanged<int> onChanged;
-
-  static const _primary = Color(0xFF845143);
-  static const _textDark = Color(0xFF2E211C);
-  static const _textMuted = Color(0xFF7A6860);
-  static const _surfaceLow = Color(0xFFFAF2EF);
-
-  @override
-  Widget build(BuildContext context) {
-    final values = List<int>.generate(max - min + 1, (index) => min + index);
-    final initialItem = values
-        .indexOf(value)
-        .clamp(0, values.length - 1)
-        .toInt();
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: _surfaceLow,
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        CupertinoPicker(
-          scrollController: FixedExtentScrollController(
-            initialItem: initialItem,
-          ),
-          itemExtent: 52,
-          magnification: 1.12,
-          squeeze: 1.05,
-          useMagnifier: true,
-          selectionOverlay: const SizedBox.shrink(),
-          onSelectedItemChanged: (index) => onChanged(values[index]),
-          children: values
-              .map(
-                (item) => Center(
-                  child: RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        color: _textMuted,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: '$item',
-                          style: TextStyle(
-                            color: item == value
-                                ? _primary
-                                : _textDark.withValues(alpha: 0.55),
-                            fontSize: item == value ? 32 : 26,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' $label',
-                          style: TextStyle(
-                            color: item == value ? _primary : _textMuted,
-                            fontSize: item == value ? 14 : 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-      ],
     );
   }
 }

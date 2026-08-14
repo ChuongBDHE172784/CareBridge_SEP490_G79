@@ -33,6 +33,9 @@ public class ExpertProfileDetailResponse {
 	private BigDecimal ratingAvg;
 	private BigDecimal consultationFeeVnd;
 	private String avatarUrl;
+	private String email;
+	private String phoneNumber;
+	private String phone;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
 }

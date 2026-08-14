@@ -11,9 +11,7 @@ import com.carebridge.backend.consent.entity.ConsentGrant;
 import com.carebridge.backend.consent.entity.ConsentPurpose;
 import com.carebridge.backend.consent.repository.ConsentGrantRepository;
 import com.carebridge.backend.content.entity.ContentItem;
-import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.repository.ContentRepository;
-import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.entity.PregnancyOutcomeEvidence;
@@ -28,7 +26,6 @@ import com.carebridge.backend.recommendation.dto.RecommendationEnums.CoverageSta
 import com.carebridge.backend.recommendation.dto.RecommendationEnums.ReasonCode;
 import com.carebridge.backend.recommendation.dto.RecommendationEnums.SelectionMode;
 import com.carebridge.backend.recommendation.dto.RecommendationEnums.SelectionType;
-import com.carebridge.backend.recommendation.dto.RecommendationEnums.WeekEligibilityMode;
 import com.carebridge.backend.recommendation.dto.RecommendationProfileResponse;
 import com.carebridge.backend.recommendation.dto.RecommendationTagCatalogResponse;
 import com.carebridge.backend.recommendation.entity.RecommendationProfileStatus;
@@ -44,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -312,11 +308,16 @@ public class RecommendationService implements RecommendationConsentCleanup {
 
     @Transactional
     public RecommendationContentResponse getContent(UUID ownerUserId, int limit) {
+        return getContent(ownerUserId, null, limit);
+    }
+
+    @Transactional
+    public RecommendationContentResponse getContent(UUID ownerUserId, UUID careGroupId, int limit) {
         if (limit < 1 || limit > RecommendationConstants.MAX_LIMIT) {
             throw new RecommendationException(org.springframework.http.HttpStatus.BAD_REQUEST,
                     "RECOMMENDATION_LIMIT_INVALID", "limit must be between 1 and 3");
         }
-        MotherJourney journey = canonical(ownerUserId, true);
+        MotherJourney journey = canonical(ownerUserId, careGroupId, true);
         ConsentAssessment assessment = assessConsent(journey, ownerUserId, Instant.now(clock));
         RecommendationContext context;
         try {
@@ -585,20 +586,40 @@ public class RecommendationService implements RecommendationConsentCleanup {
     }
 
     private MotherJourney canonical(UUID ownerUserId, boolean lock) {
+        return canonical(ownerUserId, null, lock);
+    }
+
+    private MotherJourney canonical(UUID ownerUserId, UUID careGroupId, boolean lock) {
         Optional<MotherJourney> journey = lock ? journeyRepository.findCanonicalForUpdate(ownerUserId)
                 : journeyRepository.findCanonical(ownerUserId);
         if (journey.isEmpty() && careGroupMemberRepository != null && careGroupRepository != null) {
-            var memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(
-                    ownerUserId, com.carebridge.backend.family.entity.InviteStatus.ACCEPTED);
-            for (var member : memberships) {
-                var groupOpt = careGroupRepository.findById(member.getCareGroupId());
-                if (groupOpt.isPresent()) {
-                    UUID groupOwnerId = groupOpt.get().getOwnerUserId();
-                    var ownerJourney = lock ? journeyRepository.findCanonicalForUpdate(groupOwnerId)
-                            : journeyRepository.findCanonical(groupOwnerId);
-                    if (ownerJourney.isPresent()) {
-                        journey = ownerJourney;
-                        break;
+            if (careGroupId != null) {
+                boolean isMember = careGroupMemberRepository.findByUserIdAndInviteStatus(
+                        ownerUserId, com.carebridge.backend.family.entity.InviteStatus.ACCEPTED)
+                        .stream()
+                        .anyMatch(m -> m.getCareGroupId().equals(careGroupId));
+                if (isMember) {
+                    var groupOpt = careGroupRepository.findById(careGroupId);
+                    if (groupOpt.isPresent()) {
+                        UUID groupOwnerId = groupOpt.get().getOwnerUserId();
+                        journey = lock ? journeyRepository.findCanonicalForUpdate(groupOwnerId)
+                                : journeyRepository.findCanonical(groupOwnerId);
+                    }
+                }
+            }
+            if (journey.isEmpty()) {
+                var memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(
+                        ownerUserId, com.carebridge.backend.family.entity.InviteStatus.ACCEPTED);
+                for (var member : memberships) {
+                    var groupOpt = careGroupRepository.findById(member.getCareGroupId());
+                    if (groupOpt.isPresent()) {
+                        UUID groupOwnerId = groupOpt.get().getOwnerUserId();
+                        var ownerJourney = lock ? journeyRepository.findCanonicalForUpdate(groupOwnerId)
+                                : journeyRepository.findCanonical(groupOwnerId);
+                        if (ownerJourney.isPresent()) {
+                            journey = ownerJourney;
+                            break;
+                        }
                     }
                 }
             }

@@ -530,7 +530,17 @@ BEGIN
            name, description, icon, 'CATEGORY', slug, NULL, false, seq * 10,
            v_content_admin, v_now - interval '90 days', v_now - interval '2 days'
       FROM category_seed
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        icon = EXCLUDED.icon,
+        type = EXCLUDED.type,
+        slug = EXCLUDED.slug,
+        parent_id = EXCLUDED.parent_id,
+        is_hidden = EXCLUDED.is_hidden,
+        sort_order = EXCLUDED.sort_order,
+        created_by = EXCLUDED.created_by,
+        updated_at = EXCLUDED.updated_at;
 
     -- Forty child topics (two per category) give the mobile feed and topic-management page a
     -- practical, navigable taxonomy instead of a flat list.
@@ -584,7 +594,17 @@ BEGIN
            false, seq * 10, v_content_admin,
            v_now - interval '89 days', v_now - interval '2 days'
       FROM topic_seed
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        icon = EXCLUDED.icon,
+        type = EXCLUDED.type,
+        slug = EXCLUDED.slug,
+        parent_id = EXCLUDED.parent_id,
+        is_hidden = EXCLUDED.is_hidden,
+        sort_order = EXCLUDED.sort_order,
+        created_by = EXCLUDED.created_by,
+        updated_at = EXCLUDED.updated_at;
 
     -- Sixty-four questions: 24 public feed items, 20 first-review items, 12 actively being
     -- scanned by AI, and eight examples hidden/locked after safety review.
@@ -677,7 +697,26 @@ BEGIN
            v_now - make_interval(days => (65 - seq)),
            v_now - make_interval(days => (65 - seq)) + interval '15 minutes'
       FROM question_seed
-    ON CONFLICT (content_id) DO NOTHING;
+    ON CONFLICT (content_id) DO UPDATE SET
+        topic_id = EXCLUDED.topic_id,
+        parent_content_id = EXCLUDED.parent_content_id,
+        author_user_id = EXCLUDED.author_user_id,
+        content_type = EXCLUDED.content_type,
+        title = EXCLUDED.title,
+        body = EXCLUDED.body,
+        stage = EXCLUDED.stage,
+        urgency = EXCLUDED.urgency,
+        is_anonymous = EXCLUDED.is_anonymous,
+        moderation_status = EXCLUDED.moderation_status,
+        pregnancy_week = EXCLUDED.pregnancy_week,
+        baby_age_months = EXCLUDED.baby_age_months,
+        like_count = EXCLUDED.like_count,
+        answer_count = EXCLUDED.answer_count,
+        is_expert_labeled = EXCLUDED.is_expert_labeled,
+        is_personal_experience = EXCLUDED.is_personal_experience,
+        image_urls = EXCLUDED.image_urls,
+        experience_tag = EXCLUDED.experience_tag,
+        updated_at = EXCLUDED.updated_at;
 
     -- Two tailored public replies for each approved question: one verified-expert response and
     -- one lived-experience response from a mother/family member.
@@ -750,7 +789,26 @@ BEGIN
       FROM approved_answer_seed seed
       JOIN public.community_content q
         ON q.content_id = ('c3000000-0000-4000-8000-' || lpad(seed.question_seq::text, 12, '0'))::uuid
-    ON CONFLICT (content_id) DO NOTHING;
+    ON CONFLICT (content_id) DO UPDATE SET
+        topic_id = EXCLUDED.topic_id,
+        parent_content_id = EXCLUDED.parent_content_id,
+        author_user_id = EXCLUDED.author_user_id,
+        content_type = EXCLUDED.content_type,
+        title = EXCLUDED.title,
+        body = EXCLUDED.body,
+        stage = EXCLUDED.stage,
+        urgency = EXCLUDED.urgency,
+        is_anonymous = EXCLUDED.is_anonymous,
+        moderation_status = EXCLUDED.moderation_status,
+        pregnancy_week = EXCLUDED.pregnancy_week,
+        baby_age_months = EXCLUDED.baby_age_months,
+        like_count = EXCLUDED.like_count,
+        answer_count = EXCLUDED.answer_count,
+        is_expert_labeled = EXCLUDED.is_expert_labeled,
+        is_personal_experience = EXCLUDED.is_personal_experience,
+        image_urls = EXCLUDED.image_urls,
+        experience_tag = EXCLUDED.experience_tag,
+        updated_at = EXCLUDED.updated_at;
 
     -- Twenty pending answers ensure both tabs of /moderator/pending-content have a full page.
     WITH pending_answer_seed(seq, question_seq, author_kind, author_idx, body, experience_tag) AS (VALUES
@@ -790,7 +848,26 @@ BEGIN
       FROM pending_answer_seed seed
       JOIN public.community_content q
         ON q.content_id = ('c3000000-0000-4000-8000-' || lpad(seed.question_seq::text, 12, '0'))::uuid
-    ON CONFLICT (content_id) DO NOTHING;
+    ON CONFLICT (content_id) DO UPDATE SET
+        topic_id = EXCLUDED.topic_id,
+        parent_content_id = EXCLUDED.parent_content_id,
+        author_user_id = EXCLUDED.author_user_id,
+        content_type = EXCLUDED.content_type,
+        title = EXCLUDED.title,
+        body = EXCLUDED.body,
+        stage = EXCLUDED.stage,
+        urgency = EXCLUDED.urgency,
+        is_anonymous = EXCLUDED.is_anonymous,
+        moderation_status = EXCLUDED.moderation_status,
+        pregnancy_week = EXCLUDED.pregnancy_week,
+        baby_age_months = EXCLUDED.baby_age_months,
+        like_count = EXCLUDED.like_count,
+        answer_count = EXCLUDED.answer_count,
+        is_expert_labeled = EXCLUDED.is_expert_labeled,
+        is_personal_experience = EXCLUDED.is_personal_experience,
+        image_urls = EXCLUDED.image_urls,
+        experience_tag = EXCLUDED.experience_tag,
+        updated_at = EXCLUDED.updated_at;
 
     -- Eight hidden unsafe/spam replies plus eight AI_PENDING replies exercise moderation and
     -- private "processing" states without exposing them in the public answer list.
@@ -836,7 +913,26 @@ BEGIN
     FROM nonpublic_answer_seed seed
       JOIN public.community_content q
         ON q.content_id = ('c3000000-0000-4000-8000-' || lpad(seed.question_seq::text, 12, '0'))::uuid
-    ON CONFLICT (content_id) DO NOTHING;
+    ON CONFLICT (content_id) DO UPDATE SET
+        topic_id = EXCLUDED.topic_id,
+        parent_content_id = EXCLUDED.parent_content_id,
+        author_user_id = EXCLUDED.author_user_id,
+        content_type = EXCLUDED.content_type,
+        title = EXCLUDED.title,
+        body = EXCLUDED.body,
+        stage = EXCLUDED.stage,
+        urgency = EXCLUDED.urgency,
+        is_anonymous = EXCLUDED.is_anonymous,
+        moderation_status = EXCLUDED.moderation_status,
+        pregnancy_week = EXCLUDED.pregnancy_week,
+        baby_age_months = EXCLUDED.baby_age_months,
+        like_count = EXCLUDED.like_count,
+        answer_count = EXCLUDED.answer_count,
+        is_expert_labeled = EXCLUDED.is_expert_labeled,
+        is_personal_experience = EXCLUDED.is_personal_experience,
+        image_urls = EXCLUDED.image_urls,
+        experience_tag = EXCLUDED.experience_tag,
+        updated_at = EXCLUDED.updated_at;
 
     -- Normalize rows created by an earlier version of this demo migration. The mobile answer
     -- form exposes these four Vietnamese labels verbatim; legacy internal codes must never leak
@@ -863,7 +959,13 @@ BEGIN
            ('c3000000-0000-4000-8000-' || lpad(seq::text, 12, '0'))::uuid,
            NULL, 'QUESTION', v_now - make_interval(days => (25 - seq))
       FROM generate_series(1, 24) AS seed(seq)
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (interaction_id) DO UPDATE SET
+        actor_user_id = EXCLUDED.actor_user_id,
+        interaction_type = EXCLUDED.interaction_type,
+        content_id = EXCLUDED.content_id,
+        topic_id = EXCLUDED.topic_id,
+        target_content_type = EXCLUDED.target_content_type,
+        created_at = EXCLUDED.created_at;
 
     -- Two question reactions per public question.
     INSERT INTO public.community_interactions
@@ -877,7 +979,13 @@ BEGIN
            NULL, 'QUESTION', v_now - make_interval(days => (25 - q.seq)) + make_interval(hours => r.reaction_no)
       FROM generate_series(1, 24) AS q(seq)
       CROSS JOIN generate_series(1, 2) AS r(reaction_no)
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (interaction_id) DO UPDATE SET
+        actor_user_id = EXCLUDED.actor_user_id,
+        interaction_type = EXCLUDED.interaction_type,
+        content_id = EXCLUDED.content_id,
+        topic_id = EXCLUDED.topic_id,
+        target_content_type = EXCLUDED.target_content_type,
+        created_at = EXCLUDED.created_at;
 
     -- One reaction for every public answer.
     INSERT INTO public.community_interactions
@@ -888,7 +996,13 @@ BEGIN
            ('c4000000-0000-4000-8000-' || lpad(seq::text, 12, '0'))::uuid,
            NULL, 'ANSWER', v_now - make_interval(days => greatest(1, 50 - seq))
       FROM generate_series(1, 48) AS seed(seq)
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (interaction_id) DO UPDATE SET
+        actor_user_id = EXCLUDED.actor_user_id,
+        interaction_type = EXCLUDED.interaction_type,
+        content_id = EXCLUDED.content_id,
+        topic_id = EXCLUDED.topic_id,
+        target_content_type = EXCLUDED.target_content_type,
+        created_at = EXCLUDED.created_at;
 
     -- Twenty-four topic follows spread across mother and family accounts.
     INSERT INTO public.community_interactions
@@ -901,7 +1015,13 @@ BEGIN
            ('c2000000-0000-4000-8000-' || lpad(seq::text, 12, '0'))::uuid,
            NULL, v_now - make_interval(days => (30 - seq))
       FROM generate_series(1, 24) AS seed(seq)
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (interaction_id) DO UPDATE SET
+        actor_user_id = EXCLUDED.actor_user_id,
+        interaction_type = EXCLUDED.interaction_type,
+        content_id = EXCLUDED.content_id,
+        topic_id = EXCLUDED.topic_id,
+        target_content_type = EXCLUDED.target_content_type,
+        created_at = EXCLUDED.created_at;
 
     -- Twenty-four moderation cases cover user reports, AI-origin reports, all queue states,
     -- question/answer/account targets and all supported priorities.
@@ -961,7 +1081,25 @@ BEGIN
            CASE WHEN status = 'IN_REVIEW' THEN v_now - make_interval(days => (24 - seq)) ELSE NULL END,
            NULL, NULL, NULL, NULL, NULL
       FROM case_seed
-    ON CONFLICT (moderation_case_id) DO NOTHING;
+    ON CONFLICT (moderation_case_id) DO UPDATE SET
+        reporter_user_id = EXCLUDED.reporter_user_id,
+        assigned_moderator_id = EXCLUDED.assigned_moderator_id,
+        target_type = EXCLUDED.target_type,
+        target_id = EXCLUDED.target_id,
+        reason_code = EXCLUDED.reason_code,
+        description = EXCLUDED.description,
+        status = EXCLUDED.status,
+        opened_at = EXCLUDED.opened_at,
+        resolved_at = EXCLUDED.resolved_at,
+        updated_at = EXCLUDED.updated_at,
+        report_source = EXCLUDED.report_source,
+        priority = EXCLUDED.priority,
+        claimed_at = EXCLUDED.claimed_at,
+        ai_feedback_decision = EXCLUDED.ai_feedback_decision,
+        ai_feedback_reason = EXCLUDED.ai_feedback_reason,
+        ai_feedback_by = EXCLUDED.ai_feedback_by,
+        ai_feedback_at = EXCLUDED.ai_feedback_at,
+        ai_feedback_assessment_id = EXCLUDED.ai_feedback_assessment_id;
 
     -- Forty-four durable AI jobs: 20 completed examples, 20 queued/processing items backing
     -- every AI_PENDING question/answer above, and four observable failures.
@@ -1017,7 +1155,19 @@ BEGIN
               WHEN 'QUESTION' THEN 'c3000000-0000-4000-8000-'
               ELSE 'c4000000-0000-4000-8000-'
             END || lpad(target_seq::text, 12, '0'))::uuid
-    ON CONFLICT (job_id) DO NOTHING;
+    ON CONFLICT (job_id) DO UPDATE SET
+        target_type = EXCLUDED.target_type,
+        target_id = EXCLUDED.target_id,
+        content_hash = EXCLUDED.content_hash,
+        status = EXCLUDED.status,
+        attempt_count = EXCLUDED.attempt_count,
+        next_attempt_at = EXCLUDED.next_attempt_at,
+        locked_by = EXCLUDED.locked_by,
+        locked_at = EXCLUDED.locked_at,
+        last_error_code = EXCLUDED.last_error_code,
+        force_rescan = EXCLUDED.force_rescan,
+        updated_at = EXCLUDED.updated_at,
+        completed_at = EXCLUDED.completed_at;
 
     -- Twenty completed assessments (safe + violation/uncertain) and four failed assessments.
     -- The non-safe rows snapshot canonical policies exactly as AiVerdictParser persists them.
@@ -1152,7 +1302,28 @@ BEGIN
       LEFT JOIN public.ai_moderation_policies p
         ON p.policy_code = a.policy_code
      WHERE a.policy_code IS NULL OR p.policy_id IS NOT NULL
-    ON CONFLICT (assessment_id) DO NOTHING;
+    ON CONFLICT (assessment_id) DO UPDATE SET
+        job_id = EXCLUDED.job_id,
+        target_type = EXCLUDED.target_type,
+        target_id = EXCLUDED.target_id,
+        content_hash = EXCLUDED.content_hash,
+        policy_set_hash = EXCLUDED.policy_set_hash,
+        provider = EXCLUDED.provider,
+        model = EXCLUDED.model,
+        status = EXCLUDED.status,
+        classification = EXCLUDED.classification,
+        overall_severity = EXCLUDED.overall_severity,
+        confidence = EXCLUDED.confidence,
+        recommended_action = EXCLUDED.recommended_action,
+        explanation = EXCLUDED.explanation,
+        error_code = EXCLUDED.error_code,
+        attempt_count = EXCLUDED.attempt_count,
+        latency_ms = EXCLUDED.latency_ms,
+        prompt_tokens = EXCLUDED.prompt_tokens,
+        output_tokens = EXCLUDED.output_tokens,
+        matches_jsonb = EXCLUDED.matches_jsonb,
+        moderation_case_id = EXCLUDED.moderation_case_id,
+        completed_at = EXCLUDED.completed_at;
 
     -- Align automated cases with the authoritative policy category/priority matrix.
     UPDATE public.moderation_cases c

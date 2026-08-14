@@ -51,10 +51,29 @@ public class EnsureEligibleChecklistAssignmentsService {
             return;
         }
         int boundedPeriods = Math.max(0, Math.min(weeklyPeriods, 12));
+        // A daily checklist has one occurrence per local calendar date. Replay
+        // the same bounded horizon as closed History rows before replaying the
+        // weekly periods. The source filters cadence type, so weekly roots are
+        // not duplicated for every day in this loop.
+        int boundedDailyPeriods = Math.min(boundedPeriods * 7, 84);
+        for (int offset = boundedDailyPeriods; offset >= 1; offset--) {
+            LocalDate periodDate = asOfDate.minusDays(offset);
+            source.loadCandidatesForActor(actorUserId, periodDate, timezone, correlationId).stream()
+                    .filter(candidate -> candidate.cadence() != null
+                            && candidate.cadence().scheduleType()
+                                    == com.carebridge.backend.checklist.model.ChecklistScheduleType.DAILY
+                            && candidate.cadence().materializationPolicy()
+                                    == com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy.EACH_DAY)
+                    .map(candidate -> candidate.withCadence(candidate.cadence().catchUp()))
+                    .sorted(Comparator.comparing(EnsureEligibleChecklistAssignmentsService::signature))
+                    .forEach(candidate -> executeIsolated(candidate, correlationId));
+        }
         for (int offset = boundedPeriods; offset >= 1; offset--) {
             LocalDate periodDate = asOfDate.minusWeeks(offset);
             source.loadCandidatesForActor(actorUserId, periodDate, timezone, correlationId).stream()
-                    .filter(candidate -> candidate.cadence() != null)
+                    .filter(candidate -> candidate.cadence() != null
+                            && candidate.cadence().scheduleType()
+                                    != com.carebridge.backend.checklist.model.ChecklistScheduleType.DAILY)
                     .map(candidate -> candidate.withCadence(candidate.cadence().catchUp()))
                     .sorted(Comparator.comparing(EnsureEligibleChecklistAssignmentsService::signature))
                     .forEach(candidate -> executeIsolated(candidate, correlationId));

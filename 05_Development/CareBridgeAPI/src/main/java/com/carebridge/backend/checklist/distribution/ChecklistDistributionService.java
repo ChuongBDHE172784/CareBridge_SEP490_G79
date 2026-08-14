@@ -9,6 +9,7 @@ import com.carebridge.backend.checklist.entity.ChecklistInstance;
 import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
 import com.carebridge.backend.checklist.key.ChecklistDistributionKeyFactory;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
+import com.carebridge.backend.checklist.model.ChecklistMaterializationMode;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
@@ -39,6 +40,9 @@ public class ChecklistDistributionService {
     private static final String CADENCE_PERIOD_CLOSED = "CADENCE_PERIOD_CLOSED";
     private static final String OWNER_MISMATCH = "CONTEXT_OWNER_MISMATCH";
     private static final String KEY_CONFLICT = "DISTRIBUTION_KEY_CONFLICT";
+    static final String ITEM_DUE_ANCHOR_MISSING = "ITEM_DUE_ANCHOR_MISSING";
+    private static final String V2_NON_CADENCE_PERIOD = "O:USER_CREATED";
+    private static final String V2_NON_CADENCE_ZONE = "UTC";
     private final ChecklistInstanceRepository instanceRepository;
     private final ChecklistTaskInstanceRepository taskRepository;
     private final ChecklistActionCommandRepository commandRepository;
@@ -103,6 +107,17 @@ public class ChecklistDistributionService {
             return new ChecklistDistributionExecutionResult(
                     new ChecklistDistributionResult(0, 0, 0, 0, 0, 0, 0, 0), recipients);
         }
+        boolean missingItemAnchor = command.items().stream()
+                .filter(Objects::nonNull)
+                .anyMatch(item -> item.dueAnchor() != null
+                        && item.dueAnchor() != com.carebridge.backend.checklist.model.ChecklistAnchorType.NONE
+                        && item.dueOffsetDays() != null
+                        && !eligibilityService.hasAnchor(item.dueAnchor(), command.lifecycleDates()));
+        if (missingItemAnchor) {
+            auditFailure(command, ITEM_DUE_ANCHOR_MISSING);
+            ChecklistDistributionResult result = new ChecklistDistributionResult(0, 0, 0, 0, 0, 0, 0, 1);
+            return commandResult(result, ITEM_DUE_ANCHOR_MISSING);
+        }
 
         Counters totals = new Counters();
         List<ChecklistRecipientDistributionResult> recipientResults = new ArrayList<>();
@@ -156,7 +171,12 @@ public class ChecklistDistributionService {
         String windowEndToken = decision.windowEnd() == null ? "NONE" : decision.windowEnd().toString();
         UUID recipientCareGroupId = recipientCareGroupId(command, recipient);
         String key = command.cadence() == null
-                ? ChecklistDistributionKeyFactory.instanceKey(
+                ? Short.valueOf((short) 2).equals(materializedContractVersion(command))
+                        ? ChecklistDistributionKeyFactory.instanceKey(
+                        command.templateVersionId(), recipient.userId(), recipient.role().name(),
+                        recipientCareGroupId, command.contextType().name(), command.contextId(),
+                        windowStartToken, windowEndToken, command.gestationalDatingRevision(), (short) 2)
+                        : ChecklistDistributionKeyFactory.instanceKey(
                         command.templateVersionId(), recipient.userId(), recipient.role().name(),
                         recipientCareGroupId, command.contextType().name(), command.contextId(),
                         windowStartToken, windowEndToken, command.gestationalDatingRevision())
@@ -169,7 +189,12 @@ public class ChecklistDistributionService {
                         command.cadence().scheduleZone().getId(),
                         command.gestationalDatingRevision());
         ChecklistInstance instance = instanceRepository.findByDistributionKey(key).orElse(null);
-        if (instance == null && isPersonalMother(recipient)) {
+        // A targetless V2 aggregate owns a separate key namespace.  Do not
+        // search the legacy logical identity fallback for it, otherwise a
+        // pre-existing V1 row could be mistaken for the V2 occurrence and
+        // surface as a false key conflict.
+        if (instance == null && isPersonalMother(recipient)
+                && !Short.valueOf((short) 2).equals(materializedContractVersion(command))) {
             List<ChecklistInstance> legacy = instanceRepository.findAllByLogicalPersonalIdentity(
                             recipient.userId(), recipient.role(), command.contextType(), command.contextId(),
                             command.templateVersionId(), ChecklistOrigin.SYSTEM_TEMPLATE)
@@ -223,12 +248,12 @@ public class ChecklistDistributionService {
                     .contextOwnerUserId(command.contextOwnerUserId())
                     .origin(ChecklistOrigin.SYSTEM_TEMPLATE)
                     .gestationalDatingRevision(command.gestationalDatingRevision())
-                    .keyVersion(command.cadence() == null ? "v1" : "v2")
-                    .periodKey(command.cadence() == null ? null : command.cadence().periodKey())
-                    .scheduleZoneId(command.cadence() == null ? null : command.cadence().scheduleZone().getId())
-                    .checklistContractVersion(command.cadence() == null ? null : (short) 2)
-                    .materializationMode(command.cadence() == null ? null : command.cadence().materializationMode())
-                    .wasActionable(command.cadence() == null ? null : command.cadence().wasActionable())
+                    .keyVersion(materializedKeyVersion(command))
+                    .periodKey(materializedPeriodKey(command))
+                    .scheduleZoneId(materializedScheduleZoneId(command))
+                    .checklistContractVersion(materializedContractVersion(command))
+                    .materializationMode(materializedMode(command))
+                    .wasActionable(materializedWasActionable(command))
                     .windowStart(decision.windowStart())
                     .windowEnd(decision.windowEnd())
                     .status(ChecklistInstanceStatus.PENDING)
@@ -285,14 +310,14 @@ public class ChecklistDistributionService {
                     .templateVersionId(command.templateVersionId())
                     .templateItemVersionId(item.templateItemVersionId())
                     .taskKey(taskKey)
-                    .keyVersion(command.cadence() == null ? "v1" : "v2")
+                    .keyVersion(materializedKeyVersion(command))
                     .titleSnapshot(item.title())
                     .descriptionSnapshot(item.description())
                     .supportFunction(item.supportFunction())
                     .displayOrder(item.displayOrder())
                     .required(item.required())
                     .targetSubject(item.targetSubject())
-                    .checklistContractVersion(command.cadence() == null ? null : (short) 2)
+                    .checklistContractVersion(materializedContractVersion(command))
                     .dueAt(dueAt)
                     .status(ChecklistTaskStatus.PENDING)
                     .build();
@@ -343,6 +368,7 @@ public class ChecklistDistributionService {
             ChecklistInstance instance = instanceRepository.findForUpdateById(discovered.getId())
                     .orElse(null);
             if (instance == null || instance.getStatus() == ChecklistInstanceStatus.CANCELLED
+                    || !sameContract(instance, command)
                     || sameOccurrence(instance, command, decision)
                     || instance.getHistoricalAt() != null) {
                 continue;
@@ -372,6 +398,7 @@ public class ChecklistDistributionService {
             if (instance == null
                     || instance.getOrigin() != ChecklistOrigin.SYSTEM_TEMPLATE
                     || instance.getStatus() != ChecklistInstanceStatus.PENDING
+                    || !sameContract(instance, command)
                     || sameOccurrence(instance, command, decision)
                     || instance.getCompletedAt() != null
                     || instance.getCancelledAt() != null
@@ -439,7 +466,7 @@ public class ChecklistDistributionService {
             ChecklistDistributionRecipient recipient,
             ChecklistEligibilityDecision decision) {
         return sameOccurrenceIdentity(instance, command, recipient, decision)
-                && sameCadence(instance, command.cadence());
+                && sameCadence(instance, command);
     }
 
     private static boolean sameOccurrenceIdentity(
@@ -463,7 +490,7 @@ public class ChecklistDistributionService {
                 && Objects.equals(instance.getContextOwnerUserId(), command.contextOwnerUserId())
                 && instance.getOrigin() == ChecklistOrigin.SYSTEM_TEMPLATE
                 && Objects.equals(instance.getGestationalDatingRevision(), command.gestationalDatingRevision())
-                && sameCadenceIdentity(instance, command.cadence())
+                && sameCadenceIdentity(instance, command.cadence(), command.checklistContractVersion())
                 && sameWindow(instance, decision);
     }
 
@@ -482,32 +509,97 @@ public class ChecklistDistributionService {
                 && Objects.equals(task.getDisplayOrder(), item.displayOrder())
                 && Objects.equals(task.getRequired(), item.required())
                 && task.getTargetSubject() == item.targetSubject()
-                && Objects.equals(task.getChecklistContractVersion(),
-                        command.cadence() == null ? null : (short) 2)
+                && contractsMatch(task.getChecklistContractVersion(), materializedContractVersion(command))
                 && Objects.equals(task.getDueAt(), dueAt);
     }
 
     private static boolean sameCadence(
             ChecklistInstance instance,
-            ChecklistCadenceMetadata cadence) {
-        return sameCadenceIdentity(instance, cadence)
+            ChecklistDistributionCommand command) {
+        ChecklistCadenceMetadata cadence = command.cadence();
+        return sameCadenceIdentity(instance, cadence, command.checklistContractVersion())
                 && (cadence == null
                     || (instance.getMaterializationMode() == cadence.materializationMode()
                         && Objects.equals(instance.getWasActionable(), cadence.wasActionable())));
     }
 
+    /**
+     * The root contract is meaningful even when a template has no recurring
+     * cadence (for example, an optional V2 self-assigned recommendation).  A
+     * null command contract remains the legacy V1 representation so old
+     * callers keep their nullable database shape.
+     */
+    private static Short materializedContractVersion(ChecklistDistributionCommand command) {
+        if (command.checklistContractVersion() != null) {
+            return command.checklistContractVersion();
+        }
+        return command.cadence() == null ? null : (short) 2;
+    }
+
+    private static String materializedPeriodKey(ChecklistDistributionCommand command) {
+        return command.cadence() == null
+                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
+                        ? V2_NON_CADENCE_PERIOD : null)
+                : command.cadence().periodKey();
+    }
+
+    private static String materializedScheduleZoneId(ChecklistDistributionCommand command) {
+        return command.cadence() == null
+                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
+                        ? V2_NON_CADENCE_ZONE : null)
+                : command.cadence().scheduleZone().getId();
+    }
+
+    private static ChecklistMaterializationMode materializedMode(ChecklistDistributionCommand command) {
+        return command.cadence() == null
+                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
+                        ? ChecklistMaterializationMode.INTERACTIVE : null)
+                : command.cadence().materializationMode();
+    }
+
+    private static Boolean materializedWasActionable(ChecklistDistributionCommand command) {
+        return command.cadence() == null
+                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
+                        ? Boolean.TRUE : null)
+                : command.cadence().wasActionable();
+    }
+
+    private static String materializedKeyVersion(ChecklistDistributionCommand command) {
+        // Cadence keys use the V2 identity format even for a V1 target-bearing
+        // template (for example postpartum weekly work).  The discriminator
+        // still records the template contract independently on the rows.
+        return command.cadence() != null
+                || Short.valueOf((short) 2).equals(materializedContractVersion(command))
+                ? "v2" : "v1";
+    }
+
+    private static boolean contractsMatch(Short stored, Short expected) {
+        if (expected == null || expected == 1) {
+            return stored == null || stored == 1;
+        }
+        return Objects.equals(stored, expected);
+    }
+
     private static boolean sameCadenceIdentity(
             ChecklistInstance instance,
-            ChecklistCadenceMetadata cadence) {
+            ChecklistCadenceMetadata cadence,
+            Short contractVersion) {
         if (cadence == null) {
+            if (Short.valueOf((short) 2).equals(contractVersion)) {
+                return Objects.equals(instance.getPeriodKey(), V2_NON_CADENCE_PERIOD)
+                        && Objects.equals(instance.getScheduleZoneId(), V2_NON_CADENCE_ZONE)
+                        && instance.getMaterializationMode() == ChecklistMaterializationMode.INTERACTIVE
+                        && Boolean.TRUE.equals(instance.getWasActionable())
+                        && Objects.equals(instance.getChecklistContractVersion(), (short) 2);
+            }
             return instance.getPeriodKey() == null
                     && instance.getScheduleZoneId() == null
-                    && (instance.getChecklistContractVersion() == null
-                        || instance.getChecklistContractVersion() == 1);
+                    && contractsMatch(instance.getChecklistContractVersion(), contractVersion);
         }
         return Objects.equals(instance.getPeriodKey(), cadence.periodKey())
                 && Objects.equals(instance.getScheduleZoneId(), cadence.scheduleZone().getId())
-                && Objects.equals(instance.getChecklistContractVersion(), (short) 2);
+                && Objects.equals(instance.getChecklistContractVersion(),
+                        contractVersion == null ? (short) 2 : contractVersion);
     }
 
     private static boolean isCatchUp(ChecklistDistributionCommand command) {
@@ -587,7 +679,12 @@ public class ChecklistDistributionService {
             ChecklistDistributionCommand command,
             ChecklistEligibilityDecision decision) {
         return Objects.equals(instance.getGestationalDatingRevision(), command.gestationalDatingRevision())
-                && sameWindow(instance, decision);
+                && sameWindow(instance, decision)
+                && sameCadenceIdentity(instance, command.cadence(), command.checklistContractVersion());
+    }
+
+    private static boolean sameContract(ChecklistInstance instance, ChecklistDistributionCommand command) {
+        return contractsMatch(instance.getChecklistContractVersion(), materializedContractVersion(command));
     }
 
     private static boolean isPersonalMother(ChecklistDistributionRecipient recipient) {
@@ -656,9 +753,19 @@ public class ChecklistDistributionService {
         Objects.requireNonNull(command.recipients(), "Recipients are required");
         Objects.requireNonNull(command.items(), "Items are required");
         Objects.requireNonNull(command.timezone(), "Timezone is required");
+        if (command.checklistContractVersion() != null
+                && command.checklistContractVersion() != 1
+                && command.checklistContractVersion() != 2) {
+            throw new IllegalArgumentException("Unsupported checklist contract version");
+        }
         if (command.cadence() != null
                 && command.cadence().scheduleZone() == null) {
             throw new IllegalArgumentException("Cadence schedule zone is required");
+        }
+        if (command.checklistContractVersion() != null
+                && command.checklistContractVersion() == 2
+                && command.items().stream().anyMatch(item -> item.targetSubject() != null)) {
+            throw new IllegalArgumentException("V2 checklist items must be targetless");
         }
         if (command.careGroupId() == null && command.recipients().stream()
                 .filter(Objects::nonNull)

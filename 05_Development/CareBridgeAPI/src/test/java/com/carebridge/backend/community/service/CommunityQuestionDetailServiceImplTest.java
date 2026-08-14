@@ -138,6 +138,33 @@ class CommunityQuestionDetailServiceImplTest {
     }
 
     @Test
+    void getQuestionDetail_lockedQuestion_returnsDetail() {
+        CommunityQuestion question = makeApprovedQuestion();
+        question.setStatus(QuestionStatus.LOCKED);
+        CommunityTopic topic = makeTopic();
+        CommunityQuestionDetailResponse expectedDetail = CommunityQuestionDetailResponse.builder()
+                .id(QUESTION_ID).title("Test Question Title").topicName("Dinh dưỡng")
+                .status("LOCKED")
+                .answers(List.of()).build();
+
+        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(topic));
+        when(answerRepository.findVisibleAnswersForDetail(QUESTION_ID, CURRENT_USER_ID))
+                .thenReturn(List.of());
+        when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
+        when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
+        when(questionMapper.toDetailResponse(
+                eq(question), eq("Dinh dưỡng"), any(), any(), eq(false), eq(false), eq(CURRENT_USER_ID)))
+                .thenReturn(expectedDetail);
+
+        CommunityQuestionDetailResponse result = questionService.getQuestionDetail(QUESTION_ID, CURRENT_USER_ID);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(QUESTION_ID);
+        assertThat(result.getStatus()).isEqualTo("LOCKED");
+    }
+
+    @Test
     void getQuestionDetail_questionNotFound_throwsNotFound() {
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.empty());
 

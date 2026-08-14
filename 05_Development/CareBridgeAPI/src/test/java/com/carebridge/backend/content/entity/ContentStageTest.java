@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 class ContentStageTest {
 
     @Test
-    void fromApiValueMapsOnlyTheLegacyBabyCareAliasToPostpartum() {
-        assertThat(ContentStage.fromApiValue("BABY_CARE")).isEqualTo(ContentStage.POSTPARTUM);
+    void fromApiValueKeepsBabyCareAsItsOwnCanonicalStage() {
+        assertThat(ContentStage.fromApiValue("BABY_CARE")).isEqualTo(ContentStage.BABY_CARE);
         assertThat(ContentStage.fromApiValue("pregnancy")).isEqualTo(ContentStage.PREGNANCY);
     }
 
