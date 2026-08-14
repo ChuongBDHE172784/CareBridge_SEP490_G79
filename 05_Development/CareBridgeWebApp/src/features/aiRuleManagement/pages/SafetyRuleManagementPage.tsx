@@ -593,6 +593,9 @@ export default function SafetyRuleManagementPage() {
                               {AI_STATE_META[aiStatus.state].label}
                             </span>
                             <p className="mt-1 text-xs text-outline m-0">Model: {aiStatus.model || '—'}</p>
+                              {aiStatus.resolvedModel && aiStatus.resolvedModel !== aiStatus.model && (
+                                <p className="mt-0.5 text-xs text-outline m-0">Đang chạy: {aiStatus.resolvedModel}</p>
+                              )}
                           </>
                         ) : (
                           <p className="text-sm text-on-surface-variant m-0">Đang tải...</p>

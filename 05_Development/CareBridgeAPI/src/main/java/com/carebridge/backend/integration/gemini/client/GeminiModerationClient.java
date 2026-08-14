@@ -43,6 +43,16 @@ public class GeminiModerationClient {
     private final String model;
     private final RestClient restClient;
 
+    /**
+     * What the provider says it actually ran, taken from modelVersion on the last
+     * successful response. The configured name is usually an alias -
+     * gemini-flash-latest resolves to a specific release on Google's side, and only
+     * the response says which one - so the admin screen could report the alias while
+     * having no idea what was behind it. Written after a call, read by the status
+     * endpoint, hence volatile; null until the first successful call.
+     */
+    private volatile String resolvedModel;
+
     public GeminiModerationClient(
             @Value("${carebridge.gemini.enabled:false}") boolean enabled,
             @Value("${carebridge.gemini.api-key:}") String apiKey,
@@ -78,6 +88,16 @@ public class GeminiModerationClient {
 
     public String model() {
         return model;
+    }
+
+    /**
+     * The release the provider reported on the last successful call, or null before
+     * one has happened. Reporting only what was observed keeps the alias and the
+     * thing behind it distinct: a guess derived from the alias would be wrong the
+     * day Google moves it.
+     */
+    public String resolvedModel() {
+        return resolvedModel;
     }
 
     /**
@@ -138,6 +158,10 @@ public class GeminiModerationClient {
             throw new GeminiUnavailableException("Gemini connection failure or timeout");
         }
         long latencyMs = (System.nanoTime() - startedAt) / 1_000_000;
+
+        if (response != null && response.get("modelVersion") instanceof String reported && !reported.isBlank()) {
+            resolvedModel = reported;
+        }
 
         String blockReason = extractBlockReason(response);
         if (blockReason != null) {
