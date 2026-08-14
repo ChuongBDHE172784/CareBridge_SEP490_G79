@@ -107,7 +107,7 @@ void main() {
       id: 'tmpl-v2',
       name: 'WHO Plan 2',
       stage: 'PREGNANCY',
-      description: 'Nội dung khuyến nghị',
+      description: 'Mô tả checklist v2',
       templateType: 'MANDATORY',
       checklistContractVersion: 2,
       planNumber: 2,
