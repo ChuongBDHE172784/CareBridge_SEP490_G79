@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:untitled/features/emergency/screens/emergency_map_screen.dart';
 import 'package:untitled/features/familySync/services/family_home_service.dart';
 import 'package:untitled/features/home/screens/family_member_home_screen.dart';
 
@@ -161,6 +162,29 @@ void main() {
         expect(openedUri?.queryParameters['mode'], 'manual');
         expect(openedUri?.queryParameters['stage'], 'POSTPARTUM');
         expect(find.text('TrackAsia Map'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'hides family location share button when opening EmergencyMapScreen for family role',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: EmergencyMapScreen(
+              showFamilyLocationShare: false,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // 115 emergency call is present
+        expect(find.byKey(const Key('emergency-call')), findsOneWidget);
+        expect(find.text('Gọi cấp cứu 115'), findsOneWidget);
+
+        // Location share button for family is HIDDEN
+        expect(find.byKey(const Key('emergency-family-alert')), findsNothing);
+        expect(find.byKey(const Key('family-alert')), findsNothing);
+        expect(find.text('Gửi vị trí'), findsNothing);
       },
     );
   });
