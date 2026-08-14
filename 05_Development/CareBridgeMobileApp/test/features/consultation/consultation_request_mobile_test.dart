@@ -203,7 +203,7 @@ void main() {
         const MaterialApp(home: MyConsultationRequestsScreen()),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Bạn chưa có yêu cầu tư vấn nào'), findsOneWidget);
+      expect(find.text('Chưa có yêu cầu tư vấn nào'), findsOneWidget);
       expect(find.text('Thử lại'), findsNothing);
     },
   );
@@ -369,7 +369,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Chưa có yêu cầu tư vấn được giao'), findsOneWidget);
-    expect(find.text('Bạn chưa có yêu cầu tư vấn nào'), findsNothing);
+    expect(find.text('Chưa có yêu cầu tư vấn nào'), findsNothing);
   });
 
   // CONREQ-FL-14

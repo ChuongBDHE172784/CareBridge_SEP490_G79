@@ -222,6 +222,7 @@ class LocationShareNotificationDetailScreen extends StatelessWidget {
             SizedBox(
               height: 54,
               child: FilledButton.icon(
+                key: const Key('location-share-directions-action'),
                 onPressed: hasCoordinates
                     ? () => _openDirections(context)
                     : null,

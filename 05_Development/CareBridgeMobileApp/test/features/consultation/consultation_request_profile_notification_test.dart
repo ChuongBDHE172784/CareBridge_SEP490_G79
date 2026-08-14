@@ -7,6 +7,8 @@ import 'package:untitled/features/consultation/services/consultation_request_ref
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
 import 'package:untitled/features/expert/screens/expert_public_profile_screen.dart';
+import 'package:untitled/features/expert/models/expert_availability_slot.dart';
+import 'package:untitled/features/expert/services/expert_availability_service.dart';
 import 'package:untitled/features/notification/models/notification_model.dart';
 import 'package:untitled/features/notification/routing/consultation_notification_routing.dart';
 import 'package:untitled/features/notification/screens/notification_center_screen.dart';
@@ -30,6 +32,13 @@ class _ProfileService extends DirectChatService {
   @override
   Future<DirectConversation> findOrCreateConversation(String expertProfileId) =>
       throw UnimplementedError();
+}
+
+class _EmptyAvailabilityService extends ExpertAvailabilityService {
+  @override
+  Future<List<ExpertAvailabilitySlot>> getPublicAvailability(
+    String expertProfileId,
+  ) async => [];
 }
 
 class _NotificationService extends NotificationService {
@@ -73,58 +82,64 @@ void main() {
   });
 
   // CONREQ-FL-01
-  testWidgets('eligible profile shows consultation request CTA when not in conversation list', (
-    tester,
-  ) async {
-    DirectChatService.instance = _ProfileService(true);
-    final router = GoRouter(
-      initialLocation: '/expert/public/expert-1',
-      routes: [
-        GoRoute(
-          path: '/expert/public/:id',
-          builder: (_, state) => ExpertPublicProfileScreen(
-            expertProfileId: state.pathParameters['id']!,
+  testWidgets(
+    'eligible profile shows consultation request CTA when not in conversation list',
+    (tester) async {
+      DirectChatService.instance = _ProfileService(true);
+      final router = GoRouter(
+        initialLocation: '/expert/public/expert-1',
+        routes: [
+          GoRoute(
+            path: '/expert/public/:id',
+            builder: (_, state) => ExpertPublicProfileScreen(
+              expertProfileId: state.pathParameters['id']!,
+              availabilityService: _EmptyAvailabilityService(),
+            ),
           ),
-        ),
-      ],
-    );
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    await tester.pumpAndSettle();
-    expect(find.text('Trò chuyện'), findsNothing);
-    expect(
-      tester
-          .widget<OutlinedButton>(
-            find.widgetWithText(OutlinedButton, 'Yêu cầu tư vấn'),
-          )
-          .onPressed,
-      isNotNull,
-    );
-    await tester.tap(find.text('Yêu cầu tư vấn'));
-    await tester.pumpAndSettle();
-    expect(find.byType(ConsultationRequestFormScreen), findsOneWidget);
-  });
+        ],
+      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+      expect(find.text('Trò chuyện'), findsNothing);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Yêu cầu tư vấn'),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      await tester.tap(find.text('Yêu cầu tư vấn'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConsultationRequestFormScreen), findsOneWidget);
+    },
+  );
 
   // CONREQ-FL-17
-  testWidgets('approved but ineligible profile disables consultation CTA when not in conversation list', (
-    tester,
-  ) async {
-    DirectChatService.instance = _ProfileService(false);
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: ExpertPublicProfileScreen(expertProfileId: 'expert-1'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Trò chuyện'), findsNothing);
-    expect(
-      tester
-          .widget<OutlinedButton>(
-            find.widgetWithText(OutlinedButton, 'Yêu cầu tư vấn'),
-          )
-          .onPressed,
-      isNull,
-    );
-  });
+  testWidgets(
+    'approved but ineligible profile disables consultation CTA when not in conversation list',
+    (tester) async {
+      DirectChatService.instance = _ProfileService(false);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ExpertPublicProfileScreen(
+            expertProfileId: 'expert-1',
+            availabilityService: _EmptyAvailabilityService(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Trò chuyện'), findsNothing);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Yêu cầu tư vấn'),
+            )
+            .onPressed,
+        isNull,
+      );
+    },
+  );
 
   // CONREQ-FL-11
   test('foreground consultation push publishes refresh event', () async {

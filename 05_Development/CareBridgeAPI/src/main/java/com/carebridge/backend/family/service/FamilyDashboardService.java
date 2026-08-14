@@ -21,6 +21,7 @@ import com.carebridge.backend.health.repository.HealthObservationRepository;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.service.GestationalDatingResolver;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
@@ -35,6 +36,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -223,13 +225,7 @@ public class FamilyDashboardService {
 
         Optional<MotherJourney> journey = linkedOrCanonicalJourney(context.group());
         FamilyDashboardResponse.MotherJourneySummary motherJourney = journey
-                .map(j -> new FamilyDashboardResponse.MotherJourneySummary(
-                        j.getId(),
-                        j.getJourneyType() != null ? j.getJourneyType().name() : null,
-                        j.getStatus() != null ? j.getStatus().name() : null,
-                        j.getEstimatedDueDate(),
-                        j.getLastMenstrualDate(),
-                        j.getStartDate()))
+                .map(this::toMotherJourneySummary)
                 .orElse(null);
 
         return new FamilyDashboardResponse.Detail(
@@ -408,6 +404,59 @@ public class FamilyDashboardService {
         }
         return journeyRepository.findById(group.getLinkedJourneyId())
                 .filter(journey -> group.getOwnerUserId().equals(journey.getOwnerUserId()));
+    }
+
+    private FamilyDashboardResponse.MotherJourneySummary toMotherJourneySummary(MotherJourney journey) {
+        LocalDate today = LocalDate.now(DASHBOARD_TIMEZONE);
+        LocalDate canonicalLmp = null;
+        Integer completedWeek = null;
+        Integer completedDays = null;
+        Integer sourceWeek = null;
+        Integer plan = null;
+        Integer trimester = null;
+        Long daysUntilDue = null;
+        boolean resolved = GestationalDatingResolver.hasResolvedAuthority(journey);
+
+        if (resolved) {
+            canonicalLmp = GestationalDatingResolver.canonicalLmp(
+                    journey.getGestationalDatingBasis(),
+                    journey.getLastMenstrualDate(),
+                    journey.getEstimatedDueDate());
+            resolved = canonicalLmp != null && !canonicalLmp.isAfter(today);
+        }
+        if (resolved) {
+            completedWeek = GestationalDatingResolver.completedGestationalWeek(canonicalLmp, today);
+            completedDays = GestationalDatingResolver.completedGestationalDays(canonicalLmp, today);
+            sourceWeek = GestationalDatingResolver.sourceWeekNumber(completedWeek);
+            plan = GestationalDatingResolver.planForSourceWeek(sourceWeek);
+            trimester = completedWeek <= 13 ? 1 : completedWeek <= 26 ? 2 : 3;
+            daysUntilDue = ChronoUnit.DAYS.between(
+                    today, canonicalLmp.plusDays(GestationalDatingResolver.GESTATION_DAYS));
+        } else {
+            canonicalLmp = null;
+        }
+
+        return new FamilyDashboardResponse.MotherJourneySummary(
+                journey.getId(),
+                journey.getJourneyType() != null ? journey.getJourneyType().name() : null,
+                journey.getStatus() != null ? journey.getStatus().name() : null,
+                resolved ? canonicalLmp.plusDays(GestationalDatingResolver.GESTATION_DAYS) : null,
+                resolved ? canonicalLmp : null,
+                journey.getStartDate(),
+                journey.getDateSource(),
+                journey.getDateConfidence(),
+                resolved ? journey.getGestationalDatingBasis() : null,
+                resolved ? journey.getGestationalDatingRevision() : null,
+                resolved ? journey.getGestationalDatingEffectiveAt() : null,
+                journey.getGestationalDatingQuarantineReasonCode(),
+                canonicalLmp,
+                completedWeek,
+                completedDays,
+                sourceWeek,
+                plan,
+                completedWeek,
+                trimester,
+                daysUntilDue);
     }
 
     private FamilyDashboardResponse.HealthMetricSummary latestSummary(

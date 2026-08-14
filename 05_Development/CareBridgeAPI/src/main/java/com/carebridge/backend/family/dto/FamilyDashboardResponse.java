@@ -1,7 +1,11 @@
 package com.carebridge.backend.family.dto;
 
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
+import com.carebridge.backend.journey.entity.JourneyDateConfidence;
+import com.carebridge.backend.journey.entity.JourneyDateSource;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,9 +94,23 @@ public record FamilyDashboardResponse(
             UUID journeyId,
             String journeyType,
             String status,
-            java.time.LocalDate estimatedDueDate,
-            java.time.LocalDate lastMenstrualDate,
-            java.time.LocalDate startDate) {
+            LocalDate estimatedDueDate,
+            LocalDate lastMenstrualDate,
+            LocalDate startDate,
+            JourneyDateSource dateSource,
+            JourneyDateConfidence dateConfidence,
+            GestationalDatingBasis gestationalDatingBasis,
+            Long gestationalDatingRevision,
+            Instant gestationalDatingEffectiveAt,
+            String gestationalDatingQuarantineReasonCode,
+            LocalDate canonicalLmp,
+            Integer completedGestationalWeek,
+            Integer completedGestationalDays,
+            Integer sourceWeekNumber,
+            Integer plan,
+            Integer pregnancyWeek,
+            Integer trimester,
+            Long daysUntilDue) {
     }
 
     public record Detail(

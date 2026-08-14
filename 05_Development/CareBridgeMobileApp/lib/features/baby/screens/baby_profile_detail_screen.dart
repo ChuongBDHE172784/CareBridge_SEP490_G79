@@ -942,6 +942,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
             ),
             const SizedBox(width: 8),
             _TabChip(
+              key: const Key('baby-care-tab-milestones'),
               label: 'Cột mốc',
               selected: _activeTab == _Tab.milestones,
               onTap: () => setState(() => _activeTab = _Tab.milestones),
@@ -1588,6 +1589,7 @@ class _TabChip extends StatelessWidget {
   final VoidCallback onTap;
 
   const _TabChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -1707,7 +1709,8 @@ class _TrendChartPainter extends CustomPainter {
       final weight = weights[i];
       canvas.drawCircle(p, p == points.last ? 5 : 3, dotPaint);
 
-      final valStr = '${weight % 1 == 0 ? weight.toInt() : weight.toStringAsFixed(1)} kg';
+      final valStr =
+          '${weight % 1 == 0 ? weight.toInt() : weight.toStringAsFixed(1)} kg';
       textPainter.text = TextSpan(
         text: valStr,
         style: const TextStyle(
@@ -1728,16 +1731,16 @@ class _TrendChartPainter extends CustomPainter {
       final isTopHalf = p.dy < size.height / 2;
       final labelY = isTopHalf
           ? (p.dy + 6).clamp(2.0, size.height - labelHeight - 2.0)
-          : (p.dy - labelHeight - 6).clamp(2.0, size.height - labelHeight - 2.0);
+          : (p.dy - labelHeight - 6).clamp(
+              2.0,
+              size.height - labelHeight - 2.0,
+            );
 
       final bgRRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(labelX, labelY, labelWidth, labelHeight),
         const Radius.circular(5),
       );
-      canvas.drawRRect(
-        bgRRect,
-        Paint()..color = const Color(0xFFFFFDFB),
-      );
+      canvas.drawRRect(bgRRect, Paint()..color = const Color(0xFFFFFDFB));
       canvas.drawRRect(
         bgRRect,
         Paint()

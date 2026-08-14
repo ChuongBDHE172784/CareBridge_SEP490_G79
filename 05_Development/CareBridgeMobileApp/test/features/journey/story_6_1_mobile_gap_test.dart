@@ -466,9 +466,16 @@ void main() {
     await tester.ensureVisible(method);
     await tester.tap(method);
     await tester.pumpAndSettle();
-    final today = DateTime.now().day.toString();
-    final day = find.text(today);
-    await tester.tap(day.last);
+    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
+    await tester.pumpAndSettle();
+    final picker = find.byKey(const Key('journey-date-picker'));
+    expect(picker, findsOneWidget);
+    final today = find.descendant(
+      of: picker,
+      matching: find.text(DateTime.now().day.toString()),
+    );
+    expect(today.hitTestable(), findsOneWidget);
+    await tester.tap(today.hitTestable());
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();

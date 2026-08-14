@@ -134,6 +134,20 @@ class FamilyMotherJourney {
     this.estimatedDueDate,
     this.lastMenstrualDate,
     this.startDate,
+    this.pregnancyWeek,
+    this.completedGestationalWeek,
+    this.completedGestationalDays,
+    this.sourceWeekNumber,
+    this.plan,
+    this.trimester,
+    this.daysUntilDue,
+    this.dateSource,
+    this.dateConfidence,
+    this.datingBasis,
+    this.datingQuarantineReason,
+    this.canonicalLmp,
+    this.gestationalDatingRevision,
+    this.gestationalDatingEffectiveAt,
   });
 
   final String? journeyId;
@@ -142,15 +156,44 @@ class FamilyMotherJourney {
   final DateTime? estimatedDueDate;
   final DateTime? lastMenstrualDate;
   final DateTime? startDate;
+  final int? pregnancyWeek;
+  final int? completedGestationalWeek;
+  final int? completedGestationalDays;
+  final int? sourceWeekNumber;
+  final int? plan;
+  final int? trimester;
+  final int? daysUntilDue;
+  final String? dateSource;
+  final String? dateConfidence;
+  final String? datingBasis;
+  final String? datingQuarantineReason;
+  final DateTime? canonicalLmp;
+  final int? gestationalDatingRevision;
+  final DateTime? gestationalDatingEffectiveAt;
 
   factory FamilyMotherJourney.fromJson(Map<String, dynamic> json) {
+    final dashboard = JourneyDashboard.fromJson(json);
     return FamilyMotherJourney(
-      journeyId: _optionalString(json, 'journeyId'),
-      journeyType: _optionalString(json, 'journeyType'),
-      status: _optionalString(json, 'status'),
-      estimatedDueDate: _optionalDateTime(json, 'estimatedDueDate'),
-      lastMenstrualDate: _optionalDateTime(json, 'lastMenstrualDate'),
-      startDate: _optionalDateTime(json, 'startDate'),
+      journeyId: dashboard.journeyId,
+      journeyType: dashboard.journeyType,
+      status: dashboard.status,
+      estimatedDueDate: dashboard.estimatedDueDate,
+      lastMenstrualDate: dashboard.lastMenstrualDate,
+      startDate: dashboard.startDate,
+      pregnancyWeek: dashboard.pregnancyWeek,
+      completedGestationalWeek: dashboard.completedGestationalWeek,
+      completedGestationalDays: dashboard.completedGestationalDays,
+      sourceWeekNumber: dashboard.sourceWeekNumber,
+      plan: dashboard.plan,
+      trimester: dashboard.trimester,
+      daysUntilDue: dashboard.daysUntilDue,
+      dateSource: dashboard.dateSource,
+      dateConfidence: dashboard.dateConfidence,
+      datingBasis: dashboard.datingBasis,
+      datingQuarantineReason: dashboard.datingQuarantineReason,
+      canonicalLmp: dashboard.canonicalLmp,
+      gestationalDatingRevision: dashboard.gestationalDatingRevision,
+      gestationalDatingEffectiveAt: dashboard.gestationalDatingEffectiveAt,
     );
   }
 
@@ -162,6 +205,20 @@ class FamilyMotherJourney {
       estimatedDueDate: estimatedDueDate,
       lastMenstrualDate: lastMenstrualDate,
       startDate: startDate,
+      pregnancyWeek: pregnancyWeek,
+      completedGestationalWeek: completedGestationalWeek,
+      completedGestationalDays: completedGestationalDays,
+      sourceWeekNumber: sourceWeekNumber,
+      plan: plan,
+      trimester: trimester,
+      daysUntilDue: daysUntilDue,
+      dateSource: dateSource,
+      dateConfidence: dateConfidence,
+      datingBasis: datingBasis,
+      datingQuarantineReason: datingQuarantineReason,
+      canonicalLmp: canonicalLmp,
+      gestationalDatingRevision: gestationalDatingRevision,
+      gestationalDatingEffectiveAt: gestationalDatingEffectiveAt,
     );
   }
 }
@@ -202,9 +259,7 @@ class FamilyHomeGroupDetail {
       motherDisplayName: _requiredString(json, 'motherDisplayName'),
       motherJourney: rawJourney == null
           ? null
-          : FamilyMotherJourney.fromJson(
-              _asMap(rawJourney, 'motherJourney'),
-            ),
+          : FamilyMotherJourney.fromJson(_asMap(rawJourney, 'motherJourney')),
       todayReminders: _requiredMapList(
         json,
         'todayReminders',
@@ -324,7 +379,9 @@ class FamilyHomeMember {
       memberId: _requiredString(json, 'memberId'),
       userId: _requiredString(json, 'userId'),
       displayName: _requiredString(json, 'displayName'),
-      avatarUrl: _optionalString(json, 'avatarUrl') ?? _optionalString(json, 'profilePictureUrl'),
+      avatarUrl:
+          _optionalString(json, 'avatarUrl') ??
+          _optionalString(json, 'profilePictureUrl'),
       systemRole: _optionalString(json, 'systemRole'),
       relationshipRole: _optionalString(json, 'relationshipRole'),
       customRelationshipRole: _optionalString(json, 'customRelationshipRole'),

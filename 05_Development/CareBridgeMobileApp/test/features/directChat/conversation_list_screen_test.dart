@@ -113,7 +113,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bạn chưa có cuộc trò chuyện nào'), findsOneWidget);
-    final cta = find.text('Tìm chuyên gia');
+    final cta = find.text('Tìm chuyên gia ngay');
     expect(cta, findsOneWidget);
 
     await tester.tap(cta);
@@ -135,7 +135,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Chưa có mẹ nào nhắn cho bạn'), findsOneWidget);
-    expect(find.text('Tìm chuyên gia'), findsNothing);
+    expect(find.text('Tìm chuyên gia ngay'), findsNothing);
     expect(find.byType(FilledButton), findsNothing);
   });
 

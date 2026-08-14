@@ -14,6 +14,25 @@ class _EmptyAvailabilityService extends ExpertAvailabilityService {
   ) async => [];
 }
 
+class _FailingAvailabilityService extends ExpertAvailabilityService {
+  @override
+  Future<List<ExpertAvailabilitySlot>> getPublicAvailability(
+    String expertProfileId,
+  ) async => throw StateError('offline');
+}
+
+class _RecordingAvailabilityService extends ExpertAvailabilityService {
+  final requestedProfileIds = <String>[];
+
+  @override
+  Future<List<ExpertAvailabilitySlot>> getPublicAvailability(
+    String expertProfileId,
+  ) async {
+    requestedProfileIds.add(expertProfileId);
+    return [];
+  }
+}
+
 class _ScriptedDirectChatService extends DirectChatService {
   int findOrCreateCallCount = 0;
   String? lastExpertProfileId;
@@ -51,6 +70,57 @@ void main() {
 
   setUp(() => original = DirectChatService.instance);
   tearDown(() => DirectChatService.instance = original);
+
+  testWidgets('availability failure renders a safe inline state', (
+    tester,
+  ) async {
+    DirectChatService.instance = _ScriptedDirectChatService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ExpertPublicProfileScreen(
+          expertProfileId: 'expert-profile-9',
+          availabilityService: _FailingAvailabilityService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Chưa thể tải lịch'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('profile id change reloads profile and availability', (
+    tester,
+  ) async {
+    DirectChatService.instance = _ScriptedDirectChatService();
+    final availability = _RecordingAvailabilityService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ExpertPublicProfileScreen(
+          expertProfileId: 'expert-profile-1',
+          availabilityService: availability,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ExpertPublicProfileScreen(
+          expertProfileId: 'expert-profile-2',
+          availabilityService: availability,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      availability.requestedProfileIds,
+      ['expert-profile-1', 'expert-profile-2'],
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   // A profile without an existing conversation keeps the consultation CTA.
   testWidgets(

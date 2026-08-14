@@ -116,10 +116,10 @@ void main() {
           isEmpty,
         );
 
-        await tester.tap(find.widgetWithText(ChoiceChip, 'FAQ'));
+        await tester.tap(find.byKey(const Key('content-type-tab-2')));
         await tester.pump();
         expect(find.text('FAQ sau sinh'), findsOneWidget);
-        await tester.tap(find.widgetWithText(ChoiceChip, 'Tất cả'));
+        await tester.tap(find.byKey(const Key('content-type-tab-0')));
         await tester.pump();
 
         await tester.enterText(find.byType(TextField), 'Dinh dưỡng');
@@ -215,7 +215,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Synthetic lifecycle guidance'), findsOneWidget);
 
-        await tester.tap(find.widgetWithText(ChoiceChip, 'FAQ'));
+        await tester.tap(find.byKey(const Key('content-type-tab-2')));
         await tester.pump();
 
         expect(
@@ -255,8 +255,8 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        for (final label in const ['Bài viết', 'Checklist']) {
-          await tester.tap(find.widgetWithText(ChoiceChip, label));
+        for (final index in const [1, 3]) {
+          await tester.tap(find.byKey(Key('content-type-tab-$index')));
           await tester.pump();
           expect(
             find.byKey(const Key('lifecycle-content-empty')),

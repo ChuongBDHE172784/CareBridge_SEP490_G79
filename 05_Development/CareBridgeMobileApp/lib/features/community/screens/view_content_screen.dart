@@ -537,7 +537,11 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: _primary,
+                size: 20,
+              ),
               onPressed: () => Navigator.of(context).pop(),
             ),
             const SizedBox(width: 12),
@@ -760,6 +764,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: InkWell(
+                key: ValueKey('content-type-tab-$i'),
                 onTap: () => setState(() => _selectedTypeIndex = i),
                 borderRadius: BorderRadius.circular(20),
                 child: AnimatedContainer(
@@ -994,7 +999,15 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       return _selectedTypeIndex == 1
           ? const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: Center(child: Text('Không có bài viết phù hợp.', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant))),
+              child: Center(
+                child: Text(
+                  'Không có bài viết phù hợp.',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ),
             )
           : const SizedBox.shrink();
     }
@@ -1005,17 +1018,19 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Gợi ý hôm nay',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
+              const Expanded(
+                child: Text(
+                  'Gợi ý hôm nay',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () => setState(() => _selectedTypeIndex = 1),
                 child: const Row(
@@ -1029,7 +1044,11 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                         color: _primary,
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, size: 18, color: _primary),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: _primary,
+                    ),
                   ],
                 ),
               ),
@@ -1062,7 +1081,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                           top: Radius.circular(20),
                         ),
                       ),
-                      child: _featuredImageUrl == null ||
+                      child:
+                          _featuredImageUrl == null ||
                               _featuredImageContentId != article.id
                           ? const Center(
                               child: Icon(
@@ -1109,7 +1129,11 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.verified_rounded, size: 14, color: Color(0xFF10B981)),
+                            Icon(
+                              Icons.verified_rounded,
+                              size: 14,
+                              color: Color(0xFF10B981),
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Đã kiểm duyệt',
@@ -1131,28 +1155,27 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _stageLabelFromValue(article.stage),
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: _primary,
-                              ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _stageLabelFromValue(article.stage),
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _primary,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Text(
@@ -1421,7 +1444,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       } catch (_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Khong the tai lai danh sach checklist.')),
+          const SnackBar(
+            content: Text('Khong the tai lai danh sach checklist.'),
+          ),
         );
       }
     }

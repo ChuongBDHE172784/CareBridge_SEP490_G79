@@ -589,6 +589,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
               ),
             ),
             child: CalendarDatePicker(
+              key: const Key('journey-date-picker'),
               initialDate: initial,
               firstDate: firstDate,
               lastDate: lastDate,

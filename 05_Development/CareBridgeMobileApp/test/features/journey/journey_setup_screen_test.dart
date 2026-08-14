@@ -84,6 +84,8 @@ Future<void> _submit(
 Future<void> _advanceToSubmit(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('dating-method-due-date')));
   await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
+  await tester.pumpAndSettle();
   await _chooseCalendarDate(tester);
   await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
   await tester.pumpAndSettle();
@@ -94,10 +96,14 @@ Future<void> _advanceToSubmit(WidgetTester tester) async {
 }
 
 Future<void> _chooseCalendarDate(WidgetTester tester) async {
-  final today = DateTime.now().day.toString();
-  final day = find.text(today);
-  expect(day, findsWidgets);
-  await tester.tap(day.last);
+  final picker = find.byKey(const Key('journey-date-picker'));
+  expect(picker, findsOneWidget);
+  final today = find.descendant(
+    of: picker,
+    matching: find.text(DateTime.now().day.toString()),
+  );
+  expect(today.hitTestable(), findsOneWidget);
+  await tester.tap(today.hitTestable());
   await tester.pump();
 }
 
@@ -130,6 +136,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('dating-method-due-date')));
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
+    await tester.pumpAndSettle();
     await _chooseCalendarDate(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();
@@ -156,6 +164,8 @@ void main() {
     await tester.pump();
 
     await tester.tap(find.byKey(const Key('dating-method-lmp')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();
     await _chooseCalendarDate(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));

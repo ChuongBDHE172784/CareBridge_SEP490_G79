@@ -188,8 +188,9 @@ void main() {
   testWidgets('maternal health metrics support opens the journey trend', (
     tester,
   ) async {
-    final supportFunction =
-        TodayTaskSupportFunction.fromApi('MATERNAL_HEALTH_METRICS')!;
+    final supportFunction = TodayTaskSupportFunction.fromApi(
+      'MATERNAL_HEALTH_METRICS',
+    )!;
     String? openedUri;
     final router = GoRouter(
       initialLocation: '/detail',
@@ -217,43 +218,59 @@ void main() {
 
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('task-support-function-button')));
+    final supportButton = find.byKey(const Key('task-support-function-button'));
+    await tester.ensureVisible(supportButton);
+    await tester.pumpAndSettle();
+    await tester.tap(supportButton);
     await tester.pumpAndSettle();
 
     expect(openedUri, '/journeys/journey-1/metrics/trend?metricType=BMI');
     expect(find.text('Chỉ số sức khỏe'), findsOneWidget);
   });
 
-  testWidgets('maternal health metrics without a journey stays on task detail', (
-    tester,
-  ) async {
-    final supportFunction =
-        TodayTaskSupportFunction.fromApi('MATERNAL_HEALTH_METRICS')!;
-    final router = GoRouter(
-      initialLocation: '/detail',
-      routes: [
-        GoRoute(
-          path: '/detail',
-          builder: (_, _) => ChecklistTaskDetailScreen(
-            task: _task(
-              supportFunction: supportFunction,
-              careContextType: 'BABY',
-              careContextId: 'baby-1',
+  testWidgets(
+    'maternal health metrics without a journey stays on task detail',
+    (tester) async {
+      final supportFunction = TodayTaskSupportFunction.fromApi(
+        'MATERNAL_HEALTH_METRICS',
+      )!;
+      final router = GoRouter(
+        initialLocation: '/detail',
+        routes: [
+          GoRoute(
+            path: '/detail',
+            builder: (_, _) => ChecklistTaskDetailScreen(
+              task: _task(
+                supportFunction: supportFunction,
+                careContextType: 'BABY',
+                careContextId: 'baby-1',
+              ),
             ),
           ),
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
+        ],
+      );
+      addTearDown(router.dispose);
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('task-support-function-button')));
-    await tester.pump();
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+      final supportButton = find.byKey(
+        const Key('task-support-function-button'),
+      );
+      await tester.ensureVisible(supportButton);
+      await tester.pumpAndSettle();
+      await tester.tap(supportButton);
+      await tester.pump();
 
-    expect(find.text('Chưa có hành trình để mở chỉ số sức khỏe.'), findsOneWidget);
-    expect(find.byKey(const Key('task-support-function-button')), findsOneWidget);
-  });
+      expect(
+        find.text('Chưa có hành trình để mở chỉ số sức khỏe.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('task-support-function-button')),
+        findsOneWidget,
+      );
+    },
+  );
 
   for (final scenario
       in <({bool completed, TodayTaskAction action, String label})>[

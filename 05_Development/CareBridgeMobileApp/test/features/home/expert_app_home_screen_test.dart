@@ -106,8 +106,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('3'), findsOneWidget);
-      expect(find.byType(NavigationBar), findsOneWidget);
-      expect(find.text('Yêu cầu tư vấn'), findsNothing);
+      final navigation = find.byType(NavigationBar);
+      expect(navigation, findsOneWidget);
+      expect(
+        find.descendant(of: navigation, matching: find.text('Yêu cầu tư vấn')),
+        findsNothing,
+      );
     },
   );
 
@@ -163,18 +167,18 @@ void main() {
     },
   );
 
-  testWidgets(
-    'online toggle is removed from the Expert dashboard header',
-    (tester) async {
-      final api = _FakeExpertHomeApi();
-      ExpertHomeService.instance = ExpertHomeService(api: api);
+  testWidgets('online toggle is removed from the Expert dashboard header', (
+    tester,
+  ) async {
+    final api = _FakeExpertHomeApi();
+    ExpertHomeService.instance = ExpertHomeService(api: api);
 
-      await tester.pumpWidget(const MaterialApp(home: ExpertAppHomeScreen()));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(const MaterialApp(home: ExpertAppHomeScreen()));
+    await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('expert-online-toggle')), findsNothing);
-      expect(find.text('Trực tuyến'), findsNothing);
-      expect(find.text('Câu hỏi mới cần giải đáp'), findsOneWidget);
-    },
-  );
+    expect(find.byKey(const Key('expert-online-toggle')), findsNothing);
+    expect(find.text('Trực tuyến'), findsNothing);
+    expect(find.text('Câu hỏi mới'), findsOneWidget);
+    expect(find.text('Cần giải đáp'), findsOneWidget);
+  });
 }

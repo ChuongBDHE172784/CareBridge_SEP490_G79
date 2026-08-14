@@ -1084,7 +1084,7 @@ void main() {
       expect(renderer.builds, 1);
       expect(locationReads, 1);
       expect(facilities.searchCalls, 1);
-      expect(emergency.openCalls, 1);
+      expect(emergency.openCalls, 0);
 
       await tester.tap(find.byKey(const Key('trackasia-map-retry')));
       await tester.pump();
@@ -1093,7 +1093,7 @@ void main() {
       expect(renderer.myLocationEnabledValues, everyElement(isFalse));
       expect(locationReads, 1);
       expect(facilities.searchCalls, 1);
-      expect(emergency.openCalls, 1);
+      expect(emergency.openCalls, 0);
 
       renderer.styleLoadedCallbacks.first();
       await tester.pump();

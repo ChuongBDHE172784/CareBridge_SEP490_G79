@@ -10,6 +10,60 @@ import 'package:untitled/features/home/screens/family_member_home_screen.dart';
 
 void main() {
   group('Family health sharing contract', () {
+    test('uses the resolved server dating projection for family pregnancy', () {
+      final journey = FamilyMotherJourney.fromJson({
+        'journeyId': 'journey-lan',
+        'journeyType': 'PREGNANCY',
+        'status': 'ACTIVE',
+        'pregnancyWeek': 24,
+        'completedGestationalWeek': 24,
+        'completedGestationalDays': 2,
+        'sourceWeekNumber': 25,
+        'plan': 2,
+        'trimester': 2,
+        'daysUntilDue': 110,
+        'estimatedDueDate': '2026-11-25',
+        'lastMenstrualDate': '2026-02-18',
+        'dateSource': 'CLINICIAN_CONFIRMED',
+        'dateConfidence': 'CONFIRMED',
+        'gestationalDatingBasis': 'LMP',
+        'gestationalDatingRevision': 3,
+        'gestationalDatingEffectiveAt': '2026-08-01T00:00:00Z',
+        'canonicalLmp': '2026-02-18',
+      }).toJourneyDashboard();
+
+      expect(journey.displayPregnancyWeek, 24);
+      expect(journey.displaySourceWeekNumber, 25);
+      expect(journey.plan, 2);
+      expect(journey.datingBasis, 'LMP');
+      expect(journey.gestationalDatingRevision, 3);
+    });
+
+    test('missing or quarantined dating authority remains fail-closed', () {
+      final missing = FamilyMotherJourney.fromJson({
+        'journeyId': 'journey-missing',
+        'journeyType': 'PREGNANCY',
+        'status': 'ACTIVE',
+        'estimatedDueDate': '2026-11-25',
+        'lastMenstrualDate': '2026-02-18',
+      }).toJourneyDashboard();
+      final quarantined = FamilyMotherJourney.fromJson({
+        'journeyId': 'journey-quarantined',
+        'journeyType': 'PREGNANCY',
+        'status': 'ACTIVE',
+        'pregnancyWeek': 24,
+        'estimatedDueDate': '2026-11-25',
+        'lastMenstrualDate': '2026-02-18',
+        'gestationalDatingBasis': 'LMP',
+        'gestationalDatingQuarantineReasonCode': 'LEGACY_DATING_CONFLICT',
+      }).toJourneyDashboard();
+
+      expect(missing.displayPregnancyWeek, isNull);
+      expect(missing.displaySourceWeekNumber, isNull);
+      expect(quarantined.displayPregnancyWeek, isNull);
+      expect(quarantined.calculatedDaysUntilDue, isNull);
+    });
+
     test('six health permissions default to deny and parse explicitly', () {
       final legacy = FamilyHomePermission.fromJson({
         'calendar': true,
@@ -232,8 +286,21 @@ void main() {
           'journeyId': 'journey-lan',
           'journeyType': 'PREGNANCY',
           'status': 'ACTIVE_PREGNANCY',
+          'pregnancyWeek': 24,
+          'completedGestationalWeek': 24,
+          'completedGestationalDays': 2,
+          'sourceWeekNumber': 25,
+          'plan': 2,
+          'trimester': 2,
+          'daysUntilDue': 110,
           'estimatedDueDate': '2026-11-25',
           'lastMenstrualDate': '2026-02-18',
+          'dateSource': 'CLINICIAN_CONFIRMED',
+          'dateConfidence': 'CONFIRMED',
+          'gestationalDatingBasis': 'LMP',
+          'gestationalDatingRevision': 3,
+          'gestationalDatingEffectiveAt': '2026-08-01T00:00:00Z',
+          'canonicalLmp': '2026-02-18',
         };
 
         final snapshot = FamilyHomeSnapshot.fromJson(detailWithJourney);
