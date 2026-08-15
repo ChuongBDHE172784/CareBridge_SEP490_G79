@@ -192,6 +192,41 @@ def test_backward_compatibility_existing_triage_endpoint():
     assert "POST" in routes["/internal/emergency/support"]
 
 
+def test_every_facility_is_sourced_to_an_official_domain():
+    """A facility may only ship with a source the project's rule accepts.
+
+    The rule the user set: official state sources (`.gov.vn`) plus public medical universities
+    (`.edu.vn`, which is what Vietnamese universities use — no medical school is on `.gov`).
+    Three of the five seeds originally cited hospital `.vn` marketing sites; they now cite the
+    Ministry of Health facility registry, which publishes the official name and address.
+    """
+
+    from urllib.parse import urlparse
+
+    from app.repositories.care_facility_repository import load_facilities
+
+    facilities = load_facilities()
+    assert facilities, "the seed must load, otherwise this test proves nothing"
+    for facility in facilities:
+        host = (urlparse(facility["sourceUrl"]).hostname or "").lower()
+        assert host.endswith(".gov.vn") or host.endswith(".edu.vn"), (
+            f"{facility['name']} cites {host!r}, which is neither .gov.vn nor .edu.vn"
+        )
+
+
+def test_facility_coordinates_are_marked_unsourced():
+    """Distance ranking rests on coordinates no official page publishes.
+
+    The registry pages give a name, an address and a rank, not a latitude. Leaving
+    `coordinateSource` explicitly null keeps that visible instead of letting the sourced address
+    imply the coordinates were sourced too.
+    """
+
+    from app.repositories.care_facility_repository import load_facilities
+
+    assert all(facility["coordinateSource"] is None for facility in load_facilities())
+
+
 def test_registry_and_whitelist_cannot_drift():
     assert len(HOTLINE_REGISTRY) == 4
     assert {entry["number"] for entry in HOTLINE_REGISTRY} == HOTLINE_NUMBERS_WHITELIST

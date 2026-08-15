@@ -184,6 +184,35 @@ MATERNAL_VISUAL_DISTURBANCE_PHRASES = (
     "blurred vision",
     "visual disturbance",
 )
+# Quyết định 1139/QĐ-BYT ngày 23/4/2026 ("Hướng dẫn Quốc gia các dịch vụ chăm sóc sức khỏe sinh
+# sản: Chăm sóc trước khi có thai và trước khi sinh", Thứ trưởng Nguyễn Tri Thức ký, hiệu lực
+# toàn quốc) liệt kê ở mục 2.9.3, tr.16–17: "Hướng dẫn phát hiện các dấu hiệu bất thường cần
+# thăm khám lại ngay như đau bụng, ra máu, ra nước âm đạo, cử động thai bất thường và phù."
+# (https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf,
+#  truy cập 2026-08-15). Thêm theo D-034; xem D-029 mục (1).
+#
+# Chỉ "cử động thai bất thường" trong năm dấu hiệu đó vào được sàn. Bốn cái còn lại bị loại vì
+# lý do kỹ thuật, không phải lý do lâm sàng, và đã ghi lại để khỏi tra lại:
+#   "ra nước âm đạo" — không có signal nào trong triage_rules_v2.json đọc nó, nên thêm cụm từ
+#     cũng không chạy (đúng cái bẫy đã ghi cho CHEST_INDRAWING bên dưới).
+#   "đau bụng" / "ra máu" — quá rộng cho một sàn chạy trước Gemini.
+#   "phù" — khớp luôn "phù hợp". Chính văn bản trên có 18 lần chuỗi "phù", đa số là "phù hợp".
+#
+# "thai máy" là cách nói tương đương "cử động thai" theo chính tài liệu đó ("Ngày thai máy, cử
+# động thai." tr.11), nên bốn biến thể còn lại vào theo D-029 mục (2) — signal đã có rule đọc.
+# Bốn ứng viên khác bị loại sau khi thử trên matcher thật ngày 2026-08-15:
+#   "thai máy ít" — khớp "thai máy ít nhất mấy lần một ngày" (câu hỏi thường gặp).
+#   "bé đạp ít"   — khớp "bé đạp ít nhất bao nhiêu lần".
+#   "con không đạp" / "không thấy con đạp" — khớp "con không đạp xe".
+MATERNAL_REDUCED_FETAL_MOVEMENT_PHRASES = (
+    "cử động thai bất thường",
+    "giảm cử động thai",
+    "mất cử động thai",
+    "thai không máy",
+    "không thấy thai máy",
+    "reduced fetal movement",
+    "no fetal movement",
+)
 MATERNAL_SELF_HARM_PHRASES = (
     "tự làm hại",
     "làm hại bản thân",

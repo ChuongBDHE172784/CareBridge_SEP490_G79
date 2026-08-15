@@ -261,3 +261,72 @@ def test_a_count_cannot_bridge_two_unrelated_words(message):
 )
 def test_wording_refused_for_want_of_a_source_stays_out(message):
     assert detect_danger_signals(message, **_TRUSTED_PREGNANCY) == {}
+
+
+# ------------------------------------------------------ D-034: cử động thai (QĐ 1139/QĐ-BYT)
+
+_TRUSTED_POSTPARTUM = {
+    "stage": "POSTPARTUM_MOTHER",
+    "stage_source": "EXPLICIT_SELECTED_PROFILE",
+}
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # The wording Quyết định 1139/QĐ-BYT uses in its own danger-sign list, mục 2.9.3.
+        "Em thấy cử động thai bất thường mấy hôm nay",
+        "cu dong thai bat thuong",
+        # The rule's own displayText, "Giảm hoặc mất cử động thai".
+        "Bác sĩ ơi giảm cử động thai",
+        "em bị mất cử động thai từ tối qua",
+        # "thai máy" is the same sign in the decision's own vocabulary ("Ngày thai máy, cử động
+        # thai.", tr.11), so these enter under D-029 (2).
+        "hôm nay thai không máy",
+        "Em không thấy thai máy từ sáng",
+        "reduced fetal movement",
+    ],
+)
+def test_reduced_fetal_movement_reaches_the_floor_in_pregnancy(message):
+    assert "REDUCED_FETAL_MOVEMENT" in detect_danger_signals(message, **_TRUSTED_PREGNANCY)
+
+
+@pytest.mark.parametrize("message", ["mất cử động thai", "không thấy thai máy"])
+def test_fetal_movement_is_not_read_after_delivery(message):
+    """There is no fetus to move postpartum, and the rule is scoped to PREGNANCY anyway.
+
+    Emitting the signal here would hand `GB_REDUCED_FETAL_MOVEMENT` a stage it does not cover
+    and describe something the words no longer mean.
+    """
+
+    assert detect_danger_signals(message, **_TRUSTED_POSTPARTUM) == {}
+
+
+@pytest.mark.parametrize("stage_source", [None, "GEMINI_INFERRED"])
+def test_fetal_movement_needs_a_stage_the_user_actually_stated(stage_source):
+    """Same D-032 scope limit as the other stage-scoped groups: a guessed stage does not open."""
+
+    assert detect_danger_signals(
+        "mất cử động thai", stage="PREGNANCY", stage_source=stage_source
+    ) == {}
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # Normal movement is the opposite report, and negation and history still hold.
+        "cử động thai bình thường",
+        "thai máy đều đặn",
+        "Em vẫn thấy thai máy tốt",
+        "Hồi trước em bị giảm cử động thai",
+        "Em không bị mất cử động thai",
+        # Four wordings refused on 2026-08-15 after testing them against the real matcher. Each
+        # is a prefix of an ordinary sentence, which is why the shipped phrases are longer.
+        "thai máy ít nhất mấy lần một ngày là bình thường?",
+        "bé đạp ít nhất bao nhiêu lần thì ổn",
+        "Con em không đạp xe được nữa",
+        "em không thấy con đạp xe",
+    ],
+)
+def test_fetal_movement_wording_does_not_over_match(message):
+    assert detect_danger_signals(message, **_TRUSTED_PREGNANCY) == {}
