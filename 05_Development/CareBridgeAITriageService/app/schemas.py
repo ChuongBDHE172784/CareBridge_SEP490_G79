@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Literal
 from uuid import uuid4
 
@@ -282,3 +283,58 @@ class GeminiConversationSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     summary: str = Field(min_length=3, max_length=500)
+
+
+# --------------------------------------------------------------- MF07 emergency support
+# Appended 2026-08-15. Field names are camelCase to match the transport convention the rest of
+# this module already uses; nothing above this line is touched.
+
+
+class HotlineDto(BaseModel):
+    """One verified emergency number, carrying the source it was checked against."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(max_length=120)
+    number: str = Field(max_length=20)
+    scope: str = Field(max_length=80)
+    hours: str = Field(max_length=40)
+    cost: str = Field(max_length=40)
+    sourceUrl: str = Field(max_length=500)
+    verifiedDate: str = Field(max_length=10)
+
+
+class FacilityDto(BaseModel):
+    """A care facility. ``phone`` is null unless its number has been verified."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(max_length=64)
+    name: str = Field(max_length=255)
+    address: str = Field(max_length=500)
+    distanceKm: float | None = None
+    phone: str | None = None
+    phoneVerificationStatus: Literal["VERIFIED", "UNVERIFIED", "PENDING"]
+    openingHours: str | None = None
+    sourceUrl: str = Field(max_length=500)
+
+
+class EmergencySupportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    userId: str = Field(max_length=64)
+    consentGiven: bool
+    latitude: Decimal | None = Field(default=None, ge=-90, le=90)
+    longitude: Decimal | None = Field(default=None, ge=-180, le=180)
+    accuracyMeters: Decimal | None = Field(default=None, ge=0, le=10_000)
+    contextType: Literal["TRIAGE_RED", "MANUAL_BUTTON"]
+    contextId: str | None = None
+
+
+class EmergencySupportResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    hotlines: list[HotlineDto]
+    disclaimer: str
+    facilities: list[FacilityDto] = []
+    snapshotId: str | None = None
