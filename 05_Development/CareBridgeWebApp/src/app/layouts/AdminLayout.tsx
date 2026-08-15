@@ -45,7 +45,6 @@ const NAV_LINKS: readonly NavItem[] = [
     ],
   },
   { to: '/admin/content-approval-queue', label: 'Duyệt nội dung', icon: 'fact_check', roles: ['SYSTEM_ADMIN'] },
-  { to: '/admin/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
   { to: '/admin/notifications', label: 'Thông báo', icon: 'notifications', roles: ['SYSTEM_ADMIN'] },
   { to: '/expert/dashboard', label: 'Expert', icon: 'stethoscope', roles: ['EXPERT'] },
   { to: '/moderator/moderator-dashboard', label: 'Tổng quan', icon: 'dashboard', roles: ['MODERATOR'] },
