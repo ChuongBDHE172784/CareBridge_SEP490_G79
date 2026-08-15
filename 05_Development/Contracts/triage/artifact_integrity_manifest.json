@@ -1,7 +1,7 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-13T07:58:04+00:00",
+  "generatedAt": "2026-08-15T11:40:13+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
@@ -42,7 +42,7 @@
     {
       "artifactId": "matrix_snapshot_v0.1.0",
       "path": "05_Development/Contracts/triage/matrix_snapshot_v0.1.0.json",
-      "sha256": "295b4dac3122e1a6571e6e4f13fca35ac989568922bd9815bef351de84febed4"
+      "sha256": "2428098adff8b982442b4f52ea5260854ee1954e87227b7836b0bf49134e5642"
     },
     {
       "artifactId": "oos_complaint_taxonomy_v1",
@@ -67,7 +67,7 @@
     {
       "artifactId": "source_verification_manifest",
       "path": "05_Development/Contracts/triage/source_verification_manifest.json",
-      "sha256": "8e3b2b4aeb6162c7da1bf09ee0c5467c54e1f87842bc772033ba8c49f1e2464a"
+      "sha256": "0bf68a6e0a82ae7566cdfc18e4c4cb87c10782948900556309e1ca0345ef1044"
     },
     {
       "artifactId": "target_entity_indicators_v1",
@@ -92,7 +92,7 @@
     {
       "artifactId": "triage_rules_v2",
       "path": "05_Development/Contracts/triage/triage_rules_v2.json",
-      "sha256": "8032835d63e2ec2ed7e47b7fb1517f09953b050ad56f5fba8db06d9963281535"
+      "sha256": "5ce7804827a6cd3f020fb61d1acf23e75018de0a0c865dd5e4ca40b75e1c82d6"
     }
   ]
 }

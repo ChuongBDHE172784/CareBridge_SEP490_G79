@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { CommunityTopic, ContentType } from '../models/content';
+import type { CommunityTopic, ContentType, RecommendationTag } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
-import { fetchTopics, importContentBatch } from '../services/contentApi';
+import { fetchRecommendationTags, fetchTopics, importContentBatch } from '../services/contentApi';
+import { recommendationWindowLabel } from '../pages/recommendationMetadata';
 import {
   generateContentTemplate,
   parseImportFile,
@@ -23,6 +24,7 @@ export default function ImportContentModal({
   onSuccess,
 }: ImportContentModalProps) {
   const [topics, setTopics] = useState<CommunityTopic[]>([]);
+  const [recommendationTags, setRecommendationTags] = useState<RecommendationTag[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedImportRow[]>([]);
   const [isParsing, setIsParsing] = useState(false);
@@ -53,23 +55,22 @@ export default function ImportContentModal({
       fetchTopics()
         .then(setTopics)
         .catch(() => setTopics([]));
-      resetState();
-    }
-  }, [isOpen, resetState]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchTopics()
-        .then(setTopics)
-        .catch(() => setTopics([]));
+      if (type === 'ARTICLE') {
+        fetchRecommendationTags()
+          .then((catalog) => setRecommendationTags(catalog.items ?? []))
+          .catch(() => setRecommendationTags([]));
+      }
+
       resetState();
     }
-  }, [isOpen]);
+  }, [isOpen, resetState, type]);
 
 
   if (!isOpen) return null;
 
   const typeLabel = TYPE_LABELS[type];
+  const isArticle = type === 'ARTICLE';
 
   const handleDownloadTemplate = () => {
     const csvContent = generateContentTemplate(type);
@@ -91,7 +92,7 @@ export default function ImportContentModal({
     setImportResults(null);
 
     try {
-      const rows = await parseImportFile(file, topics);
+      const rows = await parseImportFile(file, topics, recommendationTags);
       setParsedRows(rows);
     } catch {
       setParsedRows([]);
@@ -121,6 +122,10 @@ export default function ImportContentModal({
         sourceLabel: r.sourceLabel,
         sourceUrl: r.sourceUrl,
         sourcePublisher: r.sourcePublisher,
+        tagIds: r.tagIds,
+        eligibleFromWeek: r.eligibleFromWeek,
+        eligibleToWeek: r.eligibleToWeek,
+        recommendationPriority: r.recommendationPriority,
       }));
 
       const res = await importContentBatch({
@@ -150,7 +155,7 @@ export default function ImportContentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 font-sans backdrop-blur-sm animate-fade-in">
-      <div className="bg-surface rounded-2xl p-6 shadow-2xl w-full max-w-[900px] max-h-[92vh] flex flex-col overflow-hidden border border-outline-variant">
+      <div className="bg-surface rounded-2xl p-6 shadow-2xl w-full max-w-[1000px] max-h-[92vh] flex flex-col overflow-hidden border border-outline-variant">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-surface-container-highest">
           <div>
@@ -183,7 +188,8 @@ export default function ImportContentModal({
                 <p className="text-xs text-on-surface-variant m-0">
                   File mẫu bao gồm các cột: <strong className="text-primary">tiêu_đề (*)</strong>,{' '}
                   <strong className="text-primary">giai_đoạn (*)</strong> (Chuẩn bị mang thai: PRE_PREGNANCY / Thai kỳ: PREGNANCY / Hậu sản: POSTPARTUM / Chăm bé: BABY_CARE),{' '}
-                  <strong className="text-primary">nội_dung (*)</strong> (Hỗ trợ Rich HTML: h1-h4, bold, italic, danh sách, bảng, trích dẫn, link), tóm_tắt, danh_mục, tên_nguồn, link_nguồn, nhà_xuất_bản.
+                  <strong className="text-primary">nội_dung (*)</strong> (Hỗ trợ Rich HTML: h1-h4, bold, italic, danh sách, bảng, trích dẫn, link), tóm_tắt, danh_mục, tên_nguồn, link_nguồn, nhà_xuất_bản
+                  {isArticle ? ', đối_tượng_gợi_ý, từ_tuần, đến_tuần, độ_ưu_tiên.' : '.'}
                 </p>
               </div>
               <button
@@ -247,14 +253,15 @@ export default function ImportContentModal({
                 </div>
               </div>
 
-              <div className="max-h-[250px] overflow-y-auto rounded-xl border border-outline-variant bg-surface">
+              <div className="max-h-[280px] overflow-y-auto rounded-xl border border-outline-variant bg-surface">
                 <table className="w-full border-collapse text-xs">
-                  <thead className="bg-surface-container-low sticky top-0 border-b border-outline-variant text-left">
+                  <thead className="bg-surface-container-low sticky top-0 border-b border-outline-variant text-left z-10">
                     <tr>
                       <th className="p-2.5 w-10 text-center text-outline">STT</th>
                       <th className="p-2.5 text-outline">TIÊU ĐỀ (*)</th>
                       <th className="p-2.5 text-outline w-28">GIAI ĐOẠN (*)</th>
-                      <th className="p-2.5 text-outline w-32">DANH MỤC</th>
+                      <th className="p-2.5 text-outline w-28">DANH MỤC</th>
+                      {isArticle && <th className="p-2.5 text-outline w-48">ĐỐI TƯỢNG GỢI Ý</th>}
                       <th className="p-2.5 text-outline w-32">TRẠNG THÁI</th>
                       <th className="p-2.5 text-center text-outline w-28">XEM TRƯỚC</th>
                     </tr>
@@ -266,11 +273,32 @@ export default function ImportContentModal({
                         className="border-b border-surface-container-highest hover:bg-surface-bright"
                       >
                         <td className="p-2.5 text-center text-outline font-medium">{row.rowIndex}</td>
-                        <td className="p-2.5 max-w-[240px] truncate font-semibold text-on-surface" title={row.title}>
+                        <td className="p-2.5 max-w-[200px] truncate font-semibold text-on-surface" title={row.title}>
                           {row.title || <span className="text-error italic">(Trống)</span>}
                         </td>
                         <td className="p-2.5 font-medium text-[12px]">{row.stage ? (STAGE_LABELS[row.stage] || row.stage) : <span className="text-error italic">(Trống)</span>}</td>
                         <td className="p-2.5 text-on-surface-variant">{row.topicName || '—'}</td>
+                        {isArticle && (
+                          <td className="p-2.5">
+                            {row.audienceTagLabels && row.audienceTagLabels.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {row.audienceTagLabels.map((lbl, idx) => (
+                                  <span key={idx} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
+                                    {lbl}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-outline text-[11px]">Chung cho giai đoạn</span>
+                            )}
+                            {(row.eligibleFromWeek !== null || row.eligibleToWeek !== null || (row.recommendationPriority ?? 0) > 0) && (
+                              <div className="text-[10px] text-outline mt-0.5">
+                                {recommendationWindowLabel(row.stage, row.eligibleFromWeek ?? null, row.eligibleToWeek ?? null)}
+                                {(row.recommendationPriority ?? 0) > 0 && ` • Ưu tiên: ${row.recommendationPriority}`}
+                              </div>
+                            )}
+                          </td>
+                        )}
                         <td className="p-2.5">
                           {row.isValid ? (
                             <span className="text-[#137333] font-medium flex items-center gap-1">
@@ -414,6 +442,20 @@ export default function ImportContentModal({
                 <div>
                   <span className="text-outline">Đơn vị xuất bản: </span>
                   <strong className="text-on-surface">{previewRow.sourcePublisher}</strong>
+                </div>
+              )}
+              {isArticle && previewRow.audienceTagLabels && previewRow.audienceTagLabels.length > 0 && (
+                <div className="w-full mt-1 pt-1 border-t border-surface-container-highest flex items-center gap-1.5 flex-wrap">
+                  <span className="text-outline">Đối tượng gợi ý: </span>
+                  {previewRow.audienceTagLabels.map((lbl, idx) => (
+                    <span key={idx} className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
+                      {lbl}
+                    </span>
+                  ))}
+                  <span className="text-outline ml-2">
+                    ({recommendationWindowLabel(previewRow.stage, previewRow.eligibleFromWeek ?? null, previewRow.eligibleToWeek ?? null)}
+                    {(previewRow.recommendationPriority ?? 0) > 0 && `, Ưu tiên: ${previewRow.recommendationPriority}`})
+                  </span>
                 </div>
               )}
             </div>

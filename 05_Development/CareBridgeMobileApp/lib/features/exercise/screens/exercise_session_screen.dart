@@ -223,6 +223,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       _hasValidMetricsFrame =
           _hasValidMetricsFrame || metrics.hasVisibleLandmarks;
       final now = DateTime.now();
+
       final lastUiUpdate = _lastMetricsUiUpdateAt;
       if (lastUiUpdate == null ||
           now.difference(lastUiUpdate) >= const Duration(milliseconds: 100)) {
@@ -253,26 +254,40 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   void _applyPostureFeedback(PostureFeedback feedback) {
     if (!mounted || _isPaused || _isCompleting) return;
     final severity = feedback.severity.toUpperCase();
+    final code = feedback.postureCode.toUpperCase();
     _feedbackAnalyzer.applyFeedback(feedback);
-    final warning =
-        severity == 'WARNING' ||
-        severity == 'CRITICAL' ||
-        _feedbackAnalyzer.hasFeedbackError;
-    _cameraSource?.setFeedbackError(warning);
+
+    final isGood = code == 'C' ||
+        code.endsWith('/C') ||
+        code.contains('GOOD_FORM') ||
+        code.contains('CORRECT') ||
+        code == 'UP' ||
+        code == 'DOWN';
+
+    final isWarning = !isGood &&
+        (severity == 'CRITICAL' ||
+            (severity == 'WARNING' && !code.contains('MODEL_UNAVAILABLE')) ||
+            _feedbackAnalyzer.hasFeedbackError);
+
+    _cameraSource?.setFeedbackError(isWarning);
     final feedbackText = feedback.feedbackText?.trim();
+
+    final statusText = feedbackText?.isNotEmpty == true
+        ? feedbackText!
+        : (isWarning ? 'Tư thế chưa chuẩn, hãy điều chỉnh' : 'Tư thế tốt');
+
     setState(() {
-      _postureGood = !warning;
-      // postureCode is a machine identifier (GOOD_FORM, MODEL_UNAVAILABLE, a raw
-      // model label): never show it. An empty feedbackText means the server-owned
-      // feedback level is SILENT, so only the overlay colour conveys the result.
-      _postureStatus = feedbackText?.isNotEmpty == true
-          ? feedbackText!
-          : 'Đang theo dõi tư thế...';
+      _postureGood = !isWarning;
+      _postureStatus = statusText;
     });
-    if (warning && feedbackText?.isNotEmpty == true) {
-      unawaited(_voiceFeedbackAnnouncer.announce(feedbackText!));
+
+    // ONLY speak via TTS when there is an actual posture error/warning!
+    if (isWarning && feedbackText != null && feedbackText.isNotEmpty) {
+      unawaited(_voiceFeedbackAnnouncer.announce(feedbackText));
     }
   }
+
+
 
   String _postureErrorText(Object error) {
     if (error is ApiException) {
@@ -830,20 +845,31 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
           Positioned(
             top: 16,
             right: 16,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.flip_camera_ios_outlined,
-                color: _onSurface,
-                size: 20,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  unawaited(_cameraSource?.switchCamera());
+                  if (mounted) setState(() {});
+                },
+                borderRadius: BorderRadius.circular(9999),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.flip_camera_ios_outlined,
+                    color: _onSurface,
+                    size: 20,
+                  ),
+                ),
               ),
             ),
           ),
+
 
           // Safety tip overlay at bottom
           if (hasSafetyWarning)

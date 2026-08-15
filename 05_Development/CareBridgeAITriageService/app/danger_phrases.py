@@ -42,7 +42,23 @@ _HISTORICAL_MARKERS = (
 _INTENSIFIER_TOKENS = (
     "rất", "quá", "khá", "hơi", "cực", "kỳ", "vô", "cùng", "thật", "siêu", "hết", "sức",
 )
-#: Two covers the compound intensifiers ("cực kỳ", "vô cùng", "hết sức").
+#: Counting words a speaker drops inside a phrase when they quantify it. "ướt đẫm băng" matched
+#: but "ướt đẫm hai miếng băng" did not, so a mother describing the bleeding precisely — the more
+#: alarming report — stopped matching.
+#:
+#: Allowed for the pad-soaking phrases only, never globally. Measured 2026-08-15: adding these to
+#: every phrase made "co hai giật mình" match `co giật`. Two-word danger phrases are short enough
+#: that any widening of the gap starts joining words that were never one phrase, which is the
+#: failure `_INTENSIFIER_TOKENS` was already written to avoid.
+_QUANTITY_TOKENS = (
+    "1", "2", "3", "4", "5",
+    "một", "hai", "ba", "bốn", "năm", "vài", "mấy", "nhiều",
+    "miếng", "cái",
+)
+#: The only phrases a count may sit inside: the ones that describe soaking a countable pad.
+_QUANTIFIABLE_PHRASES = frozenset({"thấm ướt băng", "ướt đẫm băng", "soaking pad"})
+#: Two covers the compound intensifiers ("cực kỳ", "vô cùng", "hết sức") and, where allowed, a
+#: count plus its classifier ("hai miếng").
 _MAX_INTENSIFIER_GAP = 2
 
 #: Fields whose answers feed the complaint-independent RED rules (RED_LETHARGY,
@@ -97,6 +113,27 @@ MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES = (
 MATERNAL_HEAVY_BLEEDING_PHRASES = (
     "băng huyết",
     "chảy máu nhiều",
+    # Nguồn: https://tudu.com.vn/vn/y-hoc-thuong-thuc/to-roi-tu-van-gdsk/suc-khoe-phu-nu/
+    #        bang-huyet-sau-sinh-nguyen-nhan-va-yeu-to-nguy-co/
+    #   Truy cập 2026-08-15. Câu gốc: "Triệu chứng chính là chảy máu lượng lớn từ âm đạo. Mất
+    #   máu trong băng huyết sau sinh có thể ồ ạt hoặc chảy một cách từ từ, kín đáo, máu thường
+    #   có màu đỏ tươi và chảy ra liên tục."
+    # Đạt D-029: cách viết khác của "chảy máu nhiều", dấu hiệu PREG_RED_001/POST_RED_001 đã xử lý.
+    # Đạt D-031: Bệnh viện Từ Dũ, bệnh viện công tuyến cuối, bài chuyên môn — không phải tin ca bệnh.
+    "chảy máu lượng lớn",
+    # Nguồn: https://www.tudu.com.vn/vn/y-hoc-thuong-thuc/suc-khoe-thai-ky/
+    #        chay-mau-am-dao-khi-mang-thai/
+    #   Truy cập 2026-08-15. Câu gốc: "Chảy máu nhiều trong khi mang thai là không bình thường.
+    #   Gọi là chảy máu nhiều nếu bạn cần thay băng vệ sinh chỉ sau 1-2 giờ hoặc có máu cục."
+    # Đạt D-029: đây là cách Từ Dũ ĐỊNH LƯỢNG "chảy máu nhiều", dấu hiệu PREG_RED_001 đã xử lý.
+    # Đạt D-031: Bệnh viện Từ Dũ, bệnh viện công tuyến cuối, bài chuyên môn.
+    #
+    # Cố ý giữ nguyên cả cụm dài thay vì rút gọn. Đo 2026-08-15: rút thành "thay băng vệ sinh"
+    # khớp cả "Bao lâu thì nên thay băng vệ sinh?" và "thay băng vệ sinh 2 lần một ngày như bình
+    # thường" — đổi băng là việc bình thường, chỉ TẦN SUẤT mới là dấu hiệu. Cái giá của việc giữ
+    # dài là recall thấp: chỉ khớp khi người dùng lặp gần nguyên văn. Các cách nói tự nhiên như
+    # "thay băng liên tục" hay "1 tiếng thay một lần" vẫn KHÔNG khớp, và chưa có nguồn cho chúng.
+    "thay băng vệ sinh chỉ sau 1-2 giờ",
     "ra máu nhiều",
     # Word order varies and "ồ ạt" carries the volume without the word "nhiều"; both were
     # observed to miss while describing the same haemorrhage.
@@ -114,6 +151,15 @@ MATERNAL_HEAVY_BLEEDING_PHRASES = (
 #: The two halves of PREG_RED_002, ported from the registry under D-030. Neither escalates
 #: alone — the registry states the rule as a conjunction, so a lone headache or a lone
 #: "hoa mắt" stays silent, which is what keeps this from becoming a broad new trigger.
+# Tra cứu nguồn 2026-08-15, ba cụm bị TỪ CHỐI vì không đạt D-029/D-031 — ghi lại để lần sau
+# không phải tra lại:
+#   "đầu đau dữ dội" (đảo trật tự) — Từ Dũ chỉ viết "đau đầu dữ dội" ở cả trang "Đau đầu khi
+#     mang thai", "Migraine trong thai kỳ" và "dấu hiệu nguy hiểm trong thai kỳ". Lần duy nhất
+#     tìm thấy dạng đảo là một bài tin ca bệnh trên bachmai.gov.vn, mà D-031 loại trừ.
+#   "nhòe" — không xuất hiện trong bài sản khoa chính thống nào; chỉ thấy ở bài đục thuỷ tinh
+#     thể. Cơ quan y tế dùng "nhìn mờ / mắt mờ / hoa mắt", đều đã có.
+#   "ào ạt" / "ào ra" — chỉ thấy trong bài về que cấy tránh thai, khác ngữ cảnh.
+# Hệ quả đã biết: maternal_004 và maternal_006 tiếp tục FAIL trên corpus, đúng kỳ vọng.
 MATERNAL_SEVERE_HEADACHE_PHRASES = (
     "đau đầu dữ dội",
     "đau đầu nhiều",
@@ -137,6 +183,35 @@ MATERNAL_VISUAL_DISTURBANCE_PHRASES = (
     "nhìn không rõ",
     "blurred vision",
     "visual disturbance",
+)
+# Quyết định 1139/QĐ-BYT ngày 23/4/2026 ("Hướng dẫn Quốc gia các dịch vụ chăm sóc sức khỏe sinh
+# sản: Chăm sóc trước khi có thai và trước khi sinh", Thứ trưởng Nguyễn Tri Thức ký, hiệu lực
+# toàn quốc) liệt kê ở mục 2.9.3, tr.16–17: "Hướng dẫn phát hiện các dấu hiệu bất thường cần
+# thăm khám lại ngay như đau bụng, ra máu, ra nước âm đạo, cử động thai bất thường và phù."
+# (https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf,
+#  truy cập 2026-08-15). Thêm theo D-034; xem D-029 mục (1).
+#
+# Chỉ "cử động thai bất thường" trong năm dấu hiệu đó vào được sàn. Bốn cái còn lại bị loại vì
+# lý do kỹ thuật, không phải lý do lâm sàng, và đã ghi lại để khỏi tra lại:
+#   "ra nước âm đạo" — không có signal nào trong triage_rules_v2.json đọc nó, nên thêm cụm từ
+#     cũng không chạy (đúng cái bẫy đã ghi cho CHEST_INDRAWING bên dưới).
+#   "đau bụng" / "ra máu" — quá rộng cho một sàn chạy trước Gemini.
+#   "phù" — khớp luôn "phù hợp". Chính văn bản trên có 18 lần chuỗi "phù", đa số là "phù hợp".
+#
+# "thai máy" là cách nói tương đương "cử động thai" theo chính tài liệu đó ("Ngày thai máy, cử
+# động thai." tr.11), nên bốn biến thể còn lại vào theo D-029 mục (2) — signal đã có rule đọc.
+# Bốn ứng viên khác bị loại sau khi thử trên matcher thật ngày 2026-08-15:
+#   "thai máy ít" — khớp "thai máy ít nhất mấy lần một ngày" (câu hỏi thường gặp).
+#   "bé đạp ít"   — khớp "bé đạp ít nhất bao nhiêu lần".
+#   "con không đạp" / "không thấy con đạp" — khớp "con không đạp xe".
+MATERNAL_REDUCED_FETAL_MOVEMENT_PHRASES = (
+    "cử động thai bất thường",
+    "giảm cử động thai",
+    "mất cử động thai",
+    "thai không máy",
+    "không thấy thai máy",
+    "reduced fetal movement",
+    "no fetal movement",
 )
 MATERNAL_SELF_HARM_PHRASES = (
     "tự làm hại",
@@ -303,11 +378,12 @@ def _clause_tokens_before(stripped: str, start: int) -> list[str]:
 def _phrase_patterns(phrase: str) -> tuple[re.Pattern[str], re.Pattern[str]]:
     """The phrase compiled in both spellings; cached because this runs per request."""
 
+    tokens = _INTENSIFIER_TOKENS
+    if phrase in _QUANTIFIABLE_PHRASES:
+        tokens += _QUANTITY_TOKENS
     return (
-        _compile_phrase(phrase, _INTENSIFIER_TOKENS),
-        _compile_phrase(
-            _accent_free(phrase), tuple(_accent_free(t) for t in _INTENSIFIER_TOKENS)
-        ),
+        _compile_phrase(phrase, tokens),
+        _compile_phrase(_accent_free(phrase), tuple(_accent_free(t) for t in tokens)),
     )
 
 

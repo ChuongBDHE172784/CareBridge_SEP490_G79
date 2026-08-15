@@ -5,7 +5,9 @@ import type { CommunityTopic, ContentDetail, RecommendationTag } from '../models
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
+import RecommendationAudienceSelector from '../components/RecommendationAudienceSelector';
 import {
+  formatRecommendationTagLabel,
   recommendationApiErrorCode,
   recommendationApiErrorMessage,
   recommendationClassification,
@@ -269,27 +271,13 @@ export default function EditContentPage() {
             {detail.type === 'ARTICLE' && (
               <div className="mt-5 rounded-2xl border border-primary/30 bg-primary-container/10 p-4">
                 <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">Recommendation audience</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {staleRecommendationTagIds.map((tagId) => (
-                    <span key={tagId} className="inline-flex items-center gap-2 rounded-full border border-error/50 bg-error-container px-3 py-2 text-xs text-error">
-                      Stale audience: {tagId}
-                      <button
-                        type="button"
-                        aria-label={`Remove stale recommendation audience ${tagId}`}
-                        onClick={() => setRecommendationTagIds((ids) => ids.filter((id) => id !== tagId))}
-                        className="font-bold"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  {recommendationTags.map((tag) => {
-                    const selected = recommendationTagIds.includes(tag.id);
-                    return <label key={tag.id} className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs ${selected ? 'border-primary bg-primary-container text-primary' : 'border-outline-variant bg-surface text-on-surface'}`}>
-                      <input type="checkbox" checked={selected} onChange={() => setRecommendationTagIds((ids) => selected ? ids.filter((id) => id !== tag.id) : [...ids, tag.id])} className="h-4 w-4 accent-primary" />
-                      {tag.label}
-                    </label>;
-                  })}
+                <div className="mb-4">
+                  <RecommendationAudienceSelector
+                    catalog={recommendationTags}
+                    selectedTagIds={recommendationTagIds}
+                    onChange={setRecommendationTagIds}
+                    staleTagIds={staleRecommendationTagIds}
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <label className="text-xs text-outline">Từ tuần<input type="number" min={0} max={42} value={detail.stage === 'PREGNANCY' ? eligibleFromWeek : ''} disabled={detail.stage !== 'PREGNANCY'} onChange={(e) => setEligibleFromWeek(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-sm" /></label>
@@ -298,9 +286,9 @@ export default function EditContentPage() {
                 </div>
                 {displayMetadataError && <p role="alert" className="mt-3 text-xs text-error">{displayMetadataError}</p>}
                 {!displayMetadataError && <div className="mt-3 rounded-xl bg-surface p-3 text-xs text-on-surface-variant">
-                  <p className="font-semibold">Recommendation summary</p>
-                  <p>Classification: {recommendationClassification(recommendationTagIds)} · {recommendationWindowLabel(detail.stage, displayFrom, displayTo)} · Priority {displayPriority}</p>
-                  <p>Audience: {recommendationTagIds.length === 0 ? 'No controlled audience tags (fallback eligible)' : recommendationTags.filter((tag) => recommendationTagIds.includes(tag.id)).map((tag) => tag.label).join(', ')}</p>
+                  <p className="font-semibold">Tóm tắt thiết lập đối tượng (Recommendation summary)</p>
+                  <p>Phân loại: {recommendationClassification(recommendationTagIds)} · {recommendationWindowLabel(detail.stage, displayFrom, displayTo)} · Độ ưu tiên {displayPriority}</p>
+                  <p>Đối tượng: {recommendationTagIds.length === 0 ? 'Không có tag chỉ định (áp dụng toàn bộ người dùng đủ điều kiện)' : recommendationTags.filter((tag) => recommendationTagIds.includes(tag.id)).map((tag) => formatRecommendationTagLabel(tag)).join(', ')}</p>
                 </div>}
               </div>
             )}

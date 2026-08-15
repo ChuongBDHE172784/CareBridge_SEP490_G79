@@ -73,29 +73,39 @@ def test_no_rule_claims_verification_the_manifest_does_not_support(registry_docu
 
 
 def test_current_state_is_honest_about_unverified_sources(registry_document, source_manifest):
-    """Today nothing has been fetched and hashed, so nothing may claim verification."""
+    """Unverified WHO sources remain PENDING; rules citing them cannot claim verification."""
 
     assert source_manifest["overallStatus"] == "PENDING"
-    assert all(rule["sourceVerificationStatus"] == "PENDING"
-               for rule in registry_document["rules"])
+    verified_rule_ids = {
+        rule["ruleId"]
+        for rule in registry_document["rules"]
+        if rule["sourceVerificationStatus"] == "SOURCE_VERIFIED"
+    }
+    assert verified_rule_ids == {"PREG_YELLOW_001", "PRE_INFO_001"}
 
 
-def test_identified_byt_source_keeps_primary_url_and_hash_unset(source_manifest):
+def test_verified_byt_source_records_primary_url_and_hash(source_manifest):
     byt = next(s for s in source_manifest["sources"] if s["sourceId"] == "BYT_1139_2026")
-    assert byt["verificationStatus"] == "IDENTIFIED_PRIMARY_UNVERIFIED"
+    assert byt["verificationStatus"] == "SOURCE_VERIFIED"
     assert byt["title"] == (
         'Quyết định số 1139/QĐ-BYT ngày 23/4/2026 — "Hướng dẫn Quốc gia các dịch vụ '
-        'chăm sóc sức khỏe sinh sản"'
+        'chăm sóc sức khỏe sinh sản: Chăm sóc trước khi có thai và trước khi sinh"'
     )
-    assert byt["url"] is None, "an inaccessible primary must not be given an invented URL"
-    assert byt["contentHash"] is None
-    assert "hai site bệnh viện .gov.vn" in byt["notes"]
-    assert "moh.gov.vn" in byt["notes"]
+    assert byt["url"] == "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    assert byt["contentHash"] == "3b60b659b446ab46f0f52ec01bdc2053685c2ed1e46e402fc684ad548ba39154"
+    assert byt["sectionOrPage"] == "Mục 2.9.3, tr.16–17"
+    assert "vnpa.moh.gov.vn" in byt["notes"]
+    assert "SHA-256" in byt["notes"]
 
 
-def test_nonexistent_sources_are_retained_as_tombstones_but_cited_by_no_rule(source_manifest):
+def test_nonexistent_sources_are_retained_as_tombstones_but_cited_by_no_rule(
+    source_manifest, registry_document
+):
     review = json.loads(
         (CONTRACTS / "internal_rule_review_manifest.json").read_text(encoding="utf-8")
+    )
+    matrix = json.loads(
+        (CONTRACTS / "matrix_snapshot_v0.1.0.json").read_text(encoding="utf-8")
     )
     dead_ids = {"WHO_DANGER_SIGNS_2022", "WHO_MATERNAL_2025"}
     by_id = {source["sourceId"]: source for source in source_manifest["sources"]}
@@ -109,6 +119,15 @@ def test_nonexistent_sources_are_retained_as_tombstones_but_cited_by_no_rule(sou
 
     reviewed_items = [*review["rules"], *review["safetyPolicies"]]
     assert all(dead_ids.isdisjoint(item.get("sourceIds", [])) for item in reviewed_items)
+    assert all(
+        dead_ids.isdisjoint(rule.get("sourceIds", []))
+        for rule in registry_document.get("rules", [])
+    )
+    for matrix_rule in matrix.get("rules", []):
+        matrix_sources = matrix_rule.get("sourceId", [])
+        if isinstance(matrix_sources, str):
+            matrix_sources = [matrix_sources]
+        assert dead_ids.isdisjoint(matrix_sources)
 
 
 def test_identified_who_primaries_record_exact_limits_without_claiming_verification(

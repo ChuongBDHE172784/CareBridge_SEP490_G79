@@ -11,6 +11,10 @@ from fastapi.responses import JSONResponse
 from app.config import GEMINI_SETTINGS
 from app.gemini_client import get_gemini_client
 from app.rules.registry import get_registry
+from app.schemas import EmergencySupportRequest, EmergencySupportResponse
+from app.services.emergency_support_service import (
+    build_response as build_emergency_response,
+)
 from app.triage.api import (
     TriageTurnRequest,
     TriageTurnResponse,
@@ -32,6 +36,18 @@ def triage_turn(request: TriageTurnRequest) -> TriageTurnResponse:
     """Execute one canonical deterministic triage turn."""
 
     return execute_turn(request)
+
+
+@app.post(
+    "/internal/emergency/support",
+    response_model=EmergencySupportResponse,
+    dependencies=[Depends(require_internal_key)],
+    tags=["emergency"],
+)
+def emergency_support(request: EmergencySupportRequest) -> EmergencySupportResponse:
+    """Return the emergency package: verified hotlines first, facilities where available."""
+
+    return build_emergency_response(request)
 
 
 @app.get("/health")

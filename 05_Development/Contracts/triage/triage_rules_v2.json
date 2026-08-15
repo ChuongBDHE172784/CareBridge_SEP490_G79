@@ -502,7 +502,6 @@
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
       "sourceIds": [
         "WHO_IITT_ADULT",
-        "WHO_DANGER_SIGNS_2022",
         "BYT_1139_2026"
       ],
       "releaseStatus": "ACTIVE",
@@ -563,9 +562,7 @@
       "reasonCode": "PREG_NEURO_DANGER",
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
       "sourceIds": [
-        "WHO_IITT_ADULT",
-        "WHO_DANGER_SIGNS_2022",
-        "WHO_MATERNAL_2025"
+        "WHO_IITT_ADULT"
       ],
       "releaseStatus": "ACTIVE",
       "approvedAt": "2026-08-05",
@@ -623,7 +620,6 @@
       "reasonCode": "PREG_BLEEDING_EARLY_REVIEW",
       "actionCode": "EARLY_CLINICAL_ASSESSMENT",
       "sourceIds": [
-        "WHO_DANGER_SIGNS_2022",
         "BYT_1139_2026"
       ],
       "releaseStatus": "ACTIVE",
@@ -636,7 +632,7 @@
         "note": "'AND no RED rule matched' is enforced by engine precedence, not by the condition tree."
       },
       "internalReviewStatus": "DEV_REVIEWED",
-      "sourceVerificationStatus": "PENDING",
+      "sourceVerificationStatus": "SOURCE_VERIFIED",
       "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
     },
     {
@@ -685,8 +681,6 @@
       "reasonCode": "POSTPARTUM_HEAVY_BLEEDING",
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
       "sourceIds": [
-        "WHO_DANGER_SIGNS_2022",
-        "WHO_MATERNAL_2025",
         "WHO_PCPNC_2015"
       ],
       "releaseStatus": "ACTIVE",
@@ -743,8 +737,7 @@
       "reasonCode": "POSTPARTUM_CARDIO_NEURO_DANGER",
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
       "sourceIds": [
-        "WHO_IITT_ADULT",
-        "WHO_DANGER_SIGNS_2022"
+        "WHO_IITT_ADULT"
       ],
       "releaseStatus": "ACTIVE",
       "approvedAt": "2026-08-05",
@@ -809,7 +802,7 @@
         "note": "RED override is enforced by engine precedence."
       },
       "internalReviewStatus": "DEV_REVIEWED",
-      "sourceVerificationStatus": "PENDING",
+      "sourceVerificationStatus": "SOURCE_VERIFIED",
       "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
     },
     {

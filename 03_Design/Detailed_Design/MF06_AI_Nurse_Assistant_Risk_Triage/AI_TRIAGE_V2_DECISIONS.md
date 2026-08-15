@@ -403,7 +403,7 @@ as needing the same standard: an existing registry rule to port, or a clinical d
 haemorrhage and pre-eclampsia danger signs. Sixteen candidate phrases came back. Ten of them cite
 `tudu.com.vn` (Bệnh viện Từ Dũ), which is not a `.gov.vn` domain, so D-029 as written did not admit them.
 Only two rows were true `.gov.vn`, and both were case-report news items rather than guidance.
-**Decision, part "../../../docs/Detailed_Design/MF06_AI_Nurse_Assistant_Risk_Triage"1** D-029's source test is widened from "a `.gov.vn` source" to "a `.gov.vn` source, or a
+**Decision, part 1** D-029's source test is widened from "a `.gov.vn` source" to "a `.gov.vn` source, or a
 top-tier public hospital's own health-education pages". Bệnh viện Từ Dũ qualifies as the leading public
 obstetric hospital in the south. Everything else in D-029 is unchanged: a quoted phrase may only add
 another spelling of a sign the catalogue already acts on, each phrase cites its source in a comment, and
@@ -411,7 +411,7 @@ quoting a source still does not make the mapping reviewed.
 **Still excluded** Commercial and private-hospital content — Vinmec, Hello Bacsi, Medlatec, Long Châu —
 along with news portals, forums and AI-generated pages. A case-report news article on a `.gov.vn` domain
 describes one patient; it is not wording guidance and does not qualify either.
-**Decision, part "../../../docs/Detailed_Design/MF06_AI_Nurse_Assistant_Risk_Triage"2** The four visual-disturbance phrases are refused: `ruồi bay`, `đèn nhấp nháy`,
+**Decision, part 2** The four visual-disturbance phrases are refused: `ruồi bay`, `đèn nhấp nháy`,
 `chói sáng`, `thấy các đốm sáng trước mắt`. Measured against the existing matcher, the first three fired on
 six of six ordinary sentences — "nhà em nhiều ruồi bay quá", "bóng đèn nhấp nháy hỏng rồi, phòng bé tối
 quá", "trời nắng chói sáng". `VISUAL_DISTURBANCE` is the second half of `PREG_RED_002`, so a pregnant user
@@ -486,3 +486,64 @@ one, so the alternation was invisible and only one side matched. A stage the wri
 cannot name is now left unresolved.
 **Measured after all of it** safety-question coverage 100%, forbidden 0%, wrong-entity 0%, wrong-stage 0%,
 repeated 0%, unsupported GREEN 0; target accuracy 76.9%, stage accuracy 65.0%. Corpus SHA `9023d858…`.
+
+## D-034 — `.edu.vn` joins the source test; QĐ 1139/QĐ-BYT admits one danger sign, refuses four
+**Date** 2026-08-15 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-15.
+
+**Problem** D-029 required a `.gov.vn` source and D-031 widened that to top-tier public hospitals. Two
+gaps remained: no Vietnamese medical university can satisfy either test, because they all publish on
+`.edu.vn`, and no primary Ministry of Health guideline had ever actually been retrieved — every phrase so
+far rests on hospital health-education pages.
+
+**Decision, part 1 — scope** The source test now also admits `.edu.vn` domains of public medical
+universities. Everything else in D-029 and D-031 is unchanged, including the exclusion of commercial and
+private-hospital content, news portals, forums and case-report articles.
+
+**Decision, part 2 — the primary** Quyết định số 1139/QĐ-BYT ngày 23/4/2026, "Hướng dẫn Quốc gia các dịch
+vụ chăm sóc sức khỏe sinh sản: Chăm sóc trước khi có thai và trước khi sinh", signed by Thứ trưởng Nguyễn
+Tri Thức, was retrieved in full from
+`https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf`
+(Cục Dân số, an MOH agency), extracted with `pdftotext`, SHA-256 `3b60b659b446ab46f0f52ec01bdc2053685c2ed1e46e402fc684ad548ba39154`.
+It is effective nationwide and replaces the *antenatal* portion of QĐ 4128/QĐ-BYT (29/7/2016); postpartum
+and newborn content still belongs to 4128, which could not be retrieved from any `.gov.vn` host.
+
+Its danger-sign list, mục 2.9.3, tr.16–17, verbatim: "Hướng dẫn phát hiện các dấu hiệu bất thường cần thăm
+khám lại ngay như đau bụng, ra máu, ra nước âm đạo, cử động thai bất thường và phù."
+
+**Admitted** `cử động thai bất thường`, plus `giảm cử động thai` and `mất cử động thai` from the rule's own
+displayText, plus `thai không máy` and `không thấy thai máy` under D-029 (2) — the decision itself treats
+"thai máy" and "cử động thai" as the same sign ("Ngày thai máy, cử động thai.", tr.11). English mirrors
+follow the other groups. Wired to `REDUCED_FETAL_MOVEMENT` for `PREGNANCY` only: after delivery there is no
+fetus to move, and `GB_REDUCED_FETAL_MOVEMENT` is itself scoped to `stages: ["PREGNANCY"]`.
+
+**Refused from the same list, for mechanical reasons rather than clinical ones**
+`ra nước âm đạo` — no signal in `triage_rules_v2.json` reads it, so the phrase would be dead code, the same
+trap already recorded for `CHEST_INDRAWING`. `đau bụng` and `ra máu` — too broad for a floor that runs
+before Gemini. `phù` — matches "phù hợp"; the decision's own text contains 18 occurrences of "phù", most of
+them "phù hợp".
+
+**Refused after testing against the real matcher** `thai máy ít` fires on "thai máy ít nhất mấy lần một
+ngày"; `bé đạp ít` on "bé đạp ít nhất bao nhiêu lần"; `con không đạp` and `không thấy con đạp` on "con
+không đạp xe". Each is a prefix of an ordinary sentence, which is why the shipped phrases are longer.
+
+**What this does and does not buy** `REDUCED_FETAL_MOVEMENT` has exactly one consumer,
+`GB_REDUCED_FETAL_MOVEMENT`, a conservative release blocker with `clinicalOutcomeAssigned: false` and
+`blocksGreen: true`. So this adds no RED and cannot move RED recall. What it buys is that a pregnancy
+reporting no fetal movement can no longer be released as GREEN without being asked.
+
+**Measured** 0 matches across all 208 texts of the 160-case vague corpus and the 21 NOT_RED intake cases,
+so no existing metric moves. 838 tests pass.
+
+**Known limitation, pre-existing and not introduced here** Informational questions still reach the floor:
+`"Co giật là gì hả bác sĩ?"` already emits `SEIZURE` today. This applies to every shipped phrase group, not
+to this one in particular.
+
+**Impact** `app/danger_phrases.py`, `app/triage/deterministic_signals.py`,
+`tests/test_triage_deterministic_signals.py`.
+
+**Not done under this ruling** `BYT_1139_2026` already exists in `data/source_verification_manifest.json`
+as `IDENTIFIED_PRIMARY_UNVERIFIED`, whose blocker text reads "until the primary is retrieved and hashed".
+That condition is now met and the URL and hash are recorded above, but flipping the entry to
+`SOURCE_VERIFIED` would derive the project's first `SOURCE_VERIFIED` rule (`PRE_INFO_001` cites this source
+alone) and would require rewriting the two tests that encode "nothing has been fetched and hashed". That is
+a release-gate posture change and is left for a separate ruling.

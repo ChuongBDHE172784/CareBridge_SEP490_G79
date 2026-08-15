@@ -165,7 +165,10 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
           manageAuthenticatedSession: widget.firebaseEnabled,
           child: FloatingAiTriageHost(
             authListenable: AuthState.instance,
-            navigationListenable: appRouter.routeInformationProvider,
+            navigationListenable: Listenable.merge([
+              appRouter.routeInformationProvider,
+              appRouter.routerDelegate,
+            ]),
             modalListenable: floatingAiTriageRouteObserver,
             isAuthenticated: () => AuthState.instance.isAuthenticated,
             currentRole: () => AuthState.instance.role,

@@ -25,6 +25,7 @@ from app.danger_phrases import (
     MATERNAL_BREATHING_DISTRESS_PHRASES,
     MATERNAL_CYANOSIS_PHRASES,
     MATERNAL_HEAVY_BLEEDING_PHRASES,
+    MATERNAL_REDUCED_FETAL_MOVEMENT_PHRASES,
     MATERNAL_SEIZURE_PHRASES,
     MATERNAL_SELF_HARM_PHRASES,
     MATERNAL_SEVERE_HEADACHE_PHRASES,
@@ -58,6 +59,13 @@ _STAGE_PHRASE_SIGNALS: dict[str, tuple[tuple[tuple[str, ...], str], ...]] = {
         (MATERNAL_HEAVY_BLEEDING_PHRASES, "HEAVY_VAGINAL_BLEEDING"),
         (MATERNAL_SEVERE_HEADACHE_PHRASES, "SEVERE_HEADACHE"),
         (MATERNAL_VISUAL_DISTURBANCE_PHRASES, "VISUAL_DISTURBANCE"),
+        # D-034. Pregnancy only, and deliberately absent from POSTPARTUM_MOTHER below: after
+        # delivery there is no fetus to move, so the same words there describe something else
+        # entirely and `GB_REDUCED_FETAL_MOVEMENT` is itself scoped to `stages: ["PREGNANCY"]`.
+        # Unlike the two groups above this one reaches no RED rule — its only consumer is a
+        # conservative release blocker, so what it buys is that a pregnancy reporting no fetal
+        # movement can no longer be released as GREEN without being asked.
+        (MATERNAL_REDUCED_FETAL_MOVEMENT_PHRASES, "REDUCED_FETAL_MOVEMENT"),
     ),
     "POSTPARTUM_MOTHER": (
         (MATERNAL_HEAVY_BLEEDING_PHRASES, "HEAVY_POSTPARTUM_BLEEDING"),

@@ -52,5 +52,13 @@ public class BulkImportContentRequest {
         private String sourceUrl;
 
         private String sourcePublisher;
+
+        private List<UUID> tagIds;
+
+        private Integer eligibleFromWeek;
+
+        private Integer eligibleToWeek;
+
+        private Integer recommendationPriority;
     }
 }

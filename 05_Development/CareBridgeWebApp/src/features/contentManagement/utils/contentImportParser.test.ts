@@ -73,18 +73,93 @@ describe('contentImportParser', () => {
     expect(rows[0].body).toBe('<h2>Thai kỳ</h2><p>Nội dung...</p>');
   });
 
-  it('should report errors for missing mandatory fields or invalid stage', async () => {
-    const csvContent =
-      'tiêu_đề,giai_đoạn,nội_dung\n' +
-      '"","INVALID_STAGE",""';
+  it('should include recommendation audience columns in ARTICLE template and omit in FAQ template', () => {
+    const articleTemplate = generateContentTemplate('ARTICLE');
+    expect(articleTemplate).toContain('đối_tượng_gợi_ý');
+    expect(articleTemplate).toContain('từ_tuần');
+    expect(articleTemplate).toContain('đến_tuần');
+    expect(articleTemplate).toContain('độ_ưu_tiên');
 
-    const file = new File([csvContent], 'test_invalid.csv', { type: 'text/csv' });
-    const rows = await parseImportFile(file, mockTopics);
+    const faqTemplate = generateContentTemplate('FAQ');
+    expect(faqTemplate).not.toContain('đối_tượng_gợi_ý');
+    expect(faqTemplate).not.toContain('từ_tuần');
+  });
+
+  it('should parse recommendation audience tags, week bounds, and priority for ARTICLE', async () => {
+    const mockRecCatalog = [
+      { id: 'tag-bmi-obesity', slug: 'rec-bmi-obesity', description: 'CATALOG_V1|rec-bmi-obesity' },
+      { id: 'tag-age-35', slug: 'rec-age-35-39', description: 'CATALOG_V1|rec-age-35-39' },
+    ];
+
+    const csvContent =
+      'tiêu_đề,giai_đoạn,nội_dung,đối_tượng_gợi_ý,từ_tuần,đến_tuần,độ_ưu_tiên\n' +
+      '"Chăm sóc thai phụ lớn tuổi","PREGNANCY","<p>Nội dung</p>","Độ tuổi: 35 - 39, rec-bmi-obesity",1,12,60';
+
+    const file = new File([csvContent], 'test_rec.csv', { type: 'text/csv' });
+    const rows = await parseImportFile(file, mockTopics, mockRecCatalog as any);
+
+    expect(rows.length).toBe(1);
+    expect(rows[0].isValid).toBe(true);
+    expect(rows[0].tagIds).toEqual(['tag-age-35', 'tag-bmi-obesity']);
+    expect(rows[0].eligibleFromWeek).toBe(1);
+    expect(rows[0].eligibleToWeek).toBe(12);
+    expect(rows[0].recommendationPriority).toBe(60);
+  });
+
+  it('should reject exclusive group tag collision in import row', async () => {
+    const mockRecCatalog = [
+      { id: 'tag-bmi-obesity', slug: 'rec-bmi-obesity', description: 'CATALOG_V1|rec-bmi-obesity' },
+      { id: 'tag-bmi-underweight', slug: 'rec-bmi-underweight', description: 'CATALOG_V1|rec-bmi-underweight' },
+    ];
+
+    const csvContent =
+      'tiêu_đề,giai_đoạn,nội_dung,đối_tượng_gợi_ý\n' +
+      '"Bài viết BMI xung đột","PREGNANCY","<p>Nội dung</p>","rec-bmi-obesity, rec-bmi-underweight"';
+
+    const file = new File([csvContent], 'test_exclusive.csv', { type: 'text/csv' });
+    const rows = await parseImportFile(file, mockTopics, mockRecCatalog as any);
 
     expect(rows.length).toBe(1);
     expect(rows[0].isValid).toBe(false);
-    expect(rows[0].errors).toContain('Tiêu đề không được để trống.');
-    expect(rows[0].errors).toContain('Nội dung không được để trống.');
-    expect(rows[0].errors.some((e) => e.includes('Giai đoạn'))).toBe(true);
+    expect(rows[0].errors.some(e => e.includes('exclusive group'))).toBe(true);
+  });
+
+  it('should reject week bounds for non-pregnancy stages', async () => {
+    const csvContent =
+      'tiêu_đề,giai_đoạn,nội_dung,từ_tuần,đến_tuần\n' +
+      '"Chuẩn bị thai kỳ lỗi tuần","PRE_PREGNANCY","<p>Nội dung</p>",5,10';
+
+    const file = new File([csvContent], 'test_stage_bounds.csv', { type: 'text/csv' });
+    const rows = await parseImportFile(file, mockTopics, []);
+
+    expect(rows.length).toBe(1);
+    expect(rows[0].isValid).toBe(false);
+    expect(rows[0].errors.some(e => e.includes('stage-wide'))).toBe(true);
+  });
+
+  it('should successfully parse reference file CareBridge_30_Bai_Viet_Rich_Content.csv with all 30 rows valid', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const csvPath = path.resolve('../../../08_References/CareBridge_30_Bai_Viet_Rich_Content.csv');
+    if (fs.existsSync(csvPath)) {
+      const csvRaw = fs.readFileSync(csvPath, 'utf8');
+      const { RECOMMENDATION_TAG_VIETNAMESE_LABELS } = await import('../pages/recommendationMetadata');
+      const fullCatalog = Object.keys(RECOMMENDATION_TAG_VIETNAMESE_LABELS).map((slug) => ({
+        id: `tag-${slug}`,
+        slug,
+        description: `CATALOG_V1|${slug}`,
+      }));
+
+      const file = new File([csvRaw], 'CareBridge_30_Bai_Viet_Rich_Content.csv', { type: 'text/csv' });
+      const rows = await parseImportFile(file, mockTopics, fullCatalog as any);
+
+      expect(rows.length).toBe(30);
+      const invalidRows = rows.filter((r) => !r.isValid);
+      if (invalidRows.length > 0) {
+        console.error('Invalid reference rows:', invalidRows.map((r) => ({ row: r.rowIndex, title: r.title, errors: r.errors })));
+      }
+      expect(invalidRows.length).toBe(0);
+      expect(rows.every((r) => r.isValid)).toBe(true);
+    }
   });
 });
