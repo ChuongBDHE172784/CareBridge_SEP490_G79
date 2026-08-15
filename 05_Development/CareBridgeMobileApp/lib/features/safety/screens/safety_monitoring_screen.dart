@@ -77,7 +77,8 @@ SafetyEvent? selectNextOpenSafetyEvent(
 }
 
 bool isPendingSafetyCountdown(SafetyEvent event) =>
-    event.status == 'OPEN' || event.status == 'TEST_OPEN';
+    (event.status == 'OPEN' || event.status == 'TEST_OPEN') &&
+    event.responseType == null;
 
 bool isSafetyCountdownPresentationEligible(SafetyEvent event, DateTime now) {
   final deadline = event.countdownDeadlineAt;
@@ -125,6 +126,9 @@ bool isFallEventStaleAfterAlertResponse(
   SafetyEvent? answeredEvent,
   DateTime? evaluatedAt,
 }) {
+  if (answeredEvent != null && event.id == answeredEvent.id) {
+    return true;
+  }
   final detectedAt = event.detectedAt;
   final answeredAt = answeredEvent?.detectedAt;
   if (responseStartedAt == null || detectedAt == null || answeredAt == null) {
@@ -347,6 +351,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _demoRecoveryTimer?.cancel();
     _demoGestureArmTimer?.cancel();
     _pendingEventRefreshTimer?.cancel();
+    SystemSafetyCountdownFeedback.stopAll();
+    SafetyCountdownGuard.reset();
     super.dispose();
   }
 
@@ -427,10 +433,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           _imuSensorActive = _foregroundCoordinator.isRunning;
         });
         final active = _countdownEvent;
-        if (active != null) {
+        if (active != null || SafetyCountdownGuard.isShowing) {
           for (final event in events) {
-            if (event.id != active.id &&
+            if ((active == null || event.id != active.id) &&
                 isPendingSafetyCountdown(event) &&
+                active != null &&
                 isLikelyDuplicateFallEvent(active, event)) {
               _suppressDuplicateEvent(event);
             }
@@ -451,7 +458,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                 suppressedIds: _suppressedDuplicateEventIds,
                 requireCanonicalIds: queuedBeforeRefresh,
               );
-          if (pending != null) {
+          if (pending != null && !SafetyCountdownGuard.isShowing) {
             for (final event in events) {
               if (event.id != pending.id &&
                   isPendingSafetyCountdown(event) &&
@@ -484,6 +491,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    if (SafetyCountdownGuard.isShowing) {
+      return;
+    }
     if (isFallEventStaleAfterAlertResponse(
       event,
       _latestAlertResponseStartedAt,
@@ -573,6 +583,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     bool simulated = false,
     bool presentAsRealAlert = false,
   }) async {
+    if (SafetyCountdownGuard.isShowing) {
+      return;
+    }
     if (!simulated &&
         isFallEventStaleAfterAlertResponse(
           event,
@@ -602,6 +615,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       isDismissible: false,
       enableDrag: false,
       isScrollControlled: true,
+      useRootNavigator: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => SafetyCountdownSheet(
         event: event,
         simulated: simulated,

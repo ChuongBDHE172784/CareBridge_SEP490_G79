@@ -155,9 +155,9 @@ class ImuFallDetector {
   /// Thời gian rơi tự do tối thiểu (350ms, tương đương độ cao rơi tự do ~60cm).
   static const Duration minimumFreeFallDuration = Duration(milliseconds: 350);
 
-  /// Thời gian rơi tự do để áp dụng bộ tiêu chuẩn ngã êm (350ms).
+  /// Thời gian rơi tự do để áp dụng bộ tiêu chuẩn ngã êm (400ms).
   static const Duration softFallQualificationDuration = Duration(
-    milliseconds: 350,
+    milliseconds: 400,
   );
 
   /// Cửa sổ thời gian tối đa từ lúc bắt đầu rơi đến khi va chạm tiếp đất (1400ms).
@@ -477,18 +477,21 @@ class ImuFallDetector {
   }
 
   /// Đặt lại toàn bộ bộ phân tích về trạng thái ban đầu.
-  void reset() {
+  void reset({bool clearCooldown = false}) {
     _resetCandidate();
     _previousSample = null;
-    _cooldownUntil = null;
+    if (clearCooldown) {
+      _cooldownUntil = null;
+    }
     _setDecision(ImuDetectorDecisionReason.reset);
   }
 
   /// Tái kích hoạt bộ phân tích sau khi người dùng phản hồi cảnh báo (bật cooldown để chống duplicate).
-  void rearmAfterAlertResponse(DateTime respondedAt) {
+  void rearmAfterAlertResponse(DateTime respondedAt, {Duration? cooldownOverride}) {
     _resetCandidate();
     _previousSample = null;
-    final requestedCooldownUntil = respondedAt.toUtc().add(cooldown);
+    final effectiveCooldown = cooldownOverride ?? cooldown;
+    final requestedCooldownUntil = respondedAt.toUtc().add(effectiveCooldown);
     final currentCooldownUntil = _cooldownUntil;
     if (currentCooldownUntil == null ||
         requestedCooldownUntil.isAfter(currentCooldownUntil)) {

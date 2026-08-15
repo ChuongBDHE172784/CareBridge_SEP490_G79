@@ -59,35 +59,32 @@ abstract class SafetyCountdownFeedback {
 }
 
 class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
-  static SystemSafetyCountdownFeedback? _activeOwner;
+  static final FlutterTts _sharedTts = FlutterTts();
+  static bool _ttsInitialized = false;
+  static Timer? _speechTimer;
+  static bool _active = false;
 
-  var _active = false;
-  FlutterTts? _tts;
-  bool _ttsInitialized = false;
-  Timer? _speechTimer;
-
-  Future<void> _initTts() async {
+  static Future<void> _initTts() async {
     if (_ttsInitialized) return;
     try {
-      _tts = FlutterTts();
       try {
-        await _tts?.setLanguage('vi-VN');
+        await _sharedTts.setLanguage('vi-VN');
       } catch (_) {}
       try {
-        await _tts?.setSpeechRate(0.48);
+        await _sharedTts.setSpeechRate(0.48);
       } catch (_) {}
       try {
-        await _tts?.setVolume(1.0);
+        await _sharedTts.setVolume(1.0);
       } catch (_) {}
 
       // Android specific attributes (ignored on iOS)
       try {
-        await _tts?.setAudioAttributesForNavigation();
+        await _sharedTts.setAudioAttributesForNavigation();
       } catch (_) {}
 
       // iOS specific audio category to ensure loud speaker output even in silent mode
       try {
-        await _tts?.setIosAudioCategory(
+        await _sharedTts.setIosAudioCategory(
           IosTextToSpeechAudioCategory.playback,
           [
             IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
@@ -103,19 +100,19 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
     }
   }
 
-  Future<void> _speakPhrase() async {
+  static Future<void> _speakPhrase() async {
     if (!_active) return;
     try {
       if (!_ttsInitialized) {
         await _initTts();
       }
       if (_active) {
-        await _tts?.speak('Bạn có ổn không');
+        await _sharedTts.speak('Bạn có ổn không');
       }
     } catch (_) {}
   }
 
-  void _triggerStrongVibration() {
+  static void _triggerStrongVibration() {
     try {
       unawaited(HapticFeedback.vibrate());
       unawaited(HapticFeedback.heavyImpact());
@@ -138,17 +135,15 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
 
   @override
   void start() {
-    final previous = _activeOwner;
-    if (previous != null && !identical(previous, this)) {
-      previous._stopInternal();
-    }
-    _activeOwner = this;
     _active = true;
     _speechTimer?.cancel();
     unawaited(_speakPhrase());
     _speechTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
       if (_active) {
         unawaited(_speakPhrase());
+      } else {
+        _speechTimer?.cancel();
+        _speechTimer = null;
       }
     });
   }
@@ -168,17 +163,27 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
 
   @override
   void stop() {
-    _stopInternal();
-    if (identical(_activeOwner, this)) _activeOwner = null;
+    stopAll();
   }
 
-  void _stopInternal() {
+  static void stopAll() {
     _active = false;
     _speechTimer?.cancel();
     _speechTimer = null;
     try {
-      unawaited(_tts?.stop());
+      _sharedTts.stop().catchError((_) => null);
     } catch (_) {}
+  }
+}
+
+/// Global guard ensuring that at most ONE SafetyCountdownSheet is presented across the app.
+class SafetyCountdownGuard {
+  static bool isShowing = false;
+  static String? activeEventId;
+
+  static void reset() {
+    isShowing = false;
+    activeEventId = null;
   }
 }
 
@@ -239,6 +244,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   @override
   void initState() {
     super.initState();
+    SafetyCountdownGuard.isShowing = true;
+    SafetyCountdownGuard.activeEventId = widget.event.id;
     if (_usesProductionPresentation) widget.feedback.start();
     _tick();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
@@ -369,6 +376,9 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   void dispose() {
     _timer?.cancel();
     _stopFeedback();
+    if (SafetyCountdownGuard.activeEventId == widget.event.id) {
+      SafetyCountdownGuard.reset();
+    }
     super.dispose();
   }
 

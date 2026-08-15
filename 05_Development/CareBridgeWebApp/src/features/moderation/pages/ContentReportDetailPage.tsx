@@ -382,20 +382,10 @@ export default function ContentReportDetailPage() {
 	                    onClick={() => handleAction('RESTRICT')}
 	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
 	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Hạn chế đăng cộng đồng trong 7 ngày'}
-	                    className="mb-2.5 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-primary-container px-3.5 text-xs font-semibold text-on-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+	                    className="mb-4 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-primary-container px-3.5 text-xs font-semibold text-on-primary-container disabled:cursor-not-allowed disabled:opacity-40"
 	                  >
 	                    <span className="material-symbols-outlined text-lg">speaker_notes_off</span>
 	                    {submitting === 'RESTRICT' ? 'Đang xử lý...' : 'Hạn chế đăng 7 ngày'}
-	                  </button>
-
-	                  <button
-	                    onClick={() => handleAction('SUSPEND')}
-	                    disabled={!canEnforceAccount(item.targetType) || submitting !== null}
-	                    title={!canEnforceAccount(item.targetType) ? 'Loại báo cáo này không có tài khoản chịu xử lý' : 'Đình chỉ tài khoản trong 7 ngày'}
-	                    className="mb-4 flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border-0 bg-error-container px-3.5 text-xs font-semibold text-error disabled:cursor-not-allowed disabled:opacity-40"
-	                  >
-	                    <span className="material-symbols-outlined text-lg">person_off</span>
-	                    {submitting === 'SUSPEND' ? 'Đang xử lý...' : 'Đình chỉ 7 ngày'}
 	                  </button>
 
                   <textarea

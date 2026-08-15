@@ -14,6 +14,7 @@ import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
 import 'features/safety/models/safety_config_model.dart';
 import 'features/safety/services/safety_foreground_service.dart';
+import 'features/safety/widgets/safety_countdown_sheet.dart';
 
 @visibleForTesting
 bool shouldOpenSafetyMonitoringForDetectedEvent({
@@ -91,6 +92,8 @@ class CareBridgeApp extends StatefulWidget {
 class _CareBridgeAppState extends State<CareBridgeApp> {
   StreamSubscription<SafetyEvent>? _detectedSafetyEventSubscription;
   bool _safetyNavigationInFlight = false;
+  DateTime? _lastSafetyRoutePoppedAt;
+  String? _lastHandledEventId;
 
   @override
   void initState() {
@@ -106,7 +109,11 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
 
   Future<void> _openSafetyMonitoringForDetectedEvent(SafetyEvent event) async {
     if (!mounted) return;
+    if (SafetyCountdownGuard.isShowing) {
+      return;
+    }
     final currentPath = appRouter.routeInformationProvider.value.uri.path;
+    final now = DateTime.now();
     if (!shouldOpenSafetyMonitoringForDetectedEvent(
       eventStatus: event.status,
       currentPath: currentPath,
@@ -114,6 +121,14 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
     )) {
       return;
     }
+    if (_lastHandledEventId == event.id) {
+      return;
+    }
+    if (_lastSafetyRoutePoppedAt != null &&
+        now.difference(_lastSafetyRoutePoppedAt!) < const Duration(seconds: 5)) {
+      return;
+    }
+    _lastHandledEventId = event.id;
     // Preserve the screen that was active before the fall alert. Using go()
     // replaces the entire stack and leaves a black screen when Safety pops.
     _safetyNavigationInFlight = true;
@@ -121,6 +136,7 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
       await pushSafetyMonitoringRoute(appRouter);
     } finally {
       _safetyNavigationInFlight = false;
+      _lastSafetyRoutePoppedAt = DateTime.now();
     }
   }
 

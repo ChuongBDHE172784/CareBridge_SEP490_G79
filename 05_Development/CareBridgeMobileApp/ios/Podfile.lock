@@ -1206,6 +1206,8 @@ PODS:
   - BoringSSL-GRPC/Implementation (0.0.37):
     - BoringSSL-GRPC/Interface (= 0.0.37)
   - BoringSSL-GRPC/Interface (0.0.37)
+  - camera_avfoundation (0.0.1):
+    - Flutter
   - cloud_firestore (5.6.12):
     - Firebase/Firestore (= 11.15.0)
     - firebase_core
@@ -1332,6 +1334,14 @@ PODS:
   - geolocator_apple (1.2.0):
     - Flutter
     - FlutterMacOS
+  - google_mlkit_commons (0.12.0):
+    - Flutter
+    - MLKitVision (~> 10.0.0)
+  - google_mlkit_pose_detection (0.15.0):
+    - Flutter
+    - google_mlkit_commons
+    - GoogleMLKit/PoseDetection (~> 9.0.0)
+    - GoogleMLKit/PoseDetectionAccurate (~> 9.0.0)
   - google_sign_in_ios (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -1340,11 +1350,24 @@ PODS:
   - GoogleDataTransport (10.1.1):
     - nanopb (~> 3.30910.0)
     - PromisesObjC (~> 2.4)
+  - GoogleMLKit/MLKitCore (9.0.0):
+    - MLKitCommon (~> 14.0.0)
+  - GoogleMLKit/PoseDetection (9.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitPoseDetection (~> 1.0.0-beta16)
+  - GoogleMLKit/PoseDetectionAccurate (9.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitPoseDetectionAccurate (~> 1.0.0-beta16)
   - GoogleSignIn (9.2.0):
     - AppAuth (~> 2.1)
     - AppCheckCore (~> 11.0)
     - GTMAppAuth (~> 5.0)
     - GTMSessionFetcher/Core (~> 3.3)
+  - GoogleToolboxForMac/Defines (4.2.1)
+  - GoogleToolboxForMac/Logger (4.2.1):
+    - GoogleToolboxForMac/Defines (= 4.2.1)
+  - "GoogleToolboxForMac/NSData+zlib (4.2.1)":
+    - GoogleToolboxForMac/Defines (= 4.2.1)
   - GoogleUtilities/AppDelegateSwizzler (8.1.2):
     - GoogleUtilities/Environment
     - GoogleUtilities/Logger
@@ -1476,6 +1499,34 @@ PODS:
   - integration_test (0.0.1):
     - Flutter
   - leveldb-library (1.22.6)
+  - MLImage (1.0.0-beta8)
+  - MLKitCommon (14.0.0):
+    - GoogleDataTransport (~> 10.0)
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GoogleUtilities/Logger (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+  - MLKitPoseDetection (1.0.0-beta16):
+    - MLKitCommon (~> 14.0)
+    - MLKitPoseDetectionCommon (= 1.0.0-beta16)
+    - MLKitXenoCommon (= 1.0.0-beta16)
+  - MLKitPoseDetectionAccurate (1.0.0-beta16):
+    - MLKitCommon (~> 14.0)
+    - MLKitPoseDetectionCommon (= 1.0.0-beta16)
+    - MLKitXenoCommon (= 1.0.0-beta16)
+  - MLKitPoseDetectionCommon (1.0.0-beta16):
+    - MLKitCommon (~> 14.0)
+    - MLKitXenoCommon (= 1.0.0-beta16)
+  - MLKitVision (10.0.0):
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+    - MLImage (= 1.0.0-beta8)
+    - MLKitCommon (~> 14.0)
+  - MLKitXenoCommon (1.0.0-beta16):
+    - MLKitCommon (~> 14.0)
+    - MLKitVision (~> 10.0)
   - nanopb (3.30910.0):
     - nanopb/decode (= 3.30910.0)
     - nanopb/encode (= 3.30910.0)
@@ -1509,6 +1560,7 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
+  - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
   - file_saver (from `.symlinks/plugins/file_saver/ios`)
@@ -1520,6 +1572,8 @@ DEPENDENCIES:
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - flutter_tts (from `.symlinks/plugins/flutter_tts/ios`)
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
+  - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
+  - google_mlkit_pose_detection (from `.symlinks/plugins/google_mlkit_pose_detection/ios`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
   - image_gallery_saver_plus (from `.symlinks/plugins/image_gallery_saver_plus/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
@@ -1555,13 +1609,22 @@ SPEC REPOS:
     - FirebaseMessaging
     - FirebaseSharedSwift
     - GoogleDataTransport
+    - GoogleMLKit
     - GoogleSignIn
+    - GoogleToolboxForMac
     - GoogleUtilities
     - "gRPC-C++"
     - gRPC-Core
     - GTMAppAuth
     - GTMSessionFetcher
     - leveldb-library
+    - MLImage
+    - MLKitCommon
+    - MLKitPoseDetection
+    - MLKitPoseDetectionAccurate
+    - MLKitPoseDetectionCommon
+    - MLKitVision
+    - MLKitXenoCommon
     - nanopb
     - PromisesObjC
     - PromisesSwift
@@ -1570,6 +1633,8 @@ SPEC REPOS:
     - SwiftyGif
 
 EXTERNAL SOURCES:
+  camera_avfoundation:
+    :path: ".symlinks/plugins/camera_avfoundation/ios"
   cloud_firestore:
     :path: ".symlinks/plugins/cloud_firestore/ios"
   file_picker:
@@ -1592,6 +1657,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_tts/ios"
   geolocator_apple:
     :path: ".symlinks/plugins/geolocator_apple/darwin"
+  google_mlkit_commons:
+    :path: ".symlinks/plugins/google_mlkit_commons/ios"
+  google_mlkit_pose_detection:
+    :path: ".symlinks/plugins/google_mlkit_pose_detection/ios"
   google_sign_in_ios:
     :path: ".symlinks/plugins/google_sign_in_ios/darwin"
   image_gallery_saver_plus:
@@ -1620,6 +1689,7 @@ SPEC CHECKSUMS:
   AppAuth: ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5
   AppCheckCore: e215d35177a9cf469927863e69c13e220df32a8b
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
+  camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
   cloud_firestore: fdcc87898326e396d6ef6df543acf9b5c2034b95
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
@@ -1645,9 +1715,13 @@ SPEC CHECKSUMS:
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   flutter_tts: 35ac3c7d42412733e795ea96ad2d7e05d0a75113
   geolocator_apple: ab36aa0e8b7d7a2d7639b3b4e48308394e8cef5e
+  google_mlkit_commons: b4dfe2f6ae4cbf24010dc6640a28984d01343c86
+  google_mlkit_pose_detection: a486c984c5db4e5c57cf8f1053660e3f3d84964c
   google_sign_in_ios: 000870aa06da9b28d1d0bf7ef70ff0213059dd28
   GoogleDataTransport: a24e58982ab3ba2f64d79613e027fe7f57e88539
+  GoogleMLKit: b1eee21a41c57704fe72483b15c85cb2c0cd7444
   GoogleSignIn: e449a40a92e9f2eea56e98b5214d13725dc5a00a
+  GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
   GoogleUtilities: 766ace00c6b10d8148408f329d10c4f051931850
   "gRPC-C++": cc207623316fb041a7a3e774c252cf68a058b9e8
   gRPC-Core: 860978b7db482de8b4f5e10677216309b5ff6330
@@ -1657,6 +1731,13 @@ SPEC CHECKSUMS:
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   leveldb-library: cc8b8f8e013647a295ad3f8cd2ddf49a6f19be19
+  MLImage: 0de5c6c2bf9e93b80ef752e2797f0836f03b58c0
+  MLKitCommon: 47d47b50a031d00db62f1b0efe5a1d8b09a3b2e6
+  MLKitPoseDetection: 037fc62d6ccdd5a63253d1f40f90a8120b0d9c61
+  MLKitPoseDetectionAccurate: 4b25c5447244db7e1d97963c4d6e4ebe612c2d88
+  MLKitPoseDetectionCommon: 4709eb53b8638f5bf87c1a0255ad8aa4db9ad460
+  MLKitVision: 39a5a812db83c4a0794445088e567f3631c11961
+  MLKitXenoCommon: 1a4268c1222a6043047af5bb9435028206c63287
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   permission_handler_apple: 92d754bbaa7361d436db2d6c3c1c2a0fdcec462e
   PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
@@ -1672,6 +1753,6 @@ SPEC CHECKSUMS:
   video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
   zego_express_engine: c5bb7c034b0618cecf84b109b8c5329fc73bc3a3
 
-PODFILE CHECKSUM: f6e29f41417aadc26cd7e663d7bb1c54042afb86
+PODFILE CHECKSUM: 164efdfc4756dea750afd6e4b4f964c90cd62a68
 
 COCOAPODS: 1.16.2
