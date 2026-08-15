@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
-import type { CommunityTopic, ContentStage, ContentType } from '../models/content';
+import type { CommunityTopic, ContentStage, ContentType, RecommendationTag } from '../models/content';
+import { formatTagOptionLabel, RECOMMENDATION_TAG_VIETNAMESE_LABELS, recommendationMetadataError } from '../pages/recommendationMetadata';
 
 export interface ParsedImportRow {
   rowIndex: number;
@@ -12,6 +13,11 @@ export interface ParsedImportRow {
   sourceLabel?: string;
   sourceUrl?: string;
   sourcePublisher?: string;
+  tagIds?: string[];
+  audienceTagLabels?: string[];
+  eligibleFromWeek?: number | null;
+  eligibleToWeek?: number | null;
+  recommendationPriority?: number;
   isValid: boolean;
   errors: string[];
 }
@@ -47,6 +53,14 @@ export function generateContentTemplate(type: ContentType): string {
     'tên_nguồn (Không bắt buộc)',
     'link_nguồn (Không bắt buộc)',
     'nhà_xuất_bản (Không bắt buộc)',
+    ...(isArticle
+      ? [
+          'đối_tượng_gợi_ý (Không bắt buộc - Phân cách bằng dấu phẩy, ví dụ: Thừa cân / Béo phì, 35 tuổi trở lên)',
+          'từ_tuần (Không bắt buộc - 0 đến 42, chỉ áp dụng cho Thai kỳ)',
+          'đến_tuần (Không bắt buộc - 0 đến 42, chỉ áp dụng cho Thai kỳ)',
+          'độ_ưu_tiên (Không bắt buộc - 0 đến 100, mặc định 0)',
+        ]
+      : []),
   ];
 
   const sampleRow1 = [
@@ -60,6 +74,7 @@ export function generateContentTemplate(type: ContentType): string {
     'Bộ Y tế',
     'https://moh.gov.vn',
     'Bộ Y tế Việt Nam',
+    ...(isArticle ? ['35 tuổi trở lên', '', '', '20'] : []),
   ];
 
   const sampleRow2 = [
@@ -73,6 +88,7 @@ export function generateContentTemplate(type: ContentType): string {
     'WHO',
     'https://www.who.int',
     'WHO',
+    ...(isArticle ? ['Thừa cân / Béo phì', '1', '12', '50'] : []),
   ];
 
   const csvRows = [
@@ -99,16 +115,17 @@ function escapeCsvCell(val: string): string {
 export async function parseImportFile(
   file: File,
   topics: CommunityTopic[],
+  recommendationCatalog: RecommendationTag[] = [],
 ): Promise<ParsedImportRow[]> {
   const fileName = file.name.toLowerCase();
 
   if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-    return parseExcelFile(file, topics);
+    return parseExcelFile(file, topics, recommendationCatalog);
   }
 
   // Handle CSV & TXT text files
   const text = await readTextFile(file);
-  return parseTextFileContent(text, fileName.endsWith('.txt'), topics);
+  return parseTextFileContent(text, fileName.endsWith('.txt'), topics, recommendationCatalog);
 }
 
 function readTextFile(file: File): Promise<string> {
@@ -120,7 +137,11 @@ function readTextFile(file: File): Promise<string> {
   });
 }
 
-function parseExcelFile(file: File, topics: CommunityTopic[]): Promise<ParsedImportRow[]> {
+function parseExcelFile(
+  file: File,
+  topics: CommunityTopic[],
+  recommendationCatalog: RecommendationTag[] = [],
+): Promise<ParsedImportRow[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -139,7 +160,7 @@ function parseExcelFile(file: File, topics: CommunityTopic[]): Promise<ParsedImp
           Array.isArray(row) ? row.map(cell => (cell == null ? '' : String(cell))) : []
         );
 
-        resolve(processImportMatrix(matrix, topics));
+        resolve(processImportMatrix(matrix, topics, recommendationCatalog));
       } catch (err) {
         reject(err);
       }
@@ -153,6 +174,7 @@ function parseTextFileContent(
   text: string,
   isTxtFile: boolean,
   topics: CommunityTopic[],
+  recommendationCatalog: RecommendationTag[] = [],
 ): ParsedImportRow[] {
   // Strip BOM if present
   const cleanText = text.replace(/^\uFEFF/, '').trim();
@@ -168,12 +190,13 @@ function parseTextFileContent(
     matrix = parseCsvMatrix(cleanText);
   }
 
-  return processImportMatrix(matrix, topics);
+  return processImportMatrix(matrix, topics, recommendationCatalog);
 }
 
 function processImportMatrix(
   matrix: string[][],
   topics: CommunityTopic[],
+  recommendationCatalog: RecommendationTag[] = [],
 ): ParsedImportRow[] {
   if (matrix.length < 2) return [];
 
@@ -188,6 +211,10 @@ function processImportMatrix(
   const sourceLabelIdx = findHeaderIndex(rawHeaders, ['tên_nguồn', 'source_label', 'tennguon', 'tên nguồn']);
   const sourceUrlIdx = findHeaderIndex(rawHeaders, ['link_nguồn', 'source_url', 'linknguon', 'link nguồn', 'url']);
   const sourcePublisherIdx = findHeaderIndex(rawHeaders, ['nhà_xuất_bản', 'source_publisher', 'nhaxuatban', 'nhà xuất bản', 'publisher']);
+  const audienceTagsIdx = findHeaderIndex(rawHeaders, ['đối_tượng_gợi_ý', 'doi_tuong_goi_y', 'đối tượng', 'audience', 'tags', 'recommendation_tags', 'thẻ gợi ý']);
+  const fromWeekIdx = findHeaderIndex(rawHeaders, ['từ_tuần', 'tu_tuan', 'từ tuần', 'eligible_from_week', 'from_week', 'from week']);
+  const toWeekIdx = findHeaderIndex(rawHeaders, ['đến_tuần', 'den_tuan', 'đến tuần', 'eligible_to_week', 'to_week', 'to week']);
+  const priorityIdx = findHeaderIndex(rawHeaders, ['độ_ưu_tiên', 'do_uu_tien', 'độ ưu tiên', 'priority', 'recommendation_priority']);
 
   const topicNameMap = new Map<string, string>();
   for (const t of topics) {
@@ -195,6 +222,20 @@ function processImportMatrix(
       topicNameMap.set(t.name.toLowerCase().trim(), t.id);
     }
     topicNameMap.set(t.id, t.id);
+  }
+
+  const recTagLookup = new Map<string, RecommendationTag>();
+  for (const tag of recommendationCatalog) {
+    recTagLookup.set(tag.id.toLowerCase(), tag);
+    if (tag.slug) {
+      recTagLookup.set(tag.slug.toLowerCase(), tag);
+    }
+    const viLabel = RECOMMENDATION_TAG_VIETNAMESE_LABELS[tag.slug];
+    if (viLabel) {
+      recTagLookup.set(viLabel.toLowerCase().trim(), tag);
+    }
+    const formatted = formatTagOptionLabel(tag).toLowerCase().trim();
+    recTagLookup.set(formatted, tag);
   }
 
   const result: ParsedImportRow[] = [];
@@ -212,6 +253,10 @@ function processImportMatrix(
     const rawSourceLabel = sourceLabelIdx >= 0 ? (row[sourceLabelIdx] || '').trim() : '';
     const rawSourceUrl = sourceUrlIdx >= 0 ? (row[sourceUrlIdx] || '').trim() : '';
     const rawSourcePublisher = sourcePublisherIdx >= 0 ? (row[sourcePublisherIdx] || '').trim() : '';
+    const rawAudienceTags = audienceTagsIdx >= 0 ? (row[audienceTagsIdx] || '').trim() : '';
+    const rawFromWeek = fromWeekIdx >= 0 ? (row[fromWeekIdx] || '').trim() : '';
+    const rawToWeek = toWeekIdx >= 0 ? (row[toWeekIdx] || '').trim() : '';
+    const rawPriority = priorityIdx >= 0 ? (row[priorityIdx] || '').trim() : '';
 
     // Unescape HTML entities if parser escaped them once (e.g. &lt;h2&gt; -> <h2>)
     if (rawBody.includes('&lt;') || rawBody.includes('&gt;')) {
@@ -250,6 +295,69 @@ function processImportMatrix(
       }
     }
 
+    // Recommendation Audience Metadata
+    const parsedTagIds: string[] = [];
+    const parsedTagLabels: string[] = [];
+    if (rawAudienceTags) {
+      const tagTokens = rawAudienceTags.split(/[,;\n]+/).map(t => t.trim()).filter(Boolean);
+      for (const token of tagTokens) {
+        const found = recTagLookup.get(token.toLowerCase());
+        if (found) {
+          if (!parsedTagIds.includes(found.id)) {
+            parsedTagIds.push(found.id);
+            parsedTagLabels.push(formatTagOptionLabel(found));
+          }
+        } else {
+          errors.push(`Thẻ đối tượng gợi ý "${token}" không tồn tại trong danh mục hệ thống.`);
+        }
+      }
+    }
+
+    let parsedFromWeek: number | null = null;
+    if (rawFromWeek !== '') {
+      const parsed = Number(rawFromWeek);
+      if (Number.isInteger(parsed)) {
+        parsedFromWeek = parsed;
+      } else {
+        errors.push(`"Từ tuần" (${rawFromWeek}) phải là số nguyên.`);
+      }
+    }
+
+    let parsedToWeek: number | null = null;
+    if (rawToWeek !== '') {
+      const parsed = Number(rawToWeek);
+      if (Number.isInteger(parsed)) {
+        parsedToWeek = parsed;
+      } else {
+        errors.push(`"Đến tuần" (${rawToWeek}) phải là số nguyên.`);
+      }
+    }
+
+    let parsedPriority = 0;
+    if (rawPriority !== '') {
+      const parsed = Number(rawPriority);
+      if (Number.isInteger(parsed)) {
+        parsedPriority = parsed;
+      } else {
+        errors.push(`"Độ ưu tiên" (${rawPriority}) phải là số nguyên.`);
+      }
+    }
+
+    if (parsedStage) {
+      const metadataErr = recommendationMetadataError({
+        type: 'ARTICLE',
+        stage: parsedStage,
+        selectedTagIds: parsedTagIds,
+        from: parsedFromWeek,
+        to: parsedToWeek,
+        priority: parsedPriority,
+        catalog: recommendationCatalog,
+      });
+      if (metadataErr) {
+        errors.push(metadataErr);
+      }
+    }
+
     result.push({
       rowIndex: i + 1,
       title: rawTitle,
@@ -261,6 +369,11 @@ function processImportMatrix(
       sourceLabel: rawSourceLabel || undefined,
       sourceUrl: rawSourceUrl || undefined,
       sourcePublisher: rawSourcePublisher || undefined,
+      tagIds: parsedTagIds.length > 0 ? parsedTagIds : undefined,
+      audienceTagLabels: parsedTagLabels.length > 0 ? parsedTagLabels : undefined,
+      eligibleFromWeek: parsedFromWeek,
+      eligibleToWeek: parsedToWeek,
+      recommendationPriority: parsedPriority,
       isValid: errors.length === 0,
       errors,
     });

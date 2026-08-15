@@ -75,4 +75,25 @@ void main() {
     expect(voice.disposeCalls, 1);
     expect(voice.spoken, isEmpty);
   });
+
+  test('sanitizes punctuation marks for natural Vietnamese TTS flow', () {
+    expect(
+      SystemExerciseVoiceFeedback.sanitizeForSpeech(
+        'Lưng dưới đang võng xuống — nâng nhẹ hông lên.',
+      ),
+      'Lưng dưới đang võng xuống, nâng nhẹ hông lên.',
+    );
+    expect(
+      SystemExerciseVoiceFeedback.sanitizeForSpeech(
+        'Giữ khuỷu tay sát thân – cánh tay trên đang đưa ra xa.',
+      ),
+      'Giữ khuỷu tay sát thân, cánh tay trên đang đưa ra xa.',
+    );
+    expect(
+      SystemExerciseVoiceFeedback.sanitizeForSpeech(
+        'Tư thế plank/C đúng',
+      ),
+      'Tư thế plank hoặc C đúng',
+    );
+  });
 }

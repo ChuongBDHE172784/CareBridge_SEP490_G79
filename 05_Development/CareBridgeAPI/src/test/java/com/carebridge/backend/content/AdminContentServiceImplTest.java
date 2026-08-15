@@ -3,9 +3,11 @@ package com.carebridge.backend.content;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -398,5 +400,79 @@ class AdminContentServiceImplTest {
         assertEquals(null, item.getEligibleFromWeek());
         assertEquals(null, item.getEligibleToWeek());
         assertEquals((short) 0, item.getRecommendationPriority());
+    }
+
+    @Test
+    void importContentBatch_withRecommendationAudience_savesSuccessfully() {
+        UUID tagId = com.carebridge.backend.recommendation.RecommendationConstants.catalogIdFor("rec-bmi-obesity");
+        CommunityTopic tagTopic = CommunityTopic.builder()
+                .id(tagId)
+                .slug("rec-bmi-obesity")
+                .type(TopicType.TAG)
+                .description(com.carebridge.backend.recommendation.RecommendationConstants.CATALOG_VERSION + "|rec-bmi-obesity")
+                .isHidden(false)
+                .build();
+        when(communityTopicRepository.findAllByIdInAndTypeAndIsHiddenFalse(any(), eq(TopicType.TAG)))
+                .thenReturn(List.of(tagTopic));
+        when(contentRepository.saveAll(any())).thenAnswer(inv -> {
+            List<ContentItem> items = inv.getArgument(0);
+            for (int i = 0; i < items.size(); i++) {
+                items.get(i).setId(UUID.randomUUID());
+            }
+            return items;
+        });
+
+        com.carebridge.backend.content.dto.request.BulkImportContentRequest request =
+                com.carebridge.backend.content.dto.request.BulkImportContentRequest.builder()
+                        .type(ContentType.ARTICLE)
+                        .items(List.of(
+                                com.carebridge.backend.content.dto.request.BulkImportContentRequest.BulkImportItemRequest.builder()
+                                        .rowIndex(1)
+                                        .title("Bài viết có đối tượng")
+                                        .body("<h2>Nội dung</h2>")
+                                        .stage("PREGNANCY")
+                                        .tagIds(List.of(tagId))
+                                        .eligibleFromWeek(1)
+                                        .eligibleToWeek(12)
+                                        .recommendationPriority(50)
+                                        .build()
+                        ))
+                        .build();
+
+        var response = adminContentService.importContentBatch(request, ADMIN_USER_ID);
+
+        assertEquals(1, response.getSuccessCount());
+        assertEquals(0, response.getFailedCount());
+        verify(contentRepository).saveAll(argThat(list -> {
+            List<ContentItem> items = (List<ContentItem>) list;
+            ContentItem item = items.get(0);
+            return item.getTagIds() != null && item.getTagIds().contains(tagId)
+                    && Short.valueOf((short) 1).equals(item.getEligibleFromWeek())
+                    && Short.valueOf((short) 12).equals(item.getEligibleToWeek())
+                    && Short.valueOf((short) 50).equals(item.getRecommendationPriority());
+        }));
+    }
+
+    @Test
+    void importContentBatch_withInvalidWeekRange_reportsError() {
+        com.carebridge.backend.content.dto.request.BulkImportContentRequest request =
+                com.carebridge.backend.content.dto.request.BulkImportContentRequest.builder()
+                        .type(ContentType.ARTICLE)
+                        .items(List.of(
+                                com.carebridge.backend.content.dto.request.BulkImportContentRequest.BulkImportItemRequest.builder()
+                                        .rowIndex(1)
+                                        .title("Bài viết lỗi tuần")
+                                        .body("<h2>Nội dung</h2>")
+                                        .stage("PRE_PREGNANCY")
+                                        .eligibleFromWeek(5)
+                                        .build()
+                        ))
+                        .build();
+
+        var response = adminContentService.importContentBatch(request, ADMIN_USER_ID);
+
+        assertEquals(0, response.getSuccessCount());
+        assertEquals(1, response.getFailedCount());
+        assertTrue(response.getErrors().get(0).contains("Thông tin đối tượng gợi ý không hợp lệ"));
     }
 }

@@ -397,6 +397,10 @@ export interface BulkImportItemPayload {
   sourceLabel?: string;
   sourceUrl?: string;
   sourcePublisher?: string;
+  tagIds?: string[];
+  eligibleFromWeek?: number | null;
+  eligibleToWeek?: number | null;
+  recommendationPriority?: number;
 }
 
 export interface BulkImportResult {
