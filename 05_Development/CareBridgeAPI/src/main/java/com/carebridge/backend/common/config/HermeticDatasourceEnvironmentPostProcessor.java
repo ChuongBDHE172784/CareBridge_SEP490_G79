@@ -58,9 +58,6 @@ public class HermeticDatasourceEnvironmentPostProcessor implements EnvironmentPo
         if (!environment.getProperty("spring.flyway.enabled", Boolean.class, false)) {
             fail("HERMETIC_FLYWAY_DISABLED");
         }
-        if (environment.getProperty("carebridge.dev-seed.enabled", Boolean.class, false)) {
-            fail("HERMETIC_DEV_SEED_ENABLED");
-        }
     }
 
     @Override

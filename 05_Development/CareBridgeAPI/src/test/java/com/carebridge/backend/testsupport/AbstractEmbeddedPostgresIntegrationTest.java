@@ -31,7 +31,6 @@ import org.springframework.test.context.TestPropertySource;
         "carebridge.mail.from-name=CareBridge",
         "carebridge.zego.app-id=1",
         "carebridge.zego.server-secret=synthetic-test-secret",
-        "carebridge.dev-seed.enabled=false"
 })
 public abstract class AbstractEmbeddedPostgresIntegrationTest {
 

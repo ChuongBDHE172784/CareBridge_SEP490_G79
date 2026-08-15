@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CommunityTopic, ContentType } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import { fetchTopics, importContentBatch } from '../services/contentApi';
@@ -38,16 +38,7 @@ export default function ImportContentModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchTopics()
-        .then(setTopics)
-        .catch(() => setTopics([]));
-      resetState();
-    }
-  }, [isOpen]);
-
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedFile(null);
     setParsedRows([]);
     setIsParsing(false);
@@ -55,7 +46,16 @@ export default function ImportContentModal({
     setImportResults(null);
     setPreviewRow(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTopics()
+        .then(setTopics)
+        .catch(() => setTopics([]));
+      resetState();
+    }
+  }, [isOpen, resetState]);
 
   if (!isOpen) return null;
 

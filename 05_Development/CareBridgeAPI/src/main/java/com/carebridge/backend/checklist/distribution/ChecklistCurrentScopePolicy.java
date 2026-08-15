@@ -149,8 +149,40 @@ public class ChecklistCurrentScopePolicy {
             boolean sameWindow = decision.eligible()
                     && Objects.equals(instance.getWindowStart(), decision.windowStart())
                     && Objects.equals(instance.getWindowEnd(), decision.windowEnd());
-            if (!sameWindow || instance.getPeriodKey() == null) {
-                return sameWindow;
+            if (!sameWindow) {
+                return false;
+            }
+            if (template.getStage() == ContentStage.PRE_PREGNANCY
+                    && template.getScheduleType() == ChecklistScheduleType.SET
+                    && template.getMaterializationPolicy()
+                            == ChecklistMaterializationPolicy.SEQUENCE_STEP) {
+                Short templateContractVersion = template.getChecklistContractVersion();
+                if (templateContractVersion == null
+                        || Short.valueOf(ChecklistPeriodIdentity.V1_CONTRACT_VERSION)
+                                .equals(templateContractVersion)) {
+                    return ChecklistPeriodIdentity.isV1NonCadenceIdentity(
+                            instance.getChecklistContractVersion(),
+                            instance.getPeriodKey(),
+                            instance.getScheduleZoneId());
+                }
+                if (!Short.valueOf(ChecklistPeriodIdentity.V2_CONTRACT_VERSION)
+                        .equals(templateContractVersion)) {
+                    return false;
+                }
+                return ChecklistPeriodIdentity.isV2NonCadenceIdentity(
+                        instance.getChecklistContractVersion(),
+                        instance.getPeriodKey(),
+                        instance.getScheduleZoneId(),
+                        instance.getMaterializationMode(),
+                        instance.getWasActionable());
+            }
+            if (instance.getPeriodKey() == null) {
+                boolean unconfigured = template.getScheduleType() == null
+                        && template.getMaterializationPolicy() == null;
+                boolean legacyWindow = template.getScheduleType() == ChecklistScheduleType.LEGACY
+                        && template.getMaterializationPolicy()
+                                == ChecklistMaterializationPolicy.LEGACY_WINDOW;
+                return unconfigured || legacyWindow;
             }
             String expectedPeriodKey = ChecklistPeriodIdentity.periodKey(
                     template.getScheduleType(), template.getMaterializationPolicy(),

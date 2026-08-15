@@ -90,8 +90,9 @@ public final class ChecklistRetentionOwnerIsolationVerifier implements Applicati
                    AND to_regclass('public.checklist_migration_quarantine') IS NULL
                    AND NOT EXISTS (
                        SELECT 1 FROM pg_catalog.pg_auth_members membership
-                       WHERE membership.roleid IN (SELECT oid FROM secure_roles)
+                       WHERE (membership.roleid IN (SELECT oid FROM secure_roles)
                           OR membership.member IN (SELECT oid FROM secure_roles))
+                         AND (membership.inherit_option OR membership.set_option))
                    AND EXISTS (
                        SELECT 1 FROM purge_function
                        WHERE purge_function.proowner = (

@@ -1,5 +1,19 @@
 # Lessons learned
 
+## 2026-08-14 - Checklist item source-link authoring
+
+- Treat an optional per-item source link as a round-trip contract: create, edit,
+  clear, request/response mapping, version cloning, and JSON metadata persistence
+  must change together even when the visible request is only for a form field.
+- Keep URL policy identical at every boundary. The Web form, Bean Validation,
+  and service guard now require HTTP(S), a hostname, no embedded credentials,
+  and at most 2,048 characters; checking only `URL.protocol` leaves
+  `https://user:password@host` incorrectly accepted by the UI.
+- Adding source-only JSON metadata activates code paths that recurrence-only
+  tests may never reach. Inject the real `ObjectMapper` in service tests and
+  prove both update and clear behavior so an early `{}` return cannot silently
+  discard the new field.
+
 ## 2026-08-14 - Postpartum and Baby Care stage split planning
 
 - When product UX chooses to separate maternal postpartum and baby care, implement the separation as one cross-layer contract: stage, care context, anchor, subject, occurrence identity, authoring choice, filters, and presentation must change together.
@@ -682,3 +696,115 @@
 - For content-based table widths, measure rendered labels with their actual font weight,
   round to a stable pixel grid, and preserve each table center while updating every nested
   row/detail/name geometry; changing only the outer table width causes clipping or drift.
+
+## 2026-08-14 - Flyway production baseline squash
+
+- Generate a production baseline from the materialized PostgreSQL catalog rather than
+  concatenating historical migrations; this preserves the final tables, native objects,
+  constraints, triggers, ownership, and ACLs without carrying upgrade-only logic forward.
+- Keep schema DDL and reference data in separate Flyway files and enforce that boundary in
+  tests: V1 must reject top-level seed DML, while V2 must reject DDL and use an explicit
+  allowlist with fixed counts and demo/account-owned tables proven empty.
+- A focused clean-bootstrap test can prove the migration deliverable even when the broader
+  suite contains stale fixtures, but both evidence states must be reported. Do not claim the
+  full suite passed, and do not broaden the migration task to repair unrelated fixture drift.
+- Database reset is gated by endpoint and identity. If PostgreSQL/`psql` is unavailable on
+  the approved loopback endpoint, leave DROP/CREATE and strict startup unchecked; never
+  substitute a remote database or install tooling without authorization.
+
+## 2026-08-14 - Hierarchical Checklist Excel import
+
+- For a two-sheet parent/child import, normalize the shared checklist code consistently,
+  make any invalid child invalidate its parent preview, and perform source-facing week to
+  persisted-offset conversion at the parser boundary so UI and backend contracts stay aligned.
+- Async file previews need a generation token, and file replacement must be locked while the
+  import request is in flight; otherwise stale parse or POST results can be shown against a
+  newer filename.
+- Bound batch size in both the UI and Jakarta validation while preserving one transaction per
+  checklist row, so partial failures remain isolated without allowing unbounded sequential work.
+
+## 2026-08-15 - Checklist Excel dropdown validation
+
+- SheetJS may return an `ArrayBuffer` even when TypeScript casts the result to `Uint8Array`;
+  normalize the runtime byte type before browser download or a typed-array copy can emit a
+  zero-filled workbook.
+- When list validation requires targeted OpenXML injection, preserve worksheet child ordering,
+  fail fast if the workbook entry is missing, and verify the generated file with Excel itself;
+  checking only for XML substrings does not prove the dropdown is usable.
+- Keep inline validation lists below Excel's 255-character formula limit and split long codebook
+  guidance across readable rows so every supported value remains visible in the template.
+
+## 2026-08-15 - Canonical Checklist Excel template asset
+
+- When stakeholders maintain the approved workbook in `08_References`, publish that exact
+  binary as the Web download asset instead of rebuilding a second hard-coded workbook in
+  TypeScript; this preserves formatting, guidance, dropdown validation, and future edits.
+- Protect the synchronization with a byte-equality contract between the reference and public
+  asset, then separately assert sheet names, row counts, parser validity, and the modal's
+  download URL so both workbook content and UI wiring are covered.
+- Verify the production build copies the workbook without changing its hash, and open the
+  runtime asset with Excel when data-validation behavior is part of the acceptance criteria.
+
+## 2026-08-15 - Workspace-local PostgreSQL reset and strict startup
+
+- Canonicalize the server address in the JDBC identity gate with
+  `host(inet_server_addr())` before comparing it to `127.0.0.1`; keep the maintenance
+  database, port, and current user in the same fail-closed assertion before DROP.
+- A trust-auth disposable cluster still needs a complete, nonblank datasource tuple because
+  the runtime environment post-processor validates configuration shape before connecting.
+  Use a clearly non-secret local placeholder and redact it from evidence.
+- A protected readiness endpoint may correctly return HTTP 401. Treat the Flyway completion,
+  Hibernate validation, `Started BackendApplication` log, JDBC history proof, and clean process
+  observation as startup evidence instead of weakening endpoint security for a local check.
+- Terminating a verified `spring-boot:run` process makes Maven end nonzero. Report startup and
+  teardown as separate evidence; do not describe forced application termination as graceful.
+- PostgreSQL and Java tooling can hit Windows restricted-token or external-cache sandbox gates.
+  Preserve the exact loopback flags and rerun the same command with approved escalation rather
+  than changing endpoints, copying dependencies, or installing replacement tooling.
+- PostgreSQL 18 records the grantor for role memberships. A non-`CREATEROLE` Flyway runner
+  cannot remove a temporary retention-owner membership granted by an administrator, so an
+  exact two-file baseline that ends with an unreachable NOLOGIN owner needs a privileged,
+  dedicated migration runner and an early stable fail-closed marker for runtime-style roles.
+- `PUBLIC` is a pseudo-role, not a normal login for `has_function_privilege` assertions.
+  Verify revoked PUBLIC function ACLs through `aclexplode(...).grantee = 0`, and pair catalog
+  checks with an actual role-context invocation/denial test.
+- When asserting sequence ACLs, source relation OIDs from `pg_catalog.pg_sequence` before
+  calling `has_sequence_privilege`. A `pg_class.relkind = 'S'` predicate alone does not
+  guarantee evaluation order, so PostgreSQL may invoke the privilege function on a TOAST
+  relation and fail with `is not a sequence` before applying the filter.
+
+## 2026-08-15 - Supabase CLI connectivity verification
+
+- On this Windows workspace, `supabase` is not on the global PATH and `npx.ps1` is blocked by
+  PowerShell Execution Policy. Invoke the cached `supabase.exe` directly (or use `npx.cmd` when
+  it is responsive) and allow its user-profile telemetry write when running in a sandbox.
+- Verify the Management API and database paths separately: `projects list --output json` proves
+  CLI authentication/project linking, while `migration list --linked` proves a read-only remote
+  PostgreSQL connection. An empty migration list with exit code 0 is still successful connectivity.
+
+## 2026-08-15 - PRE_PREGNANCY Today sequence with empty checklist items
+
+- A Today sequence pill such as `1/5` can be a synthetic server projection when no current
+  instance exists; it is the sequence position, not evidence that one item or one instance is
+  visible. Inspect `currentInstanceId` and all Today sections before interpreting the pill.
+- V2 non-cadence materialization deliberately persists the sentinel period identity
+  `O:USER_CREATED`. Current-scope reconciliation must recognize that supported identity for
+  `SET`/`SEQUENCE_STEP`; treating every configured schedule/policy as a cadence handled by
+  `ChecklistPeriodIdentity` makes the expected key null and immediately historicalizes valid work.
+- `LIFECYCLE_STAGE_OBSOLETE` is a generic reconciliation reason for any `!isCurrent` result. It
+  does not by itself prove a real lifecycle-stage transition; compare the journey stage, catalog
+  policy, instance period identity, timestamps, and current-scope predicates.
+- The existing pre-pregnancy PostgreSQL test calls Today with `reconcile=false` and seeds roots
+  without the live `SET`/`SEQUENCE_STEP` fields, so it cannot catch the create-then-reconcile seam.
+  A regression must exercise automatic ensure plus reconciliation with the production catalog shape.
+
+## 2026-08-15 - PRE_PREGNANCY current-scope fix and review
+
+- Treat persisted occurrence identity as a shared writer-reader domain contract. Centralizing the
+  exact V2 non-cadence tuple prevents distribution and reconciliation from drifting independently.
+- When tightening a fail-closed branch, explicitly test older supported shapes and configured
+  null-key identities; compatibility and security-style rejection can regress in opposite directions.
+- Preserve both `reconcile=true` and `reconcile=false` coverage while adding an end-to-end regression,
+  then prove repeat reads, required completion, and sequence advancement against PostgreSQL.
+- A code fix that prevents future historicalization does not authorize restoring an already-historical
+  production row. Keep data remediation separate, explicit, scoped, and independently approved.

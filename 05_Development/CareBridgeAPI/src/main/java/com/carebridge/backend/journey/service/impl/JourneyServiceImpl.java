@@ -453,8 +453,8 @@ public class JourneyServiceImpl implements IJourneyService {
                         canonicalLmp, today);
                 sourceWeekNumber = GestationalDatingResolver.sourceWeekNumber(completedGestationalWeek);
                 plan = GestationalDatingResolver.planForSourceWeek(sourceWeekNumber);
-                pregnancyWeek = completedGestationalWeek;
-                trimester = calculateTrimester(completedGestationalWeek);
+                pregnancyWeek = sourceWeekNumber;
+                trimester = calculateTrimester(pregnancyWeek);
                 daysUntilDue = ChronoUnit.DAYS.between(
                         today, canonicalLmp.plusDays(GestationalDatingResolver.GESTATION_DAYS));
             }
