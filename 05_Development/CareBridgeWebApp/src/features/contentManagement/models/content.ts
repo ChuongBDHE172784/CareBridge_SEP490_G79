@@ -224,6 +224,7 @@ export interface ChecklistItem {
   isRequired: boolean | null;
   targetSubject: ChecklistTargetSubject | null;
   description?: string | null;
+  sourceUrl?: string | null;
   supportFunction?: ChecklistSupportFunction | null;
   /** Authoring metadata for recurrence labels shown on the checklist item. */
   repeatWeekly?: boolean | null;
@@ -237,6 +238,7 @@ export interface ChecklistItemInput {
   isRequired?: boolean | null;
   targetSubject?: ChecklistTargetSubject | null;
   description?: string | null;
+  sourceUrl?: string | null;
   supportFunction?: ChecklistSupportFunction | null;
   repeatWeekly?: boolean | null;
   repeatDaily?: boolean | null;

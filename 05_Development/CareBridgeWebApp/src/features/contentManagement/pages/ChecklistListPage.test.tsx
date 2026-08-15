@@ -7,17 +7,19 @@ import type { AdminChecklistTemplate, ChecklistItem, PaginatedResponse } from '.
 const harness = vi.hoisted(() => {
   const fetchAdminChecklistTemplates = vi.fn();
   return {
-  fetchAdminChecklistTemplates,
-  // Alias retained so the existing boundary tests continue to describe the
-  // same request while the page migrates to the canonical endpoint.
-  fetchAdminChecklists: fetchAdminChecklistTemplates,
-  archiveChecklistTemplate: vi.fn(),
-  navigate: vi.fn(),
+    fetchAdminChecklistTemplates,
+    // Alias retained so the existing boundary tests continue to describe the
+    // same request while the page migrates to the canonical endpoint.
+    fetchAdminChecklists: fetchAdminChecklistTemplates,
+    updateChecklistTemplate: vi.fn(),
+    archiveChecklistTemplate: vi.fn(),
+    navigate: vi.fn(),
   };
 });
 
 vi.mock('../services/contentApi', () => ({
   fetchAdminChecklistTemplates: harness.fetchAdminChecklistTemplates,
+  updateChecklistTemplate: harness.updateChecklistTemplate,
   archiveChecklistTemplate: harness.archiveChecklistTemplate,
 }));
 
@@ -76,8 +78,11 @@ function deferred<T>() {
 describe('UC82-69-WEB-001 admin checklist boundary', () => {
   beforeEach(() => {
     harness.fetchAdminChecklists.mockReset();
+    harness.updateChecklistTemplate.mockReset();
     harness.archiveChecklistTemplate.mockReset();
     harness.navigate.mockReset();
+    harness.fetchAdminChecklists.mockResolvedValue(page([]));
+    harness.updateChecklistTemplate.mockResolvedValue(checklist({ status: 'PENDING_REVIEW' }));
     vi.spyOn(window, 'prompt').mockReturnValue(null);
   });
 
@@ -498,5 +503,196 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     expect(await screen.findByText('Nullable metadata row')).toBeTruthy();
     expect(screen.getByText('Không áp dụng')).toBeTruthy();
     expect(screen.getByText('Không có cửa sổ')).toBeTruthy();
+  });
+
+  it('renders "Gửi phê duyệt tất cả" button and handles bulk submission upon confirmation', async () => {
+    harness.fetchAdminChecklists.mockResolvedValueOnce(page([
+      checklist({ id: 'chk-1', name: 'Checklist Nháp 1', status: 'DRAFT' }),
+    ]));
+
+    render(<ChecklistListPage />);
+
+    expect(await screen.findByText('Checklist Nháp 1')).toBeTruthy();
+
+    const submitAllBtn = screen.getByRole('button', { name: /Gửi phê duyệt tất cả/i });
+    expect(submitAllBtn).toBeTruthy();
+
+    // Mock response when fetching all DRAFT items for modal
+    harness.fetchAdminChecklists.mockResolvedValueOnce({
+      content: [
+        checklist({ id: 'chk-1', name: 'Checklist Nháp 1', status: 'DRAFT' }),
+        checklist({ id: 'chk-2', name: 'Checklist Nháp 2', status: 'DRAFT' }),
+      ],
+      totalElements: 2,
+      totalPages: 1,
+      number: 0,
+      size: 50,
+    });
+
+    harness.updateChecklistTemplate.mockResolvedValue(checklist({ id: 'chk-1', status: 'PENDING_REVIEW' }));
+
+    fireEvent.click(submitAllBtn);
+
+    expect(await screen.findByText('Gửi phê duyệt tất cả checklist?')).toBeTruthy();
+    expect(await screen.findByText(/Bạn có chắc chắn muốn gửi phê duyệt 2\/2 checklist/)).toBeTruthy();
+
+    const confirmBtn = await screen.findByRole('button', { name: /Gửi phê duyệt \(2 mục\)/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(harness.updateChecklistTemplate).toHaveBeenCalledTimes(2);
+      expect(harness.updateChecklistTemplate).toHaveBeenNthCalledWith(
+        1,
+        'chk-1',
+        expect.objectContaining({ status: 'PENDING_REVIEW' }),
+      );
+      expect(harness.updateChecklistTemplate).toHaveBeenNthCalledWith(
+        2,
+        'chk-2',
+        expect.objectContaining({ status: 'PENDING_REVIEW' }),
+      );
+    });
+  });
+
+  it('allows unchecking items in collapsible dropdown list before submitting', async () => {
+    harness.fetchAdminChecklists.mockResolvedValueOnce(page([
+      checklist({ id: 'chk-1', name: 'Checklist 1', status: 'DRAFT' }),
+    ]));
+
+    render(<ChecklistListPage />);
+
+    expect(await screen.findByText('Checklist 1')).toBeTruthy();
+
+    const submitAllBtn = screen.getByRole('button', { name: /Gửi phê duyệt tất cả/i });
+
+    harness.fetchAdminChecklists.mockResolvedValueOnce({
+      content: [
+        checklist({ id: 'chk-1', name: 'Checklist 1', status: 'DRAFT' }),
+        checklist({ id: 'chk-2', name: 'Checklist 2', status: 'DRAFT' }),
+      ],
+      totalElements: 2,
+      totalPages: 1,
+      number: 0,
+      size: 50,
+    });
+
+    harness.updateChecklistTemplate.mockResolvedValue(checklist({ id: 'chk-1', status: 'PENDING_REVIEW' }));
+
+    fireEvent.click(submitAllBtn);
+
+    expect(await screen.findByText('Gửi phê duyệt tất cả checklist?')).toBeTruthy();
+
+    const expandListBtn = await screen.findByRole('button', { name: /Danh sách checklist bản nháp/i });
+    fireEvent.click(expandListBtn);
+
+    expect(await screen.findByText('Đã chọn 2 / 2')).toBeTruthy();
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.length).toBe(2);
+
+    // Uncheck item 2
+    fireEvent.click(checkboxes[1]);
+
+    const confirmBtn = await screen.findByRole('button', { name: /Gửi phê duyệt \(1 mục\)/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(harness.updateChecklistTemplate).toHaveBeenCalledTimes(1);
+      expect(harness.updateChecklistTemplate).toHaveBeenCalledWith(
+        'chk-1',
+        expect.objectContaining({ status: 'PENDING_REVIEW' }),
+      );
+    });
+  });
+
+  it('handles empty draft list when clicking "Gửi phê duyệt tất cả"', async () => {
+    harness.fetchAdminChecklists.mockResolvedValueOnce(page([]));
+
+    render(<ChecklistListPage />);
+
+    await screen.findByText('Không có checklist phù hợp.');
+
+    const submitAllBtn = screen.getByRole('button', { name: /Gửi phê duyệt tất cả/i });
+
+    harness.fetchAdminChecklists.mockResolvedValueOnce({
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      number: 0,
+      size: 50,
+    });
+
+    fireEvent.click(submitAllBtn);
+
+    expect(await screen.findByText('Gửi phê duyệt tất cả checklist?')).toBeTruthy();
+    expect(await screen.findByText('Không có checklist bản nháp nào cần gửi phê duyệt.')).toBeTruthy();
+
+    const closeBtn = await screen.findByRole('button', { name: 'Đóng' });
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Gửi phê duyệt tất cả checklist?')).toBeNull();
+    });
+  });
+
+  it('normalizes substage to null when submitting PRE_PREGNANCY checklists', async () => {
+    harness.fetchAdminChecklists.mockResolvedValueOnce(page([
+      checklist({
+        id: 'pre-1',
+        name: 'Chuẩn bị mang thai 1',
+        stage: 'PRE_PREGNANCY',
+        status: 'DRAFT',
+      }),
+    ]));
+
+    render(<ChecklistListPage />);
+
+    expect(await screen.findByText('Chuẩn bị mang thai 1')).toBeTruthy();
+
+    const submitAllBtn = screen.getByRole('button', { name: /Gửi phê duyệt tất cả/i });
+
+    harness.fetchAdminChecklists.mockResolvedValueOnce({
+      content: [
+        {
+          ...checklist({
+            id: 'pre-1',
+            name: 'Chuẩn bị mang thai 1',
+            stage: 'PRE_PREGNANCY',
+            status: 'DRAFT',
+          }),
+          substage: {
+            code: 'PRE_PREGNANCY_NONE_DAY_0_0',
+            anchor: 'NONE',
+            startInclusive: 0,
+            endInclusive: 0,
+            unit: 'DAY',
+          },
+        },
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 50,
+    });
+
+    harness.updateChecklistTemplate.mockResolvedValue(checklist({ id: 'pre-1', status: 'PENDING_REVIEW' }));
+
+    fireEvent.click(submitAllBtn);
+
+    expect(await screen.findByText('Gửi phê duyệt tất cả checklist?')).toBeTruthy();
+
+    const confirmBtn = await screen.findByRole('button', { name: /Gửi phê duyệt \(1 mục\)/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(harness.updateChecklistTemplate).toHaveBeenCalledWith(
+        'pre-1',
+        expect.objectContaining({
+          stage: 'PRE_PREGNANCY',
+          substage: null,
+          status: 'PENDING_REVIEW',
+        }),
+      );
+    });
   });
 });

@@ -113,6 +113,7 @@ public class DevDataSeeder implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         validateSeedPassword(testPassword);
+        seedProductionReferenceData();
         String passwordHash = passwordEncoder.encode(testPassword);
         retireObsoleteSeedAccounts();
 
@@ -169,13 +170,45 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     /**
+     * Seeds canonical baseline reference data (health metrics, knowledge sources,
+     * red flag rules, community topics, ai moderation policies, vaccination schedules,
+     * care item templates) from production_reference_data.sql.
+     */
+    private void seedProductionReferenceData() {
+        ClassPathResource resource = new ClassPathResource(
+                "db/data_seed/production_reference_data.sql");
+        if (!resource.exists()) {
+            log.warn("Production reference data script is not available on the classpath");
+            return;
+        }
+
+        try (var inputStream = resource.getInputStream()) {
+            String script = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            int executed = 0;
+            for (String statement : splitSqlStatements(script)) {
+                if (!statement.isBlank()) {
+                    jdbcTemplate.execute(statement);
+                    executed++;
+                }
+            }
+            log.info("Loaded {} statements from production reference data script", executed);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to read production reference data script", ex);
+        }
+    }
+
+    /**
      * Flyway runs before this ApplicationRunner, so account-owned demo rows are skipped on a
      * clean database. Replaying the consolidated, idempotent migration after the accounts and
      * expert profiles have been flushed makes the dev dataset available on every startup.
      */
     private void seedCommunityModerationDemoData() {
         ClassPathResource resource = new ClassPathResource(
-                "db/migration/V20260813220000__seed_ai_and_community_moderation_demo.sql");
+                "db/data_seed/dev_community_moderation_demo.sql");
+        if (!resource.exists()) {
+            resource = new ClassPathResource(
+                    "db/migration/V20260813220000__seed_ai_and_community_moderation_demo.sql");
+        }
         if (!resource.exists()) {
             log.warn("Community moderation demo migration is not available on the classpath");
             return;

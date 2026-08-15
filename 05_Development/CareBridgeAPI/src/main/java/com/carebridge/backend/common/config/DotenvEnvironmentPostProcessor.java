@@ -50,6 +50,18 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
         } else {
             propertySources.addLast(dotenvPropertySource);
         }
+
+        Object profiles = values.get("SPRING_PROFILES_ACTIVE");
+        if (profiles == null) {
+            profiles = values.get("spring.profiles.active");
+        }
+        if (profiles instanceof String profilesStr && !profilesStr.isBlank()) {
+            for (String profile : profilesStr.split(",")) {
+                if (!profile.trim().isEmpty()) {
+                    environment.addActiveProfile(profile.trim());
+                }
+            }
+        }
     }
 
     @Override

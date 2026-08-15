@@ -109,11 +109,6 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
             @Param("eventCategories") Collection<String> eventCategories,
             Pageable pageable);
 
-    // Dev seed idempotency (DevDataSeeder) — a given target only gets one seeded action of each type
-    default boolean existsByTargetIdAndActionType(UUID targetId, ModerationActionType actionType) {
-        return existsByTargetIdAndEventCategory(targetId, category(actionType));
-    }
-
     @Query("""
             select (count(m) > 0) from ModerationAction m
             where m.targetId = :targetId and m.eventCategory = :eventCategory

@@ -86,7 +86,7 @@ class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
     final start = widget.template.eligibilityStartInclusive;
     final end = widget.template.eligibilityEndInclusive;
     if (start == null || end == null) return null;
-    return end >= 2000000000 ? 'Tuần $start+' : 'Tuần $start–$end';
+    return end >= 2000000000 ? 'Tuần ${start + 1}+' : 'Tuần ${start + 1}–${end + 1}';
   }
 
   String? get _cadenceLabel {

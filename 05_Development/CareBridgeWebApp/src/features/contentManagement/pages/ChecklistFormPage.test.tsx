@@ -91,6 +91,7 @@ describe('ChecklistFormPage version', () => {
         isRequired: true,
         targetSubject: 'MOTHER',
         description: 'Theo dõi và cập nhật chỉ số mỗi ngày.',
+        sourceUrl: 'https://carebridge.example/health-records',
         supportFunction: 'HEALTH_RECORDS',
       }],
     });
@@ -99,6 +100,7 @@ describe('ChecklistFormPage version', () => {
 
     expect(await screen.findByDisplayValue('Ghi lại chỉ số sức khỏe')).toBeTruthy();
     expect(screen.getByDisplayValue('Theo dõi và cập nhật chỉ số mỗi ngày.')).toBeTruthy();
+    expect(screen.getByLabelText('Link nguồn mục 1')).toHaveValue('https://carebridge.example/health-records');
     expect(screen.getByLabelText('Chức năng hỗ trợ mục 1')).toHaveProperty('value', 'HEALTH_RECORDS');
   });
 
@@ -156,7 +158,87 @@ describe('ChecklistFormPage version', () => {
     })));
     const payload = harness.createChecklistTemplate.mock.calls[0][0];
     expect(payload.items[0]).not.toHaveProperty('targetSubject');
+    expect(payload.items[0]).not.toHaveProperty('sourceUrl');
     expect(payload.items[0]).toHaveProperty('isRequired', true);
+  });
+
+  it('trims and serializes an optional source URL for a checklist item', async () => {
+    const user = userEvent.setup();
+    harness.createChecklistTemplate.mockResolvedValue({
+      id: 'created-with-source', name: 'Nguồn tham khảo', description: '', stage: 'PREGNANCY',
+      status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+    });
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Nguồn tham khảo');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Đọc hướng dẫn dinh dưỡng');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), '  https://carebridge.example/nutrition  ');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({
+        itemText: 'Đọc hướng dẫn dinh dưỡng',
+        sourceUrl: 'https://carebridge.example/nutrition',
+      })],
+    })));
+  });
+
+  it.each([
+    'ftp://carebridge.example/document',
+    'https://user:password@carebridge.example/document',
+  ])('shows an inline error and prevents submit for unsafe source URL %s', async (invalidSourceUrl) => {
+    const user = userEvent.setup();
+    render(<ChecklistFormPage />);
+
+    await user.type(screen.getByLabelText('Template name'), 'Nguồn không hợp lệ');
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
+    await user.type(screen.getByLabelText('Item 1 text'), 'Đọc tài liệu');
+    const saveButton = screen.getByRole('button', { name: 'Save draft' });
+    expect(saveButton).toBeEnabled();
+
+    const sourceUrlInput = screen.getByLabelText('Link nguồn mục 1');
+    await user.type(sourceUrlInput, invalidSourceUrl);
+
+    expect(sourceUrlInput).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent('Link nguồn phải là URL đầy đủ bắt đầu bằng http:// hoặc https://.');
+    expect(saveButton).toBeDisabled();
+    await user.click(saveButton);
+    expect(harness.createChecklistTemplate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['https://carebridge.example/updated-guidance', 'https://carebridge.example/updated-guidance'],
+    ['', undefined],
+  ] as const)('round-trips an edited item source URL value %s', async (replacement, expectedSourceUrl) => {
+    const user = userEvent.setup();
+    routeId = 'checklist-123';
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(),
+      items: [{
+        id: 'item-1',
+        itemText: 'Đọc hướng dẫn chăm sóc',
+        order: 1,
+        isRequired: true,
+        targetSubject: 'MOTHER',
+        sourceUrl: 'https://carebridge.example/original-guidance',
+      }],
+    });
+    harness.updateChecklistTemplate.mockResolvedValue(undefined);
+    render(<ChecklistFormPage />);
+
+    const sourceUrlInput = await screen.findByLabelText('Link nguồn mục 1');
+    await user.clear(sourceUrlInput);
+    if (replacement) await user.type(sourceUrlInput, replacement);
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(harness.updateChecklistTemplate).toHaveBeenCalled());
+    const payloadItem = harness.updateChecklistTemplate.mock.calls[0][1].items[0];
+    if (expectedSourceUrl) {
+      expect(payloadItem).toHaveProperty('sourceUrl', expectedSourceUrl);
+    } else {
+      expect(payloadItem).not.toHaveProperty('sourceUrl');
+    }
   });
 
   it.each([

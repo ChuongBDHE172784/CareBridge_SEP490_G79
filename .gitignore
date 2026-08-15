@@ -153,6 +153,7 @@ docs/Report6/
 !.gitkeep
 # Added by code-review-graph
 .code-review-graph/
+.gitnexus/
 .mcp.json
 .github/code-review-graph.instruction.md
 .pytest_cache/
@@ -178,6 +179,7 @@ CLAUDE.md
 
 # External cloned repositories
 Exercise-Correction/
+.gitnexus
 
 # System-test screenshots. Kept on the tester's machine on purpose: they are
 # evidence attached to the Report5.3 sheet, not source, and some frames show

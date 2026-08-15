@@ -82,11 +82,12 @@ Future<void> _submit(
 }
 
 Future<void> _advanceToSubmit(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key('dating-method-due-date')));
+  final methodCard = find.byKey(const Key('dating-method-gestational-age'));
+  await tester.ensureVisible(methodCard);
+  await tester.tap(methodCard);
   await tester.pumpAndSettle();
   await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
   await tester.pumpAndSettle();
-  await _chooseCalendarDate(tester);
   await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
   await tester.pumpAndSettle();
   await tester.tap(find.widgetWithText(FilledButton, 'Tạo hành trình'));
@@ -108,20 +109,62 @@ Future<void> _chooseCalendarDate(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('only canonical LMP and EDD dating choices are shown', (
+  testWidgets('LMP, EDD, and gestational age dating choices are shown', (
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: JourneySetupScreen()));
     await tester.pump();
     expect(find.byKey(const Key('dating-method-lmp')), findsOneWidget);
     expect(find.byKey(const Key('dating-method-due-date')), findsOneWidget);
-    expect(find.byKey(const Key('dating-method-conception')), findsNothing);
     expect(
       find.byKey(const Key('dating-method-gestational-age')),
-      findsNothing,
+      findsOneWidget,
     );
+    expect(find.byKey(const Key('dating-method-conception')), findsNothing);
     expect(find.textContaining('Sẽ quy đổi thành EDD.'), findsNothing);
   });
+
+  testWidgets(
+    'gestational age setup calculates correct LMP date and sends LMP dating basis',
+    (tester) async {
+      final service = _CapturingJourneyService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: JourneySetupScreen(service: service, refreshSession: () async {}),
+        ),
+      );
+      await tester.pump();
+
+      final card = find.byKey(const Key('dating-method-gestational-age'));
+      await tester.ensureVisible(card);
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('wheel-gestational-weeks')), findsOneWidget);
+      expect(find.byKey(const Key('wheel-gestational-days')), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is RichText &&
+              widget.text.toPlainText().contains('12 tuần 0 ngày'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Tạo hành trình'));
+      await tester.pump(const Duration(milliseconds: 700));
+
+      expect(service.createdRequest, isNotNull);
+      expect(service.createdRequest!.datingBasis, 'LMP');
+      expect(service.createdRequest!.lastMenstrualDate, isNotNull);
+      expect(service.createdRequest!.estimatedDueDate, isNull);
+      expect(service.createdRequest!.dateSource, 'SELF_REPORTED');
+      expect(service.createdRequest!.dateConfidence, 'ESTIMATED');
+      expect(service.createdRequest!.notes, contains('Gestational age: 12w 0d'));
+    },
+  );
 
   testWidgets('EDD setup sends exactly one EDD date and dating basis', (
     tester,
@@ -134,7 +177,11 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('dating-method-due-date')));
+    final card = find.byKey(const Key('dating-method-due-date'));
+    await tester.ensureVisible(card);
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();
@@ -163,7 +210,11 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('dating-method-lmp')));
+    final card = find.byKey(const Key('dating-method-lmp'));
+    await tester.ensureVisible(card);
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp theo'));
     await tester.pumpAndSettle();

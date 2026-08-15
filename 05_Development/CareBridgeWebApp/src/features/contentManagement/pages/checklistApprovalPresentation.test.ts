@@ -38,8 +38,8 @@ describe('checklist approval presentation', () => {
   });
 
   it('renders inline pregnancy windows and cadence for V2 roots', () => {
-    expect(checklistWindowLabel({ substage: null, eligibilityStartInclusive: 20, eligibilityEndInclusive: 24 })).toBe('Tuần 20–24');
-    expect(checklistWindowLabel({ substage: null, eligibilityStartInclusive: 39, eligibilityEndInclusive: 2147483647 })).toBe('Tuần 39+');
+    expect(checklistWindowLabel({ substage: null, eligibilityStartInclusive: 20, eligibilityEndInclusive: 24 })).toBe('Tuần 21–25');
+    expect(checklistWindowLabel({ substage: null, eligibilityStartInclusive: 39, eligibilityEndInclusive: 2147483647 })).toBe('Tuần 40+');
     expect(checklistCadenceLabel('WEEKLY', 'EACH_WEEK')).toBe('Theo tuần');
     expect(checklistCadenceLabel('SET', 'ONCE_PER_WINDOW')).toBe('Theo bộ');
   });

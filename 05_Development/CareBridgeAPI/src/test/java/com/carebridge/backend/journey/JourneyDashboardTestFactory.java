@@ -20,11 +20,12 @@ public final class JourneyDashboardTestFactory {
     private JourneyDashboardTestFactory() {}
 
     /**
-     * Creates a PREGNANCY journey where LMP = TODAY - (weeksPregnant * 7).
+     * Creates a PREGNANCY journey where LMP corresponds to the given 1-based week.
+     * Week 1 means LMP is TODAY.
      * Ensures getDashboard returns pregnancyWeek == weeksPregnant.
      */
     public static MotherJourney makePregnancyJourney(int weeksPregnant) {
-        LocalDate lmp = TODAY.minusDays((long) weeksPregnant * 7);
+        LocalDate lmp = TODAY.minusDays((long) (weeksPregnant - 1) * 7);
         return MotherJourney.builder()
                 .id(JOURNEY_ID)
                 .ownerUserId(MOTHER_ID)

@@ -46,7 +46,7 @@ class RingtonePlayer {
             osc1.stop(now + 1.8);
             osc2.stop(now + 1.8);
           } catch {
-            // A tone that will not play must never interrupt the call.
+            // ignore playback error
           }
         };
 
@@ -79,7 +79,7 @@ class RingtonePlayer {
             osc1.stop(now + 1.2);
             osc2.stop(now + 1.2);
           } catch {
-            // A tone that will not play must never interrupt the call.
+            // ignore playback error
           }
         };
 
@@ -87,8 +87,8 @@ class RingtonePlayer {
         this.intervalId = window.setInterval(playTone, 2500);
       }
     } catch {
-            // A tone that will not play must never interrupt the call.
-          }
+      // ignore audio context initialization error
+    }
   }
 
   stop() {
@@ -102,8 +102,8 @@ class RingtonePlayer {
       try {
         void this.audioCtx.close();
       } catch {
-            // A tone that will not play must never interrupt the call.
-          }
+        // ignore audio context close error
+      }
       this.audioCtx = null;
     }
   }

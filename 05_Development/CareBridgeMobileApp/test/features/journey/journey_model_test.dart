@@ -18,7 +18,7 @@ void main() {
         today: DateTime(2026, 4, 2),
       );
 
-      expect(week, 13);
+      expect(week, 14);
     });
 
     test('calculates week from estimated due date', () {
@@ -27,10 +27,10 @@ void main() {
         today: DateTime(2026, 4, 2),
       );
 
-      expect(week, 13);
+      expect(week, 14);
     });
 
-    test('keeps server source week separate from legacy pregnancy week', () {
+    test('prefers sourceWeekNumber for 1-based display pregnancy week', () {
       final dashboard = JourneyDashboard(
         journeyType: 'PREGNANCY',
         pregnancyWeek: 20,
@@ -39,7 +39,7 @@ void main() {
         datingBasis: 'EDD',
       );
 
-      expect(dashboard.displayPregnancyWeek, 20);
+      expect(dashboard.displayPregnancyWeek, 21);
       expect(dashboard.effectiveSourceWeekNumber, 21);
       expect(dashboard.plan, 2);
       expect(dashboard.gestationalDatingBasis, 'EDD');

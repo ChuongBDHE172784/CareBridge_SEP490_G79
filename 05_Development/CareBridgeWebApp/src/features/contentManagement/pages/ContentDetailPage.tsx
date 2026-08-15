@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchStaffContentDetail, updateContent, archiveContent } from '../services/contentApi';
-import type { ContentDetail } from '../models/content';
+import { fetchRecommendationTags, fetchStaffContentDetail, fetchTags, updateContent, archiveContent } from '../services/contentApi';
+import type { ContentDetail, RecommendationTag } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS, TYPE_LABELS } from '../models/content';
+import { recommendationClassification } from './recommendationMetadata';
 import { useAuth } from '../../../shared/auth/useAuth';
 import '../richContentBody.css';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
@@ -41,6 +42,8 @@ export default function ContentDetailPage() {
   // actions must stay hidden rather than link into a route that will bounce to /forbidden.
   const canManage = hasRole('CONTENT_ADMIN');
   const [detail, setDetail] = useState<ContentDetail | null>(null);
+  const [recommendationTags, setRecommendationTags] = useState<RecommendationTag[]>([]);
+  const [ordinaryTagIds, setOrdinaryTagIds] = useState<Set<string> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -52,6 +55,20 @@ export default function ContentDetailPage() {
     setError('');
     try {
       const data = await fetchStaffContentDetail(id);
+      let catalogItems: RecommendationTag[] = [];
+      let ordinaryIds: Set<string> | null = null;
+      if (data.type === 'ARTICLE') {
+        try {
+          const catalog = await fetchRecommendationTags();
+          catalogItems = catalog.items;
+        } catch { /* detail remains readable when the catalog is unavailable */ }
+        try {
+          const ordinaryTags = await fetchTags();
+          ordinaryIds = new Set(ordinaryTags.filter((tag) => !tag.slug.startsWith('rec-')).map((tag) => tag.id));
+        } catch { /* do not label ordinary IDs as stale when the tag catalog is unavailable */ }
+      }
+      setRecommendationTags(catalogItems);
+      setOrdinaryTagIds(ordinaryIds);
       setDetail(data);
     } catch {
       setError('Không tải được nội dung. Vui lòng thử lại.');
@@ -121,6 +138,15 @@ export default function ContentDetailPage() {
 
   const typeLabel = TYPE_LABELS[detail.type];
   const typeListPath = TYPE_LIST_PATH[detail.type] ?? '/content/list';
+  const catalogById = new Map(recommendationTags.map((tag) => [tag.id, tag]));
+  const controlledRecommendationTags = (detail.tagIds ?? [])
+    .map((tagId) => catalogById.get(tagId))
+    .filter((tag): tag is RecommendationTag => Boolean(tag));
+  const staleRecommendationTagIds = (detail.tagIds ?? [])
+    .filter((tagId) => !catalogById.has(tagId)
+      && ordinaryTagIds != null
+      && !ordinaryTagIds.has(tagId));
+  const recommendationTagIds = controlledRecommendationTags.map((tag) => tag.id);
 
   return (
     <div className="p-8 font-sans">
@@ -175,6 +201,29 @@ export default function ContentDetailPage() {
               </div>
             </div>
           </div>
+
+          {detail.type === 'ARTICLE' && (
+            <div className="bg-surface rounded-2xl p-5 shadow-md mb-6">
+              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">RECOMMENDATION METADATA</div>
+              <div className="text-sm text-on-surface">
+                Classification: {recommendationClassification(recommendationTagIds)} {' · '}
+                {detail.eligibleFromWeek == null && detail.eligibleToWeek == null
+                  ? 'Stage-wide'
+                  : `Pregnancy weeks ${detail.eligibleFromWeek}-${detail.eligibleToWeek}`}
+                {' · '}Priority {detail.recommendationPriority ?? 0}
+              </div>
+              <div className="text-xs text-outline mt-1">
+                Audience: {controlledRecommendationTags.length > 0
+                  ? controlledRecommendationTags.map((tag) => tag.label).join(', ')
+                  : 'No controlled audience tags (fallback eligible)'}
+              </div>
+              {staleRecommendationTagIds.length > 0 && (
+                <div className="text-xs text-error mt-1" role="alert">
+                  Retired or unknown audience IDs: {staleRecommendationTagIds.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Article canvas */}
           <div className="bg-surface rounded-2xl p-8 shadow-md">

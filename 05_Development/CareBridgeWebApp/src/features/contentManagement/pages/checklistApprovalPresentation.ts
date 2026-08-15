@@ -45,8 +45,8 @@ export function checklistWindowLabel(
   const start = checklist.eligibilityStartInclusive;
   const end = checklist.eligibilityEndInclusive;
   if (start == null || end == null) return 'Không có cửa sổ';
-  if (end >= 2_000_000_000) return `Tuần ${start}+`;
-  return `Tuần ${start}–${end}`;
+  if (end >= 2_000_000_000) return `Tuần ${start + 1}+`;
+  return `Tuần ${start + 1}–${end + 1}`;
 }
 
 export function checklistCadenceLabel(scheduleType?: string | null, materializationPolicy?: string | null): string {

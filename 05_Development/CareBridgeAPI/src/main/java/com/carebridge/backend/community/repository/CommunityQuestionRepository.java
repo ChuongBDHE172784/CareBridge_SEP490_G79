@@ -42,9 +42,6 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
             """)
     List<TopicQuestionCountProjection> countApprovedQuestionsByTopicIds(@Param("topicIds") List<UUID> topicIds);
 
-    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded question by author+title
-    Optional<CommunityQuestion> findByAuthorIdAndTitle(UUID authorId, String title);
-
     Page<CommunityQuestion> findAllByAuthorIdOrderByCreatedAtDesc(UUID authorId, Pageable pageable);
 
     Page<CommunityQuestion> findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(

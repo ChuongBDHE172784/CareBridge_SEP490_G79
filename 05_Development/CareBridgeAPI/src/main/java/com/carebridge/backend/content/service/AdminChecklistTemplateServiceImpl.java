@@ -31,6 +31,7 @@ import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -540,7 +541,9 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             return InlineEligibility.none();
         }
         if (stage == ContentStage.PRE_PREGNANCY) {
-            if (requestedSubstage != null) {
+            if (requestedSubstage != null
+                    && requestedSubstage.anchor() != null
+                    && requestedSubstage.anchor() != ChecklistAnchorType.NONE) {
                 throw ContentException.substageStageMismatch();
             }
             return new InlineEligibility(ChecklistAnchorType.NONE, ChecklistRangeUnit.DAY, 0, 0);
@@ -567,6 +570,29 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         }
         for (ChecklistItemRequest item : items) {
             validateItem(item.targetSubject(), item.isRequired(), contractVersion);
+            validateSourceUrl(item.sourceUrl());
+        }
+    }
+
+    private void validateSourceUrl(String sourceUrl) {
+        if (sourceUrl == null || sourceUrl.isBlank()) {
+            return;
+        }
+        String normalized = sourceUrl.trim();
+        if (normalized.length() > 2048) {
+            throw ContentException.validationFailed("items.sourceUrl",
+                    "Link nguồn không được vượt quá 2.048 ký tự");
+        }
+        try {
+            URI uri = URI.create(normalized);
+            boolean validScheme = "http".equalsIgnoreCase(uri.getScheme())
+                    || "https".equalsIgnoreCase(uri.getScheme());
+            if (!validScheme || uri.getHost() == null || uri.getRawUserInfo() != null) {
+                throw new IllegalArgumentException("Unsupported source URL");
+            }
+        } catch (IllegalArgumentException exception) {
+            throw ContentException.validationFailed("items.sourceUrl",
+                    "Link nguồn phải là URL HTTP hoặc HTTPS hợp lệ");
         }
     }
 
@@ -613,12 +639,19 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
     }
 
     private String itemConfiguration(ChecklistItemRequest item) {
-        if (!Boolean.TRUE.equals(item.repeatWeekly()) && !Boolean.TRUE.equals(item.repeatDaily())) {
+        String sourceUrl = item.sourceUrl() == null || item.sourceUrl().isBlank()
+                ? null : item.sourceUrl().trim();
+        if (!Boolean.TRUE.equals(item.repeatWeekly())
+                && !Boolean.TRUE.equals(item.repeatDaily())
+                && sourceUrl == null) {
             return "{}";
         }
         ObjectNode node = objectMapper.createObjectNode();
         node.put("repeatWeekly", Boolean.TRUE.equals(item.repeatWeekly()));
         node.put("repeatDaily", Boolean.TRUE.equals(item.repeatDaily()));
+        if (sourceUrl != null) {
+            node.put("sourceUrl", sourceUrl);
+        }
         try {
             return objectMapper.writeValueAsString(node);
         } catch (Exception ignored) {
