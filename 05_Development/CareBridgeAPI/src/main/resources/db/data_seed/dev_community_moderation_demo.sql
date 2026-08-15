@@ -1203,7 +1203,7 @@ BEGIN
                CASE WHEN seq IN (1, 3, 6, 8, 10) THEN 'CRITICAL'
                     WHEN seq IN (2, 4, 7, 11, 12) THEN 'HIGH' ELSE 'MEDIUM' END,
                CASE WHEN seq <= 10 THEN (0.985 - seq * 0.006)::numeric ELSE 0.710::numeric END,
-               CASE WHEN seq IN (1, 3, 6, 8, 10) THEN 'ESCALATE'
+               CASE WHEN seq IN (1, 3, 6, 8, 10) THEN 'PRIORITY_REVIEW'
                     WHEN seq <= 10 THEN 'PRIORITY_REVIEW' ELSE 'REVIEW' END,
                CASE seq
                  WHEN 1 THEN 'Phát hiện lời khuyên tăng liều vi chất không có đánh giá chuyên môn.'
@@ -1268,7 +1268,7 @@ BEGIN
              WHEN a.classification IS NULL THEN NULL
              WHEN a.classification = 'SAFE' THEN 'NO_ACTION'
              WHEN a.classification = 'UNCERTAIN' THEN 'REVIEW'
-             WHEN p.severity = 'CRITICAL' THEN 'ESCALATE'
+             WHEN p.severity = 'CRITICAL' THEN 'PRIORITY_REVIEW'
              WHEN p.severity = 'HIGH' THEN 'PRIORITY_REVIEW'
              ELSE 'REVIEW'
            END,
@@ -1356,25 +1356,25 @@ BEGIN
        AND c.ai_feedback_assessment_id IS NULL;
 
     -- Twenty account-level enforcement history items populate /moderator/violations without
-    -- suspending or restricting the canonical login accounts (all timed actions are expired).
+    -- using only the currently visible warning/restriction actions. Timed RESTRICT actions are already expired.
     WITH account_action_seed(seq, target_kind, target_idx, action_type, reason, expires_days_ago) AS (VALUES
         (1, 'M', 1, 'WARN', 'Nhắc nhở không đăng lặp cùng một bình luận ở nhiều chủ đề.', NULL),
         (2, 'F', 1, 'WARN', 'Nhắc nhở giữ ngôn ngữ tôn trọng khi trao đổi kinh nghiệm chăm bé.', NULL),
         (3, 'M', 2, 'RESTRICT', 'Tạm hạn chế đăng bài do chia sẻ liên kết bán hàng nhiều lần.', 40),
-        (4, 'F', 2, 'SUSPEND', 'Tạm đình chỉ sau nhiều lần gửi tin nhắn quấy rối thành viên.', 35),
+        (4, 'F', 2, 'RESTRICT', 'Tạm hạn chế đăng bài sau nhiều lần gửi tin nhắn quấy rối thành viên.', 35),
         (5, 'M', 3, 'WARN', 'Nhắc nhở không công khai số điện thoại và hồ sơ y tế của người khác.', NULL),
-        (6, 'F', 3, 'ESCALATE', 'Chuyển quản trị viên xem xét chuỗi hành vi mạo danh chuyên gia.', NULL),
+        (6, 'F', 3, 'WARN', 'Cảnh cáo về chuỗi hành vi có dấu hiệu mạo danh chuyên gia.', NULL),
         (7, 'M', 4, 'RESTRICT', 'Tạm hạn chế đăng nội dung y tế thiếu nguồn và khẳng định tuyệt đối.', 30),
         (8, 'F', 4, 'WARN', 'Nhắc nhở không kéo thành viên sang nhóm bán hàng ngoài nền tảng.', NULL),
-        (9, 'M', 5, 'SUSPEND', 'Tạm đình chỉ do tiếp tục công kích cá nhân sau cảnh báo.', 28),
+        (9, 'M', 5, 'RESTRICT', 'Tạm hạn chế đăng bài do tiếp tục công kích cá nhân sau cảnh báo.', 28),
         (10, 'F', 5, 'WARN', 'Nhắc nhở phân biệt trải nghiệm cá nhân với tư vấn chuyên môn.', NULL),
         (11, 'M', 6, 'RESTRICT', 'Tạm hạn chế bình luận do spam nội dung không liên quan.', 24),
-        (12, 'F', 6, 'ESCALATE', 'Đề nghị quản trị viên rà soát dấu hiệu lừa đảo qua chuyển khoản.', NULL),
+        (12, 'F', 6, 'WARN', 'Cảnh cáo về dấu hiệu lừa đảo qua chuyển khoản.', NULL),
         (13, 'M', 1, 'WARN', 'Cảnh báo lần hai về việc đăng ảnh có dữ liệu cá nhân chưa che.', NULL),
         (14, 'F', 1, 'RESTRICT', 'Tạm hạn chế sau khi quảng bá sản phẩm trong câu trả lời sức khỏe.', 18),
         (15, 'M', 2, 'WARN', 'Nhắc nhở kiểm tra nguồn trước khi chia sẻ thông tin tiêm chủng.', NULL),
-        (16, 'F', 2, 'ESCALATE', 'Chuyển quản trị viên đánh giá lịch sử nhiều báo cáo liên quan.', NULL),
-        (17, 'M', 3, 'SUSPEND', 'Tạm đình chỉ do đăng lại nội dung đã bị ẩn.', 12),
+        (16, 'F', 2, 'WARN', 'Cảnh cáo sau khi rà soát lịch sử nhiều báo cáo liên quan.', NULL),
+        (17, 'M', 3, 'RESTRICT', 'Tạm hạn chế đăng bài do đăng lại nội dung đã bị ẩn.', 12),
         (18, 'F', 3, 'WARN', 'Nhắc nhở không dùng lời lẽ gây áp lực với mẹ sau sinh.', NULL),
         (19, 'M', 4, 'RESTRICT', 'Tạm hạn chế do gửi liên kết không rõ nguồn trong nhiều chủ đề.', 8),
         (20, 'F', 4, 'WARN', 'Nhắc nhở tôn trọng quyết định khám và điều trị của thành viên.', NULL)
@@ -1398,7 +1398,7 @@ BEGIN
                        (v_now - make_interval(days => expires_days_ago)) AT TIME ZONE 'UTC',
                        'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
                    ELSE NULL END)),
-           CASE WHEN action_type IN ('SUSPEND', 'ESCALATE') THEN 'HIGH' ELSE 'MEDIUM' END,
+           CASE WHEN action_type = 'RESTRICT' THEN 'HIGH' ELSE 'MEDIUM' END,
            'CLOSED'
       FROM account_action_seed
     ON CONFLICT (audit_event_id) DO NOTHING;
@@ -1467,6 +1467,12 @@ BEGIN
        OR (SELECT count(*) FROM public.moderation_cases WHERE moderation_case_id::text LIKE 'c6000000-0000-4000-8000-%') <> 24
        OR (SELECT count(*) FROM public.ai_content_scan_jobs WHERE job_id::text LIKE 'c7000000-0000-4000-8000-%') <> 44
        OR (SELECT count(*) FROM public.ai_content_assessments WHERE assessment_id::text LIKE 'c8000000-0000-4000-8000-%') <> 24
+       OR EXISTS (
+               SELECT 1
+             FROM public.ai_content_assessments
+             WHERE assessment_id::text LIKE 'c8000000-0000-4000-8000-%'
+               AND recommended_action NOT IN ('NO_ACTION', 'REVIEW', 'PRIORITY_REVIEW')
+       )
        OR EXISTS (
             SELECT 1
               FROM public.community_content
@@ -1686,7 +1692,7 @@ BEGIN
            recommended_action = CASE
                WHEN seed.assessment_seq IS NULL THEN a.recommended_action
                WHEN a.classification = 'UNCERTAIN' THEN 'REVIEW'
-               WHEN p.severity = 'CRITICAL' THEN 'ESCALATE'
+               WHEN p.severity = 'CRITICAL' THEN 'PRIORITY_REVIEW'
                WHEN p.severity = 'HIGH' THEN 'PRIORITY_REVIEW'
                ELSE 'REVIEW'
            END,

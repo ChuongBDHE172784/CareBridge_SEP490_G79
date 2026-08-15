@@ -24,6 +24,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Component
+@Order(2)
 @Profile("dev & !prod")
 @ConditionalOnProperty(prefix = "carebridge.dev-seed", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
@@ -48,6 +50,7 @@ public class DevDataSeeder implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final ExpertProfileRepository expertProfileRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final ProductionReferenceDataLoader productionReferenceDataLoader;
 
     @Value("${carebridge.dev-seed.password:" + DEFAULT_TEST_PASSWORD + "}")
     private String testPassword;
@@ -175,26 +178,7 @@ public class DevDataSeeder implements ApplicationRunner {
      * care item templates) from production_reference_data.sql.
      */
     private void seedProductionReferenceData() {
-        ClassPathResource resource = new ClassPathResource(
-                "db/data_seed/production_reference_data.sql");
-        if (!resource.exists()) {
-            log.warn("Production reference data script is not available on the classpath");
-            return;
-        }
-
-        try (var inputStream = resource.getInputStream()) {
-            String script = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            int executed = 0;
-            for (String statement : splitSqlStatements(script)) {
-                if (!statement.isBlank()) {
-                    jdbcTemplate.execute(statement);
-                    executed++;
-                }
-            }
-            log.info("Loaded {} statements from production reference data script", executed);
-        } catch (IOException ex) {
-            throw new IllegalStateException("Unable to read production reference data script", ex);
-        }
+        productionReferenceDataLoader.seedProductionReferenceData();
     }
 
     /**
@@ -233,97 +217,7 @@ public class DevDataSeeder implements ApplicationRunner {
 
     /** Split PostgreSQL SQL while preserving semicolons inside strings and dollar-quoted blocks. */
     private List<String> splitSqlStatements(String script) {
-        List<String> statements = new java.util.ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        String dollarTag = null;
-        boolean singleQuoted = false;
-        boolean doubleQuoted = false;
-        boolean lineComment = false;
-        boolean blockComment = false;
-
-        for (int i = 0; i < script.length(); i++) {
-            char ch = script.charAt(i);
-            char next = i + 1 < script.length() ? script.charAt(i + 1) : '\0';
-            if (lineComment) {
-                current.append(ch);
-                if (ch == '\n') {
-                    lineComment = false;
-                }
-                continue;
-            }
-            if (blockComment) {
-                current.append(ch);
-                if (ch == '*' && next == '/') {
-                    current.append(next);
-                    i++;
-                    blockComment = false;
-                }
-                continue;
-            }
-            if (dollarTag != null) {
-                if (script.startsWith(dollarTag, i)) {
-                    current.append(dollarTag);
-                    i += dollarTag.length() - 1;
-                    dollarTag = null;
-                } else {
-                    current.append(ch);
-                }
-                continue;
-            }
-            if (singleQuoted) {
-                current.append(ch);
-                if (ch == '\'' && next == '\'') {
-                    current.append(next);
-                    i++;
-                } else if (ch == '\'') {
-                    singleQuoted = false;
-                }
-                continue;
-            }
-            if (doubleQuoted) {
-                current.append(ch);
-                if (ch == '"' && next == '"') {
-                    current.append(next);
-                    i++;
-                } else if (ch == '"') {
-                    doubleQuoted = false;
-                }
-                continue;
-            }
-            if (ch == '-' && next == '-') {
-                current.append(ch).append(next);
-                i++;
-                lineComment = true;
-            } else if (ch == '/' && next == '*') {
-                current.append(ch).append(next);
-                i++;
-                blockComment = true;
-            } else if (ch == '\'') {
-                current.append(ch);
-                singleQuoted = true;
-            } else if (ch == '"') {
-                current.append(ch);
-                doubleQuoted = true;
-            } else if (ch == '$') {
-                int end = script.indexOf('$', i + 1);
-                if (end > i && script.substring(i + 1, end).matches("[A-Za-z_][A-Za-z0-9_]*|")) {
-                    dollarTag = script.substring(i, end + 1);
-                    current.append(dollarTag);
-                    i = end;
-                } else {
-                    current.append(ch);
-                }
-            } else if (ch == ';') {
-                statements.add(current.toString());
-                current.setLength(0);
-            } else {
-                current.append(ch);
-            }
-        }
-        if (!current.toString().isBlank()) {
-            statements.add(current.toString());
-        }
-        return statements;
+        return ProductionReferenceDataLoader.splitSqlStatements(script);
     }
 
     private boolean synchronizeSeedAccount(User user, SeedAccount seed) {

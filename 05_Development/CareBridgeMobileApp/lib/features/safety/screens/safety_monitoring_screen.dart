@@ -283,6 +283,8 @@ class SafetyRealEventQueue {
 class SafetyMonitoringScreen extends StatefulWidget {
   const SafetyMonitoringScreen({super.key});
 
+  static bool isMounted = false;
+
   @override
   State<SafetyMonitoringScreen> createState() => _SafetyMonitoringScreenState();
 }
@@ -328,6 +330,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   @override
   void initState() {
     super.initState();
+    SafetyMonitoringScreen.isMounted = true;
     WidgetsBinding.instance.addObserver(this);
     _detectedEventSubscription = _foregroundCoordinator.detectedEvents.listen(
       _onDetectedEvent,
@@ -344,6 +347,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   @override
   void dispose() {
+    SafetyMonitoringScreen.isMounted = false;
     WidgetsBinding.instance.removeObserver(this);
     _detectedEventSubscription?.cancel();
     _sensorSelfTestSubscription?.cancel();

@@ -15,13 +15,34 @@ import 'features/reminder/services/reminder_service.dart';
 import 'features/safety/models/safety_config_model.dart';
 import 'features/safety/services/safety_foreground_service.dart';
 import 'features/safety/widgets/safety_countdown_sheet.dart';
+import 'features/safety/screens/safety_monitoring_screen.dart';
+
+@visibleForTesting
+bool isSafetyMonitoringScreenActive(GoRouter router) {
+  final currentUri = router.routerDelegate.currentConfiguration.uri;
+  final providerUri = router.routeInformationProvider.value.uri;
+  final path1 = currentUri.path;
+  final path2 = providerUri.path;
+  return path1 == '/safety' ||
+      path1.startsWith('/safety/') ||
+      path2 == '/safety' ||
+      path2.startsWith('/safety/');
+}
 
 @visibleForTesting
 bool shouldOpenSafetyMonitoringForDetectedEvent({
   required String eventStatus,
   required String currentPath,
   bool navigationInFlight = false,
-}) => eventStatus == 'OPEN' && currentPath != '/safety' && !navigationInFlight;
+  bool countdownShowing = false,
+  bool screenMounted = false,
+}) =>
+    eventStatus == 'OPEN' &&
+    currentPath != '/safety' &&
+    !currentPath.startsWith('/safety/') &&
+    !navigationInFlight &&
+    !countdownShowing &&
+    !screenMounted;
 
 @visibleForTesting
 Future<T?> pushSafetyMonitoringRoute<T extends Object?>(GoRouter router) =>
@@ -109,15 +130,20 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
 
   Future<void> _openSafetyMonitoringForDetectedEvent(SafetyEvent event) async {
     if (!mounted) return;
-    if (SafetyCountdownGuard.isShowing) {
+    if (SafetyCountdownGuard.isShowing || SafetyMonitoringScreen.isMounted) {
       return;
     }
-    final currentPath = appRouter.routeInformationProvider.value.uri.path;
+    if (_safetyNavigationInFlight || isSafetyMonitoringScreenActive(appRouter)) {
+      return;
+    }
+    final currentPath = appRouter.routerDelegate.currentConfiguration.uri.path;
     final now = DateTime.now();
     if (!shouldOpenSafetyMonitoringForDetectedEvent(
       eventStatus: event.status,
       currentPath: currentPath,
       navigationInFlight: _safetyNavigationInFlight,
+      countdownShowing: SafetyCountdownGuard.isShowing,
+      screenMounted: SafetyMonitoringScreen.isMounted,
     )) {
       return;
     }

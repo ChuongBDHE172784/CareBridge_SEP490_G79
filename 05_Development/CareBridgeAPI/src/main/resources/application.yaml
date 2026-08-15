@@ -110,6 +110,8 @@ carebridge:
         runtime-username: ${CAREBRIDGE_DB_USERNAME:}
         flyway-username: ${CAREBRIDGE_FLYWAY_DB_USERNAME:}
         application-flyway-enabled: ${SPRING_FLYWAY_ENABLED:true}
+  reference-data:
+    enabled: ${CAREBRIDGE_REFERENCE_DATA_ENABLED:true}
   dev-seed:
     enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
     password: ${CAREBRIDGE_DEV_SEED_PASSWORD:}
