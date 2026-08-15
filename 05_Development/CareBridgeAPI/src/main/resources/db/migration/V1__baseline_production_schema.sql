@@ -2876,6 +2876,7 @@ CREATE TABLE public."users" (
     "rating_avg" numeric,
     "specialty" character varying(100),
     "facility_id" uuid,
+    "workplace_province_id" character varying(16),
     "trust_status" character varying(20) DEFAULT 'ACTIVE'::character varying,
     "consultation_fee_vnd" bigint,
     "bio" character varying(500),
@@ -6009,1095 +6010,2165 @@ ADD CONSTRAINT "users_settings_jsonb_object_ck" CHECK (
     jsonb_typeof(settings_jsonb) = 'object'::text
 );
 
-ALTER TABLE ONLY public."account_lock_appeals" ALTER COLUMN appeal_id SET NOT NULL;
-
-ALTER TABLE ONLY public."account_lock_appeals" ALTER COLUMN lock_episode_id SET NOT NULL;
-
-ALTER TABLE ONLY public."account_lock_appeals" ALTER COLUMN reason SET NOT NULL;
-
-ALTER TABLE ONLY public."account_lock_appeals" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."account_lock_appeals" ALTER COLUMN submitted_at SET NOT NULL;
-
-ALTER TABLE ONLY public."account_lock_appeals" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."administrative_areas" ALTER COLUMN administrative_area_id SET NOT NULL;
-
-ALTER TABLE ONLY public."administrative_areas" ALTER COLUMN area_type SET NOT NULL;
-
-ALTER TABLE ONLY public."administrative_areas" ALTER COLUMN code SET NOT NULL;
-
-ALTER TABLE ONLY public."administrative_areas" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."administrative_areas" ALTER COLUMN name SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN assessment_id SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN attempt_count SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN content_hash SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN matches_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN model SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN policy_set_hash SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN provider SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN target_id SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_assessments" ALTER COLUMN target_type SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN attempt_count SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN content_hash SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN force_rescan SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN job_id SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN next_attempt_at SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN target_id SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN target_type SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_content_scan_jobs" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN active SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN applicable_target_types SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN confidence_threshold SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN detection_guidance SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN name SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN policy_code SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN policy_id SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN report_category SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN severity SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN system_default SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN version SET NOT NULL;
-
-ALTER TABLE ONLY public."ai_moderation_policies" ALTER COLUMN violation_category SET NOT NULL;
-
-ALTER TABLE ONLY public."appointment_notification_configs" ALTER COLUMN config_revision SET NOT NULL;
-
-ALTER TABLE ONLY public."appointment_notification_configs" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."appointment_notification_configs" ALTER COLUMN reminder_id SET NOT NULL;
-
-ALTER TABLE ONLY public."appointment_notification_configs" ALTER COLUMN rules_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."appointment_notification_configs" ALTER COLUMN time_zone SET NOT NULL;
-
-ALTER TABLE ONLY public."appointment_notification_configs" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN attachment_category SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN attachment_id SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN file_size_bytes SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN mime_type SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN original_name SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN storage_key SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."attachments" ALTER COLUMN uploader_role SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN audit_event_id SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN event_category SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN event_origin SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN legal_hold SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN occurred_at SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN severity SET NOT NULL;
-
-ALTER TABLE ONLY public."audit_events" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_challenges" ALTER COLUMN attempts SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_challenges" ALTER COLUMN challenge_hash SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_challenges" ALTER COLUMN challenge_id SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_challenges" ALTER COLUMN challenge_type SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_challenges" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_challenges" ALTER COLUMN expires_at SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_challenges" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN detected_reuse SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN device_identifier SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN expires_at SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN issued_at SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN revocation_metadata_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN session_id SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN token_family_id SET NOT NULL;
-
-ALTER TABLE ONLY public."auth_sessions" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_facilities" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_facilities" ALTER COLUMN facility_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_facilities" ALTER COLUMN is_active SET NOT NULL;
-
-ALTER TABLE ONLY public."care_facilities" ALTER COLUMN is_searchable SET NOT NULL;
-
-ALTER TABLE ONLY public."care_facilities" ALTER COLUMN name SET NOT NULL;
-
-ALTER TABLE ONLY public."care_facilities" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_facilities" ALTER COLUMN verification_status SET NOT NULL;
-
-ALTER TABLE ONLY public."care_group_members" ALTER COLUMN care_group_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_group_members" ALTER COLUMN care_group_member_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_group_members" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_group_members" ALTER COLUMN invitation_status SET NOT NULL;
-
-ALTER TABLE ONLY public."care_group_members" ALTER COLUMN is_emergency_contact SET NOT NULL;
-
-ALTER TABLE ONLY public."care_group_members" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_group_members" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_groups" ALTER COLUMN care_group_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_groups" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_groups" ALTER COLUMN group_name SET NOT NULL;
-
-ALTER TABLE ONLY public."care_groups" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_groups" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."care_groups" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN configuration_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN content_status SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN display_order SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN distribution_enabled SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN entry_type SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN is_active SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN lock_version SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN migration_review_required SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN template_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN template_status SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN template_type SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN title SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_item_templates" ALTER COLUMN version SET NOT NULL;
-
-ALTER TABLE ONLY public."care_subjects" ALTER COLUMN care_subject_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_subjects" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_subjects" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_subjects" ALTER COLUMN person_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_subjects" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."care_subjects" ALTER COLUMN subject_type SET NOT NULL;
-
-ALTER TABLE ONLY public."care_subjects" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN metadata_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN origin SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN reminder_occurrence_generation SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN target_subject SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN task_id SET NOT NULL;
-
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN task_type SET NOT NULL;
+ALTER TABLE ONLY public."account_lock_appeals"
+ALTER COLUMN appeal_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."account_lock_appeals"
+ALTER COLUMN lock_episode_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."account_lock_appeals"
+ALTER COLUMN reason
+SET NOT NULL;
+
+ALTER TABLE ONLY public."account_lock_appeals"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."account_lock_appeals"
+ALTER COLUMN submitted_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."account_lock_appeals"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."administrative_areas"
+ALTER COLUMN administrative_area_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."administrative_areas"
+ALTER COLUMN area_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."administrative_areas"
+ALTER COLUMN code
+SET NOT NULL;
+
+ALTER TABLE ONLY public."administrative_areas"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."administrative_areas"
+ALTER COLUMN name
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN assessment_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN attempt_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN content_hash
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN matches_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN model
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN policy_set_hash
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN provider
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN target_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_assessments"
+ALTER COLUMN target_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN attempt_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN content_hash
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN force_rescan
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN job_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN next_attempt_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN target_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN target_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_content_scan_jobs"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN active
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN applicable_target_types
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN confidence_threshold
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN detection_guidance
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN name
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN policy_code
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN policy_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN report_category
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN severity
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN system_default
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."ai_moderation_policies"
+ALTER COLUMN violation_category
+SET NOT NULL;
+
+ALTER TABLE ONLY public."appointment_notification_configs"
+ALTER COLUMN config_revision
+SET NOT NULL;
+
+ALTER TABLE ONLY public."appointment_notification_configs"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."appointment_notification_configs"
+ALTER COLUMN reminder_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."appointment_notification_configs"
+ALTER COLUMN rules_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."appointment_notification_configs"
+ALTER COLUMN time_zone
+SET NOT NULL;
+
+ALTER TABLE ONLY public."appointment_notification_configs"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN attachment_category
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN attachment_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN file_size_bytes
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN mime_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN original_name
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN storage_key
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."attachments"
+ALTER COLUMN uploader_role
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN audit_event_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN event_category
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN event_origin
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN legal_hold
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN occurred_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN severity
+SET NOT NULL;
+
+ALTER TABLE ONLY public."audit_events"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_challenges"
+ALTER COLUMN attempts
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_challenges"
+ALTER COLUMN challenge_hash
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_challenges"
+ALTER COLUMN challenge_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_challenges"
+ALTER COLUMN challenge_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_challenges"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_challenges"
+ALTER COLUMN expires_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_challenges"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN detected_reuse
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN device_identifier
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN expires_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN issued_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN revocation_metadata_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN session_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN token_family_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."auth_sessions"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_facilities"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_facilities"
+ALTER COLUMN facility_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_facilities"
+ALTER COLUMN is_active
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_facilities"
+ALTER COLUMN is_searchable
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_facilities"
+ALTER COLUMN name
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_facilities"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_facilities"
+ALTER COLUMN verification_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_group_members"
+ALTER COLUMN care_group_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_group_members"
+ALTER COLUMN care_group_member_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_group_members"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_group_members"
+ALTER COLUMN invitation_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_group_members"
+ALTER COLUMN is_emergency_contact
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_group_members"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_group_members"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_groups"
+ALTER COLUMN care_group_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_groups"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_groups"
+ALTER COLUMN group_name
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_groups"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_groups"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_groups"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN configuration_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN content_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN display_order
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN distribution_enabled
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN entry_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN is_active
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN lock_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN migration_review_required
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN template_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN template_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN template_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN title
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_item_templates"
+ALTER COLUMN version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_subjects"
+ALTER COLUMN care_subject_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_subjects"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_subjects"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_subjects"
+ALTER COLUMN person_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_subjects"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_subjects"
+ALTER COLUMN subject_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_subjects"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN metadata_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN origin
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN reminder_occurrence_generation
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN target_subject
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN task_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN task_type
+SET NOT NULL;
 
 ALTER TABLE ONLY public."care_tasks" ALTER COLUMN title SET NOT NULL;
 
-ALTER TABLE ONLY public."care_tasks" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN action_type SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN actor_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN applied_at SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN checklist_action_command_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN client_request_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN legal_hold SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN payload_hash SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN result_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN result_status SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN retain_until SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN task_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_action_commands" ALTER COLUMN task_kind SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN care_context_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN care_context_type SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN checklist_instance_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN context_owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN distribution_key SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN key_version SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN lock_version SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN origin SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN recipient_role SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN recipient_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_instances" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN category SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN checklist_instance_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN checklist_task_instance_id SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN display_order SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN is_required SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN key_version SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN lock_version SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN task_key SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN title_snapshot SET NOT NULL;
-
-ALTER TABLE ONLY public."checklist_task_instances" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN answer_count SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN author_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN body SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN content_id SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN content_type SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN image_urls SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN is_anonymous SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN is_expert_labeled SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN is_personal_experience SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN like_count SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN moderation_status SET NOT NULL;
-
-ALTER TABLE ONLY public."community_content" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."community_interactions" ALTER COLUMN actor_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."community_interactions" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."community_interactions" ALTER COLUMN interaction_id SET NOT NULL;
-
-ALTER TABLE ONLY public."community_interactions" ALTER COLUMN interaction_type SET NOT NULL;
-
-ALTER TABLE ONLY public."community_topics" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."community_topics" ALTER COLUMN id SET NOT NULL;
-
-ALTER TABLE ONLY public."community_topics" ALTER COLUMN is_hidden SET NOT NULL;
-
-ALTER TABLE ONLY public."community_topics" ALTER COLUMN name SET NOT NULL;
-
-ALTER TABLE ONLY public."community_topics" ALTER COLUMN slug SET NOT NULL;
-
-ALTER TABLE ONLY public."community_topics" ALTER COLUMN sort_order SET NOT NULL;
-
-ALTER TABLE ONLY public."community_topics" ALTER COLUMN type SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_bookings" ALTER COLUMN booking_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_bookings" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_bookings" ALTER COLUMN expert_profile_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_bookings" ALTER COLUMN requester_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_bookings" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_bookings" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN citation_snapshot_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN context_share_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN evidence_source_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN ordinal SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN organization SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN reviewed_at SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN source_status_at_share SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_citations" ALTER COLUMN source_url SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN consent_grant_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN consultation_request_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN context_share_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN expert_profile_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN idempotency_key SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN intake_session_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN intake_status SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN origin_dashboard SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN origin_reference_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN risk_level SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN risk_summary SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN share_policy_version SET NOT NULL;
-
-ALTER TABLE ONLY public."consultation_context_shares" ALTER COLUMN triage_stage SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_sources" ALTER COLUMN content_item_id SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_sources" ALTER COLUMN content_item_source_id SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_sources" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_sources" ALTER COLUMN source_snapshot_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_sources" ALTER COLUMN source_title SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_topics" ALTER COLUMN content_item_id SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_topics" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."content_item_topics" ALTER COLUMN topic_id SET NOT NULL;
-
-ALTER TABLE ONLY public."content_items" ALTER COLUMN content_item_id SET NOT NULL;
-
-ALTER TABLE ONLY public."content_items" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."content_items" ALTER COLUMN lock_version SET NOT NULL;
-
-ALTER TABLE ONLY public."content_items" ALTER COLUMN recommendation_priority SET NOT NULL;
-
-ALTER TABLE ONLY public."content_items" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN call_id SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN call_status SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN call_type SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN conversation_id SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN initiated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN initiated_by_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."conversation_calls" ALTER COLUMN zego_room_id SET NOT NULL;
-
-ALTER TABLE ONLY public."data_permissions" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."data_permissions" ALTER COLUMN legacy_consent_id SET NOT NULL;
-
-ALTER TABLE ONLY public."data_permissions" ALTER COLUMN permission_id SET NOT NULL;
-
-ALTER TABLE ONLY public."data_permissions" ALTER COLUMN permission_kind SET NOT NULL;
-
-ALTER TABLE ONLY public."data_permissions" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN baby_id SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN care_subject_id SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN milestone_id SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN milestone_status SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN milestone_type SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN record_status SET NOT NULL;
-
-ALTER TABLE ONLY public."development_milestones" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."device_tokens" ALTER COLUMN active SET NOT NULL;
-
-ALTER TABLE ONLY public."device_tokens" ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE ONLY public."care_tasks"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN action_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN actor_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN applied_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN checklist_action_command_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN client_request_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN legal_hold
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN payload_hash
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN result_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN result_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN retain_until
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN task_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_action_commands"
+ALTER COLUMN task_kind
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN care_context_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN care_context_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN checklist_instance_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN context_owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN distribution_key
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN key_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN lock_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN origin
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN recipient_role
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN recipient_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_instances"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN category
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN checklist_instance_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN checklist_task_instance_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN display_order
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN is_required
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN key_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN lock_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN task_key
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN title_snapshot
+SET NOT NULL;
+
+ALTER TABLE ONLY public."checklist_task_instances"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN answer_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN author_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN body
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN content_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN content_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN image_urls
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN is_anonymous
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN is_expert_labeled
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN is_personal_experience
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN like_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN moderation_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_content"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_interactions"
+ALTER COLUMN actor_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_interactions"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_interactions"
+ALTER COLUMN interaction_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_interactions"
+ALTER COLUMN interaction_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_topics"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_topics"
+ALTER COLUMN id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_topics"
+ALTER COLUMN is_hidden
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_topics"
+ALTER COLUMN name
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_topics"
+ALTER COLUMN slug
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_topics"
+ALTER COLUMN sort_order
+SET NOT NULL;
+
+ALTER TABLE ONLY public."community_topics"
+ALTER COLUMN type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_bookings"
+ALTER COLUMN booking_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_bookings"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_bookings"
+ALTER COLUMN expert_profile_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_bookings"
+ALTER COLUMN requester_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_bookings"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_bookings"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN citation_snapshot_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN context_share_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN evidence_source_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN ordinal
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN organization
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN reviewed_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN source_status_at_share
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_citations"
+ALTER COLUMN source_url
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN consent_grant_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN consultation_request_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN context_share_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN expert_profile_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN idempotency_key
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN intake_session_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN intake_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN origin_dashboard
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN origin_reference_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN risk_level
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN risk_summary
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN share_policy_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."consultation_context_shares"
+ALTER COLUMN triage_stage
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_sources"
+ALTER COLUMN content_item_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_sources"
+ALTER COLUMN content_item_source_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_sources"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_sources"
+ALTER COLUMN source_snapshot_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_sources"
+ALTER COLUMN source_title
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_topics"
+ALTER COLUMN content_item_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_topics"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_item_topics"
+ALTER COLUMN topic_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_items"
+ALTER COLUMN content_item_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_items"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_items"
+ALTER COLUMN lock_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_items"
+ALTER COLUMN recommendation_priority
+SET NOT NULL;
+
+ALTER TABLE ONLY public."content_items"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN call_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN call_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN call_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN conversation_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN initiated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN initiated_by_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."conversation_calls"
+ALTER COLUMN zego_room_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."data_permissions"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."data_permissions"
+ALTER COLUMN legacy_consent_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."data_permissions"
+ALTER COLUMN permission_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."data_permissions"
+ALTER COLUMN permission_kind
+SET NOT NULL;
+
+ALTER TABLE ONLY public."data_permissions"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN baby_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN care_subject_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN milestone_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN milestone_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN milestone_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN record_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."development_milestones"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."device_tokens"
+ALTER COLUMN active
+SET NOT NULL;
+
+ALTER TABLE ONLY public."device_tokens"
+ALTER COLUMN created_at
+SET NOT NULL;
 
 ALTER TABLE ONLY public."device_tokens" ALTER COLUMN id SET NOT NULL;
 
-ALTER TABLE ONLY public."device_tokens" ALTER COLUMN platform SET NOT NULL;
-
-ALTER TABLE ONLY public."device_tokens" ALTER COLUMN token SET NOT NULL;
-
-ALTER TABLE ONLY public."device_tokens" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."device_tokens" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversation_read_cursors" ALTER COLUMN conversation_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversation_read_cursors" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversation_read_cursors" ALTER COLUMN last_read_at SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversation_read_cursors" ALTER COLUMN last_read_message_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversation_read_cursors" ALTER COLUMN reader_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversation_read_cursors" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversations" ALTER COLUMN conversation_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversations" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversations" ALTER COLUMN expert_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversations" ALTER COLUMN mother_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_conversations" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_messages" ALTER COLUMN client_message_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_messages" ALTER COLUMN conversation_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_messages" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_messages" ALTER COLUMN message_id SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_messages" ALTER COLUMN message_type SET NOT NULL;
-
-ALTER TABLE ONLY public."direct_messages" ALTER COLUMN sender_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expense_entries" ALTER COLUMN amount SET NOT NULL;
-
-ALTER TABLE ONLY public."expense_entries" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expense_entries" ALTER COLUMN currency SET NOT NULL;
-
-ALTER TABLE ONLY public."expense_entries" ALTER COLUMN expense_date SET NOT NULL;
-
-ALTER TABLE ONLY public."expense_entries" ALTER COLUMN expense_entry_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expense_entries" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expense_entries" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN availability_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN channel_type SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN end_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN professional_profile_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN start_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_availability" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN client_request_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN description SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN expert_profile_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN expires_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN requester_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN topic SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_consultation_requests" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN latitude SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN location_share_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN longitude SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN professional_profile_id SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN shared_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."expert_location_shares" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_context_memories" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."health_context_memories" ALTER COLUMN memory_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_context_memories" ALTER COLUMN memory_payload_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_context_memories" ALTER COLUMN related_stage SET NOT NULL;
-
-ALTER TABLE ONLY public."health_context_memories" ALTER COLUMN summary_text SET NOT NULL;
-
-ALTER TABLE ONLY public."health_context_memories" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN accepted_input_units_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN aggregation_policy_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN allowed_journey_stages_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN chart_policy_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN device_import_supported SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN display_name SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN effective_from SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN is_active SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN manual_entry_supported SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN metric_code SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN metric_definition_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN observation_shape SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN plausibility_policy_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN quality_policy_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN required_context_schema_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN subject_type SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."health_metric_definitions" ALTER COLUMN version SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN care_subject_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN context_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN health_observation_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN observation_type SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN observed_at SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN raw_payload_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN source_type SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN subject_type SET NOT NULL;
-
-ALTER TABLE ONLY public."health_observations" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."health_records" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."health_records" ALTER COLUMN health_record_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_records" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."health_records" ALTER COLUMN record_type SET NOT NULL;
-
-ALTER TABLE ONLY public."health_records" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."health_records" ALTER COLUMN title SET NOT NULL;
-
-ALTER TABLE ONLY public."health_records" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_source_reviews" ALTER COLUMN changed_at SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_source_reviews" ALTER COLUMN knowledge_source_id SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_source_reviews" ALTER COLUMN new_status SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_source_reviews" ALTER COLUMN review_id SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN base_url SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN category SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN discovery_mode SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN domain SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN knowledge_source_id SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN organization SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."knowledge_sources" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN exercise_session_id SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN exercise_template_id SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN paused_seconds SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN session_status SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN started_at SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN summary_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."maternal_exercise_sessions" ALTER COLUMN warning_count SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN moderation_case_id SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN opened_at SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN priority SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN report_source SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN target_id SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN target_type SET NOT NULL;
-
-ALTER TABLE ONLY public."moderation_cases" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN care_subject_id SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN journey_id SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN journey_type SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN recommendation_profile_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN recommendation_profile_status SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN recommendation_profile_version SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."mother_journeys" ALTER COLUMN version SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN attempt_count SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN due_at SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN job_id SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN job_type SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN next_attempt_at SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_jobs" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN attempt_count SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN body SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN channel SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN id SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN is_read SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN title SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN type SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."notification_records" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."professional_specialties" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."professional_specialties" ALTER COLUMN is_primary SET NOT NULL;
-
-ALTER TABLE ONLY public."professional_specialties" ALTER COLUMN professional_profile_id SET NOT NULL;
-
-ALTER TABLE ONLY public."professional_specialties" ALTER COLUMN specialty_id SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN action SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN id SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN is_active SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN is_system_default SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN keyword SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN severity SET NOT NULL;
-
-ALTER TABLE ONLY public."red_flag_rules" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_occurrence_aliases" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_occurrence_aliases" ALTER COLUMN occurrence_generation SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_occurrence_aliases" ALTER COLUMN occurrence_id SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_occurrence_aliases" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_occurrence_aliases" ALTER COLUMN reminder_definition_id SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_occurrence_aliases" ALTER COLUMN scheduled_at SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN active SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN local_times SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN lock_version SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN owner_user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN recurrence SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN revision SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN schedule_id SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN start_date SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN time_zone SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN title SET NOT NULL;
-
-ALTER TABLE ONLY public."reminder_schedules" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN alert_failed_recipient_count SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN alert_generation SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN alert_successful_recipient_count SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN created_at SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN detected_at SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN event_type SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN location_snapshot_jsonb SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN record_type SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN safety_event_id SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN updated_at SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_events" ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_monitoring_sessions" ALTER COLUMN monitoring_session_id SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_monitoring_sessions" ALTER COLUMN sensitivity_level SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_monitoring_sessions" ALTER COLUMN started_at SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_monitoring_sessions" ALTER COLUMN status SET NOT NULL;
-
-ALTER TABLE ONLY public."safety_monitoring_sessions" ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE ONLY public."device_tokens"
+ALTER COLUMN platform
+SET NOT NULL;
+
+ALTER TABLE ONLY public."device_tokens"
+ALTER COLUMN token
+SET NOT NULL;
+
+ALTER TABLE ONLY public."device_tokens"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."device_tokens"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversation_read_cursors"
+ALTER COLUMN conversation_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversation_read_cursors"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversation_read_cursors"
+ALTER COLUMN last_read_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversation_read_cursors"
+ALTER COLUMN last_read_message_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversation_read_cursors"
+ALTER COLUMN reader_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversation_read_cursors"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversations"
+ALTER COLUMN conversation_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversations"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversations"
+ALTER COLUMN expert_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversations"
+ALTER COLUMN mother_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_conversations"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_messages"
+ALTER COLUMN client_message_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_messages"
+ALTER COLUMN conversation_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_messages"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_messages"
+ALTER COLUMN message_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_messages"
+ALTER COLUMN message_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."direct_messages"
+ALTER COLUMN sender_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expense_entries"
+ALTER COLUMN amount
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expense_entries"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expense_entries"
+ALTER COLUMN currency
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expense_entries"
+ALTER COLUMN expense_date
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expense_entries"
+ALTER COLUMN expense_entry_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expense_entries"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expense_entries"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN availability_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN channel_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN end_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN professional_profile_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN start_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_availability"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN client_request_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN description
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN expert_profile_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN expires_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN requester_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN topic
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_consultation_requests"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN latitude
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN location_share_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN longitude
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN professional_profile_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN shared_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."expert_location_shares"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_context_memories"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_context_memories"
+ALTER COLUMN memory_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_context_memories"
+ALTER COLUMN memory_payload_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_context_memories"
+ALTER COLUMN related_stage
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_context_memories"
+ALTER COLUMN summary_text
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_context_memories"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN accepted_input_units_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN aggregation_policy_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN allowed_journey_stages_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN chart_policy_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN device_import_supported
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN display_name
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN effective_from
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN is_active
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN manual_entry_supported
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN metric_code
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN metric_definition_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN observation_shape
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN plausibility_policy_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN quality_policy_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN required_context_schema_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN subject_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_metric_definitions"
+ALTER COLUMN version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN care_subject_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN context_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN health_observation_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN observation_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN observed_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN raw_payload_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN source_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN subject_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_observations"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_records"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_records"
+ALTER COLUMN health_record_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_records"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_records"
+ALTER COLUMN record_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_records"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_records"
+ALTER COLUMN title
+SET NOT NULL;
+
+ALTER TABLE ONLY public."health_records"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_source_reviews"
+ALTER COLUMN changed_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_source_reviews"
+ALTER COLUMN knowledge_source_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_source_reviews"
+ALTER COLUMN new_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_source_reviews"
+ALTER COLUMN review_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN base_url
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN category
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN discovery_mode
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN domain
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN knowledge_source_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN organization
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."knowledge_sources"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN exercise_session_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN exercise_template_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN paused_seconds
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN session_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN started_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN summary_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."maternal_exercise_sessions"
+ALTER COLUMN warning_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN moderation_case_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN opened_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN priority
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN report_source
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN target_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN target_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."moderation_cases"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN care_subject_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN journey_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN journey_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN recommendation_profile_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN recommendation_profile_status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN recommendation_profile_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."mother_journeys"
+ALTER COLUMN version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN attempt_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN due_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN job_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN job_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN next_attempt_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_jobs"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN attempt_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN body
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN channel
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN is_read
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN title
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."notification_records"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."professional_specialties"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."professional_specialties"
+ALTER COLUMN is_primary
+SET NOT NULL;
+
+ALTER TABLE ONLY public."professional_specialties"
+ALTER COLUMN professional_profile_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."professional_specialties"
+ALTER COLUMN specialty_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN action
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN is_active
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN is_system_default
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN keyword
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN severity
+SET NOT NULL;
+
+ALTER TABLE ONLY public."red_flag_rules"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_occurrence_aliases"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_occurrence_aliases"
+ALTER COLUMN occurrence_generation
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_occurrence_aliases"
+ALTER COLUMN occurrence_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_occurrence_aliases"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_occurrence_aliases"
+ALTER COLUMN reminder_definition_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_occurrence_aliases"
+ALTER COLUMN scheduled_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN active
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN local_times
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN lock_version
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN owner_user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN recurrence
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN revision
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN schedule_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN start_date
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN time_zone
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN title
+SET NOT NULL;
+
+ALTER TABLE ONLY public."reminder_schedules"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN alert_failed_recipient_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN alert_generation
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN alert_successful_recipient_count
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN created_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN detected_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN event_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN location_snapshot_jsonb
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN record_type
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN safety_event_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN updated_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_events"
+ALTER COLUMN user_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_monitoring_sessions"
+ALTER COLUMN monitoring_session_id
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_monitoring_sessions"
+ALTER COLUMN sensitivity_level
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_monitoring_sessions"
+ALTER COLUMN started_at
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_monitoring_sessions"
+ALTER COLUMN status
+SET NOT NULL;
+
+ALTER TABLE ONLY public."safety_monitoring_sessions"
+ALTER COLUMN user_id
+SET NOT NULL;
 
 ALTER TABLE ONLY public."specialties" ALTER COLUMN code SET NOT NULL;
 
-ALTER TABLE ONLY public."specialties" ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE ONLY public."specialties"
+ALTER COLUMN created_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."specialties" ALTER COLUMN is_active SET NOT NULL;
+ALTER TABLE ONLY public."specialties"
+ALTER COLUMN is_active
+SET NOT NULL;
 
 ALTER TABLE ONLY public."specialties" ALTER COLUMN name SET NOT NULL;
 
-ALTER TABLE ONLY public."specialties" ALTER COLUMN specialty_id SET NOT NULL;
+ALTER TABLE ONLY public."specialties"
+ALTER COLUMN specialty_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN administrator_email SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN administrator_email
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN ai_moderation_enabled SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN ai_moderation_enabled
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN api_rate_limit SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN api_rate_limit
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN connection_timeout_ms SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN connection_timeout_ms
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN created_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN email_alerts SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN email_alerts
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN maintenance_mode_enabled SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN maintenance_mode_enabled
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN max_upload_size_mb SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN max_upload_size_mb
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN row_version SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN row_version
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN sms_alerts SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN sms_alerts
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN system_configuration_id SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN system_configuration_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN updated_at SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN updated_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN updated_by SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN updated_by
+SET NOT NULL;
 
-ALTER TABLE ONLY public."system_configurations" ALTER COLUMN webhook_alerts SET NOT NULL;
+ALTER TABLE ONLY public."system_configurations"
+ALTER COLUMN webhook_alerts
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_session_evidence" ALTER COLUMN claim_text SET NOT NULL;
+ALTER TABLE ONLY public."triage_session_evidence"
+ALTER COLUMN claim_text
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_session_evidence" ALTER COLUMN content_hash SET NOT NULL;
+ALTER TABLE ONLY public."triage_session_evidence"
+ALTER COLUMN content_hash
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_session_evidence" ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE ONLY public."triage_session_evidence"
+ALTER COLUMN created_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_session_evidence" ALTER COLUMN evidence_id SET NOT NULL;
+ALTER TABLE ONLY public."triage_session_evidence"
+ALTER COLUMN evidence_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_session_evidence" ALTER COLUMN evidence_type SET NOT NULL;
+ALTER TABLE ONLY public."triage_session_evidence"
+ALTER COLUMN evidence_type
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_session_evidence" ALTER COLUMN source_snapshot_jsonb SET NOT NULL;
+ALTER TABLE ONLY public."triage_session_evidence"
+ALTER COLUMN source_snapshot_jsonb
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_session_evidence" ALTER COLUMN triage_session_id SET NOT NULL;
+ALTER TABLE ONLY public."triage_session_evidence"
+ALTER COLUMN triage_session_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN conversation_jsonb SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN conversation_jsonb
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN created_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN created_by SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN created_by
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN emergency SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN emergency
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN input_jsonb SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN input_jsonb
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN result_jsonb SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN result_jsonb
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN schema_version SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN schema_version
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN status SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN status
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN symptoms SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN symptoms
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN triage_session_id SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN triage_session_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN updated_at SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN updated_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."triage_sessions" ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE ONLY public."triage_sessions"
+ALTER COLUMN user_id
+SET NOT NULL;
 
 ALTER TABLE ONLY public."users" ALTER COLUMN created_at SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN email_verified SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN email_verified
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN emergency_auto_alert SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN emergency_auto_alert
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN emergency_countdown_seconds SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN emergency_countdown_seconds
+SET NOT NULL;
 
 ALTER TABLE ONLY public."users" ALTER COLUMN enabled SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN failed_login_count SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN failed_login_count
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN fall_detection_enabled SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN fall_detection_enabled
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN fall_detection_sensitivity_level SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN fall_detection_sensitivity_level
+SET NOT NULL;
 
 ALTER TABLE ONLY public."users" ALTER COLUMN locked SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN must_change_password SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN must_change_password
+SET NOT NULL;
 
 ALTER TABLE ONLY public."users" ALTER COLUMN person_id SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN phone_verified SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN phone_verified
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN safety_config_updated_at SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN safety_config_updated_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN safety_location_sharing_enabled SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN safety_location_sharing_enabled
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN sensor_permission_granted SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN sensor_permission_granted
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN settings_jsonb SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN settings_jsonb
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN social_identities SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN social_identities
+SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN trust_status SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN trust_status
+SET NOT NULL;
 
 ALTER TABLE ONLY public."users" ALTER COLUMN updated_at SET NOT NULL;
 
 ALTER TABLE ONLY public."users" ALTER COLUMN user_id SET NOT NULL;
 
-ALTER TABLE ONLY public."users" ALTER COLUMN verification_status SET NOT NULL;
+ALTER TABLE ONLY public."users"
+ALTER COLUMN verification_status
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_records" ALTER COLUMN baby_id SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_records"
+ALTER COLUMN baby_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_records" ALTER COLUMN care_subject_id SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_records"
+ALTER COLUMN care_subject_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_records" ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_records"
+ALTER COLUMN created_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_records" ALTER COLUMN status SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_records"
+ALTER COLUMN status
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_records" ALTER COLUMN updated_at SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_records"
+ALTER COLUMN updated_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_records" ALTER COLUMN vaccination_record_id SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_records"
+ALTER COLUMN vaccination_record_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_records" ALTER COLUMN vaccine_name SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_records"
+ALTER COLUMN vaccine_name
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_schedules" ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_schedules"
+ALTER COLUMN created_at
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_schedules" ALTER COLUMN dose_number SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_schedules"
+ALTER COLUMN dose_number
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_schedules" ALTER COLUMN offset_days SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_schedules"
+ALTER COLUMN offset_days
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_schedules" ALTER COLUMN schedule_version SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_schedules"
+ALTER COLUMN schedule_version
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_schedules" ALTER COLUMN vaccination_schedule_id SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_schedules"
+ALTER COLUMN vaccination_schedule_id
+SET NOT NULL;
 
-ALTER TABLE ONLY public."vaccination_schedules" ALTER COLUMN vaccine_name SET NOT NULL;
+ALTER TABLE ONLY public."vaccination_schedules"
+ALTER COLUMN vaccine_name
+SET NOT NULL;
 
 -- Sequence ownership
 
@@ -7600,6 +8671,7 @@ OPTIONAL templates are added explicitly by users.';
 COMMENT ON COLUMN public.health_observations.deleted_at IS 'Soft-delete marker mirroring growth_measurements.deleted_at. Read paths must filter on this before wave 13 backfills any soft-deleted growth row (V3 §3.12).';
 COMMENT ON COLUMN public.health_observations.measurement_group_id IS 'Groups the observations produced by a single measuring session. For rows migrated from growth_measurements this is the source growth_measurement_id (V3 §3.12).';
 COMMENT ON COLUMN public.users.safety_location_sharing_enabled IS 'Explicit mother opt-in to attach current location to fall emergency alerts.';
+COMMENT ON COLUMN public.users.workplace_province_id IS 'Province of the expert''s workplace, as province_id from /api/v1/master-data/provinces. Scopes the TrackAsia hospital lookup. NULL for experts who have not set one.';
 COMMENT ON TABLE public.notification_jobs IS 'R11: typed-polymorphic notification queue. job_type discriminates;
 
 each branch keeps its own typed FK and its own partial unique identity (V3 §3.8).';
