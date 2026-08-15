@@ -139,6 +139,9 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
   }
 
   void _refresh() {
+    if (_isOpening && !_isExcludedPath(widget.currentPath())) {
+      _isOpening = false;
+    }
     if (!mounted || _refreshScheduled) return;
 
     if (SchedulerBinding.instance.schedulerPhase !=

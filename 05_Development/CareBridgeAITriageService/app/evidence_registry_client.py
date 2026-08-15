@@ -48,6 +48,16 @@ def _remember(
     return sources
 
 
+def _normalize_stage(stage: str) -> str:
+    stage = stage.upper()
+    return {
+        "POSTPARTUM_MOTHER": "POSTPARTUM",
+        "INFANT_0_12M": "INFANT",
+        "TODDLER_12_24M": "TODDLER",
+        "POSSIBLE_PREGNANCY": "PRECONCEPTION",
+    }.get(stage, stage)
+
+
 def approved_sources_for_stage(stage: str) -> tuple[ApprovedEvidenceSource, ...]:
     """Return only DB-approved sources for a stage, with a deliberately short TTL.
 
@@ -62,6 +72,7 @@ def approved_sources_for_stage(stage: str) -> tuple[ApprovedEvidenceSource, ...]
     absent for that window, and citations are post-outcome and never move a risk level.
     """
     stage = stage.upper()
+    norm_stage = _normalize_stage(stage)
     cached = _CACHE.get(stage)
     if cached is not None:
         ttl = EVIDENCE_REGISTRY_CACHE_SECONDS if cached[2] else EVIDENCE_REGISTRY_FAILURE_CACHE_SECONDS
@@ -71,7 +82,7 @@ def approved_sources_for_stage(stage: str) -> tuple[ApprovedEvidenceSource, ...]
         # Not a failure to remember: with nothing configured there is no call to skip, and
         # caching it would only hide a later configuration change.
         return ()
-    url = f"{EVIDENCE_REGISTRY_URL}/internal/api/v1/triage/evidence-sources/approved?stage={quote(stage)}"
+    url = f"{EVIDENCE_REGISTRY_URL}/internal/api/v1/triage/evidence-sources/approved?stage={quote(norm_stage)}"
     request = Request(url, headers={"X-CareBridge-Internal-Key": EVIDENCE_REGISTRY_INTERNAL_KEY})
     try:
         with urlopen(request, timeout=2.0) as response:
@@ -91,7 +102,8 @@ def approved_sources_for_stage(stage: str) -> tuple[ApprovedEvidenceSource, ...]
         if not domain or not base_url.startswith("https://"):
             continue
         stages = tuple(str(value).upper() for value in item.get("applicableStages", []) if value)
-        if stage not in stages:
+        norm_stages = {_normalize_stage(s) for s in stages}
+        if norm_stage not in norm_stages and stage not in stages:
             continue
         sources.append(ApprovedEvidenceSource(
             id=str(item.get("id") or domain), domain=domain, base_url=base_url,
