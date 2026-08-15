@@ -1126,4 +1126,83 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'family audience displays mother system tasks in Gợi ý CareBridge tab and synchronizes completed status without allowing ticking',
+    (tester) async {
+      final envelope = {
+        'asOf': '2026-08-03T01:00:00Z',
+        'zoneId': 'Asia/Ho_Chi_Minh',
+        'horizonDays': 7,
+        'sections': {
+          'overdue': <Map<String, dynamic>>[],
+          'today': [
+            {
+              'taskKind': 'CHECKLIST',
+              'taskId': 'mother-system-completed',
+              'title': 'Uống vitamin và canxi',
+              'origin': 'SYSTEM_TEMPLATE',
+              'targetSubject': 'MOTHER',
+              'status': 'COMPLETED',
+              'timeBucket': 'TODAY',
+              'stage': 'PREGNANCY',
+              'allowedActions': <String>['REOPEN'],
+            },
+            {
+              'taskKind': 'CHECKLIST',
+              'taskId': 'mother-personal-pending',
+              'title': 'Mua đồ chuẩn bị đi sinh',
+              'origin': 'USER_CREATED',
+              'targetSubject': 'MOTHER',
+              'status': 'PENDING',
+              'timeBucket': 'TODAY',
+              'allowedActions': <String>['COMPLETE'],
+            },
+          ],
+          'upcoming': <Map<String, dynamic>>[],
+          'unscheduled': <Map<String, dynamic>>[],
+        },
+        'counts': {'overdue': 0, 'today': 2, 'upcoming': 0, 'unscheduled': 0},
+        'correlationId': 'family-sync-test',
+      };
+
+      await tester.pumpWidget(
+        _wrap(
+          TodayTasksPanel(
+            service: _service(() async => {'data': envelope}),
+            audience: TodayTasksAudience.family,
+            layout: TodayTasksLayout.sourceGroups,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tab 0: "Gợi ý CareBridge"
+      expect(find.text('Gợi ý CareBridge'), findsWidgets);
+      expect(find.text('Uống vitamin và canxi'), findsOneWidget);
+
+      // Status icon for completed task shows checkmark
+      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+
+      // Status control is read-only (no button key task-status-mother-system-completed)
+      expect(
+        find.byKey(const Key('task-status-mother-system-completed')),
+        findsNothing,
+      );
+
+      // Tap on Tab 1: "Việc cá nhân"
+      await tester.tap(find.text('Việc cá nhân'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mua đồ chuẩn bị đi sinh'), findsOneWidget);
+      // Status icon for pending task shows unchecked circle
+      expect(find.byIcon(Icons.radio_button_unchecked_rounded), findsOneWidget);
+
+      // Status control is read-only (no button key task-status-mother-personal-pending)
+      expect(
+        find.byKey(const Key('task-status-mother-personal-pending')),
+        findsNothing,
+      );
+    },
+  );
 }
