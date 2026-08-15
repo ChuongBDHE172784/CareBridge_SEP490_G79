@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../models/safety_config_model.dart';
 import '../models/imu_diagnostics_model.dart';
+import '../../emergency/services/emergency_service.dart';
 import 'imu_fall_detector.dart';
 import 'safety_demo_mode.dart';
 import 'safety_service.dart';
@@ -14,29 +15,42 @@ import '../../privacy/services/privacy_service.dart';
 
 typedef AccelerometerEvents = Stream<AccelerometerEvent> Function();
 typedef GyroscopeEvents = Stream<GyroscopeEvent> Function();
+typedef CloseStaleSafetyEvent = Future<void> Function(SafetyEvent event);
 
 class FallDetectionSensorService {
   FallDetectionSensorService._({
     AccelerometerEvents? accelerometerEvents,
     GyroscopeEvents? gyroscopeEvents,
     DateTime Function()? now,
+    SafetyService? safetyService,
+    Future<void> Function()? refreshLocation,
+    CloseStaleSafetyEvent? closeStaleEvent,
   }) : _accelerometerEvents =
            accelerometerEvents ??
            (() => accelerometerEventStream(samplingPeriod: _samplingPeriod)),
        _gyroscopeEvents =
            gyroscopeEvents ??
            (() => gyroscopeEventStream(samplingPeriod: _samplingPeriod)),
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now,
+       _safetyService = safetyService ?? SafetyService(),
+       _refreshLocationOverride = refreshLocation,
+       _closeStaleEventOverride = closeStaleEvent;
 
   @visibleForTesting
   factory FallDetectionSensorService.forTesting({
     required AccelerometerEvents accelerometerEvents,
     required GyroscopeEvents gyroscopeEvents,
     required DateTime Function() now,
+    SafetyService? safetyService,
+    Future<void> Function()? refreshLocation,
+    CloseStaleSafetyEvent? closeStaleEvent,
   }) => FallDetectionSensorService._(
     accelerometerEvents: accelerometerEvents,
     gyroscopeEvents: gyroscopeEvents,
     now: now,
+    safetyService: safetyService,
+    refreshLocation: refreshLocation,
+    closeStaleEvent: closeStaleEvent,
   );
 
   static final FallDetectionSensorService instance =
@@ -46,8 +60,10 @@ class FallDetectionSensorService {
   final AccelerometerEvents _accelerometerEvents;
   final GyroscopeEvents _gyroscopeEvents;
   final DateTime Function() _now;
+  final SafetyService _safetyService;
+  final Future<void> Function()? _refreshLocationOverride;
+  final CloseStaleSafetyEvent? _closeStaleEventOverride;
 
-  final SafetyService _safetyService = SafetyService();
   final SafetyPermissionService _permissionService = SafetyPermissionService();
   final StreamController<SafetyEvent> _eventController =
       StreamController<SafetyEvent>.broadcast();
@@ -55,6 +71,7 @@ class FallDetectionSensorService {
       StreamController<ImuDiagnosticsSnapshot>.broadcast();
   final StreamController<SensorSelfTestResult> _sensorSelfTestController =
       StreamController<SensorSelfTestResult>.broadcast();
+  final Set<String> _publishedEventIds = <String>{};
 
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
@@ -62,9 +79,12 @@ class FallDetectionSensorService {
   final SafetySensorSelfTestDetector _sensorSelfTestDetector =
       SafetySensorSelfTestDetector();
   GyroscopeEvent? _latestGyroscope;
-  bool _sending = false;
   bool _running = false;
   int _runGeneration = 0;
+  int _responseGeneration = 0;
+  bool _alertResponseInProgress = false;
+  DateTime? _alertResponseStartedAt;
+  FallCandidate? _pendingCandidateAfterResponse;
   bool _locationSharingAllowed = false;
   Position? _latestPosition;
   DateTime? _locationReadAt;
@@ -79,6 +99,10 @@ class FallDetectionSensorService {
 
   static const _diagnosticsThrottle = Duration(milliseconds: 250);
   static const _staleAfter = Duration(seconds: 2);
+  // Detection is suspended while an alert is on screen. The screen always
+  // pairs its rearm with that suspension, but a killed UI isolate must never
+  // be able to leave fall detection switched off for the rest of the session.
+  static const alertResponseWatchdog = Duration(minutes: 3);
 
   bool get isRunning => _running;
   Stream<SafetyEvent> get detectedEvents => _eventController.stream;
@@ -185,7 +209,11 @@ class FallDetectionSensorService {
     await _cancelSensorSubscriptions();
     _latestGyroscope = null;
     _detector.reset();
-    _sending = false;
+    _responseGeneration++;
+    _alertResponseInProgress = false;
+    _alertResponseStartedAt = null;
+    _pendingCandidateAfterResponse = null;
+    _publishedEventIds.clear();
     _locationSharingAllowed = false;
     _latestPosition = null;
     _locationReadAt = null;
@@ -211,6 +239,11 @@ class FallDetectionSensorService {
     _accelerometerStreamError = null;
 
     final timestamp = event.timestamp.toUtc();
+    if (_now().toUtc().difference(timestamp) > _staleAfter) {
+      _detector.reset();
+      return;
+    }
+    _expireStuckAlertResponse(timestamp);
     final gyro = _latestGyroscope;
     final sample = ImuSample(
       accelerometerX: event.x,
@@ -244,13 +277,25 @@ class FallDetectionSensorService {
       _scheduleLocationRefresh();
     }
     if (candidate == null) return;
-    // A candidate is ignored while the previous event is being submitted.
-    // This prevents one physical fall from creating duplicate alerts while
-    // the API request is still in flight or retrying.
-    if (_sending) return;
+    if (_alertResponseInProgress) {
+      _pendingCandidateAfterResponse = candidate;
+      return;
+    }
+    unawaited(_sendCandidate(candidate, _runGeneration, _responseGeneration));
+  }
 
-    _sending = true;
-    unawaited(_sendCandidate(candidate, _runGeneration));
+  void _expireStuckAlertResponse(DateTime sampleAt) {
+    final startedAt = _alertResponseStartedAt;
+    if (!_alertResponseInProgress || startedAt == null) return;
+    if (sampleAt.difference(startedAt) <= alertResponseWatchdog) return;
+    debugPrint(
+      '[FallDetectionSensorService] alert response never rearmed; '
+      'resuming fall detection.',
+    );
+    _alertResponseInProgress = false;
+    _alertResponseStartedAt = null;
+    _pendingCandidateAfterResponse = null;
+    _detector.reset();
   }
 
   void _handleGyroscope(GyroscopeEvent event) {
@@ -259,9 +304,31 @@ class FallDetectionSensorService {
     _latestGyroscope = event;
   }
 
+  void beginAlertResponse() {
+    if (!_running) return;
+    _responseGeneration++;
+    _alertResponseInProgress = true;
+    _alertResponseStartedAt = _now().toUtc();
+    _pendingCandidateAfterResponse = null;
+    _detector.reset();
+  }
+
   void rearmAfterAlertResponse(DateTime respondedAt) {
     if (!_running) return;
+    final pendingCandidate = _pendingCandidateAfterResponse;
+    _pendingCandidateAfterResponse = null;
+    _alertResponseInProgress = false;
+    _alertResponseStartedAt = null;
     _detector.rearmAfterAlertResponse(respondedAt);
+    // An impact recorded while the alert was on screen belongs to the incident
+    // the user has just answered, so replaying it would raise a second alert
+    // for the same fall. Only a later impact is a new incident.
+    if (pendingCandidate != null &&
+        pendingCandidate.impactSample.timestamp.isAfter(respondedAt.toUtc())) {
+      unawaited(
+        _sendCandidate(pendingCandidate, _runGeneration, _responseGeneration),
+      );
+    }
   }
 
   void _publishSamplingDiagnostics(ImuSample sample, {bool force = false}) {
@@ -439,52 +506,78 @@ class FallDetectionSensorService {
   Future<void> _sendCandidate(
     FallCandidate candidate,
     int runGeneration,
+    int responseGeneration,
   ) async {
     final impact = candidate.impactSample;
-    try {
-      if (_locationSharingAllowed &&
-          (_latestPosition == null ||
-              _locationReadAt == null ||
-              _now().difference(_locationReadAt!) >
-                  const Duration(seconds: 30))) {
-        final refresh = _locationRefreshInFlight;
-        if (refresh != null) {
-          await refresh;
-        } else {
-          await _refreshLocation();
-        }
-      }
-      final position = _locationSharingAllowed ? _latestPosition : null;
-      for (var attempt = 1; attempt <= 3; attempt++) {
-        if (!_running || _runGeneration != runGeneration) return;
-        try {
-          final safetyEvent = await _safetyService.sendImuData(
-            accelerometerX: impact.accelerometerX,
-            accelerometerY: impact.accelerometerY,
-            accelerometerZ: impact.accelerometerZ,
-            gyroscopeX: impact.gyroscopeX,
-            gyroscopeY: impact.gyroscopeY,
-            gyroscopeZ: impact.gyroscopeZ,
-            timestamp: impact.timestamp,
-            onDeviceFallConfirmed: true,
-            signalId: '${impact.timestamp.microsecondsSinceEpoch}',
-            latitude: position?.latitude,
-            longitude: position?.longitude,
-          );
-          if (safetyEvent != null) _eventController.add(safetyEvent);
-          return;
-        } catch (error) {
-          if (attempt == 3) {
-            debugPrint(
-              '[FallDetectionSensorService] send IMU failed after retry: $error',
-            );
-            return;
+    final locationReadAt = _locationReadAt;
+    final hasFreshLocation =
+        _locationSharingAllowed &&
+        _latestPosition != null &&
+        locationReadAt != null &&
+        _now().difference(locationReadAt) <= const Duration(seconds: 30);
+    final position = hasFreshLocation ? _latestPosition : null;
+    if (_locationSharingAllowed && !hasFreshLocation) {
+      _scheduleLocationRefresh();
+    }
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      if (!_running || _runGeneration != runGeneration) return;
+      try {
+        final safetyEvent = await _safetyService.sendImuData(
+          accelerometerX: impact.accelerometerX,
+          accelerometerY: impact.accelerometerY,
+          accelerometerZ: impact.accelerometerZ,
+          gyroscopeX: impact.gyroscopeX,
+          gyroscopeY: impact.gyroscopeY,
+          gyroscopeZ: impact.gyroscopeZ,
+          timestamp: impact.timestamp,
+          onDeviceFallConfirmed: true,
+          signalId: '${impact.timestamp.microsecondsSinceEpoch}',
+          latitude: position?.latitude,
+          longitude: position?.longitude,
+        );
+        if (safetyEvent != null) {
+          if (responseGeneration != _responseGeneration) {
+            await _closeStaleEvent(safetyEvent);
+          } else if (_publishedEventIds.add(safetyEvent.id)) {
+            _eventController.add(safetyEvent);
           }
-          await Future<void>.delayed(Duration(seconds: attempt));
         }
+        return;
+      } catch (error) {
+        if (attempt == 3) {
+          debugPrint(
+            '[FallDetectionSensorService] send IMU failed after retry: $error',
+          );
+          // A verified fall that never reaches the backend looks exactly like
+          // a detector miss on the device, so surface the reason instead of
+          // failing silently.
+          _publishSensorError('Không gửi được dữ liệu ngã: $error');
+          return;
+        }
+        await Future<void>.delayed(Duration(seconds: attempt));
       }
-    } finally {
-      _sending = false;
+    }
+  }
+
+  Future<void> _closeStaleEvent(SafetyEvent event) async {
+    try {
+      final override = _closeStaleEventOverride;
+      if (override != null) {
+        await override(event);
+        return;
+      }
+      final updated = await _safetyService.reportFalsePositive(
+        event.id,
+        note: 'Tự động đóng cảnh báo IMU cũ sau khi người dùng đã phản hồi.',
+      );
+      final emergencySessionId = updated.emergencySessionId;
+      if (emergencySessionId != null && emergencySessionId.isNotEmpty) {
+        await EmergencyService().resolve(emergencySessionId);
+      }
+    } catch (error) {
+      debugPrint(
+        '[FallDetectionSensorService] close stale event failed: $error',
+      );
     }
   }
 
@@ -502,6 +595,11 @@ class FallDetectionSensorService {
   }
 
   Future<void> _refreshLocation() async {
+    final override = _refreshLocationOverride;
+    if (override != null) {
+      await override();
+      return;
+    }
     try {
       if (!_locationSharingAllowed) {
         _latestPosition = null;

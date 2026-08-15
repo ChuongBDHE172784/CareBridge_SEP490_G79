@@ -24,7 +24,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "audit_events")
-@org.hibernate.annotations.SQLRestriction("event_category LIKE 'MODERATION_%'")
+@org.hibernate.annotations.SQLRestriction("event_category LIKE 'MODERATION_%' AND event_category <> 'MODERATION_ACTION'")
 @Getter
 @Setter
 @Builder

@@ -246,7 +246,11 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                 IconButton(
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _onSurface, size: 20),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: _onSurface,
+                    size: 20,
+                  ),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 12),
@@ -333,7 +337,11 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 18, color: _onSurfaceVariant),
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          size: 18,
+                          color: _onSurfaceVariant,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           _load(reset: true);
@@ -375,13 +383,19 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
             shadowColor: const Color(0x1F845143),
             labelStyle: TextStyle(
               fontFamily: 'Lexend',
-              color: _selectedSpecialty == null ? Colors.white : _onSurfaceVariant,
+              color: _selectedSpecialty == null
+                  ? Colors.white
+                  : _onSurfaceVariant,
               fontSize: 13,
-              fontWeight: _selectedSpecialty == null ? FontWeight.w600 : FontWeight.w400,
+              fontWeight: _selectedSpecialty == null
+                  ? FontWeight.w600
+                  : FontWeight.w400,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             side: BorderSide(
-              color: _selectedSpecialty == null ? Colors.transparent : _outlineVariant,
+              color: _selectedSpecialty == null
+                  ? Colors.transparent
+                  : _outlineVariant,
             ),
             shape: StadiumBorder(),
           ),
@@ -397,13 +411,19 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
               shadowColor: const Color(0x1F845143),
               labelStyle: TextStyle(
                 fontFamily: 'Lexend',
-                color: _selectedSpecialty == specialty ? Colors.white : _onSurfaceVariant,
+                color: _selectedSpecialty == specialty
+                    ? Colors.white
+                    : _onSurfaceVariant,
                 fontSize: 13,
-                fontWeight: _selectedSpecialty == specialty ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: _selectedSpecialty == specialty
+                    ? FontWeight.w600
+                    : FontWeight.w400,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               side: BorderSide(
-                color: _selectedSpecialty == specialty ? Colors.transparent : _outlineVariant,
+                color: _selectedSpecialty == specialty
+                    ? Colors.transparent
+                    : _outlineVariant,
               ),
               shape: const StadiumBorder(),
             ),
@@ -431,7 +451,11 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                   color: _surfaceContainerLow,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.cloud_off_rounded, size: 40, color: _primary),
+                child: const Icon(
+                  Icons.cloud_off_rounded,
+                  size: 40,
+                  color: _primary,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -448,13 +472,24 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
               ElevatedButton.icon(
                 onPressed: () => _load(reset: true),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Thử lại',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                 ),
               ),
             ],
@@ -519,11 +554,16 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                   ? OutlinedButton.icon(
                       onPressed: _loadingMore ? null : _loadMore,
                       icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label: const Text('Tải thêm', style: TextStyle(fontFamily: 'Lexend')),
+                      label: const Text(
+                        'Tải thêm',
+                        style: TextStyle(fontFamily: 'Lexend'),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _primary,
                         side: const BorderSide(color: _primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
                     )
                   : const CircularProgressIndicator(
@@ -540,7 +580,8 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   }
 
   Widget _buildExpertCard(BuildContext context, ExpertDirectoryItem expert) {
-    final title = expert.displayName ?? expert.professionalTitle ?? 'Chuyên gia Y tế';
+    final title =
+        expert.displayName ?? expert.professionalTitle ?? 'Chuyên gia Y tế';
     final isApproved = expert.verificationStatus == 'APPROVED';
 
     return Container(
@@ -561,6 +602,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
+          key: ValueKey('expert-directory-card-${expert.expertProfileId}'),
           borderRadius: BorderRadius.circular(20),
           onTap: () => context.push('/expert/public/${expert.expertProfileId}'),
           child: Padding(
@@ -589,7 +631,8 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                                 : null,
                             child: expert.avatarUrl == null
                                 ? Text(
-                                    (title.isNotEmpty ? title[0] : 'B').toUpperCase(),
+                                    (title.isNotEmpty ? title[0] : 'B')
+                                        .toUpperCase(),
                                     style: const TextStyle(
                                       fontFamily: 'Lexend',
                                       color: _primary,
@@ -641,10 +684,14 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                               ),
                             ],
                           ),
-                          if (expert.specialty != null && expert.specialty!.isNotEmpty) ...[
+                          if (expert.specialty != null &&
+                              expert.specialty!.isNotEmpty) ...[
                             const SizedBox(height: 3),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: _surfaceContainerLow,
                                 borderRadius: BorderRadius.circular(8),
@@ -664,7 +711,11 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                           Row(
                             children: [
                               if (expert.experienceYears != null) ...[
-                                const Icon(Icons.work_history_rounded, size: 14, color: _onSurfaceVariant),
+                                const Icon(
+                                  Icons.work_history_rounded,
+                                  size: 14,
+                                  color: _onSurfaceVariant,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${expert.experienceYears} năm kinh nghiệm',
@@ -675,8 +726,12 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                                   ),
                                 ),
                               ],
-                              if (expert.experienceYears != null && expert.ratingAvg != null)
-                                const Text(' · ', style: TextStyle(color: _onSurfaceVariant)),
+                              if (expert.experienceYears != null &&
+                                  expert.ratingAvg != null)
+                                const Text(
+                                  ' · ',
+                                  style: TextStyle(color: _onSurfaceVariant),
+                                ),
                               if (expert.ratingAvg != null) ...[
                                 const Icon(
                                   Icons.star_rounded,
@@ -717,6 +772,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
 
   Widget _buildSkeletonLoader() {
     return ListView.builder(
+      key: const Key('expert-directory-skeleton'),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       itemCount: 4,
       itemBuilder: (context, index) {
@@ -779,4 +835,3 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     );
   }
 }
-

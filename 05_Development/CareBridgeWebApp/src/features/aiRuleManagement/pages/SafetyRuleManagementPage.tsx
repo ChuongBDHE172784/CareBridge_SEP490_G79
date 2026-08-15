@@ -29,6 +29,7 @@ import {
   AI_POLICY_SEVERITY_STYLES,
   REPORT_CATEGORY_LABELS,
   POLICY_TARGET_TYPE_LABELS,
+  formatPolicyName,
   type AiPolicy,
   type AiViolationCategory,
   type AiPolicySeverity,
@@ -591,7 +592,7 @@ export default function SafetyRuleManagementPage() {
                             <span className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold ${AI_STATE_META[aiStatus.state].style}`}>
                               {AI_STATE_META[aiStatus.state].label}
                             </span>
-                            <p className="mt-1 text-xs text-outline m-0">Model: {aiStatus.model || '—'}</p>
+                            <p className="mt-1 text-xs text-outline m-0">Model: {aiStatus.resolvedModel || aiStatus.model || '—'}</p>
                           </>
                         ) : (
                           <p className="text-sm text-on-surface-variant m-0">Đang tải...</p>
@@ -864,7 +865,7 @@ export default function SafetyRuleManagementPage() {
                         {testResult.matches.map((match, i) => (
                           <div key={`${match.policyCode}-${i}`} className="rounded-2xl border border-surface-container-highest bg-surface p-4">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-xs font-bold text-on-surface">{match.policyCode}</span>
+                              <span className="font-mono text-xs font-bold text-on-surface">{formatPolicyName(match.policyCode, match.category)}</span>
                               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${AI_POLICY_SEVERITY_STYLES[match.severity]}`}>
                                 {AI_POLICY_SEVERITY_LABELS[match.severity]}
                               </span>

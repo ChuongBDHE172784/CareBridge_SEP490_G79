@@ -6,8 +6,6 @@ import type {
 } from '../models/content';
 
 export const CHECKLIST_APPROVAL_REASON_MESSAGES: Readonly<Record<string, string>> = {
-  CHECKLIST_PROVENANCE_SIGN_OFF_REQUIRED:
-    'Chưa thể xuất bản checklist Pregnancy V2: cần sign-off clinical/content trước khi kích hoạt.',
   CHECKLIST_ACTIVE_LEGACY_CONFLICT:
     'Không thể xuất bản bộ chuỗi khi checklist legacy đang hoạt động. Hãy lưu trữ hoặc tắt checklist legacy trước.',
   CHECKLIST_ACTIVE_SEQUENCE_CONFLICT:
@@ -47,23 +45,18 @@ export function checklistWindowLabel(
   const start = checklist.eligibilityStartInclusive;
   const end = checklist.eligibilityEndInclusive;
   if (start == null || end == null) return 'Không có cửa sổ';
-  if (end >= 2_000_000_000) return `Tuần ${start}+`;
-  return `Tuần ${start}–${end}`;
+  if (end >= 2_000_000_000) return `Tuần ${start + 1}+`;
+  return `Tuần ${start + 1}–${end + 1}`;
 }
 
 export function checklistCadenceLabel(scheduleType?: string | null, materializationPolicy?: string | null): string {
-  if (scheduleType === 'WEEKLY' || materializationPolicy === 'EACH_WEEK') return 'Theo tuần';
-  if (scheduleType === 'DAILY' || materializationPolicy === 'EACH_DAY') return 'Theo ngày';
-  if (scheduleType === 'SET' || materializationPolicy === 'ONCE_PER_WINDOW') return 'Theo bộ';
+  if (materializationPolicy === 'EACH_WEEK') return 'Theo tuần';
+  if (materializationPolicy === 'EACH_DAY') return 'Theo ngày';
+  if (materializationPolicy === 'ONCE_PER_WINDOW') return 'Theo bộ';
+  if (scheduleType === 'SET') return 'Theo bộ';
+  if (scheduleType === 'WEEKLY') return 'Theo tuần';
+  if (scheduleType === 'DAILY') return 'Theo ngày';
   return 'Chưa cấu hình nhịp';
-}
-
-export function checklistProvenanceStatusLabel(status?: string | null): string {
-  switch (status) {
-    case 'SIGNED_OFF': return 'Đã sign-off câu chữ';
-    case 'PENDING_CLINICAL_COPY_SIGN_OFF': return 'Chờ sign-off clinical/content';
-    default: return status || 'Chưa có provenance';
-  }
 }
 
 export function checklistCoexistenceGuidance(

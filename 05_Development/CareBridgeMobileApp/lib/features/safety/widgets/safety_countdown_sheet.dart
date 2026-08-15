@@ -213,6 +213,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   int _remainingSeconds = 0;
   bool _timedOut = false;
   bool _dismissed = false;
+  bool _safeConfirmationInProgress = false;
   bool _feedbackStopped = false;
   BuildContext? _reasonDialogContext;
   BuildContext? _safeDialogContext;
@@ -232,7 +233,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   }
 
   void _tick() {
-    if (_dismissed) return;
+    if (_dismissed || _safeConfirmationInProgress) return;
     final deadline = widget.event.countdownDeadlineAt;
     final remaining = deadline == null
         ? Duration.zero
@@ -258,7 +259,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   }
 
   void _completeTimeout() {
-    if (_timedOut || _dismissed) return;
+    if (_timedOut || _dismissed || _safeConfirmationInProgress) return;
     _timedOut = true;
     _timer?.cancel();
     _stopFeedback();
@@ -277,6 +278,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   }
 
   Future<void> _confirmSafe() async {
+    if (_dismissed || _safeConfirmationInProgress) return;
+    _safeConfirmationInProgress = true;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -303,8 +306,13 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
       },
     );
     _safeDialogContext = null;
-    if (_dismissed || confirmed != true || !mounted) return;
-    _dismiss(const SafetyCountdownResult.safe());
+    if (_dismissed || !mounted) return;
+    if (confirmed == true) {
+      _dismiss(const SafetyCountdownResult.safe());
+      return;
+    }
+    _safeConfirmationInProgress = false;
+    _tick();
   }
 
   Future<void> _selectFalsePositiveReason() async {

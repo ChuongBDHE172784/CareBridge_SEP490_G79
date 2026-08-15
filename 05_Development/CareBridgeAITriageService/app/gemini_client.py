@@ -110,6 +110,8 @@ class GeminiClient:
         self.settings = settings
         self.enabled = settings.enabled
         self._reachable: bool | None = None
+        self._consecutive_provider_failures = 0
+        self._blocked_until = 0.0
         self._client = client
         if self.enabled:
             log.info("Gemini assistant enabled model=%s", settings.model)
@@ -179,10 +181,10 @@ class GeminiClient:
             return None
         return result
 
-    def extract_triage_v2(self, *, text: str, deadline: float | None = None):
+    def extract_triage(self, *, text: str, deadline: float | None = None):
         """V2 fact extraction only; its schema has no outcome/action/URL fields."""
 
-        from app.triage_v2.extraction import EXTRACTION_SYSTEM, TriageV2Extraction
+        from app.triage.extraction import EXTRACTION_SYSTEM, TriageExtraction
 
         safe_text = sanitize_symptom_text(text)
         if not self.enabled or not safe_text:
@@ -192,7 +194,7 @@ class GeminiClient:
             ensure_ascii=False,
         )
         return self._generate(
-            prompt, TriageV2Extraction, EXTRACTION_SYSTEM, 0.0, deadline=deadline
+            prompt, TriageExtraction, EXTRACTION_SYSTEM, 0.0, deadline=deadline
         )
 
     def compose_followup_questions(
@@ -346,6 +348,9 @@ class GeminiClient:
     ) -> T | None:
         if not self.enabled:
             return None
+        if time.monotonic() < self._blocked_until:
+            self._warn("circuit_open")
+            return None
         for attempt in range(self.settings.max_retries + 1):
             remaining = self.settings.timeout_seconds
             if deadline is not None:
@@ -354,7 +359,7 @@ class GeminiClient:
                 self._warn("request_deadline_exhausted")
                 break
             try:
-                from app.triage_v2.extraction import gemini_transport_schema
+                from app.triage.extraction import gemini_transport_schema
 
                 config = types.GenerateContentConfig(
                     system_instruction=system_instruction,
@@ -390,12 +395,15 @@ class GeminiClient:
                         raise ValueError("empty structured response")
                     result = schema.model_validate_json(text)
                 self._reachable = True
+                self._consecutive_provider_failures = 0
+                self._blocked_until = 0.0
                 return result
             except (ValidationError, ValueError, TypeError, AttributeError) as exc:
                 self._warn(type(exc).__name__)
                 break
             except Exception as exc:  # SDK maps auth, rate-limit and transport failures to API exceptions.
                 self._warn(type(exc).__name__)
+                self._record_provider_failure(exc)
                 if attempt >= self.settings.max_retries or not self._is_retryable(exc):
                     break
                 delay = self._retry_delay(exc, attempt)
@@ -404,6 +412,15 @@ class GeminiClient:
                 time.sleep(delay)
         self._reachable = False
         return None
+
+    def _record_provider_failure(self, exc: Exception) -> None:
+        """Open a short circuit while the optional provider is rate-limited or unavailable."""
+
+        if not self._is_retryable(exc):
+            return
+        self._consecutive_provider_failures += 1
+        if getattr(exc, "code", None) == 429 or self._consecutive_provider_failures >= 2:
+            self._blocked_until = time.monotonic() + 30.0
 
     @staticmethod
     def _is_retryable(exc: Exception) -> bool:

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, CalendarRange, ClipboardList, Plus, Save, Send, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, CalendarRange, ClipboardList, Plus, Save, Send, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 import type {
@@ -7,13 +7,16 @@ import type {
   ChecklistSubstage,
   ChecklistTargetSubject,
   ChecklistSupportFunction,
+  ChecklistMaterializationPolicy,
+  ChecklistScheduleEndMode,
+  ChecklistScheduleType,
+  ChecklistWeekBoundaryRule,
   ChecklistTemplateStatus,
   ChecklistTemplateType,
   ContentStage,
   ReviewFeedback,
 } from '../models/content';
 import { CHECKLIST_SUPPORT_FUNCTION_OPTIONS, STAGE_LABELS, STAGE_OPTIONS } from '../models/content';
-import { checklistSequenceLabel } from './checklistApprovalPresentation';
 import {
   createChecklistTemplate,
   fetchChecklistTemplateDetail,
@@ -25,36 +28,104 @@ interface ItemRow {
   id?: string;
   itemText: string;
   description: string;
+  sourceUrl: string;
   isRequired: boolean | null;
   targetSubject: ChecklistTargetSubject | null;
   supportFunction: ChecklistSupportFunction | '';
+  repeatWeekly: boolean;
+  repeatDaily: boolean;
 }
 
-const ROLE_ORDER: ChecklistRecipientRole[] = ['MOTHER', 'FAMILY'];
 
-const SUBSTAGE_OPTIONS: Partial<Record<ContentStage, ChecklistSubstage[]>> = {
-  PREGNANCY: [
-    { code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', startInclusive: 0, endInclusive: 12, unit: 'WEEK' },
-    { code: 'PREGNANCY_EDD_WEEK_0_40', anchor: 'EDD', startInclusive: 0, endInclusive: 40, unit: 'WEEK' },
-  ],
-  POSTPARTUM: [
-    { code: 'POSTPARTUM_DAY_0_7', anchor: 'DELIVERY_DATE', startInclusive: 0, endInclusive: 7, unit: 'DAY' },
-    { code: 'POSTPARTUM_WEEK_0_6', anchor: 'DELIVERY_DATE', startInclusive: 0, endInclusive: 6, unit: 'WEEK' },
-  ],
-};
 
 const AUTHORABLE_STAGES: readonly ContentStage[] = STAGE_OPTIONS.map(({ value }) => value);
 const DEFAULT_CHECKLIST_CONTRACT_VERSION = 2;
+const OPEN_ENDED_OFFSET = 2_147_483_647;
+const MAX_SOURCE_URL_LENGTH = 2_048;
+// The authoring surface uses the source-facing week number (1, 2, 3, ...).
+// Runtime eligibility remains zero-based, so the conversion is kept at this
+// boundary instead of leaking an implementation offset into the form.
+const SOURCE_WEEK_OPTIONS = Array.from({ length: 52 }, (_, index) => index + 1);
+// Retained for legacy postpartum day windows. New authoring always uses weeks.
+const SOURCE_DAY_OPTIONS = Array.from({ length: 53 }, (_, index) => index);
+let fallbackRowSequence = 0;
 
-function newRow(targetless = false): ItemRow {
+function contractVersionForStage(value: ContentStage | ''): number {
+  return value === 'POSTPARTUM' || value === 'BABY_CARE' ? 1 : 2;
+}
+
+function defaultSubstage(stage: ContentStage): ChecklistSubstage | null {
+  if (stage === 'PRE_PREGNANCY') return null;
+  const anchor = stage === 'PREGNANCY'
+    ? 'LMP'
+    : stage === 'BABY_CARE'
+      ? 'BIRTH_DATE'
+      : 'DELIVERY_DATE';
+  // Pregnancy Plan 1 covers source weeks 1-20.  The legacy postpartum
+  // window covered seven source weeks (the stored offset was 0-6).
+  const end = stage === 'PREGNANCY' ? 19 : 6;
   return {
-    key: crypto.randomUUID(),
+    code: `${stage}_${anchor}_WEEK_0_${end}`,
+    anchor,
+    startInclusive: 0,
+    endInclusive: end,
+    unit: 'WEEK',
+  };
+}
+
+function buildSubstage(
+  stage: ContentStage,
+  anchor: ChecklistSubstage['anchor'],
+  sourceStartInclusive: number,
+  sourceEndInclusive: number,
+  unit: ChecklistSubstage['unit'] = 'WEEK',
+  openEnded = false,
+): ChecklistSubstage {
+  const startInclusive = unit === 'WEEK' ? sourceStartInclusive - 1 : sourceStartInclusive;
+  const endInclusive = openEnded
+    ? OPEN_ENDED_OFFSET
+    : unit === 'WEEK' ? sourceEndInclusive - 1 : sourceEndInclusive;
+  return {
+    code: `${stage}_${anchor}_${unit}_${startInclusive}_${endInclusive}`,
+    anchor,
+    startInclusive,
+    endInclusive,
+    unit,
+  };
+}
+
+function newRow(targetless = false, repeatWeekly = false, repeatDaily = false): ItemRow {
+  return {
+    key: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `${crypto.randomUUID()}-${fallbackRowSequence++}`
+      : `row-${Date.now()}-${fallbackRowSequence++}`,
     itemText: '',
     description: '',
-    isRequired: targetless ? null : true,
+    sourceUrl: '',
+    isRequired: true,
     targetSubject: targetless ? null : 'MOTHER',
     supportFunction: '',
+    repeatWeekly,
+    repeatDaily,
   };
+}
+
+function sourceUrlValidationError(value: string): string | null {
+  const normalizedValue = value.trim();
+  if (!normalizedValue) return null;
+  if (normalizedValue.length > MAX_SOURCE_URL_LENGTH) {
+    return 'Link nguồn không được vượt quá 2.048 ký tự.';
+  }
+
+  try {
+    const url = new URL(normalizedValue);
+    const usesHttp = url.protocol === 'http:' || url.protocol === 'https:';
+    const hasSafeAuthority = Boolean(url.hostname) && !url.username && !url.password;
+    if (usesHttp && hasSafeAuthority) return null;
+  } catch {
+    // The shared message below covers malformed and non-absolute URLs.
+  }
+  return 'Link nguồn phải là URL đầy đủ bắt đầu bằng http:// hoặc https://.';
 }
 
 export default function ChecklistFormPage() {
@@ -65,16 +136,25 @@ export default function ChecklistFormPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [templateType, setTemplateType] = useState<ChecklistTemplateType>('MANDATORY');
-  // New recommendation content uses the targetless V2 contract by default.
-  // Existing drafts are normalized to their persisted contract on load so the
-  // legacy V1 compatibility surface remains available without ambiguity.
-  const [checklistContractVersion, setChecklistContractVersion] = useState<number>(
-    isEdit ? 1 : DEFAULT_CHECKLIST_CONTRACT_VERSION,
-  );
+  const [checklistContractVersion, setChecklistContractVersion] = useState<number>(DEFAULT_CHECKLIST_CONTRACT_VERSION);
   const [recipientRoles, setRecipientRoles] = useState<ChecklistRecipientRole[]>(['MOTHER']);
   const [stage, setStage] = useState<ContentStage | ''>('');
   const [substage, setSubstage] = useState<ChecklistSubstage | null>(null);
-  const [displayOrder, setDisplayOrder] = useState(0);
+  const [windowMode, setWindowMode] = useState<'SINGLE' | 'RANGE'>('RANGE');
+  const [windowAnchor, setWindowAnchor] = useState<ChecklistSubstage['anchor']>('LMP');
+  const [windowUnit, setWindowUnit] = useState<ChecklistSubstage['unit']>('WEEK');
+  // These are source-facing values shown to the author; substage stores the
+  // corresponding zero-based runtime offsets.
+  const [windowStart, setWindowStart] = useState(1);
+  const [windowEnd, setWindowEnd] = useState(20);
+  const [windowEndAtStageExit, setWindowEndAtStageExit] = useState(false);
+  const [scheduleType, setScheduleType] = useState<ChecklistScheduleType | null>(null);
+  const [materializationPolicy, setMaterializationPolicy] = useState<ChecklistMaterializationPolicy | null>(null);
+  const [scheduleGroupKey, setScheduleGroupKey] = useState<string | null>(null);
+  const [scheduleContextType, setScheduleContextType] = useState<'JOURNEY' | 'BABY' | null>(null);
+  const [scheduleEndMode, setScheduleEndMode] = useState<ChecklistScheduleEndMode | null>(null);
+  const [weekBoundaryRule, setWeekBoundaryRule] = useState<ChecklistWeekBoundaryRule | null>(null);
+  const [displayOrder, setDisplayOrder] = useState(1);
   const [items, setItems] = useState<ItemRow[]>([
     newRow(DEFAULT_CHECKLIST_CONTRACT_VERSION === 2),
   ]);
@@ -95,29 +175,65 @@ export default function ChecklistFormPage() {
       setName(data.name);
       setDescription(data.description ?? '');
       setTemplateType(data.templateType ?? 'MANDATORY');
-      const loadedContractVersion = data.checklistContractVersion === 2 ? 2 : 1;
+      const loadedContractVersion = data.checklistContractVersion === 1 || data.checklistContractVersion === 2
+        ? data.checklistContractVersion
+        : contractVersionForStage(data.stage ?? '');
       setChecklistContractVersion(loadedContractVersion);
       const loadedRoles = data.recipientRoles ?? ['MOTHER'];
       const hasMotherRecipient = loadedRoles.includes('MOTHER');
       setRecipientRoles(loadedRoles);
       setStage(hasMotherRecipient ? (data.stage ?? '') : '');
-      setDisplayOrder(data.displayOrder ?? 0);
-      setSubstage(hasMotherRecipient && data.stage !== 'PRE_PREGNANCY'
-        ? (data.substage ?? null)
-        : null);
+      setDisplayOrder(data.displayOrder ?? 1);
+      const loadedSubstage = hasMotherRecipient && data.stage != null && data.stage !== 'PRE_PREGNANCY'
+        ? (data.substage ?? defaultSubstage(data.stage as ContentStage))
+        : null;
+      setSubstage(loadedSubstage);
+      if (loadedSubstage) {
+        setWindowAnchor(loadedSubstage.anchor);
+        setWindowUnit(loadedSubstage.unit);
+        const loadedOpenEnded = loadedSubstage.endInclusive >= OPEN_ENDED_OFFSET;
+        const loadedStart = loadedSubstage.unit === 'WEEK'
+          ? loadedSubstage.startInclusive + 1
+          : loadedSubstage.startInclusive;
+        const loadedEnd = loadedSubstage.unit === 'WEEK'
+          ? (loadedOpenEnded ? loadedStart : loadedSubstage.endInclusive + 1)
+          : loadedSubstage.endInclusive;
+        setWindowStart(loadedStart);
+        setWindowEnd(loadedEnd);
+        setWindowEndAtStageExit(loadedOpenEnded);
+        setWindowMode(loadedOpenEnded || loadedStart !== loadedEnd ? 'RANGE' : 'SINGLE');
+        setScheduleEndMode(data.scheduleEndMode ?? (loadedOpenEnded ? 'STAGE_EXIT' : null));
+      } else {
+        setWindowUnit('WEEK');
+        setWindowEndAtStageExit(false);
+      }
+      setScheduleType(data.scheduleType ?? null);
+      setMaterializationPolicy(data.materializationPolicy ?? null);
+      setScheduleGroupKey(data.scheduleGroupKey ?? null);
+      const derivedContext = data.stage === 'POSTPARTUM'
+        ? 'JOURNEY'
+        : data.stage === 'BABY_CARE'
+          ? 'BABY'
+          : data.scheduleContextType ?? null;
+      setScheduleContextType(derivedContext);
+      setScheduleEndMode(data.scheduleEndMode ?? null);
+      setWeekBoundaryRule(data.weekBoundaryRule ?? null);
       setStatus(data.status);
       setVersionNo(data.versionNo);
       setReviewFeedback(data.latestReviewFeedback ?? null);
       setItems(data.items.length > 0
         ? [...data.items].sort((a, b) => a.order - b.order).map((item) => ({
-            key: item.id,
-            id: item.id,
-            itemText: item.itemText,
-            description: item.description ?? '',
-            isRequired: loadedContractVersion === 2 ? null : (item.isRequired ?? true),
-            targetSubject: loadedContractVersion === 2 ? null : (item.targetSubject ?? 'MOTHER'),
-            supportFunction: item.supportFunction ?? '',
-          }))
+          key: item.id,
+          id: item.id,
+          itemText: item.itemText,
+          description: item.description ?? '',
+          sourceUrl: item.sourceUrl ?? '',
+          isRequired: item.isRequired ?? true,
+          targetSubject: loadedContractVersion === 2 ? null : (item.targetSubject ?? 'MOTHER'),
+          supportFunction: item.supportFunction ?? '',
+          repeatWeekly: Boolean(item.repeatWeekly),
+          repeatDaily: Boolean(item.repeatDaily),
+        }))
         : [newRow(loadedContractVersion === 2)]);
     } catch {
       setLoadError('Không thể tải checklist để chỉnh sửa. Vui lòng thử lại hoặc kiểm tra quyền Content Admin.');
@@ -132,77 +248,162 @@ export default function ChecklistFormPage() {
 
   const hasMotherRecipient = recipientRoles.includes('MOTHER');
   const isTargetlessV2 = checklistContractVersion === 2;
+  const populatedItems = items.filter((row) => row.itemText.trim());
+  const cadenceFlags = populatedItems;
+  const hasWeeklyItems = cadenceFlags.some((row) => row.repeatWeekly);
+  const hasDailyItems = cadenceFlags.some((row) => row.repeatDaily);
+  const hasInvalidSourceUrl = items.some((row) => sourceUrlValidationError(row.sourceUrl) !== null);
+
+  const listRepeatWeekly = items.length > 0 && items.every((row) => row.repeatWeekly);
+  const listRepeatDaily = items.length > 0 && items.every((row) => row.repeatDaily);
+
+  const isSingleWeekWindow = stage !== '' && stage !== 'PRE_PREGNANCY'
+    && windowUnit === 'WEEK'
+    && (windowMode === 'SINGLE' || (!windowEndAtStageExit && windowStart === windowEnd));
+
+  useEffect(() => {
+    if (isSingleWeekWindow) {
+      setItems((previous) =>
+        previous.some((row) => row.repeatWeekly)
+          ? previous.map((row) => ({ ...row, repeatWeekly: false }))
+          : previous
+      );
+    }
+  }, [isSingleWeekWindow]);
+
+  const handleListWeeklyChange = (checked: boolean) => {
+    setItems((previous) =>
+      previous.map((row) => ({
+        ...row,
+        repeatWeekly: checked,
+        repeatDaily: checked ? false : row.repeatDaily,
+      }))
+    );
+  };
+
+  const handleListDailyChange = (checked: boolean) => {
+    setItems((previous) =>
+      previous.map((row) => ({
+        ...row,
+        repeatDaily: checked,
+        repeatWeekly: checked ? false : row.repeatWeekly,
+      }))
+    );
+  };
+
+  const hasUnsupportedPrePregnancyWeekly = stage === 'PRE_PREGNANCY' && hasWeeklyItems;
   const sequenceEligible = templateType === 'MANDATORY'
     && recipientRoles.length === 1
     && recipientRoles[0] === 'MOTHER'
     && stage === 'PRE_PREGNANCY';
-  const legacyPreconceptionWarning = templateType === 'MANDATORY'
-    && hasMotherRecipient
-    && stage === 'PRE_PREGNANCY'
-    && displayOrder <= 0;
   const isImmutable = status === 'APPROVED' || status === 'ARCHIVED';
   const isValid = name.trim().length > 0
     && recipientRoles.length > 0
     && (!hasMotherRecipient || (stage !== ''
       && (stage === 'PRE_PREGNANCY' || (substage !== null && substage.anchor !== 'NONE'))))
-    && items.filter((row) => row.itemText.trim()).every((row) => isTargetlessV2
-      ? row.targetSubject == null && row.isRequired == null
+    && !hasUnsupportedPrePregnancyWeekly
+    && !hasInvalidSourceUrl
+    && populatedItems.every((row) => isTargetlessV2
+      ? row.targetSubject == null && row.isRequired != null
       : row.targetSubject != null && row.isRequired != null)
-    && (!sequenceEligible || (Number.isInteger(displayOrder) && displayOrder >= 0));
+    && (!sequenceEligible || (Number.isInteger(displayOrder) && displayOrder >= 1));
 
-  const toggleRole = (role: ChecklistRecipientRole) => {
-    setRecipientRoles((previous) => {
-      const next = previous.includes(role)
-        ? previous.filter((value) => value !== role)
-        : [...previous, role];
-      const ordered = ROLE_ORDER.filter((value) => next.includes(value));
-      if (!ordered.includes('MOTHER')) {
-        setStage('');
-        setSubstage(null);
-      }
-      return ordered;
-    });
-  };
+
 
   const updateStage = (value: ContentStage | '') => {
     setStage(value);
-    setSubstage(value ? (SUBSTAGE_OPTIONS[value]?.[0] ?? null) : null);
+    setScheduleContextType(
+      value === 'POSTPARTUM' ? 'JOURNEY' : value === 'BABY_CARE' ? 'BABY' : null,
+    );
+    setScheduleType(null);
+    setMaterializationPolicy(null);
+    setScheduleEndMode(value ? 'FIXED_OFFSET' : null);
+    const nextVersion = contractVersionForStage(value);
+    setChecklistContractVersion(nextVersion);
+    setSubstage(value ? defaultSubstage(value) : null);
+    setWindowUnit('WEEK');
+    setWindowEndAtStageExit(false);
+    if (value === 'PREGNANCY') {
+      setWindowAnchor('LMP'); setWindowStart(1); setWindowEnd(20); setWindowMode('RANGE');
+    } else if (value === 'POSTPARTUM' || value === 'BABY_CARE') {
+      setWindowAnchor(value === 'BABY_CARE' ? 'BIRTH_DATE' : 'DELIVERY_DATE'); setWindowStart(1); setWindowEnd(7); setWindowMode('RANGE');
+    }
+    setItems((previous) => previous.map((row) => nextVersion === 2
+      ? {
+        ...row,
+        targetSubject: null,
+        isRequired: row.isRequired ?? true,
+        repeatWeekly: value === 'PRE_PREGNANCY' ? false : row.repeatWeekly,
+      }
+      : {
+        ...row,
+        targetSubject: value === 'BABY_CARE' ? 'BABY' : 'MOTHER',
+        isRequired: row.isRequired ?? true,
+        repeatWeekly: value === 'PRE_PREGNANCY' ? false : row.repeatWeekly,
+      }));
   };
 
-  const updateSubstage = (code: string) => {
-    setSubstage(stage ? (SUBSTAGE_OPTIONS[stage]?.find((option) => option.code === code) ?? null) : null);
+  const updateWindow = (
+    nextAnchor = windowAnchor,
+    nextStart = windowStart,
+    nextEnd = windowMode === 'SINGLE' ? nextStart : windowEnd,
+    nextOpenEnded = windowEndAtStageExit,
+    nextUnit = windowUnit,
+  ) => {
+    if (stage === 'PRE_PREGNANCY' || stage === '') return;
+    const minimum = nextUnit === 'WEEK' ? 1 : 0;
+    const maximum = nextUnit === 'WEEK'
+      ? (SOURCE_WEEK_OPTIONS.at(-1) ?? 52)
+      : (SOURCE_DAY_OPTIONS.at(-1) ?? 52);
+    const normalizedStart = Math.max(minimum, Math.min(nextStart, maximum));
+    const normalizedEnd = Math.max(normalizedStart, Math.min(nextEnd, maximum));
+    setWindowAnchor(nextAnchor);
+    setWindowUnit(nextUnit);
+    setWindowStart(normalizedStart);
+    setWindowEnd(normalizedEnd);
+    setWindowEndAtStageExit(nextOpenEnded);
+    setSubstage(buildSubstage(stage, nextAnchor, normalizedStart, normalizedEnd, nextUnit, nextOpenEnded));
+  };
+
+  const updateWindowMode = (mode: 'SINGLE' | 'RANGE') => {
+    setWindowMode(mode);
+    if (mode === 'SINGLE') {
+      setScheduleEndMode(stage ? 'FIXED_OFFSET' : null);
+      updateWindow(windowAnchor, windowStart, windowStart, false);
+    }
+    else updateWindow(windowAnchor, windowStart, Math.max(windowEnd, windowStart), windowEndAtStageExit);
+  };
+
+  const updateWindowEnd = (value: string) => {
+    if (value === 'STAGE_EXIT') {
+      setScheduleEndMode('STAGE_EXIT');
+      updateWindow(windowAnchor, windowStart, windowEnd, true);
+      return;
+    }
+    setScheduleEndMode(stage ? 'FIXED_OFFSET' : null);
+    updateWindow(windowAnchor, windowStart, Number(value), false);
   };
 
   const updateItem = (key: string, patch: Partial<ItemRow>) => {
     setItems((previous) => previous.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   };
 
-  const updateContractVersion = (value: string) => {
-    const nextVersion = value === '2' ? 2 : 1;
-    setChecklistContractVersion(nextVersion);
-    setItems((previous) => previous.map((row) => nextVersion === 2
-      ? { ...row, targetSubject: null, isRequired: null }
-      : {
-          ...row,
-          targetSubject: row.targetSubject ?? 'MOTHER',
-          isRequired: row.isRequired ?? true,
-        }));
-  };
-
   const buildItemsPayload = () => items
     .filter((row) => row.itemText.trim())
     .map((row, index) => {
       const description = row.description.trim();
+      const sourceUrl = row.sourceUrl.trim();
       return {
         ...(row.id ? { id: row.id } : {}),
         itemText: row.itemText.trim(),
         order: index + 1,
-        ...(isTargetlessV2 ? {} : {
-          isRequired: row.isRequired,
-          targetSubject: row.targetSubject,
-        }),
+        isRequired: row.isRequired,
+        ...(isTargetlessV2 ? {} : { targetSubject: row.targetSubject }),
         ...(description ? { description } : {}),
+        ...(sourceUrl ? { sourceUrl } : {}),
         ...(row.supportFunction ? { supportFunction: row.supportFunction } : {}),
+        repeatWeekly: row.repeatWeekly,
+        repeatDaily: row.repeatDaily,
       };
     });
 
@@ -212,6 +413,24 @@ export default function ChecklistFormPage() {
     setSubmitError('');
     const normalizedStage = hasMotherRecipient ? (stage || null) : null;
     const normalizedSubstage = hasMotherRecipient && stage !== 'PRE_PREGNANCY' ? substage : null;
+    const derivedScheduleType = hasWeeklyItems
+      ? 'WEEKLY'
+      : hasDailyItems
+        ? 'DAILY'
+        : stage === 'PRE_PREGNANCY'
+          ? 'SET'
+          : stage
+            ? (scheduleType ?? 'WEEKLY')
+            : scheduleType;
+    const derivedMaterializationPolicy = hasWeeklyItems
+      ? 'EACH_WEEK'
+      : hasDailyItems
+        ? 'EACH_DAY'
+        : stage === 'PRE_PREGNANCY'
+          ? 'SEQUENCE_STEP'
+          : stage
+            ? (materializationPolicy ?? 'ONCE_PER_WINDOW')
+            : materializationPolicy;
     try {
       const commonPayload = {
         name: name.trim(),
@@ -222,6 +441,12 @@ export default function ChecklistFormPage() {
         stage: normalizedStage,
         substage: normalizedSubstage,
         displayOrder: sequenceEligible ? displayOrder : 0,
+        scheduleType: derivedScheduleType,
+        materializationPolicy: derivedMaterializationPolicy,
+        scheduleGroupKey,
+        scheduleContextType,
+        scheduleEndMode: windowEndAtStageExit ? 'STAGE_EXIT' : (scheduleEndMode ?? (stage ? 'FIXED_OFFSET' : null)),
+        weekBoundaryRule: weekBoundaryRule ?? (hasWeeklyItems ? 'ANCHOR_RELATIVE_7D' : 'NONE'),
       };
       const itemsPayload = buildItemsPayload();
       if (isEdit && id) {
@@ -274,12 +499,12 @@ export default function ChecklistFormPage() {
           </div>
           <p className="mt-1 text-sm text-on-surface-variant">
             {isTargetlessV2
-              ? 'Checklist V2 chỉ lưu nội dung khuyến nghị; mục không có target hoặc trạng thái bắt buộc.'
-              : 'Thiết lập đúng người nhận, giai đoạn và đối tượng cho từng mục.'}
+              ? 'Checklist V2 lưu nội dung khuyến nghị; mỗi mục vẫn có thể đánh dấu bắt buộc.'
+              : 'Thiết lập người nhận, giai đoạn và nhịp lặp cho checklist.'}
           </p>
-          {isTargetlessV2 && (
+          {stage && (
             <span role="status" className="mt-2 inline-flex rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary">
-              Hợp đồng V2 · Targetless recommendation
+              Phiên bản nội dung V{checklistContractVersion} · {isTargetlessV2 ? 'Khuyến nghị' : 'Tương thích'}
             </span>
           )}
         </div>
@@ -323,53 +548,6 @@ export default function ChecklistFormPage() {
             </div>
           </section>
 
-          <section aria-label="Checklist contract" className={card}>
-            <div className="mb-5 flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Hợp đồng checklist</h2></div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className={`cursor-pointer rounded-2xl border p-4 ${isTargetlessV2 ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
-                <input
-                  aria-label="Recommendation-only V2 contract"
-                  type="radio"
-                  name="checklistContractVersion"
-                  value="2"
-                  disabled={isImmutable}
-                  checked={isTargetlessV2}
-                  onChange={(event) => updateContractVersion(event.target.value)}
-                  className="mr-2 accent-primary"
-                />
-                <span className="font-semibold text-on-surface">V2 · Khuyến nghị</span>
-                <p className="mt-1 text-xs text-on-surface-variant">Không chọn đối tượng hoặc trạng thái bắt buộc cho từng mục.</p>
-              </label>
-              <label className={`cursor-pointer rounded-2xl border p-4 ${!isTargetlessV2 ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
-                <input
-                  aria-label="Legacy V1 target-bearing contract"
-                  type="radio"
-                  name="checklistContractVersion"
-                  value="1"
-                  disabled={isImmutable}
-                  checked={!isTargetlessV2}
-                  onChange={(event) => updateContractVersion(event.target.value)}
-                  className="mr-2 accent-primary"
-                />
-                <span className="font-semibold text-on-surface">V1 · Tương thích</span>
-                <p className="mt-1 text-xs text-on-surface-variant">Giữ các trường target và bắt buộc cho nội dung cũ.</p>
-              </label>
-            </div>
-          </section>
-
-          <section className={card}>
-            <div className="mb-5 flex items-center gap-2.5"><Users className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Người nhận</h2></div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {ROLE_ORDER.map((role) => (
-                <label key={role} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 text-sm font-semibold transition-colors ${recipientRoles.includes(role) ? 'border-primary bg-surface-container-low text-primary' : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-bright'}`}>
-                  <input aria-label={`Recipient ${role}`} type="checkbox" disabled={isImmutable} checked={recipientRoles.includes(role)} onChange={() => toggleRole(role)} className="h-4 w-4 accent-primary" />
-                  {role === 'MOTHER' ? 'Mẹ' : 'Gia đình'}
-                </label>
-              ))}
-            </div>
-            {recipientRoles.length === 0 && <p role="alert" className="mt-3 text-xs font-semibold text-error">Cần chọn ít nhất một người nhận.</p>}
-          </section>
-
           {hasMotherRecipient && (
             <section aria-label="Lifecycle targeting" className={card}>
               <div className="mb-5 flex items-center gap-2.5"><CalendarRange className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Giai đoạn áp dụng</h2></div>
@@ -380,21 +558,36 @@ export default function ChecklistFormPage() {
                 </select>
               </label>
               {stage && stage !== 'PRE_PREGNANCY' && (
-                <label className="mt-4 grid gap-2 text-sm font-semibold text-on-surface">Cửa sổ vòng đời
-                  <select aria-label="Lifecycle substage" disabled={isImmutable} value={substage?.code ?? ''} onChange={(event) => updateSubstage(event.target.value)} className={field}>
-                    {(SUBSTAGE_OPTIONS[stage] ?? []).map((option) => (
-                      <option key={option.code} value={option.code}>{option.code}</option>
-                    ))}
-                  </select>
-                </label>
+                <fieldset className="mt-4 grid gap-3 border-0 p-0">
+                  <legend className="text-sm font-semibold text-on-surface">Cửa sổ vòng đời</legend>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <label className="grid gap-2 font-normal text-on-surface-variant">Kiểu cửa sổ
+                      <select aria-label="Lifecycle window mode" disabled={isImmutable} value={windowMode} onChange={(event) => updateWindowMode(event.target.value as 'SINGLE' | 'RANGE')} className={field}><option value="SINGLE">Một {windowUnit === 'DAY' ? 'ngày' : 'tuần'}</option><option value="RANGE">Khoảng {windowUnit === 'DAY' ? 'ngày' : 'tuần'}</option></select>
+                    </label>
+                    <label className="grid gap-2 font-normal text-on-surface-variant">Từ {windowUnit === 'DAY' ? 'ngày' : 'tuần'}
+                      <select aria-label="Lifecycle window start" disabled={isImmutable} value={windowStart} onChange={(event) => updateWindow(windowAnchor, Number(event.target.value), windowEnd)} className={field}>
+                        {(windowUnit === 'DAY' ? SOURCE_DAY_OPTIONS : SOURCE_WEEK_OPTIONS).map((value) => <option key={value} value={value}>{value}</option>)}
+                      </select>
+                    </label>
+                    {windowMode === 'RANGE' && (
+                      <label className="grid gap-2 font-normal text-on-surface-variant">Đến {windowUnit === 'DAY' ? 'ngày' : 'tuần'}
+                        <select aria-label="Lifecycle window end" disabled={isImmutable} value={windowEndAtStageExit ? 'STAGE_EXIT' : windowEnd} onChange={(event) => updateWindowEnd(event.target.value)} className={field}>
+                          {(windowUnit === 'DAY' ? SOURCE_DAY_OPTIONS : SOURCE_WEEK_OPTIONS).filter((value) => value >= windowStart).map((value) => <option key={value} value={value}>{value}</option>)}
+                          {stage === 'PREGNANCY' && windowUnit === 'WEEK' && <option value="STAGE_EXIT">Đến khi kết thúc thai kỳ</option>}
+                        </select>
+                      </label>
+                    )}
+                  </div>
+                </fieldset>
               )}
+              {hasUnsupportedPrePregnancyWeekly && <div role="alert" className="mt-4 rounded-xl border border-error-container bg-error-container/60 p-3 text-xs font-normal text-error">Giai đoạn Chuẩn bị mang thai dùng theo bộ; chỉ có thể chọn “Từng ngày” cho mục lặp.</div>}
               {sequenceEligible && (
                 <label className="mt-4 grid gap-2 text-sm font-semibold text-on-surface">
-                  Vị trí bộ checklist (0 = chưa tham gia chuỗi)
+                  Vị trí bộ checklist
                   <input
                     aria-label="Checklist sequence position"
                     type="number"
-                    min={0}
+                    min={1}
                     max={1000}
                     step={1}
                     disabled={isImmutable}
@@ -405,37 +598,87 @@ export default function ChecklistFormPage() {
                   <span className="text-xs font-normal text-on-surface-variant">
                     Nhập 1, 2, 3... theo thứ tự các bộ. Vị trí được kiểm tra lại khi phê duyệt.
                   </span>
-                  {legacyPreconceptionWarning && (
-                    <span role="note" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-normal text-amber-900">
-                      {checklistSequenceLabel(displayOrder)}: checklist này không thuộc chuỗi 1, 2, 3... và không thể hoạt động cùng chuỗi mới.
-                    </span>
-                  )}
                 </label>
               )}
-              {legacyPreconceptionWarning && !sequenceEligible && (
-                <div role="note" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-normal text-amber-900">
-                  Checklist Mẹ + Gia đình ở vị trí legacy (0) không thuộc chuỗi 1, 2, 3... và không thể hoạt động cùng chuỗi mới. Hãy lưu trữ hoặc tắt checklist này trước khi xuất bản bộ chuỗi.
-                </div>
-              )}
-              {substage && <div className="mt-4 rounded-2xl bg-surface-bright border border-surface-container-highest p-4"><strong className="text-on-surface text-sm">{substage.code}</strong><p className="mt-1 text-xs text-on-surface-variant">{substage.anchor} · {substage.startInclusive}–{substage.endInclusive} {substage.unit}</p></div>}
             </section>
           )}
 
           <section className={card}>
             <div className="mb-5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Danh sách mục</h2></div>
-              <button type="button" disabled={isImmutable} onClick={() => setItems((previous) => [...previous, newRow(isTargetlessV2)])} className="inline-flex items-center gap-1.5 py-2 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-primary hover:bg-surface-container-low cursor-pointer disabled:opacity-40"><Plus size={16} /> Thêm mục</button>
+              <button type="button" disabled={isImmutable} onClick={() => setItems((previous) => [...previous, newRow(isTargetlessV2, listRepeatWeekly, listRepeatDaily)])} className="inline-flex items-center gap-1.5 py-2 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-primary hover:bg-surface-container-low cursor-pointer disabled:opacity-40"><Plus size={16} /> Thêm mục</button>
+            </div>
+            <div className="mb-5 flex flex-wrap items-center gap-4 rounded-xl border border-surface-container-highest bg-surface-container-low p-4">
+              <span className="text-sm font-semibold text-on-surface">Nhịp lặp của danh sách mục</span>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant cursor-pointer">
+                  <input
+                    aria-label="List weekly recurrence"
+                    type="checkbox"
+                    disabled={isImmutable || stage === 'PRE_PREGNANCY' || isSingleWeekWindow}
+                    checked={listRepeatWeekly}
+                    onChange={(event) => handleListWeeklyChange(event.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Từng tuần
+                </label>
+                <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant cursor-pointer">
+                  <input
+                    aria-label="List daily recurrence"
+                    type="checkbox"
+                    disabled={isImmutable}
+                    checked={listRepeatDaily}
+                    onChange={(event) => handleListDailyChange(event.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Từng ngày
+                </label>
+              </div>
             </div>
             <div className="grid gap-4">
-              {items.map((row, index) => (
-                <div key={row.key} className="grid gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4 md:grid-cols-[minmax(0,1fr)_160px_auto] md:items-end">
+              {items.map((row, index) => {
+                const sourceUrlError = sourceUrlValidationError(row.sourceUrl);
+                const sourceUrlHintId = `source-url-hint-${row.key}`;
+                const sourceUrlErrorId = `source-url-error-${row.key}`;
+                return (
+                <div key={row.key} className="grid gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                   <label className="grid gap-2 text-sm font-semibold text-on-surface">Mục {index + 1}<input aria-label={`Item ${index + 1} text`} disabled={isImmutable} value={row.itemText} onChange={(event) => updateItem(row.key, { itemText: event.target.value })} className={field} /></label>
-                  {!isTargetlessV2 && (
-                    <label className="grid gap-2 text-sm font-semibold text-on-surface">Đối tượng<select aria-label={`Item ${index + 1} target`} disabled={isImmutable} value={row.targetSubject ?? 'MOTHER'} onChange={(event) => updateItem(row.key, { targetSubject: event.target.value as ChecklistTargetSubject })} className={field}><option value="MOTHER">Mẹ</option><option value="BABY">Em bé</option></select></label>
-                  )}
                   <button aria-label={`Delete item ${index + 1}`} type="button" disabled={isImmutable || items.length === 1} onClick={() => setItems((previous) => previous.filter((item) => item.key !== row.key))} className="flex h-10 w-10 items-center justify-center rounded-xl border border-error-container text-error hover:bg-error-container/20 cursor-pointer disabled:opacity-30 self-end mb-0.5"><Trash2 size={18} /></button>
-                  <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-3">Nội dung chi tiết
+                  {!isTargetlessV2 && (
+                    <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">Đối tượng
+                      <select
+                        aria-label={`Đối tượng mục ${index + 1}`}
+                        disabled={isImmutable || stage === 'POSTPARTUM' || stage === 'BABY_CARE'}
+                        value={stage === 'BABY_CARE' ? 'BABY' : row.targetSubject ?? 'MOTHER'}
+                        onChange={(event) => updateItem(row.key, { targetSubject: event.target.value as ChecklistTargetSubject })}
+                        className={field}
+                      >
+                        <option value="MOTHER">Mẹ</option>
+                        <option value="BABY">Bé</option>
+                      </select>
+                    </label>
+                  )}
+                  <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">Nội dung chi tiết
                     <textarea aria-label={`Nội dung chi tiết mục ${index + 1}`} disabled={isImmutable} value={row.description} onChange={(event) => updateItem(row.key, { description: event.target.value })} rows={3} className={`${field} py-3`} />
+                  </label>
+                  <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">
+                    Link nguồn (không bắt buộc)
+                    <input
+                      aria-label={`Link nguồn mục ${index + 1}`}
+                      aria-describedby={`${sourceUrlHintId}${sourceUrlError ? ` ${sourceUrlErrorId}` : ''}`}
+                      aria-invalid={sourceUrlError ? 'true' : undefined}
+                      type="url"
+                      inputMode="url"
+                      maxLength={MAX_SOURCE_URL_LENGTH}
+                      disabled={isImmutable}
+                      value={row.sourceUrl}
+                      onChange={(event) => updateItem(row.key, { sourceUrl: event.target.value })}
+                      className={`${field} ${sourceUrlError ? 'border-error focus:border-error focus:ring-error/20' : ''}`}
+                    />
+                    <span id={sourceUrlHintId} className="text-xs font-normal text-on-surface-variant">
+                      Chỉ chấp nhận liên kết đầy đủ bắt đầu bằng http:// hoặc https://.
+                    </span>
+                    {sourceUrlError && <span id={sourceUrlErrorId} role="alert" className="text-xs font-normal text-error">{sourceUrlError}</span>}
                   </label>
                   <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">Chức năng hỗ trợ
                     <select aria-label={`Chức năng hỗ trợ mục ${index + 1}`} disabled={isImmutable} value={row.supportFunction} onChange={(event) => updateItem(row.key, { supportFunction: event.target.value as ChecklistSupportFunction | '' })} className={field}>
@@ -443,11 +686,10 @@ export default function ChecklistFormPage() {
                       {CHECKLIST_SUPPORT_FUNCTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
-                  {!isTargetlessV2 && (
-                    <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-3"><input type="checkbox" disabled={isImmutable} checked={Boolean(row.isRequired)} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
-                  )}
+                  <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-2"><input type="checkbox" disabled={isImmutable} checked={Boolean(row.isRequired)} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </div>

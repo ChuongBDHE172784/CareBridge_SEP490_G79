@@ -48,8 +48,19 @@ public class MasterDataController {
 
     @GetMapping("/hospitals/search/trackasia")
     public ResponseEntity<ApiResponse<List<TrackAsiaPlaceDto>>> searchTrackAsiaHospitals(
-            @RequestParam String q) {
-        return ResponseEntity.ok(ApiResponse.success(trackAsiaService.searchHospitals(q)));
+            @RequestParam(required = false, defaultValue = "") String q,
+            @RequestParam(required = false) String provinceId) {
+        // provinceId is resolved to a province name here rather than trusted as text, so
+        // the caller cannot push arbitrary strings into the upstream query.
+        String provinceName = provinceId == null || provinceId.isBlank()
+                ? null
+                : provinceCacheService.getProvinces().stream()
+                        .filter(p -> provinceId.equals(p.getProvinceId()))
+                        .map(ProvinceResponse::getName)
+                        .findFirst()
+                        .orElse(null);
+        return ResponseEntity.ok(ApiResponse.success(
+                trackAsiaService.searchHospitals(q, provinceName)));
     }
 
     @GetMapping("/hospitals/{id}")

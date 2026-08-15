@@ -9,7 +9,6 @@ import com.carebridge.backend.directchat.service.IDirectMessageService;
 import com.carebridge.backend.directchat.service.DirectChatAttachmentAccessService;
 import com.carebridge.backend.file.dto.ViewFileResponse;
 import com.carebridge.backend.file.dto.UploadFileResponse;
-import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.directchat.service.SendDirectMessageResult;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -84,13 +83,11 @@ public class DirectMessageController {
     public ResponseEntity<ApiResponse<UploadFileResponse>> uploadAttachment(
             @PathVariable UUID conversationId,
             @RequestPart("file") MultipartFile file,
-            @RequestParam("kind") FileKind kind,
             Principal principal) {
-        if (kind != FileKind.IMAGE && kind != FileKind.DOCUMENT) {
-            throw new IllegalArgumentException("Direct chat only supports images and documents");
-        }
+        // ?kind= is deliberately not read any more. Older clients still send it and are
+        // free to keep doing so; the server classifies the file from its own bytes.
         var response = attachmentAccessService.upload(
-                conversationId, SecurityUtils.requireCurrentUserId(principal), file, kind);
+                conversationId, SecurityUtils.requireCurrentUserId(principal), file);
         return ResponseEntity.status(201).body(ApiResponse.success(response, "File uploaded successfully"));
     }
 }

@@ -26,6 +26,13 @@ class _StaleExpertProfileResponse implements Exception {
   const _StaleExpertProfileResponse();
 }
 
+class _AvailabilityLoadResult {
+  final List<ExpertAvailabilitySlot> slots;
+  final bool failed;
+
+  const _AvailabilityLoadResult(this.slots, {this.failed = false});
+}
+
 class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
   static const _canvas = Color(0xFFF6F1EC);
   static const _surface = Colors.white;
@@ -34,7 +41,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
 
   late Future<Map<String, dynamic>> _future;
-  late Future<List<ExpertAvailabilitySlot>> _availabilityFuture;
+  late Future<_AvailabilityLoadResult> _availabilityFuture;
   int _generation = 0;
   late String? _accountId;
   bool _accountChanged = false;
@@ -45,9 +52,23 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     _accountId = AuthState.instance.userId;
     AuthState.instance.addListener(_handleAuthChanged);
     _future = _loadProfile();
-    _availabilityFuture =
-        (widget.availabilityService ?? ExpertAvailabilityService.instance)
-            .getPublicAvailability(widget.expertProfileId);
+    _availabilityFuture = _loadAvailability();
+  }
+
+  @override
+  void didUpdateWidget(covariant ExpertPublicProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final profileChanged =
+        oldWidget.expertProfileId != widget.expertProfileId;
+    final availabilityServiceChanged =
+        !identical(oldWidget.availabilityService, widget.availabilityService);
+    if (profileChanged) {
+      _accountChanged = false;
+      _future = _loadProfile();
+    }
+    if (profileChanged || availabilityServiceChanged) {
+      _availabilityFuture = _loadAvailability();
+    }
   }
 
   @override
@@ -65,6 +86,18 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     setState(() {
       _accountChanged = true;
     });
+  }
+
+  Future<_AvailabilityLoadResult> _loadAvailability() async {
+    try {
+      final slots =
+          await (widget.availabilityService ??
+                  ExpertAvailabilityService.instance)
+              .getPublicAvailability(widget.expertProfileId);
+      return _AvailabilityLoadResult(slots);
+    } catch (_) {
+      return const _AvailabilityLoadResult([], failed: true);
+    }
   }
 
   Future<Map<String, dynamic>> _loadProfile() async {
@@ -178,6 +211,10 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 final workplace = profile['workplace'] as String?;
                 final experienceYears = profile['experienceYears']?.toString();
                 final ratingAvg = profile['ratingAvg']?.toString();
+                final email = (profile['email'] as String?)?.trim();
+                final phone =
+                    ((profile['phoneNumber'] ?? profile['phone']) as String?)
+                        ?.trim();
                 final consultationScope =
                     profile['consultationScope'] as String?;
                 final isVerified = profile['verificationStatus'] == 'APPROVED';
@@ -246,6 +283,58 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
+                              ),
+                            ],
+                            if ((email != null && email.isNotEmpty) ||
+                                (phone != null && phone.isNotEmpty)) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 16,
+                                runSpacing: 6,
+                                children: [
+                                  if (email != null && email.isNotEmpty)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.email_outlined,
+                                          size: 15,
+                                          color: _onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          email,
+                                          style: const TextStyle(
+                                            color: _onSurfaceVariant,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  if (phone != null && phone.isNotEmpty)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.phone_outlined,
+                                          size: 15,
+                                          color: _onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          phone,
+                                          style: const TextStyle(
+                                            color: _onSurfaceVariant,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ],
                               ),
                             ],
                             const SizedBox(height: 16),
@@ -482,7 +571,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          FutureBuilder<List<ExpertAvailabilitySlot>>(
+          FutureBuilder<_AvailabilityLoadResult>(
             future: _availabilityFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
@@ -493,14 +582,14 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                   ),
                 );
               }
-              if (snapshot.hasError) {
+              if (snapshot.data?.failed ?? false) {
                 return _availabilityMessage(
                   Icons.cloud_off_rounded,
                   'Chưa thể tải lịch. Bạn vẫn có thể gửi yêu cầu và chọn thời gian sau.',
                 );
               }
               final grouped = groupAvailabilityByLocalDate(
-                snapshot.data ?? const [],
+                snapshot.data?.slots ?? const [],
               );
               if (grouped.isEmpty) {
                 return _availabilityMessage(

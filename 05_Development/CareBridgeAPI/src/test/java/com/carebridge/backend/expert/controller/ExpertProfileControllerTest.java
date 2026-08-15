@@ -45,20 +45,25 @@ class ExpertProfileControllerTest {
 
     private static final UUID EXPERT_PROFILE_ID = UUID.randomUUID();
 
-    // MEDI-TC-001b — GET /expert/profiles/{id} response has displayName from users.full_name
+    // MEDI-TC-001b — GET /expert/profiles/{id} response has displayName, email, phoneNumber from users
     @Test
     @WithMockUser(username = "aaaaaaaa-0000-0000-0000-000000000001", roles = "MOTHER")
-    void getPublicProfile_returnsDisplayName() throws Exception {
+    void getPublicProfile_returnsDisplayNameAndContact() throws Exception {
         ExpertProfileDetailResponse response = ExpertProfileDetailResponse.builder()
                 .expertProfileId(EXPERT_PROFILE_ID)
                 .displayName("Nguyễn Văn A")
+                .email("expert.a@carebridge.vn")
+                .phoneNumber("0912345678")
+                .phone("0912345678")
                 .verificationStatus(VerificationStatus.APPROVED)
                 .build();
         when(expertProfileService.getPublicProfile(EXPERT_PROFILE_ID)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/expert/profiles/" + EXPERT_PROFILE_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.displayName").value("Nguyễn Văn A"));
+                .andExpect(jsonPath("$.data.displayName").value("Nguyễn Văn A"))
+                .andExpect(jsonPath("$.data.email").value("expert.a@carebridge.vn"))
+                .andExpect(jsonPath("$.data.phoneNumber").value("0912345678"));
     }
 
     // MEDI-TC-002b — q > 100 chars boundary

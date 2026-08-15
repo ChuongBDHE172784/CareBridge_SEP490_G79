@@ -8,6 +8,8 @@ import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/screens/expert_directory_screen.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
 import 'package:untitled/features/expert/screens/expert_public_profile_screen.dart';
+import 'package:untitled/features/expert/models/expert_availability_slot.dart';
+import 'package:untitled/features/expert/services/expert_availability_service.dart';
 
 class _DelayedExpertService extends DirectChatService {
   final directory = Completer<ExpertDirectoryPage>();
@@ -24,6 +26,13 @@ class _DelayedExpertService extends DirectChatService {
   @override
   Future<Map<String, dynamic>> getExpertProfile(String expertProfileId) =>
       profile.future;
+}
+
+class _EmptyAvailabilityService extends ExpertAvailabilityService {
+  @override
+  Future<List<ExpertAvailabilitySlot>> getPublicAvailability(
+    String expertProfileId,
+  ) async => [];
 }
 
 void main() {
@@ -107,8 +116,11 @@ void main() {
     final service = _DelayedExpertService();
     DirectChatService.instance = service;
     await tester.pumpWidget(
-      const MaterialApp(
-        home: ExpertPublicProfileScreen(expertProfileId: 'expert-a'),
+      MaterialApp(
+        home: ExpertPublicProfileScreen(
+          expertProfileId: 'expert-a',
+          availabilityService: _EmptyAvailabilityService(),
+        ),
       ),
     );
     await tester.pump();

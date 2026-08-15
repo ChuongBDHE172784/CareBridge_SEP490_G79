@@ -38,12 +38,23 @@ public class InternalEvidenceSourceController {
         }
         TriageStage resolved;
         try {
-            resolved = TriageStage.valueOf(stage.trim().toUpperCase());
+            resolved = TriageStage.valueOf(legacyEvidenceStage(stage));
         } catch (Exception exception) {
             throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-011", "Invalid triage stage");
         }
         return ApiResponse.success(evidenceSourceService.approvedForStage(resolved.name()).stream()
                 .map(ApprovedEvidenceSourceResponse::from)
                 .toList());
+    }
+
+    private static String legacyEvidenceStage(String stage) {
+        String normalized = stage == null ? "" : stage.trim().toUpperCase();
+        return switch (normalized) {
+            case "POSSIBLE_PREGNANCY" -> "PRECONCEPTION";
+            case "POSTPARTUM_MOTHER" -> "POSTPARTUM";
+            case "INFANT_0_12M" -> "INFANT";
+            case "TODDLER_12_24M" -> "TODDLER";
+            default -> normalized;
+        };
     }
 }

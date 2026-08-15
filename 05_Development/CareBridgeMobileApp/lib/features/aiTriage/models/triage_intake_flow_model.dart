@@ -4,7 +4,7 @@ class IntakeQuestion {
   final String questionKey;
   final String text;
   final String answerType;
-  final List<String> options;
+  final List<IntakeQuestionOption> options;
 
   const IntakeQuestion({
     required this.questionKey,
@@ -19,10 +19,27 @@ class IntakeQuestion {
       text: json['text']?.toString() ?? '',
       answerType: json['answerType']?.toString() ?? 'TEXT',
       options: (json['options'] as List<dynamic>? ?? const [])
-          .map((item) => item.toString())
+          .whereType<Map>()
+          .map(
+            (item) =>
+                IntakeQuestionOption.fromJson(Map<String, dynamic>.from(item)),
+          )
           .toList(),
     );
   }
+}
+
+class IntakeQuestionOption {
+  const IntakeQuestionOption({required this.code, required this.label});
+
+  final String code;
+  final String label;
+
+  factory IntakeQuestionOption.fromJson(Map<String, dynamic> json) =>
+      IntakeQuestionOption(
+        code: json['optionCode']?.toString() ?? '',
+        label: json['displayText']?.toString() ?? '',
+      );
 }
 
 class IntakeFlowResponse {

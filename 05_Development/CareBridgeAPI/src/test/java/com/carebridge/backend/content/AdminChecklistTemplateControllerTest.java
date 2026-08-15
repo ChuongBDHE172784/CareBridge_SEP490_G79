@@ -15,11 +15,13 @@ import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.content.controller.AdminChecklistTemplateController;
 import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
+import com.carebridge.backend.content.dto.response.ChecklistTemplateBatchImportResponse;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
 import java.util.List;
 import java.util.UUID;
 import com.carebridge.backend.content.service.AdminChecklistTemplateService;
+import com.carebridge.backend.content.service.ChecklistTemplateBatchImportService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -49,6 +51,9 @@ class AdminChecklistTemplateControllerTest {
 
     @MockitoBean
     private AdminChecklistTemplateService adminChecklistTemplateService;
+
+    @MockitoBean
+    private ChecklistTemplateBatchImportService checklistTemplateBatchImportService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -90,6 +95,112 @@ class AdminChecklistTemplateControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Test\",\"stage\":\"PREGNANCY\",\"items\":[]}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
+    void importBatch_validNestedTemplates_returnsSummary() throws Exception {
+        UUID createdId = UUID.fromString("69000000-0000-0000-0000-000000000803");
+        when(checklistTemplateBatchImportService.importBatch(any(), any()))
+                .thenReturn(new ChecklistTemplateBatchImportResponse(
+                        1, 1, 0, List.of(), List.of(createdId)));
+
+        mockMvc.perform(post(BASE_URL + "/import-batch").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "templates": [{
+                                    "rowIndex": 2,
+                                    "checklistCode": "CHK-001",
+                                    "template": {
+                                      "name": "Checklist trước mang thai",
+                                      "recipientRoles": ["MOTHER"],
+                                      "stage": "PRE_PREGNANCY",
+                                      "items": []
+                                    }
+                                  }]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalRows").value(1))
+                .andExpect(jsonPath("$.data.successCount").value(1))
+                .andExpect(jsonPath("$.data.failedCount").value(0))
+                .andExpect(jsonPath("$.data.createdIds[0]").value(createdId.toString()));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
+    void importBatch_invalidNestedTemplate_shouldReturn400() throws Exception {
+        mockMvc.perform(post(BASE_URL + "/import-batch").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "templates": [{
+                                    "rowIndex": 2,
+                                    "checklistCode": "CHK-001",
+                                    "template": {"name": "", "items": []}
+                                  }]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(checklistTemplateBatchImportService, never()).importBatch(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
+    void importBatch_emptyTemplates_shouldReturn400() throws Exception {
+        mockMvc.perform(post(BASE_URL + "/import-batch").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templates\":[]}"))
+                .andExpect(status().isBadRequest());
+
+        verify(checklistTemplateBatchImportService, never()).importBatch(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
+    void importBatch_moreThan100Templates_shouldReturn400() throws Exception {
+        String templates = java.util.stream.IntStream.rangeClosed(1, 101)
+                .mapToObj(index -> """
+                        {
+                          "rowIndex": %d,
+                          "checklistCode": "CHK-%03d",
+                          "template": {
+                            "name": "Checklist %d",
+                            "recipientRoles": ["MOTHER"],
+                            "stage": "PRE_PREGNANCY",
+                            "items": []
+                          }
+                        }
+                        """.formatted(index + 1, index, index))
+                .collect(java.util.stream.Collectors.joining(","));
+
+        mockMvc.perform(post(BASE_URL + "/import-batch").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templates\":[" + templates + "]}"))
+                .andExpect(status().isBadRequest());
+
+        verify(checklistTemplateBatchImportService, never()).importBatch(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "SYSTEM_ADMIN")
+    void importBatch_asSystemAdmin_shouldReturn403() throws Exception {
+        mockMvc.perform(post(BASE_URL + "/import-batch").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "templates": [{
+                                    "rowIndex": 2,
+                                    "checklistCode": "CHK-001",
+                                    "template": {"name": "Checklist", "items": []}
+                                  }]
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        verify(checklistTemplateBatchImportService, never()).importBatch(any(), any());
     }
 
     // CHKTPL-TC-009c: MOTHER cannot even list

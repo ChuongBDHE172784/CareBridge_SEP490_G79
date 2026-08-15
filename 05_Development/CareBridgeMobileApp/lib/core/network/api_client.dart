@@ -204,6 +204,32 @@ Future<_RefreshResult> _performRefresh(
             response.statusCode == 403)
         ? _RefreshOutcome.tokenInvalid
         : _RefreshOutcome.networkError;
+    if (outcome == _RefreshOutcome.tokenInvalid) {
+      // The backend rotates and revokes a refresh token on use, and the safety
+      // foreground task refreshes from its own isolate. Losing that race is
+      // not a dead session: adopt the tokens the winner persisted instead of
+      // signing the user out and stopping safety monitoring.
+      final adopted = await AuthState.instance.adoptRotatedCredentials(
+        expectedGeneration: requestSession.generation,
+        expectedUserId: requestSession.accountId,
+        rejectedRefreshToken: refresh,
+      );
+      if (adopted) {
+        final currentToken = AuthState.instance.accessToken;
+        final refreshedSession = currentToken == null
+            ? null
+            : _captureExpectedSession(
+                accountId: requestSession.accountId,
+                accessToken: currentToken,
+              );
+        debugPrint(
+          '[ApiClient] _tryRefresh: adopted tokens rotated by another isolate',
+        );
+        return refreshedSession == null
+            ? const _RefreshResult(_RefreshOutcome.sessionChanged)
+            : _RefreshResult(_RefreshOutcome.refreshed, refreshedSession);
+      }
+    }
     debugPrint(
       '[ApiClient] _tryRefresh: FAILED → '
       'outcome=$outcome status=${response.statusCode}',

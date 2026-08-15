@@ -9,6 +9,6 @@ import java.util.List;
  * Request body for PUT /api/v1/users/me/notification-preferences (UC-10).
  */
 public record UpdateNotificationPreferencesRequest(
-    @NotNull @Valid List<NotificationPreferenceItemDto> preferences,
+    @NotNull List<@Valid NotificationPreferenceItemDto> preferences,
     List<Integer> appointmentReminderDefaults
 ) {}

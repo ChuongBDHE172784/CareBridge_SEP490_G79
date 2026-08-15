@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Governance migration: legacy {@code status: "APPROVED"} → {@code releaseStatus: "ACTIVE"}.
  *
  * <p>The old field name reads as clinical approval, which never happened — no clinician
- * reviewed these rules (see AI_TRIAGE_V2_DECISIONS.md D-011). Older artifacts must still
+ * reviewed these rules (see AI_TRIAGE_DECISIONS.md D-011). Older artifacts must still
  * load, but the legacy value maps to a RELEASE flag only: it must never be read as
  * validation, and it must not weaken fail-closed loading.
  */

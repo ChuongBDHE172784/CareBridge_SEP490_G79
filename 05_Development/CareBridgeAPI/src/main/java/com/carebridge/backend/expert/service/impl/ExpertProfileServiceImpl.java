@@ -58,14 +58,14 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private final CareFacilityRepository careFacilityRepository;
 	private final ProfessionalSpecialtyRepository professionalSpecialtyRepository;
 
-	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl from the same users row,
+	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl, email, phone from the same users row,
 	// 1 lookup, for every response that uses ExpertProfileResponse/ExpertProfileDetailResponse.
-	private record UserInfo(String displayName, String avatarUrl) {}
+	private record UserInfo(String displayName, String avatarUrl, String email, String phone) {}
 
 	private UserInfo resolveUserInfo(UUID userId) {
 		return userRepository.findById(userId)
-			.map(u -> new UserInfo(u.getName(), u.getAvatarUrl()))
-			.orElse(new UserInfo(null, null));
+			.map(u -> new UserInfo(u.getName(), u.getAvatarUrl(), u.getEmail(), u.getPhone()))
+			.orElse(new UserInfo(null, null, null, null));
 	}
 
 	@Override
@@ -79,6 +79,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			profile.setProfessionalTitle(request.getProfessionalTitle());
 			profile.setExperienceYears(request.getExperienceYears());
 			profile.setWorkplace(request.getWorkplace());
+			profile.setWorkplaceProvinceId(request.getWorkplaceProvinceId());
 			profile.setConsultationScope(request.getConsultationScope());
 			if (request.getRatingAvg() != null) profile.setRatingAvg(request.getRatingAvg());
 			if (request.getConsultationFeeVnd() != null) profile.setConsultationFeeVnd(request.getConsultationFeeVnd());
@@ -122,7 +123,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseGet(() -> new ExpertProfile());
 		UserInfo info = resolveUserInfo(userId);
 		ExpertProfileDetailResponse response =
-			expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl());
+			expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl(), info.email(), info.phone());
 		List<ProfessionalSpecialty> mappings = profile.getExpertProfileId() == null
 			? List.of()
 			: professionalSpecialtyRepository
@@ -148,7 +149,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		}
 		UserInfo info = resolveUserInfo(userId);
 		ExpertProfileDetailResponse response =
-			expertProfileMapper.toDetailResponse(saved, info.displayName(), info.avatarUrl());
+			expertProfileMapper.toDetailResponse(saved, info.displayName(), info.avatarUrl(), info.email(), info.phone());
 		if (!selection.specialties().isEmpty()) {
 			List<String> specialtyIds = selection.specialties().stream()
 				.map(specialty -> specialty.getSpecialtyId().toString())
@@ -383,7 +384,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 				"EXPERT-004", "Expert profile not available");
 		}
 		UserInfo info = resolveUserInfo(profile.getUserId());
-		return expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl());
+		return expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl(), info.email(), info.phone());
 	}
 
 	@Override

@@ -62,4 +62,39 @@ void main() {
 
     expect(find.byType(MyQuestionsScreen), findsOneWidget);
   });
+
+  testWidgets('Expert filter dropdown renders options and updates selection', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: CommunityFeedScreen()));
+    await tester.pump();
+
+    // Verify initial "Chuyên gia" dropdown button exists
+    expect(find.text('Chuyên gia'), findsOneWidget);
+
+    // Open expert filter dropdown
+    await tester.tap(find.text('Chuyên gia'));
+    await tester.pumpAndSettle();
+
+    // Verify menu items
+    expect(find.text('Tất cả'), findsOneWidget);
+    expect(find.text('Có chuyên gia'), findsOneWidget);
+    expect(find.text('Chưa có chuyên gia'), findsOneWidget);
+
+    // Select "Có chuyên gia"
+    await tester.tap(find.text('Có chuyên gia'));
+    await tester.pumpAndSettle();
+
+    // Verify chip text updated to "Có chuyên gia"
+    expect(find.text('Có chuyên gia'), findsOneWidget);
+
+    // Open dropdown again and select "Chưa có chuyên gia"
+    await tester.tap(find.text('Có chuyên gia'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chưa có chuyên gia'));
+    await tester.pumpAndSettle();
+
+    // Verify chip text updated to "Chưa có chuyên gia"
+    expect(find.text('Chưa có chuyên gia'), findsOneWidget);
+  });
 }

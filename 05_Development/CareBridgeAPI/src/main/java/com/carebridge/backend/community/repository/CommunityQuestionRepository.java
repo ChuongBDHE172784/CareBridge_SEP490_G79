@@ -35,14 +35,12 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     @Query("""
             SELECT q.topicId AS topicId, COUNT(q) AS cnt
             FROM CommunityQuestion q
-            WHERE q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+            WHERE (q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+                OR q.status = com.carebridge.backend.community.entity.QuestionStatus.LOCKED)
               AND q.topicId IN :topicIds
             GROUP BY q.topicId
             """)
     List<TopicQuestionCountProjection> countApprovedQuestionsByTopicIds(@Param("topicIds") List<UUID> topicIds);
-
-    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded question by author+title
-    Optional<CommunityQuestion> findByAuthorIdAndTitle(UUID authorId, String title);
 
     Page<CommunityQuestion> findAllByAuthorIdOrderByCreatedAtDesc(UUID authorId, Pageable pageable);
 
@@ -73,11 +71,11 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     @Query("SELECT q FROM CommunityQuestion q WHERE q.id = :questionId")
     Optional<CommunityQuestion> findByIdForModerationUpdate(@Param("questionId") UUID questionId);
 
-    // UC-198: the shared community feed is APPROVED-only for every viewer. Authors access
-    // private AI_PENDING/PENDING questions through My Questions or the guarded detail endpoint.
+    // UC-198: the shared community feed shows APPROVED and LOCKED questions for all viewers.
     @Query("""
             SELECT q FROM CommunityQuestion q
-            WHERE q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+            WHERE (q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+                OR q.status = com.carebridge.backend.community.entity.QuestionStatus.LOCKED)
               AND (:topicId IS NULL OR q.topicId = :topicId)
             ORDER BY q.createdAt DESC
             """)
@@ -85,10 +83,11 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
             @Param("topicId") UUID topicId,
             Pageable pageable);
 
-    // UC-162: search — APPROVED only, multi-filter, parameterized (ADR-COM-007, OWASP A03)
+    // UC-162: search — APPROVED or LOCKED, multi-filter, parameterized (ADR-COM-007, OWASP A03)
     @Query("""
             SELECT q FROM CommunityQuestion q
-            WHERE q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+            WHERE (q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+                OR q.status = com.carebridge.backend.community.entity.QuestionStatus.LOCKED)
               AND (CAST(:keyword AS String) IS NULL
                    OR LOWER(q.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%'))
                    OR LOWER(q.body) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')))

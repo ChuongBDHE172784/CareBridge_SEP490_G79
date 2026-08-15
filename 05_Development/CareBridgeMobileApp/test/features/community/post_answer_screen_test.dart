@@ -39,4 +39,10 @@ void main() {
     expect(find.text('Chụp ảnh'), findsOneWidget);
     expect(find.text('Thư viện'), findsOneWidget);
   });
+
+  test('canAnswerCommunityQuestion returns false for AI_PENDING', () {
+    expect(canAnswerCommunityQuestion('AI_PENDING'), isFalse);
+    expect(canAnswerCommunityQuestion('APPROVED'), isTrue);
+  });
 }
+

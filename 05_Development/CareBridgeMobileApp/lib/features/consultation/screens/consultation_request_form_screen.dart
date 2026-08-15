@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:uuid/uuid.dart';
 
 import '../../expert/models/expert_availability_slot.dart';
@@ -136,7 +135,7 @@ class _ConsultationRequestFormScreenState
       body: Form(
         key: _formKey,
         child: ListView(
-          scrollCacheExtent: const ScrollCacheExtent.pixels(1200),
+          cacheExtent: 1200,
           padding: const EdgeInsets.all(20),
           children: [
             Container(

@@ -48,10 +48,20 @@ class TriageHistoryItem {
   };
 
   String get statusLabel => switch (status) {
-    'COMPLETED' => riskLevel == null ? 'Đã hoàn tất' : 'Kết quả $riskLevel',
+    'COMPLETED' =>
+      riskLevel == null ? 'Đã hoàn tất' : 'Kết quả ${_riskLabel(riskLevel)}',
     'FAILED' => 'Chưa hoàn tất',
     'NEED_MORE_INFO' || 'ASK_MORE' => 'Cần thêm thông tin',
     _ => 'Đang xử lý',
+  };
+
+  static String _riskLabel(String? risk) => switch (risk) {
+    'RED' => 'Đỏ',
+    'YELLOW' => 'Vàng',
+    'GREEN' => 'Xanh',
+    'NEEDS_MORE_INFO' => 'Cần thêm thông tin',
+    'OUT_OF_SCOPE' => 'Ngoài phạm vi hỗ trợ',
+    _ => 'Chưa xác định',
   };
 
   bool get isCompleted => status == 'COMPLETED';

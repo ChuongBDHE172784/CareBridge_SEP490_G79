@@ -88,7 +88,7 @@ class CommunityFeedServiceImplTest {
 
     private CommunityFeedItemResponse makeFeedItem(UUID id, Instant createdAt) {
         return new CommunityFeedItemResponse(id, "title", "Thai kỳ", "Author",
-                "PREGNANCY", "NORMAL", 0, 0, false, false, false, createdAt);
+                "PREGNANCY", "NORMAL", 0, 0, false, false, false, "APPROVED", createdAt);
     }
 
     // COM198-TC-001: Feed returns APPROVED questions only, newest first
@@ -219,7 +219,7 @@ class CommunityFeedServiceImplTest {
         when(topicRepository.findAllById(any())).thenReturn(List.of());
         when(feedMapper.toFeedItem(eq(q1), any(), any(), eq(false), eq(false), eq(true)))
                 .thenReturn(new CommunityFeedItemResponse(q1.getId(), "title", "Thai kỳ", "Author",
-                        "PREGNANCY", "NORMAL", 0, 0, false, false, true, t1));
+                        "PREGNANCY", "NORMAL", 0, 0, false, false, true, "APPROVED", t1));
 
         PaginatedResponse<CommunityFeedItemResponse> result = service.getFeed(null, CURRENT_USER, 0, 20);
 

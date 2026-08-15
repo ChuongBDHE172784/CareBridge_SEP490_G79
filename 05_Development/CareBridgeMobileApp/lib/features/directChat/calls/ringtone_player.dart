@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+// Selects the web implementation on js_interop-capable targets. Previously keyed on
+// `dart.library.html`, which is tied to the deprecated dart:html the web player no
+// longer uses.
 import 'ringtone_player_stub.dart'
-    if (dart.library.html) 'ringtone_player_web.dart';
+    if (dart.library.js_interop) 'ringtone_player_web.dart';
 
 class RingtonePlayer {
   static final RingtonePlayer instance = RingtonePlayer._();

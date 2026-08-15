@@ -15,7 +15,7 @@ def test_health_reports_deterministic_engine_readiness_without_requiring_gemini(
     assert payload["readiness"] == "READY"
     assert payload["deterministicEngine"] == {
         "ready": True,
-        "probe": "POSTPARTUM_RED_PRECEDENCE",
+        "probe": "CANONICAL_RED_PRECEDENCE",
     }
     assert "geminiEnabled" in payload
     assert "geminiConfigured" in payload

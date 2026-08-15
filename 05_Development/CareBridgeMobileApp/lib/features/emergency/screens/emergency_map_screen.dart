@@ -67,6 +67,7 @@ class EmergencyMapScreen extends StatefulWidget {
     this.mapStyleLoadTimeout = const Duration(seconds: 12),
     this.trackAsiaMapKey,
     this.annotationSynchronizer,
+    this.showFamilyLocationShare,
   });
 
   final CareFacilityService? facilityService;
@@ -84,6 +85,7 @@ class EmergencyMapScreen extends StatefulWidget {
   final Duration mapStyleLoadTimeout;
   final String? trackAsiaMapKey;
   final MapAnnotationSynchronizer? annotationSynchronizer;
+  final bool? showFamilyLocationShare;
 
   @override
   State<EmergencyMapScreen> createState() => _EmergencyMapScreenState();
@@ -182,6 +184,17 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   bool get _isTriageHandoff =>
       widget.triageHandoff ||
       widget.existingSession?.triggerSource.trim().toUpperCase() == 'AI_TRIAGE';
+
+  bool get _canShareLocationToFamily {
+    if (widget.showFamilyLocationShare != null) {
+      return widget.showFamilyLocationShare!;
+    }
+    final role = AuthState.instance.role;
+    if (role != null && role.toUpperCase() == 'FAMILY') {
+      return false;
+    }
+    return true;
+  }
 
   bool _isActiveSession(EmergencySession? session) =>
       session?.status.trim().toUpperCase() == 'ACTIVE';
@@ -328,7 +341,14 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       });
       _armMapStyleWatchdog(_mapGeneration);
       await _syncMapAnnotations();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      // This used to be `catch (_)`, which threw the reason away. On 11/08/2026
+      // the screen came up completely blank and there was nothing anywhere -
+      // no message on screen, no line in the console - to say why. Keep the
+      // reassuring text for the user, but let the reason reach the log so the
+      // next blank screen can be diagnosed instead of guessed at.
+      debugPrint('Emergency map: loading nearby facilities failed: $error');
+      debugPrintStack(stackTrace: stackTrace, label: 'emergency-map-load');
       if (mounted && generation == _loadGeneration) {
         setState(() {
           _loading = false;
@@ -1564,51 +1584,53 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                     label: const Text('Gọi cấp cứu 115'),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: KeyedSubtree(
-                    key: const Key('emergency-family-alert'),
-                    child: OutlinedButton.icon(
-                      key: const Key('family-alert'),
-                      onPressed:
-                          _sharingLocation ||
-                              _sendingFamilyAlert ||
-                              _accountChanged
-                          ? null
-                          : _shareCurrentLocation,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF845143),
-                        backgroundColor: _locationShareSent
-                            ? const Color(0xFFF2EAE4)
-                            : Colors.white,
-                        side: const BorderSide(color: Color(0xFFE8DDD6)),
-                        shape: const StadiumBorder(),
-                      ),
-                      icon: _sharingLocation
-                          ? const SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              _locationShareFailed
-                                  ? Icons.refresh_rounded
-                                  : _locationShareSent
-                                  ? Icons.check_circle_rounded
-                                  : Icons.share_location_rounded,
-                            ),
-                      label: Text(
-                        _sharingLocation
-                            ? 'Đang gửi vị trí...'
-                            : _locationShareFailed
-                            ? 'Thử gửi lại vị trí'
-                            : _locationShareSent
-                            ? 'Đã gửi vị trí'
-                            : 'Gửi vị trí',
-                        overflow: TextOverflow.ellipsis,
+                if (_canShareLocationToFamily) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: KeyedSubtree(
+                      key: const Key('emergency-family-alert'),
+                      child: OutlinedButton.icon(
+                        key: const Key('family-alert'),
+                        onPressed:
+                            _sharingLocation ||
+                                _sendingFamilyAlert ||
+                                _accountChanged
+                            ? null
+                            : _shareCurrentLocation,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF845143),
+                          backgroundColor: _locationShareSent
+                              ? const Color(0xFFF2EAE4)
+                              : Colors.white,
+                          side: const BorderSide(color: Color(0xFFE8DDD6)),
+                          shape: const StadiumBorder(),
+                        ),
+                        icon: _sharingLocation
+                            ? const SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                _locationShareFailed
+                                    ? Icons.refresh_rounded
+                                    : _locationShareSent
+                                    ? Icons.check_circle_rounded
+                                    : Icons.share_location_rounded,
+                              ),
+                        label: Text(
+                          _sharingLocation
+                              ? 'Đang gửi vị trí...'
+                              : _locationShareFailed
+                              ? 'Thử gửi lại vị trí'
+                              : _locationShareSent
+                              ? 'Đã gửi vị trí'
+                              : 'Gửi vị trí',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

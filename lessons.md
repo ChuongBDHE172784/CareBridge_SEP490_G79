@@ -1,5 +1,100 @@
 # Lessons learned
 
+## 2026-08-14 - Checklist item source-link authoring
+
+- Treat an optional per-item source link as a round-trip contract: create, edit,
+  clear, request/response mapping, version cloning, and JSON metadata persistence
+  must change together even when the visible request is only for a form field.
+- Keep URL policy identical at every boundary. The Web form, Bean Validation,
+  and service guard now require HTTP(S), a hostname, no embedded credentials,
+  and at most 2,048 characters; checking only `URL.protocol` leaves
+  `https://user:password@host` incorrectly accepted by the UI.
+- Adding source-only JSON metadata activates code paths that recurrence-only
+  tests may never reach. Inject the real `ObjectMapper` in service tests and
+  prove both update and clear behavior so an early `{}` return cannot silently
+  discard the new field.
+
+## 2026-08-14 - Postpartum and Baby Care stage split planning
+
+- When product UX chooses to separate maternal postpartum and baby care, implement the separation as one cross-layer contract: stage, care context, anchor, subject, occurrence identity, authoring choice, filters, and presentation must change together.
+- A safe stage split needs compatibility backend support before client rollout, disabled deterministic catalog replacements before activation, cohort remediation, and a later legacy-alias retirement release. Renaming the UI first or mutating published template versions creates unsupported-client and history risks.
+- Baby Care checklist stages are not automatically the same enum domain as infant/toddler triage stages. Inventory every stage-bearing contract and change only the bounded checklist/content surfaces unless a separate requirement authorizes broader lifecycle changes.
+- Do not infer Baby ownership from a template title. Classify legacy roots from stored context, anchor, leaf semantics, and provenance; quarantine ambiguity and publish nothing automatically.
+- Calibrate change-management rigor to the delivery context. For a student project with one deployed environment, retain correctness-critical migration safety and regression evidence, but omit enterprise cohort rollout, long-lived compatibility programs, and observability infrastructure unless explicitly required.
+
+## 2026-08-14 - POSTPARTUM checklist empty-state investigation
+
+- The Flutter Today panel's normal empty state is evidence of a successfully parsed empty snapshot, not proof of a client filter or network failure; terminal/retryable failures render a separate state.
+- Consolidating lifecycle stage names can destroy subject semantics: changing `BABY_CARE` roots to `POSTPARTUM` before a backfill derives leaf targets from `root.stage` can reclassify Baby content as Mother content.
+- A repair that selects only mixed Mother/Baby roots does not cover formerly pure Baby roots that were already misclassified. Add a full historical-chain fixture from the pre-consolidation schema.
+- Per-candidate exception isolation keeps Today available but can turn materialization defects into HTTP 200 empty lists. Diagnose `checklist_materialization_candidate_failed` alongside the sanitized Today payload and catalog/context rows.
+- Dirty-worktree regression tests prove the proposed local repair, not deployed-account causality. Keep source-mechanism confidence separate from live-account confidence.
+- A full-chain migration probe is stronger than a source-only read: a pure legacy `BABY_CARE` root was restaged `POSTPARTUM`, its leaf became `MOTHER`, and both it and a native legacy `POSTPARTUM` root were quarantined as `PENDING_REVIEW`/disabled before candidate selection.
+- A mixed-root repair cannot discover rows already made `PENDING_REVIEW`/disabled; verify lifecycle flags before judging a split migration ineffective.
+- Keep migration-chain evidence separate from account attribution: the probe proves the mechanism, not that the deployed account ran the same Flyway path or has the same rows.
+- Migration gates can drift independently of runtime behavior: the full-chain test failed only because its expected latest version lagged the newly added split migration, while 30 service/materialization/Today tests passed.
+- Before planning a deployed Supabase query, verify three separate prerequisites: CLI availability, API authentication, and project/DB selection. An `npx`-available CLI does not imply a logged-in Management API session.
+- A deployed account can expose a stronger seam than a synthetic catalog probe: compare `created_at`, `historical_at`, `history_reason_code`, `window_start/end`, and `period_key` on the same instance. Here the 2.8-second transition plus `LIFECYCLE_STAGE_OBSOLETE` proved period-identity drift.
+- For POSTPARTUM/BABY cadence, deriving `period_key` from pregnancy LMP/EDD while eligibility uses delivery/birth anchors creates self-invalidating instances. The cadence identity must use the same lifecycle anchor as current-scope reconciliation.
+
+## 2026-08-13 - Preconception sequence advance diagnosis
+
+- The sequence readiness path and the sequence advance materialization path build commands independently; proving Today reaches `READY_TO_ADVANCE` does not prove the successor can be materialized.
+- `ChecklistSequenceAdvanceService.distributionCommand` must carry the successor root contract just like reconciliation does. A compatibility constructor silently converts V2 targetless content into the legacy materialization path.
+- An HTTP 500 from sequence advance is not a normal readiness/configuration response: those branches are typed 400/404/409. Capture the backend stack trace before treating a static contract defect as the confirmed runtime exception.
+- The production-path PostgreSQL regression must complete set 1, invoke the real advance service, and assert successor parent/task contract fields; testing only the resolver projection misses this transition seam.
+
+## 2026-08-13 - Preconception checklist sequence requiredness drift
+
+- The `1/4` pill in the Mother Today panel is sequence position, not item progress:
+  `currentPosition/totalPositions`. Diagnose CTA visibility from `sequenceState` and
+  `advanceAvailable`, not from that pill.
+- Sequence qualification is based on materialized task snapshots, not the current
+  template catalog. A live instance can be parent `COMPLETED` with every visible task
+  completed yet remain `ACTIVE` when all snapshot `is_required` flags are false;
+  `requiredCount > 0` then fails by construction.
+- A migration that repairs only `IS NULL` requiredness does not fix rows that were
+  prematurely persisted as the non-null default `false`. Audit catalog item and task
+  snapshot side by side through `template_item_version_id` before trusting either.
+- Unit tests can prove each isolated layer while missing deployed-artifact/data drift:
+  source mapping, distribution persistence, resolver qualification, and Flutter CTA
+  fixtures all passed with explicit correct booleans. Add a live-schema/E2E gate that
+  materializes approved mandatory V2 content and asserts requiredness survives into the
+  Today `READY_TO_ADVANCE` projection.
+
+## 2026-08-13 - Checklist maternal health-metric support destination
+
+- Keep `HEALTH_RECORDS` mapped to the health-record timeline; the maternal
+  `Chỉ số sức khỏe` destination is a separate journey-scoped route and needs
+  its own support-function contract code.
+- A checklist Today task already carries `careContextType=JOURNEY` and
+  `careContextId`, so mobile navigation can derive the trusted metric route
+  without accepting a server-supplied URL or issuing another dashboard read.
+- Adding a checklist support function is a four-layer contract change: Web
+  TypeScript catalog, Java enum, both PostgreSQL whitelist constraints, and
+  Flutter's client-owned destination catalog. Verify propagation end to end.
+- Support function participates in checklist materialization identity checks;
+  do not rewrite already-materialized task snapshots when introducing a new
+  destination code.
+
+## 2026-08-13 - Today task cadence indicator
+
+- Cadence must be normalized at the Today API boundary from checklist root
+  schedule metadata or reminder recurrence; the mobile card should not infer
+  repetition from `dueAt`.
+- Preserve a compatibility constructor/default while adding the cadence field,
+  otherwise older Today providers and fixtures break at compile time.
+- Flutter tooling on a read-only SDK location needs the real pub cache plus
+  elevated access for the SDK lockfile; Dart format/analyze can still run with
+  workspace-local analytics/cache paths.
+
+## 2026-08-13 — Maternal BMI trend catalog drift diagnosis
+
+- A successful Flyway history row does not prove reference data still exists. The live database recorded the BMI-definition migration as successful while `health_metric_definitions` was completely empty; verify both migration history and current catalog rows.
+- Maternal Journey weight and height are projections of the latest BMI observation context (`weightKg`/`heightCm`), not separate metrics. One BMI trend failure therefore blanks both cards even when BMI observations remain intact.
+- The BMI write path and read path enforce different contracts: recommendation synchronization can persist a BMI observation with a hard-coded definition version, while trend reads first require an active metric definition. A catalog/data integrity gate should cover both sides.
+- A broad catch that logs only a generic recommendation warning cannot establish causality. Keep recommendation signal-resolution warnings separate from health-metric `METRIC-030` unless the exception cause or shared failing dependency is captured.
+
 ## 2026-08-12 — Pregnancy V2 staging activation evidence
 
 - A signed-off Pregnancy V2 fixture must stay outside Flyway production locations; use a disposable embedded database and an explicit test-resource SQL patch so production WHO roots remain `DRAFT`/non-distributable.
@@ -497,3 +592,219 @@
 - Treat LMP and EDD as the only client dating authorities; remove legacy conception, gestational-age, and cycle-length controls instead of mapping them to a guessed EDD.
 - Optimistic dashboard reconciliation must preserve explicit server nulls for active pregnancy dating metadata; otherwise unresolved/quarantine can resurrect a stale week or Plan.
 - User-entered EDD is `SELF_REPORTED`/`ESTIMATED` unless a separately verified clinical source is present. Keep targetless V2 labels neutral across Today, History, and task detail.
+
+## 2026-08-13 - Checklist authoring form week numbering
+
+- Keep checklist authoring weeks source-facing (1-based) and convert to the existing runtime eligibility offset (0-based) at the UI boundary; this keeps Plan 2 as 21-25 while preserving persisted offsets 20-24.
+- Removing the visible contract/target controls requires deriving the version from stage and retaining legacy target fields only in the compatibility payload path.
+
+- For recurring checklist authoring, keep the root cadence and item markers consistent: persist item markers in the existing JSON metadata, reject mixed cadence rows, and carry the root contract version into distribution so a V1 postpartum recurrence cannot be stamped as V2.
+- A daily period is a local calendar date, not a gestational week. Use the passed `ZoneId` for the period key, replay missed dates as catch-up History rows, and check the daily period in current-scope filtering.
+
+## 2026-08-13 - Checklist authoring follow-up verification
+
+- Contract propagation must cover non-cadence V2 self-assignment as well as
+  recurring roots: persist the V2 discriminator on parent and leaf, use a
+  separate occurrence-key namespace, and avoid the legacy personal-instance
+  fallback when resolving a targetless row.
+- Lifecycle history cancellation must compare the contract/cadence identity;
+  a same-window V1 row is not obsolete V2 work. UI transitions from an
+  open-ended window to a single week must also clear the stage-exit mode.
+- Keep authoring cadence checks and payload filtering based on the same set of
+  populated rows, otherwise a blank placeholder can make UI and backend
+  validation disagree.
+
+## 2026-08-13 - V2 checklist requiredness redesign
+
+- Targetless V2 can still carry an explicit item-level `is_required` boolean;
+  keep `target_subject` nullable while changing requiredness rules independently.
+- A contract change needs coordinated form payloads, approval/distribution
+  validation, sequence resolution, runtime task snapshots, and a forward
+  migration; changing only the database leaves the sequence blocked.
+- Backfill legacy V2 nulls from the root template type (`MANDATORY` true,
+  `OPTIONAL` false) and fail closed for unknown roots; preserve user-created V2
+  task rows without a template with a deterministic false default.
+
+## 2026-08-13 - POSTPARTUM checklist context routing
+
+- A consolidated lifecycle stage does not make its contexts interchangeable. In
+  POSTPARTUM, Journey carries maternal `deliveryDate` while Baby carries `birthDate`;
+  candidate routing must match root and leaf anchors to the context before distribution.
+- `recipient_scope` answers who receives a checklist, `target_subject` describes whom a
+  leaf concerns, and care context supplies lifecycle dates. Treat these as separate axes.
+- Creating a standalone Baby must not silently transition or date a maternal Journey.
+  Maternal POSTPARTUM state belongs to the explicit pregnancy-outcome workflow, while
+  direct POSTPARTUM Journey creation must collect its own delivery/outcome anchor.
+- Approval validation must cover leaf due anchors as well as the root eligibility anchor;
+  otherwise a root may pass and an incompatible leaf can throw inside a transaction.
+- When consolidating `BABY_CARE` into `POSTPARTUM`, update schema authoring guards and
+  Java compatibility semantics together. An enum alias can make runtime accept a stage/
+  anchor pair that the catalog trigger still models under the legacy stage name.
+- Mixed-root repair must classify both V1 target-bearing leaves and V2 targetless leaves;
+  V2 ownership comes from the explicit due anchor, not a target field that must remain null.
+- Catalog split migrations should clone as Draft, verify every source leaf is represented,
+  activate replacements, archive the source, and leave materialized instance/task snapshots
+  untouched. Add a database trigger so direct writers cannot recreate the invalid shape.
+- Candidate context compatibility includes anchor presence, not just context type. A Baby
+  without birth date or Journey without delivery date should be excluded before distribution.
+- Checklist root policy and item requiredness are separate persistence axes: a root stores
+  `template_type` (`MANDATORY`/`OPTIONAL`), while `is_required` belongs to each
+  `CHECKLIST_ENTRY`. Always inspect `entry_type` before treating a root NULL as data loss.
+
+## 2026-08-14 - Separate postpartum and baby-care checklist verification
+
+- When Baby Care is grouped by `careContextId`, section headings must include the baby
+  label and tests must assert the new contextual heading instead of the former generic one.
+- An active `flutter run` owns the Flutter wrapper lock. Run focused tests through the
+  current SDK tool snapshot with `--no-pub` rather than terminating the developer session.
+- Technical migration review and clinical provenance sign-off are independent approval
+  gates; preserve the provenance check before returning the generic migration-path error.
+- Migration repair must fail closed for ambiguous legacy roots: archive/disable the source,
+  create a disabled Draft replacement marked review-required, and preserve runtime history.
+
+## 2026-08-14 - Exercise detail media and spoken posture feedback
+
+- A single exercise `mediaUrl` is sufficient when product scope permits one media item;
+  local demo overrides should be deterministic by exercise identity/title and return null
+  for exercises without approved media instead of inventing placeholders as data.
+- Pin `video_player` exactly to the Flutter baseline supported by the repository; a caret
+  constraint can resolve to a newer package whose SDK requirements exceed the intended
+  deployment toolchain.
+- High-frequency posture warnings need both a global speech throttle and an exact-message
+  dedupe window. Keep TTS behind an injectable boundary, preserve visual feedback as the
+  authority, and stop speech on pause, completion, and disposal.
+- Nullable values are not promoted reliably across asynchronous gaps and compound assignment;
+  bind the fetched exercise detail to a final non-null local before starting the session.
+
+## 2026-08-14 - Database Design to conceptual ERD projection
+
+- Re-baseline a large Draw.io source immediately before transforming it. The clean source
+  advanced from 62 tables/147 edges to 63 tables/149 edges because
+  `account_lock_appeals` was legitimately added between turns.
+- Draw.io table-child geometries use absolute pixel widths. After removing a datatype
+  cell, set the attribute-name cell width to its parent detail container width; `width=1`
+  means one pixel, not 100 percent. XML/count checks cannot catch this clipping, so render
+  and inspect a focused crop before approval.
+- The Draw.io CLI `--page-index` is one-based in this environment: the appended fourteenth
+  diagram exports with `--page-index 14`. The Electron CLI may return a non-zero status
+  even after creating the PNG, so verify the output file and inspect it instead of trusting
+  the exit code alone.
+- Keep PowerShell 5 transformation helpers ASCII-only or add an explicit compatible
+  encoding marker; construct non-ASCII separators such as the middle dot at runtime.
+  Guard every write with the current SHA-256 and validate the complete temporary XML before
+  copying it over the exact workspace target.
+- For content-based table widths, measure rendered labels with their actual font weight,
+  round to a stable pixel grid, and preserve each table center while updating every nested
+  row/detail/name geometry; changing only the outer table width causes clipping or drift.
+
+## 2026-08-14 - Flyway production baseline squash
+
+- Generate a production baseline from the materialized PostgreSQL catalog rather than
+  concatenating historical migrations; this preserves the final tables, native objects,
+  constraints, triggers, ownership, and ACLs without carrying upgrade-only logic forward.
+- Keep schema DDL and reference data in separate Flyway files and enforce that boundary in
+  tests: V1 must reject top-level seed DML, while V2 must reject DDL and use an explicit
+  allowlist with fixed counts and demo/account-owned tables proven empty.
+- A focused clean-bootstrap test can prove the migration deliverable even when the broader
+  suite contains stale fixtures, but both evidence states must be reported. Do not claim the
+  full suite passed, and do not broaden the migration task to repair unrelated fixture drift.
+- Database reset is gated by endpoint and identity. If PostgreSQL/`psql` is unavailable on
+  the approved loopback endpoint, leave DROP/CREATE and strict startup unchecked; never
+  substitute a remote database or install tooling without authorization.
+
+## 2026-08-14 - Hierarchical Checklist Excel import
+
+- For a two-sheet parent/child import, normalize the shared checklist code consistently,
+  make any invalid child invalidate its parent preview, and perform source-facing week to
+  persisted-offset conversion at the parser boundary so UI and backend contracts stay aligned.
+- Async file previews need a generation token, and file replacement must be locked while the
+  import request is in flight; otherwise stale parse or POST results can be shown against a
+  newer filename.
+- Bound batch size in both the UI and Jakarta validation while preserving one transaction per
+  checklist row, so partial failures remain isolated without allowing unbounded sequential work.
+
+## 2026-08-15 - Checklist Excel dropdown validation
+
+- SheetJS may return an `ArrayBuffer` even when TypeScript casts the result to `Uint8Array`;
+  normalize the runtime byte type before browser download or a typed-array copy can emit a
+  zero-filled workbook.
+- When list validation requires targeted OpenXML injection, preserve worksheet child ordering,
+  fail fast if the workbook entry is missing, and verify the generated file with Excel itself;
+  checking only for XML substrings does not prove the dropdown is usable.
+- Keep inline validation lists below Excel's 255-character formula limit and split long codebook
+  guidance across readable rows so every supported value remains visible in the template.
+
+## 2026-08-15 - Canonical Checklist Excel template asset
+
+- When stakeholders maintain the approved workbook in `08_References`, publish that exact
+  binary as the Web download asset instead of rebuilding a second hard-coded workbook in
+  TypeScript; this preserves formatting, guidance, dropdown validation, and future edits.
+- Protect the synchronization with a byte-equality contract between the reference and public
+  asset, then separately assert sheet names, row counts, parser validity, and the modal's
+  download URL so both workbook content and UI wiring are covered.
+- Verify the production build copies the workbook without changing its hash, and open the
+  runtime asset with Excel when data-validation behavior is part of the acceptance criteria.
+
+## 2026-08-15 - Workspace-local PostgreSQL reset and strict startup
+
+- Canonicalize the server address in the JDBC identity gate with
+  `host(inet_server_addr())` before comparing it to `127.0.0.1`; keep the maintenance
+  database, port, and current user in the same fail-closed assertion before DROP.
+- A trust-auth disposable cluster still needs a complete, nonblank datasource tuple because
+  the runtime environment post-processor validates configuration shape before connecting.
+  Use a clearly non-secret local placeholder and redact it from evidence.
+- A protected readiness endpoint may correctly return HTTP 401. Treat the Flyway completion,
+  Hibernate validation, `Started BackendApplication` log, JDBC history proof, and clean process
+  observation as startup evidence instead of weakening endpoint security for a local check.
+- Terminating a verified `spring-boot:run` process makes Maven end nonzero. Report startup and
+  teardown as separate evidence; do not describe forced application termination as graceful.
+- PostgreSQL and Java tooling can hit Windows restricted-token or external-cache sandbox gates.
+  Preserve the exact loopback flags and rerun the same command with approved escalation rather
+  than changing endpoints, copying dependencies, or installing replacement tooling.
+- PostgreSQL 18 records the grantor for role memberships. A non-`CREATEROLE` Flyway runner
+  cannot remove a temporary retention-owner membership granted by an administrator, so an
+  exact two-file baseline that ends with an unreachable NOLOGIN owner needs a privileged,
+  dedicated migration runner and an early stable fail-closed marker for runtime-style roles.
+- `PUBLIC` is a pseudo-role, not a normal login for `has_function_privilege` assertions.
+  Verify revoked PUBLIC function ACLs through `aclexplode(...).grantee = 0`, and pair catalog
+  checks with an actual role-context invocation/denial test.
+- When asserting sequence ACLs, source relation OIDs from `pg_catalog.pg_sequence` before
+  calling `has_sequence_privilege`. A `pg_class.relkind = 'S'` predicate alone does not
+  guarantee evaluation order, so PostgreSQL may invoke the privilege function on a TOAST
+  relation and fail with `is not a sequence` before applying the filter.
+
+## 2026-08-15 - Supabase CLI connectivity verification
+
+- On this Windows workspace, `supabase` is not on the global PATH and `npx.ps1` is blocked by
+  PowerShell Execution Policy. Invoke the cached `supabase.exe` directly (or use `npx.cmd` when
+  it is responsive) and allow its user-profile telemetry write when running in a sandbox.
+- Verify the Management API and database paths separately: `projects list --output json` proves
+  CLI authentication/project linking, while `migration list --linked` proves a read-only remote
+  PostgreSQL connection. An empty migration list with exit code 0 is still successful connectivity.
+
+## 2026-08-15 - PRE_PREGNANCY Today sequence with empty checklist items
+
+- A Today sequence pill such as `1/5` can be a synthetic server projection when no current
+  instance exists; it is the sequence position, not evidence that one item or one instance is
+  visible. Inspect `currentInstanceId` and all Today sections before interpreting the pill.
+- V2 non-cadence materialization deliberately persists the sentinel period identity
+  `O:USER_CREATED`. Current-scope reconciliation must recognize that supported identity for
+  `SET`/`SEQUENCE_STEP`; treating every configured schedule/policy as a cadence handled by
+  `ChecklistPeriodIdentity` makes the expected key null and immediately historicalizes valid work.
+- `LIFECYCLE_STAGE_OBSOLETE` is a generic reconciliation reason for any `!isCurrent` result. It
+  does not by itself prove a real lifecycle-stage transition; compare the journey stage, catalog
+  policy, instance period identity, timestamps, and current-scope predicates.
+- The existing pre-pregnancy PostgreSQL test calls Today with `reconcile=false` and seeds roots
+  without the live `SET`/`SEQUENCE_STEP` fields, so it cannot catch the create-then-reconcile seam.
+  A regression must exercise automatic ensure plus reconciliation with the production catalog shape.
+
+## 2026-08-15 - PRE_PREGNANCY current-scope fix and review
+
+- Treat persisted occurrence identity as a shared writer-reader domain contract. Centralizing the
+  exact V2 non-cadence tuple prevents distribution and reconciliation from drifting independently.
+- When tightening a fail-closed branch, explicitly test older supported shapes and configured
+  null-key identities; compatibility and security-style rejection can regress in opposite directions.
+- Preserve both `reconcile=true` and `reconcile=false` coverage while adding an end-to-end regression,
+  then prove repeat reads, required completion, and sequence advancement against PostgreSQL.
+- A code fix that prevents future historicalization does not authorize restoring an already-historical
+  production row. Keep data remediation separate, explicit, scoped, and independently approved.

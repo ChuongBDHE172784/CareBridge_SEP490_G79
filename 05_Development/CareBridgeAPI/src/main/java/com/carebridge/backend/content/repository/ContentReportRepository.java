@@ -53,9 +53,6 @@ public interface ContentReportRepository
     // (idx_content_reports_duplicate, added in V2__spec_sync_from_tds.sql).
     boolean existsByReporterUserIdAndTargetIdAndStatus(UUID reporterUserId, UUID targetId, ReportStatus status);
 
-    // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded report by reporter+target+category
-    Optional<ContentReport> findByReporterUserIdAndTargetIdAndCategory(UUID reporterUserId, UUID targetId, String category);
-
     // CB-MOD-IMP-016: duplicate guard must also cover claimed (IN_REVIEW) reports
     boolean existsByReporterUserIdAndTargetIdAndStatusIn(
             UUID reporterUserId, UUID targetId, Collection<ReportStatus> statuses);

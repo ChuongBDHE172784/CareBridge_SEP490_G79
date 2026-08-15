@@ -10,6 +10,8 @@ class JourneyDashboard {
   /// This is deliberately distinct from [sourceWeekNumber], which is the
   /// one-based week used to select the checklist plan.
   final int? completedGestationalWeek;
+  /// Remainder days (0 to 6) in the current completed gestational week.
+  final int? completedGestationalDays;
   /// One-based source week returned by the server for checklist selection.
   final int? sourceWeekNumber;
   /// Server-selected WHO checklist plan for [sourceWeekNumber].
@@ -38,6 +40,7 @@ class JourneyDashboard {
     this.status,
     this.pregnancyWeek,
     this.completedGestationalWeek,
+    this.completedGestationalDays,
     this.sourceWeekNumber,
     this.plan,
     this.trimester,
@@ -74,9 +77,9 @@ class JourneyDashboard {
         lastMenstrualDate.month,
         lastMenstrualDate.day,
       );
-      return (normalizedToday.difference(normalizedLmp).inDays / 7)
-          .floor()
-          .clamp(0, 42);
+      final days = normalizedToday.difference(normalizedLmp).inDays;
+      if (days < 0) return null;
+      return ((days / 7).floor() + 1).clamp(1, 42);
     }
     if (estimatedDueDate != null) {
       final normalizedDueDate = DateTime(
@@ -85,7 +88,9 @@ class JourneyDashboard {
         estimatedDueDate.day,
       );
       final daysUntilDue = normalizedDueDate.difference(normalizedToday).inDays;
-      return ((280 - daysUntilDue) / 7).floor().clamp(0, 42);
+      final daysSinceLmp = 280 - daysUntilDue;
+      if (daysSinceLmp < 0) return null;
+      return ((daysSinceLmp / 7).floor() + 1).clamp(1, 42);
     }
     return null;
   }
@@ -120,7 +125,8 @@ class JourneyDashboard {
     // A quarantined response is explicitly fail-closed. Do not infer a week
     // from raw legacy dates while the server withholds its dating authority.
     if (datingQuarantineReason != null) return null;
-    // Preserve an explicitly server-supplied legacy week.
+    // Prefer sourceWeekNumber if available (1-based), then server-supplied pregnancyWeek (1-based)
+    if (sourceWeekNumber != null) return sourceWeekNumber;
     if (pregnancyWeek != null) return pregnancyWeek;
     if (isPregnancy && datingBasis == null &&
         (completedGestationalWeek == null || sourceWeekNumber == null) &&
@@ -219,6 +225,7 @@ class JourneyDashboard {
       status: json['status'] as String?,
       pregnancyWeek: json['pregnancyWeek'] as int?,
       completedGestationalWeek: (json['completedGestationalWeek'] as num?)?.toInt(),
+      completedGestationalDays: (json['completedGestationalDays'] as num?)?.toInt(),
       sourceWeekNumber: (json['sourceWeekNumber'] as num?)?.toInt(),
       plan: (json['plan'] as num?)?.toInt(),
       trimester: json['trimester'] as int?,
@@ -356,6 +363,7 @@ class CreateJourneyResponse {
   final String? datingBasis;
   final String? canonicalLmp;
   final int? completedGestationalWeek;
+  final int? completedGestationalDays;
   final int? sourceWeekNumber;
   final int? plan;
   final String? datingQuarantineReason;
@@ -375,6 +383,7 @@ class CreateJourneyResponse {
     this.datingBasis,
     this.canonicalLmp,
     this.completedGestationalWeek,
+    this.completedGestationalDays,
     this.sourceWeekNumber,
     this.plan,
     this.datingQuarantineReason,
@@ -398,6 +407,8 @@ class CreateJourneyResponse {
       canonicalLmp: json['canonicalLmp']?.toString(),
       completedGestationalWeek:
           (json['completedGestationalWeek'] as num?)?.toInt(),
+      completedGestationalDays:
+          (json['completedGestationalDays'] as num?)?.toInt(),
       sourceWeekNumber: (json['sourceWeekNumber'] as num?)?.toInt(),
       plan: (json['plan'] as num?)?.toInt(),
       datingQuarantineReason:

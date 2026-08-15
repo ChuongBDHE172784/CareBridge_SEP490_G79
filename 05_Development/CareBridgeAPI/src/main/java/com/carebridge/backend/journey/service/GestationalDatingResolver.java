@@ -145,6 +145,7 @@ public class GestationalDatingResolver {
                     resolved.estimatedDueDate(),
                     resolved.canonicalLmp(),
                     resolved.completedGestationalWeek(),
+                    resolved.completedGestationalDays(),
                     resolved.sourceWeekNumber(),
                     resolved.plan());
         }
@@ -179,6 +180,18 @@ public class GestationalDatingResolver {
         return Math.toIntExact(days / 7);
     }
 
+    /** Remainder days (0 to 6) in the current gestational week. */
+    public static int completedGestationalDays(LocalDate canonicalLmp, LocalDate serverToday) {
+        if (canonicalLmp == null || serverToday == null) {
+            return -1;
+        }
+        long days = ChronoUnit.DAYS.between(canonicalLmp, serverToday);
+        if (days < 0) {
+            throw futureLmp();
+        }
+        return Math.toIntExact(days % 7);
+    }
+
     /** One-based source week used by the WHO Plan labels. */
     public static int sourceWeekNumber(int completedGestationalWeek) {
         return completedGestationalWeek < 0 ? -1 : completedGestationalWeek + 1;
@@ -210,6 +223,7 @@ public class GestationalDatingResolver {
         LocalDate canonical = canonicalLmp(
                 basis, current.getLastMenstrualDate(), current.getEstimatedDueDate());
         int completed = completedGestationalWeek(canonical, serverToday);
+        int completedDays = completedGestationalDays(canonical, serverToday);
         int sourceWeek = sourceWeekNumber(completed);
         return GestationalDatingResolution.noOp(
                 basis,
@@ -217,6 +231,7 @@ public class GestationalDatingResolver {
                 current.getEstimatedDueDate(),
                 canonical,
                 completed,
+                completedDays,
                 sourceWeek,
                 planForSourceWeek(sourceWeek),
                 false);
@@ -343,6 +358,7 @@ public class GestationalDatingResolver {
                     resolved.estimatedDueDate(),
                     resolved.canonicalLmp(),
                     resolved.completedGestationalWeek(),
+                    resolved.completedGestationalDays(),
                     resolved.sourceWeekNumber(),
                     resolved.plan());
         }
@@ -360,6 +376,7 @@ public class GestationalDatingResolver {
             throw basisRequired();
         }
         int completed = completedGestationalWeek(canonical, serverToday);
+        int completedDays = completedGestationalDays(canonical, serverToday);
         int sourceWeek = sourceWeekNumber(completed);
         return new GestationalDatingResolution(
                 basis,
@@ -370,6 +387,7 @@ public class GestationalDatingResolver {
                 false,
                 datingScope,
                 completed,
+                completedDays,
                 sourceWeek,
                 planForSourceWeek(sourceWeek));
     }

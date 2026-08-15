@@ -12,8 +12,9 @@ Future<List<CommunityTopic>> loadQuestionTopics(
 }
 
 class CommunityService {
-  static final CommunityService instance = CommunityService._();
-  CommunityService._();
+  // Mutable so widget tests can swap in a fake subclass
+  static CommunityService instance = CommunityService();
+  CommunityService();
 
   // [type] defaults to unset (all taxonomy kinds). Callers request only the
   // taxonomy rows required by their question or verified-content flows.

@@ -47,6 +47,10 @@ public class UpdateExpertProfileRequest {
     @Size(max = 200)
     private String workplace;
 
+    /** province_id from /api/v1/master-data/provinces; scopes the hospital lookup. */
+    @Size(max = 16, message = "Province id must not exceed 16 characters")
+    private String workplaceProvinceId;
+
     @Size(max = 5000)
     private String consultationScope;
 

@@ -42,6 +42,8 @@ public class AiModerationPromptBuilder {
                 translated. All confidence values must be between 0 and 1.
                 7. If nothing matches, classification is SAFE with an empty matchedPolicies array. If genuinely \
                 ambiguous, use UNCERTAIN.
+                8. All explanations (the root "explanation" field and each "explanation" within "matchedPolicies") \
+                MUST be written in Vietnamese (tiếng Việt), clear and professional for Vietnamese moderators.
 
                 POLICIES (policyCode | category | severity | detection guidance):
                 """);

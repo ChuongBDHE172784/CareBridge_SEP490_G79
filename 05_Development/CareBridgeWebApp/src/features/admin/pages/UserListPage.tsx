@@ -19,14 +19,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 type UserSortKey = 'name' | 'role' | 'status' | 'createdAt';
 
-function maskName(name?: string | null): string {
-  if (!name || !name.trim()) return 'Chưa cập nhật tên';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length <= 1) return name;
-  return parts
-    .map((p, i) => (i === parts.length - 1 || i === 0 ? p : `${p[0]}***`))
-    .join(' ');
-}
+
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -328,7 +321,7 @@ export default function UserListPage() {
                             {(item.name || item.email || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-sm text-on-surface">{maskName(item.name || item.email)}</div>
+                            <div className="font-semibold text-sm text-on-surface">{item.name || item.email || 'Chưa cập nhật tên'}</div>
                             <div className="text-xs text-on-surface-variant mt-0.5">{item.email}</div>
                           </div>
                         </div>

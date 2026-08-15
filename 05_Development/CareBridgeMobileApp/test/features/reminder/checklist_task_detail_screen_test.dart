@@ -8,6 +8,7 @@ import 'package:untitled/features/reminder/services/today_task_service.dart';
 
 const _supportRoutes = <String, String>{
   'HEALTH_RECORDS': '/health-records',
+  'MATERNAL_EXERCISES': '/mother-exercise',
   'APPOINTMENTS': '/appointments/calendar',
   'REMINDERS': '/reminder-schedules',
   'JOURNEY': '/mother-home?tab=1',
@@ -23,6 +24,8 @@ TodayTask _task({
   TodayTaskSupportFunction? supportFunction,
   TodayTaskTarget target = TodayTaskTarget.baby,
   bool completed = false,
+  String careContextType = 'BABY',
+  String careContextId = 'baby-1',
 }) {
   final action = completed ? TodayTaskAction.reopen : TodayTaskAction.complete;
   return TodayTask.fromJson({
@@ -32,8 +35,8 @@ TodayTask _task({
     'description': ?description,
     if (supportFunction != null) 'supportFunction': supportFunction.apiValue,
     'careGroupId': 'group-1',
-    'careContextType': 'BABY',
-    'careContextId': 'baby-1',
+    'careContextType': careContextType,
+    'careContextId': careContextId,
     'careContextLabel': 'Bé An',
     'targetSubject': switch (target) {
       TodayTaskTarget.mother => 'MOTHER',
@@ -181,6 +184,93 @@ void main() {
       expect(find.text('Chức năng đích'), findsOneWidget);
     });
   }
+
+  testWidgets('maternal health metrics support opens the journey trend', (
+    tester,
+  ) async {
+    final supportFunction = TodayTaskSupportFunction.fromApi(
+      'MATERNAL_HEALTH_METRICS',
+    )!;
+    String? openedUri;
+    final router = GoRouter(
+      initialLocation: '/detail',
+      routes: [
+        GoRoute(
+          path: '/detail',
+          builder: (_, _) => ChecklistTaskDetailScreen(
+            task: _task(
+              supportFunction: supportFunction,
+              careContextType: 'JOURNEY',
+              careContextId: 'journey-1',
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/journeys/:journeyId/metrics/trend',
+          builder: (_, state) {
+            openedUri = state.uri.toString();
+            return const Scaffold(body: Text('Chỉ số sức khỏe'));
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+    final supportButton = find.byKey(const Key('task-support-function-button'));
+    await tester.ensureVisible(supportButton);
+    await tester.pumpAndSettle();
+    await tester.tap(supportButton);
+    await tester.pumpAndSettle();
+
+    expect(openedUri, '/journeys/journey-1/metrics/trend?metricType=BMI');
+    expect(find.text('Chỉ số sức khỏe'), findsOneWidget);
+  });
+
+  testWidgets(
+    'maternal health metrics without a journey stays on task detail',
+    (tester) async {
+      final supportFunction = TodayTaskSupportFunction.fromApi(
+        'MATERNAL_HEALTH_METRICS',
+      )!;
+      final router = GoRouter(
+        initialLocation: '/detail',
+        routes: [
+          GoRoute(
+            path: '/detail',
+            builder: (_, _) => ChecklistTaskDetailScreen(
+              task: _task(
+                supportFunction: supportFunction,
+                careContextType: 'BABY',
+                careContextId: 'baby-1',
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+      final supportButton = find.byKey(
+        const Key('task-support-function-button'),
+      );
+      await tester.ensureVisible(supportButton);
+      await tester.pumpAndSettle();
+      await tester.tap(supportButton);
+      await tester.pump();
+
+      expect(
+        find.text('Chưa có hành trình để mở chỉ số sức khỏe.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('task-support-function-button')),
+        findsOneWidget,
+      );
+    },
+  );
 
   for (final scenario
       in <({bool completed, TodayTaskAction action, String label})>[

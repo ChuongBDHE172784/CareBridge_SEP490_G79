@@ -23,6 +23,7 @@ public class ExpertProfileDetailResponse {
 	private String professionalTitle;
 	private Integer experienceYears;
 	private String workplace;
+	private String workplaceProvinceId;
 	private String hospitalId;
 	private String consultationScope;
 	private VerificationStatus verificationStatus;
@@ -32,6 +33,9 @@ public class ExpertProfileDetailResponse {
 	private BigDecimal ratingAvg;
 	private BigDecimal consultationFeeVnd;
 	private String avatarUrl;
+	private String email;
+	private String phoneNumber;
+	private String phone;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
 }

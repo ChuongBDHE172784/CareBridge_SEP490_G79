@@ -45,7 +45,9 @@ class RingtonePlayer {
             osc2.start(now);
             osc1.stop(now + 1.8);
             osc2.stop(now + 1.8);
-          } catch (_) {}
+          } catch {
+            // ignore playback error
+          }
         };
 
         playTone();
@@ -76,13 +78,17 @@ class RingtonePlayer {
             osc2.start(now);
             osc1.stop(now + 1.2);
             osc2.stop(now + 1.2);
-          } catch (_) {}
+          } catch {
+            // ignore playback error
+          }
         };
 
         playTone();
         this.intervalId = window.setInterval(playTone, 2500);
       }
-    } catch (_) {}
+    } catch {
+      // ignore audio context initialization error
+    }
   }
 
   stop() {
@@ -95,7 +101,9 @@ class RingtonePlayer {
     if (this.audioCtx) {
       try {
         void this.audioCtx.close();
-      } catch (_) {}
+      } catch {
+        // ignore audio context close error
+      }
       this.audioCtx = null;
     }
   }

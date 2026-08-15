@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
 
   nginx-edge:
-    image: ${EDGE_NGINX_IMAGE:-nginxinc/nginx-unprivileged:1.29.0-alpine}
+    image: ${EDGE_NGINX_IMAGE:-nginxinc/nginx-unprivileged:1.29-alpine}
     environment:
       CAREBRIDGE_PORTAL_HOSTNAME: ${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}
       CAREBRIDGE_API_HOSTNAME: ${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}

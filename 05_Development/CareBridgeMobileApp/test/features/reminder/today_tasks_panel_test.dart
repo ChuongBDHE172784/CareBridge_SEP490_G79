@@ -85,6 +85,18 @@ Map<String, dynamic> _singleTaskEnvelope({bool completed = false}) => {
   'correlationId': 'navigation-contract',
 };
 
+Map<String, dynamic> _cadenceTask(String id, String cadence) => {
+  'taskKind': 'CHECKLIST',
+  'taskId': id,
+  'title': 'Việc $id',
+  'origin': 'SYSTEM_TEMPLATE',
+  'targetSubject': 'MOTHER',
+  'status': 'PENDING',
+  'timeBucket': 'TODAY',
+  'cadence': cadence,
+  'allowedActions': ['COMPLETE'],
+};
+
 TodayTaskService _service(Future<dynamic> Function() response) =>
     TodayTaskService(
       getRequest: (_, {queryParams}) => response(),
@@ -99,6 +111,65 @@ Widget _wrap(Widget child) => MaterialApp(
 );
 
 void main() {
+  testWidgets('shows daily weekly and one-time cadence indicators', (
+    tester,
+  ) async {
+    final envelope = {
+      'asOf': '2026-08-03T01:00:00Z',
+      'zoneId': 'Asia/Ho_Chi_Minh',
+      'horizonDays': 7,
+      'sections': {
+        'overdue': <Map<String, dynamic>>[],
+        'today': [
+          _cadenceTask('daily', 'DAILY'),
+          _cadenceTask('weekly', 'WEEKLY'),
+          _cadenceTask('once', 'ONCE'),
+        ],
+        'upcoming': <Map<String, dynamic>>[],
+        'unscheduled': <Map<String, dynamic>>[],
+      },
+      'counts': {'overdue': 0, 'today': 3, 'upcoming': 0, 'unscheduled': 0},
+      'correlationId': 'cadence-indicators',
+    };
+
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        _wrap(
+          TodayTasksPanel(service: _service(() async => {'data': envelope})),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hằng ngày'), findsOneWidget);
+      expect(find.text('Hằng tuần'), findsOneWidget);
+      expect(find.text('Không lặp'), findsOneWidget);
+      expect(find.byIcon(Icons.today_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.date_range_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.event_note_outlined), findsOneWidget);
+
+      for (final entry in const {
+        'daily': 'Hằng ngày',
+        'weekly': 'Hằng tuần',
+        'once': 'Không lặp',
+      }.entries) {
+        final card = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              (widget.properties.label ?? '').contains('Việc ${entry.key}'),
+        );
+        expect(card, findsOneWidget, reason: entry.key);
+        expect(
+          tester.getSemantics(card).getSemanticsData().label,
+          contains(entry.value),
+          reason: entry.key,
+        );
+      }
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets(
     'renders deterministic sections, icon+text badges, state and family context',
     (tester) async {
@@ -477,6 +548,105 @@ void main() {
       );
     },
   );
+
+  testWidgets('source layout separates postpartum and baby-care system tasks', (
+    tester,
+  ) async {
+    Map<String, dynamic> stageTask(
+      String id,
+      String title,
+      String stage,
+      String contextType,
+    ) => {
+      'taskKind': 'CHECKLIST',
+      'taskId': id,
+      'title': title,
+      'origin': 'SYSTEM_TEMPLATE',
+      'targetSubject': contextType == 'BABY' ? 'BABY' : 'MOTHER',
+      'careContextType': contextType,
+      'stage': stage,
+      'status': 'PENDING',
+      'timeBucket': 'TODAY',
+      'allowedActions': ['COMPLETE'],
+    };
+    final envelope = {
+      'asOf': '2026-08-03T01:00:00Z',
+      'zoneId': 'Asia/Ho_Chi_Minh',
+      'horizonDays': 7,
+      'sections': {
+        'overdue': <Map<String, dynamic>>[],
+        'today': [
+          stageTask('mother-stage', 'Theo dõi phục hồi', 'POSTPARTUM', 'JOURNEY'),
+          stageTask('baby-stage', 'Theo dõi giấc ngủ', 'BABY_CARE', 'BABY'),
+        ],
+        'upcoming': <Map<String, dynamic>>[],
+        'unscheduled': <Map<String, dynamic>>[],
+      },
+      'correlationId': 'stage-groups',
+    };
+
+    await tester.pumpWidget(
+      _wrap(
+        TodayTasksPanel(
+          service: _service(() async => {'data': envelope}),
+          layout: TodayTasksLayout.sourceGroups,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('today-postpartum-tasks')), findsOneWidget);
+    expect(find.byKey(const Key('today-baby-care-tasks')), findsOneWidget);
+    expect(find.text('Hậu sản'), findsOneWidget);
+    expect(find.text('Chăm bé · Bé'), findsOneWidget);
+    expect(find.text('Theo dõi phục hồi'), findsOneWidget);
+    expect(find.text('Theo dõi giấc ngủ'), findsOneWidget);
+  });
+
+  testWidgets('separates baby-care tasks by baby context', (tester) async {
+    Map<String, dynamic> babyTask(String id, String babyId, String label) => {
+      'taskKind': 'CHECKLIST',
+      'taskId': id,
+      'title': 'Theo dõi $label',
+      'origin': 'SYSTEM_TEMPLATE',
+      'targetSubject': 'BABY',
+      'careContextType': 'BABY',
+      'careContextId': babyId,
+      'careContextLabel': label,
+      'stage': 'BABY_CARE',
+      'status': 'PENDING',
+      'timeBucket': 'TODAY',
+      'allowedActions': ['COMPLETE'],
+    };
+    final envelope = {
+      'asOf': '2026-08-03T01:00:00Z',
+      'zoneId': 'Asia/Ho_Chi_Minh',
+      'horizonDays': 7,
+      'sections': {
+        'overdue': <Map<String, dynamic>>[],
+        'today': [
+          babyTask('baby-a-task', 'baby-a', 'Bé An'),
+          babyTask('baby-b-task', 'baby-b', 'Bé Bình'),
+        ],
+        'upcoming': <Map<String, dynamic>>[],
+        'unscheduled': <Map<String, dynamic>>[],
+      },
+      'correlationId': 'baby-groups',
+    };
+    await tester.pumpWidget(
+      _wrap(
+        TodayTasksPanel(
+          service: _service(() async => {'data': envelope}),
+          layout: TodayTasksLayout.sourceGroups,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('today-baby-care-baby-a')), findsOneWidget);
+    expect(find.byKey(const Key('today-baby-care-baby-b')), findsOneWidget);
+    expect(find.text('Chăm bé · Bé An'), findsOneWidget);
+    expect(find.text('Chăm bé · Bé Bình'), findsOneWidget);
+  });
 
   testWidgets(
     'source layout is empty when the response only has appointments',

@@ -8,9 +8,9 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/triage_consent_status.dart';
 import '../models/triage_continuation.dart';
-import '../models/triage_intake_flow_model.dart';
 import '../models/triage_history_model.dart';
 import '../models/triage_result_model.dart';
+import '../models/triage_session.dart';
 import 'triage_continuation_store.dart';
 
 typedef TriageGetRequest = Future<dynamic> Function(String path);
@@ -19,8 +19,7 @@ typedef TriagePostRequest =
 typedef TriageContinuationPersistenceFailureHandler =
     void Function(Object error, StackTrace stackTrace);
 
-/// LEGACY_V1_USER_FACING. Keep until V2 completes DB-backed shadow/E2E and rollback sign-off.
-/// New internal V2 code must use [TriageV2Service], not extend this response contract.
+/// Compatibility reads/consent/continuation retained while mutations move to [TriageSessionService].
 class TriageService implements TriageContinuationGateway {
   TriageService({
     TriageContinuationStore? continuationStore,
@@ -45,8 +44,6 @@ class TriageService implements TriageContinuationGateway {
   // happened to race it, even though the two operations were independent.
   static final Map<String, int> _latestRequestSequenceByUser = {};
 
-  String? _pendingStartRequestId;
-  String? _pendingStartFingerprint;
   final TriageContinuationStore _continuationStore;
   final TriageGetRequest _getRequest;
   final TriagePostRequest _postRequest;
@@ -109,104 +106,6 @@ class TriageService implements TriageContinuationGateway {
     );
     _throwIfStale(requestContext);
     return status;
-  }
-
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
-  }) async {
-    final requestContext = _captureContinuationContext('startConversation');
-    final stage = currentIntake['stage']?.toString();
-    const validStages = {
-      'PRECONCEPTION',
-      'PREGNANCY',
-      'POSTPARTUM',
-      'INFANT',
-      'TODDLER',
-    };
-    if (stage == null || !validStages.contains(stage)) {
-      throw ArgumentError.value(
-        currentIntake['stage'],
-        'currentIntake.stage',
-        'A canonical triage stage is required',
-      );
-    }
-    final fingerprint = jsonEncode({
-      'userId': requestContext?.userId,
-      'initialText': initialText,
-      'currentIntake': currentIntake,
-    });
-    if (_pendingStartFingerprint != fingerprint) {
-      _pendingStartFingerprint = fingerprint;
-      _pendingStartRequestId = _newClientRequestId();
-    }
-    final requestId = _pendingStartRequestId!;
-    final requestIntake = Map<String, dynamic>.from(currentIntake);
-    final lifecycleBinding = <String, dynamic>{};
-    for (final key in const [
-      'journeyId',
-      'originDashboard',
-      'originReferenceId',
-      'babyProfileId',
-    ]) {
-      final value = requestIntake.remove(key);
-      if (value != null) lifecycleBinding[key] = value;
-    }
-    dynamic data;
-    try {
-      data = await _postRequest('/api/v1/triage/intake/conversation/start', {
-        'initialText': initialText,
-        'stage': stage,
-        ...lifecycleBinding,
-        'currentIntake': {...requestIntake, 'stage': stage},
-        'clientRequestId': requestId,
-      }).timeout(_requestTimeout);
-    } on ApiException catch (error) {
-      if (error.statusCode == 409 &&
-          _topLevelErrorCode(error.message) == 'TRIAGE_CONSENT_REQUIRED') {
-        throw const TriageConsentRequiredFailure();
-      }
-      rethrow;
-    }
-    final payload = data['data'] as Map<String, dynamic>;
-    final response = IntakeFlowResponse.fromJson(payload);
-    _throwIfStale(requestContext);
-    _persistContinuationBestEffort(payload, requestContext);
-    if (_pendingStartRequestId == requestId) {
-      _pendingStartRequestId = null;
-      _pendingStartFingerprint = null;
-    }
-    return response;
-  }
-
-  Future<IntakeFlowResponse> continueConversation({
-    required String intakeSessionId,
-    required Map<String, dynamic> currentIntake,
-    required Map<String, dynamic> newAnswers,
-    required int round,
-  }) async {
-    final stage = currentIntake['stage']?.toString();
-    if (stage == null || stage.isEmpty) {
-      throw ArgumentError.value(
-        currentIntake['stage'],
-        'currentIntake.stage',
-        'A canonical triage stage is required',
-      );
-    }
-    final requestContext = _captureContinuationContext('continueConversation');
-    final data =
-        await _postRequest('/api/v1/triage/intake/conversation/continue', {
-          'intakeSessionId': intakeSessionId,
-          'currentIntake': currentIntake,
-          'messages': const [],
-          'newAnswers': newAnswers,
-          'round': round,
-        }).timeout(_requestTimeout);
-    final payload = data['data'] as Map<String, dynamic>;
-    final response = IntakeFlowResponse.fromJson(payload);
-    _throwIfStale(requestContext);
-    _persistContinuationBestEffort(payload, requestContext);
-    return response;
   }
 
   @override
@@ -335,6 +234,171 @@ class TriageConsentRequiredFailure implements Exception {
   const TriageConsentRequiredFailure();
 }
 
+typedef TriageSessionGetRequest = Future<dynamic> Function(String path);
+typedef TriageSessionPostRequest =
+    Future<dynamic> Function(String path, Map<String, dynamic> body);
+typedef TriageSessionDeleteRequest = Future<dynamic> Function(String path);
+
+class TriageSessionStaleVersionFailure implements Exception {
+  const TriageSessionStaleVersionFailure();
+}
+
+class TriageSessionUnavailableFailure implements Exception {
+  const TriageSessionUnavailableFailure([this.cause]);
+  final Object? cause;
+}
+
+/// Canonical deterministic triage-session client used by the conversational UI.
+///
+/// Consent/history helpers remain on [TriageService] while legacy callers are being retired; both
+/// classes live in this file so the feature has one HTTP boundary instead of versioned clients.
+class TriageSessionService {
+  TriageSessionService({
+    TriageSessionGetRequest? getRequest,
+    TriageSessionPostRequest? postRequest,
+    TriageSessionDeleteRequest? deleteRequest,
+  }) : _get = getRequest ?? apiGet,
+       _post = postRequest ?? apiPost,
+       _delete = deleteRequest ?? ((path) => apiDelete(path));
+
+  static const _base = '/api/v1/triage/sessions';
+  static const _timeout = Duration(seconds: 17);
+  final TriageSessionGetRequest _get;
+  final TriageSessionPostRequest _post;
+  final TriageSessionDeleteRequest _delete;
+  final Map<String, _PendingTriageMutation> _pendingStarts = {};
+  final Map<String, _PendingTriageMutation> _pendingContinues = {};
+
+  Future<TriageSession> start({
+    required String message,
+    required String selectedTarget,
+    required String selectedStage,
+    String? profileId,
+    Map<String, dynamic> lifecycleBinding = const {},
+  }) async {
+    final fingerprint = jsonEncode({
+      'message': message,
+      'target': selectedTarget,
+      'stage': selectedStage,
+      'profileId': profileId,
+      'lifecycleBinding': lifecycleBinding,
+    });
+    _prunePending(_pendingStarts);
+    final pending = _pendingStarts.putIfAbsent(
+      fingerprint,
+      () => _PendingTriageMutation(),
+    );
+    final result = await _call(
+      () => _post(_base, {
+        'profileId': profileId,
+        'selectedTarget': selectedTarget,
+        'selectedStage': selectedStage,
+        'journeyContext': const <String, dynamic>{},
+        'message': message,
+        'messageId': pending.messageId,
+        'requestId': pending.requestId,
+        'consentContext': const <String, dynamic>{},
+        'signals': const <String, dynamic>{},
+        'measurements': const <String, dynamic>{},
+        ...lifecycleBinding,
+      }),
+    );
+    if (identical(_pendingStarts[fingerprint], pending)) {
+      _pendingStarts.remove(fingerprint);
+    }
+    return result;
+  }
+
+  Future<TriageSession> continueSession({
+    required TriageSession session,
+    required String message,
+    List<TriageAnswer> answers = const [],
+  }) async {
+    final encodedAnswers = answers.map((answer) => answer.toJson()).toList();
+    final fingerprint = jsonEncode({
+      'sessionId': session.sessionId,
+      'version': session.stateVersion,
+      'message': message,
+      'answers': encodedAnswers,
+    });
+    _prunePending(_pendingContinues);
+    final pending = _pendingContinues.putIfAbsent(
+      fingerprint,
+      () => _PendingTriageMutation(),
+    );
+    final result = await _call(
+      () => _post('$_base/${session.sessionId}/messages', {
+        'sessionId': session.sessionId,
+        'expectedStateVersion': session.stateVersion,
+        'message': message,
+        'messageId': pending.messageId,
+        'requestId': pending.requestId,
+        'answers': encodedAnswers,
+        'signals': const <String, dynamic>{},
+        'measurements': const <String, dynamic>{},
+      }),
+    );
+    if (identical(_pendingContinues[fingerprint], pending)) {
+      _pendingContinues.remove(fingerprint);
+    }
+    return result;
+  }
+
+  Future<TriageSession> get(String sessionId) =>
+      _call(() => _get('$_base/$sessionId'));
+
+  Future<TriageSession> cancel(TriageSession session) => _call(
+    () => _delete(
+      '$_base/${session.sessionId}?expectedStateVersion=${session.stateVersion}',
+    ),
+  );
+
+  Future<TriageSession> _call(Future<dynamic> Function() request) async {
+    try {
+      final envelope = await request().timeout(_timeout);
+      if (envelope is! Map || envelope['data'] is! Map) {
+        throw const FormatException('Invalid triage session envelope');
+      }
+      return TriageSession.fromJson(
+        Map<String, dynamic>.from(envelope['data'] as Map),
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 409 &&
+          error.errorCode == 'TRIAGE_CONSENT_REQUIRED') {
+        throw const TriageConsentRequiredFailure();
+      }
+      if (error.statusCode == 409 &&
+          error.errorCode == 'TRIAGE_STATE_VERSION_CONFLICT') {
+        throw const TriageSessionStaleVersionFailure();
+      }
+      throw TriageSessionUnavailableFailure(error);
+    } on TriageSessionStaleVersionFailure {
+      rethrow;
+    } catch (error) {
+      throw TriageSessionUnavailableFailure(error);
+    }
+  }
+
+  void _prunePending(Map<String, _PendingTriageMutation> pending) {
+    final cutoff = DateTime.now().subtract(const Duration(minutes: 5));
+    pending.removeWhere((_, value) => value.createdAt.isBefore(cutoff));
+    while (pending.length >= 32) {
+      pending.remove(pending.keys.first);
+    }
+  }
+}
+
+class _PendingTriageMutation {
+  _PendingTriageMutation()
+    : requestId = _newClientRequestId(),
+      messageId = _newClientRequestId(),
+      createdAt = DateTime.now();
+
+  final String requestId;
+  final String messageId;
+  final DateTime createdAt;
+}
+
 class _ContinuationRequestContext {
   const _ContinuationRequestContext({
     required this.userId,
@@ -360,18 +424,6 @@ String? _errorCode(String body) {
     if (decoded is Map<String, dynamic>) {
       return decoded['code']?.toString() ??
           (decoded['error'] as Map<String, dynamic>?)?['code']?.toString();
-    }
-  } catch (_) {
-    return null;
-  }
-  return null;
-}
-
-String? _topLevelErrorCode(String body) {
-  try {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic> && decoded['error'] is String) {
-      return decoded['error'] as String;
     }
   } catch (_) {
     return null;

@@ -17,7 +17,6 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
-import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.service.OptionalChecklistTemplateImportService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.content.entity.ChecklistItem;
@@ -64,6 +63,7 @@ class OptionalChecklistTemplateImportServiceTest {
                 .substageId(substageId).status(ChecklistTemplateStatus.APPROVED)
                 .templateType(ChecklistTemplateType.OPTIONAL).migrationReviewRequired(false)
                 .distributionEnabled(false).recipientScope(ChecklistRecipientScope.MOTHER)
+                .checklistContractVersion((short) 2)
                 .eligibilityAnchorType(ChecklistAnchorType.NONE)
                 .eligibilityRangeUnit(ChecklistRangeUnit.DAY)
                 .eligibilityStartInclusive(0).eligibilityEndInclusive(0).build();
@@ -75,7 +75,7 @@ class OptionalChecklistTemplateImportServiceTest {
         when(itemRepository.findByTemplate_IdOrderByOrder(templateId)).thenReturn(List.of(
                 ChecklistItem.builder().id(itemId).template(template).itemText("Book a preconception visit")
                         .order(1).isRequired(false).isActive(true)
-                        .targetSubject(ChecklistTargetSubject.MOTHER).build()));
+                        .targetSubject(null).checklistContractVersion((short) 2).build()));
         when(distributionService.distribute(any())).thenReturn(ChecklistDistributionResult.created(1, 1));
 
         ChecklistDistributionResult result = service.selfAssign(
@@ -98,6 +98,9 @@ class OptionalChecklistTemplateImportServiceTest {
                 .extracting(recipient -> recipient.role()).isEqualTo(ChecklistRecipientRole.MOTHER);
         assertThat(command.getValue().items()).singleElement()
                 .extracting(item -> item.templateItemVersionId()).isEqualTo(itemId);
+        assertThat(command.getValue().items()).singleElement()
+                .extracting(item -> item.required()).isEqualTo(false);
+        assertThat(command.getValue().checklistContractVersion()).isEqualTo((short) 2);
     }
 
     @Test

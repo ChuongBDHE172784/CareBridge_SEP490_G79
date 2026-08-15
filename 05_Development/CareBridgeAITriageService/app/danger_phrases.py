@@ -4,7 +4,7 @@ Extracted from ``risk_rules`` so it has exactly one implementation. V1 scores ma
 flags with it; V2 uses it as a deterministic floor under Gemini extraction. Keeping two copies
 of Vietnamese phrase matching in one codebase is how the two engines would drift apart on the
 question that matters most, and V2 may not import ``app.risk_rules`` (see
-``tests/test_triage_v2_dependency_boundaries.py``) — so the shared piece lives here, depending
+``tests/test_triage_dependency_boundaries.py``) — so the shared piece lives here, depending
 on neither.
 
 Nothing in this module decides an outcome. It reports which danger phrases a message contains,
@@ -23,6 +23,15 @@ from app.symptom_normalizer import strip_accents_aligned as _accent_free
 #: Words that negate a danger sign standing in front of it in the same clause.
 _NEGATION_TOKENS = (
     "khong", "chua", "chang", "cha", "not", "no", "never", "without", "denies", "denied",
+)
+
+#: Single accent-free tokens that put what follows in the past.
+_HISTORICAL_TOKENS = ("truoc", "tung", "xua", "previously", "before", "used")
+#: Multi-word markers, matched against the accent-free clause window.
+_HISTORICAL_MARKERS = (
+    "truoc day", "truoc kia", "hoi truoc", "lan truoc", "da tung", "tung bi",
+    "hoi mang thai", "luc mang thai", "lan thai truoc", "thai truoc",
+    "hoi do", "ngay xua", "in the past", "used to",
 )
 
 #: Degree adverbs a speaker drops *inside* a fixed phrase. "ra máu nhiều" matched but
@@ -216,6 +225,27 @@ def contains_unnegated_phrase(value: Text, phrase: str) -> bool:
     )
 
 
+def text_contains_any_current(value: Text, *tokens: str) -> bool:
+    """Like ``text_contains_any``, but ignores an occurrence the writer placed in the past.
+
+    Deliberately NOT used for the entity-agnostic emergency groups. A past seizure is not a
+    current emergency, but under-calling one is the dangerous direction, so the global floor
+    keeps its unconditional reading. This exists for the stage-scoped maternal groups, where
+    "trước đây em hay nhìn mờ, hiện giờ em chỉ đau đầu" was being read as a current visual
+    disturbance and completing the pre-eclampsia conjunction on a sentence about the past.
+    """
+
+    return any(contains_current_phrase(value, token) for token in tokens)
+
+
+def contains_current_phrase(value: Text, phrase: str) -> bool:
+    return any(
+        not _negated_before(value.stripped, start)
+        and not _historical_before(value.stripped, start)
+        for start in phrase_spans(value, phrase)
+    )
+
+
 def phrase_spans(value: Text, phrase: str) -> Iterator[int]:
     """Yield the start offset of every occurrence of ``phrase``, negation aside.
 
@@ -242,12 +272,31 @@ def phrase_spans(value: Text, phrase: str) -> Iterator[int]:
 def _negated_before(stripped: str, start: int) -> bool:
     """True when the clause leading up to ``start`` negates what follows."""
 
+    return bool(set(_NEGATION_TOKENS) & set(_clause_tokens_before(stripped, start)))
+
+
+def _historical_before(stripped: str, start: int) -> bool:
+    """True when the clause leading up to ``start`` places it in the past.
+
+    Same clause window as the negation scan, so "trước đây em hay nhìn mờ, hiện giờ em đau đầu"
+    suppresses only the first half: the comma ends the clause and the second half is read on its
+    own. The marker list mirrors ``_HISTORICAL`` in the extraction module, which already made
+    this distinction for Gemini-derived observations while the phrase floor did not.
+    """
+
+    tokens = _clause_tokens_before(stripped, start)
+    if set(_HISTORICAL_TOKENS) & set(tokens):
+        return True
+    window = " ".join(tokens)
+    return any(marker in window for marker in _HISTORICAL_MARKERS)
+
+
+def _clause_tokens_before(stripped: str, start: int) -> list[str]:
     clause_prefix = re.split(
         r"[,.!?;:]|\b(?:nhung|ma|song|tuy nhien|however|but|va|and)\b",
         stripped[:start],
     )[-1]
-    preceding_tokens = re.findall(r"[a-z]+", clause_prefix)[-6:]
-    return bool(set(_NEGATION_TOKENS) & set(preceding_tokens))
+    return re.findall(r"[a-z]+", clause_prefix)[-6:]
 
 
 @lru_cache(maxsize=None)

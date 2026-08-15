@@ -119,13 +119,12 @@ class PostureFeedbackMessagesTest {
     }
 
     @Test
-    @DisplayName("Degraded copy prefixes the rule sentence in Vietnamese")
+    @DisplayName("Degraded copy returns the rule sentence in Vietnamese")
     void degradedCopyIsVietnamese() {
         assertThat(PostureFeedbackMessages.degraded("Tư thế tốt! Giữ lưng thẳng."))
-                .isEqualTo("Đang dùng phân tích dự phòng: Tư thế tốt! Giữ lưng thẳng.");
+                .isEqualTo("Tư thế tốt! Giữ lưng thẳng.");
         assertThat(PostureFeedbackMessages.degraded(null))
-                .isEqualTo("Đang dùng phân tích dự phòng: "
-                        + PostureFeedbackMessages.UNRECOGNIZED_DETAIL);
+                .isEqualTo(PostureFeedbackMessages.UNRECOGNIZED_DETAIL);
     }
 
     /** Cheap guard that the copy is real Vietnamese rather than leftover English. */

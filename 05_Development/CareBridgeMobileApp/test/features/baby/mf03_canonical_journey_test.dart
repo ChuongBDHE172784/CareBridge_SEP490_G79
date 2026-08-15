@@ -289,7 +289,7 @@ void main() {
       'growth:mf03-second-baby',
     );
 
-    await tester.tap(find.text('Cột mốc'));
+    await tester.tap(find.byKey(const Key('baby-care-tab-milestones')));
     await tester.pumpAndSettle();
     await _expectRoute(
       tester,
@@ -379,8 +379,9 @@ void main() {
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Cột mốc'));
-      await tester.tap(find.text('Cột mốc'));
+      final milestoneTab = find.byKey(const Key('baby-care-tab-milestones'));
+      await tester.ensureVisible(milestoneTab);
+      await tester.tap(milestoneTab);
       await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.byKey(const ValueKey('milestone-milestone-1')),

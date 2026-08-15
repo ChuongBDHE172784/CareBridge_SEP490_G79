@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_state.dart';
-import '../../../core/network/api_client.dart';
 import '../../emergency/services/emergency_service.dart';
 import '../models/triage_continuation.dart';
 import '../models/triage_entry_context.dart';
 import '../models/triage_intake_flow_model.dart';
-import '../models/triage_v2_chat_adapter.dart';
-import '../models/triage_v2_session.dart';
-import '../services/triage_v2_service.dart';
+import '../models/triage_chat_adapter.dart';
+import '../models/triage_session.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
 import '../services/triage_continuation_restore_coordinator.dart';
@@ -17,32 +15,24 @@ import '../services/triage_continuation_store.dart';
 
 /// Stages that describe the mother rather than the baby.
 const maternalTriageStages = {'PRECONCEPTION', 'PREGNANCY', 'POSTPARTUM'};
+const canonicalTriageStages = {...maternalTriageStages, 'INFANT', 'TODDLER'};
 
-const _triageV2Enabled = bool.fromEnvironment(
-  'AI_TRIAGE_V2_INTERNAL_ENABLED',
-  defaultValue: false,
-);
+/// Canonical routing metadata shared by the screen and its contract tests.
+String canonicalTriageTargetForStage(String stage) =>
+    maternalTriageStages.contains(stage) ? 'MOTHER' : 'BABY';
 
-/// Whether a stage is a candidate for the eventual V2 cutover.
-///
-/// Two separate conditions have to hold, and only the first is met today:
-///
-/// 1. Coverage — the V2 ruleset declares only the four maternal stages and holds no paediatric
-///    rule at all, so a baby must never be routed there.
-/// 2. Experience — V2's current screen is an internal test harness (a target selector, a text box
-///    and a submit button), not the chat this app actually offers. Handing a user from the chat to
-///    that screen mid-journey is a downgrade, so the hand-off stays off until the chat itself can
-///    talk to the V2 engine.
-///
-/// Kept as a named predicate rather than deleted so the cutover has one place to switch on.
-bool isTriageV2CutoverCandidate(String stage) =>
-    _triageV2Enabled && maternalTriageStages.contains(stage);
-
-/// Deliberately false: see [isTriageV2CutoverCandidate] condition 2.
-bool shouldHandOffToTriageV2(String stage) => false;
+String canonicalTriageStage(String stage) => switch (stage) {
+  'PRECONCEPTION' => 'PRECONCEPTION',
+  'PREGNANCY' => 'PREGNANCY',
+  'POSTPARTUM' => 'POSTPARTUM_MOTHER',
+  'INFANT' => 'INFANT_0_12M',
+  'TODDLER' => 'TODDLER_12_24M',
+  _ => throw ArgumentError.value(stage, 'stage', 'Unsupported triage stage'),
+};
 
 class SymptomIntakeScreen extends StatefulWidget {
   final TriageService? triageService;
+  final TriageSessionService? triageSessionService;
   final EmergencyService? emergencyService;
   final TriageEntryContext entryContext;
   final Future<bool> Function()? postpartumEmergencyLauncher;
@@ -51,6 +41,7 @@ class SymptomIntakeScreen extends StatefulWidget {
   const SymptomIntakeScreen({
     super.key,
     this.triageService,
+    this.triageSessionService,
     this.emergencyService,
     this.entryContext = const TriageEntryContext(),
     this.postpartumEmergencyLauncher,
@@ -83,9 +74,9 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   final Map<String, dynamic> _answers = {};
   late String _selectedStage;
   String? _sessionId;
-  /// Non-null once this chat is being answered by the V2 engine.
-  TriageV2Session? _v2Session;
-  late final TriageV2Service _v2Service = TriageV2Service();
+
+  TriageSession? _canonicalSession;
+  late final TriageSessionService _sessionService;
   int _round = 1;
   bool _loading = false;
   late bool _stageConfirmed;
@@ -103,6 +94,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   void initState() {
     super.initState();
     _service = widget.triageService ?? TriageService();
+    _sessionService = widget.triageSessionService ?? TriageSessionService();
     _emergencyService = widget.emergencyService ?? EmergencyService();
     _continuationCoordinator =
         widget.continuationCoordinator ??
@@ -250,6 +242,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
     final text = _initialController.text.trim();
     if (text.isEmpty) return;
+    final validationError = _implausibleMeasurementError(text);
+    if (validationError != null) {
+      setState(() => _error = validationError);
+      return;
+    }
     final triageUserId = AuthState.instance.userId;
     setState(() {
       _loading = true;
@@ -260,65 +257,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         'parentFreeText': text,
       };
     });
-    if (_useV2ForCurrentStage) {
-      await _startV2(text);
-      return;
-    }
-    try {
-      final response = await _service.startConversation(
-        initialText: text,
-        currentIntake: _currentIntake,
-      );
-      if (mounted) _applyResponse(response, userMessage: text);
-    } on TriageConsentRequiredFailure {
-      bool accepted;
-      try {
-        accepted = await _requestTriageConsent(triageUserId);
-      } catch (_) {
-        if (mounted) {
-          setState(() {
-            _error =
-                'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.';
-          });
-        }
-        return;
-      }
-      if (!accepted || !_guardConsentContext(triageUserId)) return;
-      try {
-        final response = await _service.startConversation(
-          initialText: text,
-          currentIntake: _currentIntake,
-        );
-        if (mounted) _applyResponse(response, userMessage: text);
-      } on TriageConsentRequiredFailure {
-        if (mounted) {
-          setState(() {
-            _error =
-                'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.';
-          });
-        }
-      } catch (error) {
-        if (mounted) {
-          setState(() => _error = _startFailureMessage(error));
-        }
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() => _error = _startFailureMessage(error));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  String _startFailureMessage(Object error) {
-    if (error is ApiException && error.statusCode == 400) {
-      return 'Thông tin triệu chứng chưa hợp lệ. Vui lòng kiểm tra lại và thử lại.';
-    }
-    if (error is ApiException && error.statusCode >= 500) {
-      return 'Dịch vụ phân loại đang tạm thời gặp sự cố. Vui lòng thử lại sau ít phút.';
-    }
-    return 'Không thể gửi triệu chứng. Vui lòng thử lại.';
+    await _startCanonical(text, triageUserId);
   }
 
   Future<void> _sendAnswers() async {
@@ -335,120 +274,144 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       setState(() => _error = 'Vui lòng trả lời ít nhất một câu hỏi.');
       return;
     }
+    final validationError = _validateQuestionAnswers(newAnswers);
+    if (validationError != null) {
+      setState(() => _error = validationError);
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
-    if (_v2Session != null) {
-      await _continueV2(newAnswers);
+    if (_canonicalSession == null) {
+      setState(() {
+        _loading = false;
+        _error = 'Phiên phân loại không còn hợp lệ. Vui lòng bắt đầu lại.';
+      });
       return;
     }
-    try {
-      final response = await _service.continueConversation(
-        intakeSessionId: _sessionId!,
-        currentIntake: _currentIntake,
-        newAnswers: newAnswers,
-        round: _round,
-      );
-      if (mounted) {
-        _applyResponse(response, userMessage: _answersText(newAnswers));
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.');
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    await _continueCanonical(newAnswers);
   }
 
-  /// True when this journey should be answered by the deterministic V2 engine.
-  ///
-  /// Only maternal stages qualify: the V2 ruleset declares no paediatric rule, so a baby journey
-  /// would be handed to an engine with nothing to say about babies. Those stay on V1 until a
-  /// paediatric engine exists.
-  bool get _useV2ForCurrentStage => isTriageV2CutoverCandidate(_selectedStage);
-
-  /// Starts a V2 conversation and renders it through the same chat as V1.
+  /// Starts a canonical deterministic conversation through the single chat UI.
   ///
   /// Consent is handled the same way V1 handles it. Without this the first turn for an account
   /// that has not accepted the AI Triage terms failed into the generic "cannot complete" message,
   /// which tells the user nothing and hides a problem they could have fixed in one tap.
-  Future<void> _startV2(String text) async {
-    final triageUserId = AuthState.instance.userId;
+  Future<void> _startCanonical(String text, String? triageUserId) async {
     try {
-      await _sendV2Start(text);
+      await _sendCanonicalStart(text);
     } on TriageConsentRequiredFailure {
       bool accepted;
       try {
         accepted = await _requestTriageConsent(triageUserId);
       } catch (_) {
         if (mounted) {
-          setState(() => _error =
-              'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.');
+          setState(
+            () => _error =
+                'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.',
+          );
         }
         return;
       }
       if (!accepted || !_guardConsentContext(triageUserId)) return;
       try {
-        await _sendV2Start(text);
+        await _sendCanonicalStart(text);
       } catch (_) {
-        if (mounted) setState(() => _error = _v2UnavailableText);
+        if (mounted) setState(() => _error = _canonicalUnavailableText);
       }
     } catch (_) {
-      if (mounted) setState(() => _error = _v2UnavailableText);
+      if (mounted) setState(() => _error = _canonicalUnavailableText);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  static const _v2UnavailableText =
+  static const _canonicalUnavailableText =
       'Hiện chưa thể hoàn tất định hướng nguy cơ. Kết quả lỗi không được xem là mức an toàn.';
 
-  Future<void> _sendV2Start(String text) async {
-    final session = await _v2Service.start(message: text, selectedTarget: 'MOTHER');
+  Future<void> _sendCanonicalStart(String text) async {
+    final target = canonicalTriageTargetForStage(_selectedStage);
+    final profileId =
+        target == 'BABY' &&
+            widget.entryContext.origin == TriageOriginIntent.babyProfile
+        ? widget.entryContext.originReferenceId
+        : null;
+    final session = await _sessionService.start(
+      message: text,
+      selectedTarget: target,
+      selectedStage: canonicalTriageStage(_selectedStage),
+      profileId: profileId,
+      lifecycleBinding: widget.entryContext.toLifecycleBindingJson(),
+    );
     if (!mounted) return;
-    _v2Session = session;
-    _applyResponse(_v2Response(session), userMessage: text);
+    _canonicalSession = session;
+    _applyResponse(_sessionResponse(session), userMessage: text);
   }
 
   /// Sends a whole round of answers as identifiers and renders the next turn.
   ///
   /// The chat collects up to three answers before submitting, so they travel together: one user
   /// action stays one request and one state version.
-  Future<void> _continueV2(Map<String, dynamic> newAnswers) async {
-    final current = _v2Session!;
-    final answers = <TriageV2Answer>[];
+  Future<void> _continueCanonical(Map<String, dynamic> newAnswers) async {
+    final current = _canonicalSession!;
+    final answers = <TriageAnswer>[];
     for (final entry in newAnswers.entries) {
+      TriageQuestion? question;
+      for (final candidate in current.questionDetails) {
+        if (candidate.id == entry.key) {
+          question = candidate;
+          break;
+        }
+      }
+      if (question?.answerType == 'NUMBER') {
+        final numericValue = int.tryParse(entry.value?.toString() ?? '');
+        if (numericValue != null) {
+          answers.add(
+            TriageAnswer(questionId: entry.key, numericValue: numericValue),
+          );
+        }
+        continue;
+      }
       final optionCode = entry.value?.toString() ?? '';
       // Only option-coded answers are structured; free text stays in the message and is
       // extracted server-side, never guessed at here.
       if (optionCode.isEmpty) continue;
-      final known = TriageV2Question.fromId(entry.key).optionCodes;
+      final known = current.questionDetails
+          .where((question) => question.id == entry.key)
+          .expand((question) => question.optionCodes)
+          .toSet();
       if (!known.contains(optionCode)) continue;
-      answers.add(TriageV2Answer(questionId: entry.key, optionCode: optionCode));
+      answers.add(TriageAnswer(questionId: entry.key, optionCode: optionCode));
     }
     try {
-      final session = await _v2Service.continueSession(
+      final session = await _sessionService.continueSession(
         session: current,
         message: _answersText(newAnswers),
         answers: answers,
       );
       if (!mounted) return;
-      _v2Session = session;
-      _applyResponse(_v2Response(session), userMessage: _answersText(newAnswers));
-    } on TriageV2StaleVersionFailure {
+      _canonicalSession = session;
+      _applyResponse(
+        _sessionResponse(session),
+        userMessage: _answersText(newAnswers),
+      );
+    } on TriageSessionStaleVersionFailure {
       // Another device advanced this session. Re-read rather than replay a stale version.
       try {
-        final refreshed = await _v2Service.get(current.sessionId);
+        final refreshed = await _sessionService.get(current.sessionId);
         if (!mounted) return;
-        _v2Session = refreshed;
-        _applyResponse(_v2Response(refreshed));
-        setState(() => _error =
-            'Phiên đã được cập nhật ở nơi khác. Vui lòng kiểm tra và gửi lại.');
+        _canonicalSession = refreshed;
+        _applyResponse(_sessionResponse(refreshed));
+        setState(
+          () => _error =
+              'Phiên đã được cập nhật ở nơi khác. Vui lòng kiểm tra và gửi lại.',
+        );
       } catch (_) {
         if (mounted) {
-          setState(() => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.');
+          setState(
+            () => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.',
+          );
         }
       }
     } catch (_) {
@@ -460,8 +423,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
   }
 
-  IntakeFlowResponse _v2Response(TriageV2Session session) =>
-      TriageV2ChatAdapter.toFlowResponse(
+  IntakeFlowResponse _sessionResponse(TriageSession session) =>
+      TriageChatAdapter.toFlowResponse(
         session,
         fallbackStage: _selectedStage,
         round: _round + 1,
@@ -655,10 +618,74 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'painSeverity': 'Mức độ đau',
       'urinarySymptoms': 'Triệu chứng tiểu tiện',
       'parentFreeText': 'Mô tả bổ sung',
+      'Q_GESTATIONAL_WEEK': 'Tuổi thai (tuần)',
+      'Q_POSTPARTUM_DAY': 'Số ngày sau sinh',
+      'Q_BABY_AGE_MONTHS': 'Tuổi của bé (tháng)',
     };
     return answers.entries
-        .map((entry) => '${labels[entry.key] ?? entry.key}: ${entry.value}')
+        .map(
+          (entry) =>
+              '${labels[entry.key] ?? entry.key}: ${_displayAnswerValue(entry.key, entry.value)}',
+        )
         .join('\n');
+  }
+
+  String _displayAnswerValue(String questionId, dynamic value) {
+    final question = _canonicalSession?.questionDetails
+        .where((candidate) => candidate.id == questionId)
+        .firstOrNull;
+    if (question == null || question.options.isEmpty) return value.toString();
+
+    String displayOne(Object? raw) {
+      final code = raw?.toString() ?? '';
+      return question.options
+              .where((option) => option.optionCode == code)
+              .map((option) => option.displayText)
+              .firstOrNull ??
+          code;
+    }
+
+    if (value is Iterable) {
+      return value.map(displayOne).join(', ');
+    }
+    return displayOne(value);
+  }
+
+  String? _validateQuestionAnswers(Map<String, dynamic> answers) {
+    for (final entry in answers.entries) {
+      if (entry.key == 'Q_BABY_AGE_MONTHS') {
+        final age = int.tryParse(entry.value.toString());
+        if (age == null || age < 0 || age >= 24) {
+          return 'Tuổi của bé phải là số tháng từ 0 đến 23. Vui lòng kiểm tra và nhập lại.';
+        }
+      }
+      if (entry.key == 'Q_GESTATIONAL_WEEK') {
+        final week = int.tryParse(entry.value.toString());
+        if (week == null || week < 1 || week > 45) {
+          return 'Tuổi thai phải là số tuần từ 1 đến 45. Vui lòng kiểm tra và nhập lại.';
+        }
+      }
+      if (entry.key == 'Q_POSTPARTUM_DAY') {
+        final day = int.tryParse(entry.value.toString());
+        if (day == null || day < 0) {
+          return 'Số ngày sau sinh không được âm. Vui lòng kiểm tra và nhập lại.';
+        }
+      }
+    }
+    return _implausibleMeasurementError(_answersText(answers));
+  }
+
+  static String? _implausibleMeasurementError(String message) {
+    final normalized = message.toLowerCase().replaceAll(',', '.');
+    final temperature = RegExp(
+      r'(?:sốt|sot|nhiệt độ|nhiet do|thân nhiệt|than nhiet|đo|do)\D{0,24}(\d{1,3}(?:\.\d{1,2})?)\s*(?:°\s*c?|độ\s*c?|do\s*c?|c\b)',
+      caseSensitive: false,
+    ).firstMatch(normalized);
+    final value = double.tryParse(temperature?.group(1) ?? '');
+    if (value != null && (value < 30 || value > 45)) {
+      return 'Nhiệt độ cơ thể theo °C phải trong khoảng 30–45°C. Vui lòng kiểm tra số đo và đơn vị (°C/°F).';
+    }
+    return null;
   }
 
   Future<void> _openUrl(TriageCitation citation) async {
@@ -885,6 +912,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            const _MandatoryAiDisclaimer(),
             Expanded(
               child: showWelcome
                   ? _buildWelcome()
@@ -1175,10 +1203,6 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 onSelected: _loading
                     ? null
                     : (_) {
-                        if (shouldHandOffToTriageV2(entry.key)) {
-                          context.go('/internal/triage/v2');
-                          return;
-                        }
                         setState(() {
                           _selectedStage = entry.key;
                           _stageConfirmed = true;
@@ -1288,7 +1312,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Mức rủi ro: ${result.riskLevel ?? 'CHƯA XÁC ĐỊNH'}',
+            'Mức rủi ro: ${TriageChatAdapter.riskLabel(result.riskLevel)}',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -1945,17 +1969,40 @@ class _ChoiceGroup extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: question.options.map((option) {
-            final isSelected = selected.contains(option);
+            final isSelected = selected.contains(option.code);
             return ChoiceChip(
-              label: Text(option),
+              label: Text(option.label),
               selected: isSelected,
-              onSelected: (_) => onSelected(option),
+              onSelected: (_) => onSelected(option.code),
             );
           }).toList(),
         ),
       ],
     );
   }
+}
+
+class _MandatoryAiDisclaimer extends StatelessWidget {
+  const _MandatoryAiDisclaimer();
+
+  static const text =
+      'Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường.';
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: text,
+    child: Container(
+      key: const Key('triage-mandatory-disclaimer'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      color: const Color(0xFFFFF3E9),
+      child: const Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 12, color: Color(0xFF6F5147), height: 1.3),
+      ),
+    ),
+  );
 }
 
 enum _ChatRole { user, assistant }

@@ -20,6 +20,7 @@ public record GestationalDatingResolution(
         boolean semanticNoOp,
         boolean datingScope,
         int completedGestationalWeek,
+        int completedGestationalDays,
         int sourceWeekNumber,
         Integer plan) {
 
@@ -37,6 +38,7 @@ public record GestationalDatingResolution(
                 datingScope,
                 -1,
                 -1,
+                -1,
                 null);
     }
 
@@ -46,10 +48,11 @@ public record GestationalDatingResolution(
             LocalDate estimatedDueDate,
             LocalDate canonicalLmp,
             int completedGestationalWeek,
+            int completedGestationalDays,
             int sourceWeekNumber,
             Integer plan) {
         return noOp(basis, lastMenstrualDate, estimatedDueDate, canonicalLmp,
-                completedGestationalWeek, sourceWeekNumber, plan, true);
+                completedGestationalWeek, completedGestationalDays, sourceWeekNumber, plan, true);
     }
 
     public static GestationalDatingResolution noOp(
@@ -58,6 +61,7 @@ public record GestationalDatingResolution(
             LocalDate estimatedDueDate,
             LocalDate canonicalLmp,
             int completedGestationalWeek,
+            int completedGestationalDays,
             int sourceWeekNumber,
             Integer plan,
             boolean datingScope) {
@@ -70,6 +74,7 @@ public record GestationalDatingResolution(
                 true,
                 datingScope,
                 completedGestationalWeek,
+                completedGestationalDays,
                 sourceWeekNumber,
                 plan);
     }

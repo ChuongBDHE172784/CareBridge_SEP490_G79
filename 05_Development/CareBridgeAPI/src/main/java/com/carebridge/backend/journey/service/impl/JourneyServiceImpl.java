@@ -434,6 +434,7 @@ public class JourneyServiceImpl implements IJourneyService {
         java.time.Instant datingEffectiveAt = null;
         LocalDate canonicalLmp = null;
         Integer completedGestationalWeek = null;
+        Integer completedGestationalDays = null;
         Integer sourceWeekNumber = null;
         Integer plan = null;
 
@@ -448,10 +449,12 @@ public class JourneyServiceImpl implements IJourneyService {
                 datingEffectiveAt = journey.getGestationalDatingEffectiveAt();
                 completedGestationalWeek = GestationalDatingResolver.completedGestationalWeek(
                         canonicalLmp, today);
+                completedGestationalDays = GestationalDatingResolver.completedGestationalDays(
+                        canonicalLmp, today);
                 sourceWeekNumber = GestationalDatingResolver.sourceWeekNumber(completedGestationalWeek);
                 plan = GestationalDatingResolver.planForSourceWeek(sourceWeekNumber);
-                pregnancyWeek = completedGestationalWeek;
-                trimester = calculateTrimester(completedGestationalWeek);
+                pregnancyWeek = sourceWeekNumber;
+                trimester = calculateTrimester(pregnancyWeek);
                 daysUntilDue = ChronoUnit.DAYS.between(
                         today, canonicalLmp.plusDays(GestationalDatingResolver.GESTATION_DAYS));
             }
@@ -477,6 +480,7 @@ public class JourneyServiceImpl implements IJourneyService {
                         journey.getGestationalDatingQuarantineReasonCode())
                 .canonicalLmp(canonicalLmp)
                 .completedGestationalWeek(completedGestationalWeek)
+                .completedGestationalDays(completedGestationalDays)
                 .sourceWeekNumber(sourceWeekNumber)
                 .plan(plan)
                 .pregnancyOutcome(journey.getPregnancyOutcome())
@@ -534,6 +538,8 @@ public class JourneyServiceImpl implements IJourneyService {
                 .canonicalLmp(dating.canonicalLmp())
                 .completedGestationalWeek(dating.resolved()
                         ? dating.completedGestationalWeek() : null)
+                .completedGestationalDays(dating.resolved()
+                        ? dating.completedGestationalDays() : null)
                 .sourceWeekNumber(dating.resolved() ? dating.sourceWeekNumber() : null)
                 .plan(dating.plan())
                 .createdAt(journey.getCreatedAt())

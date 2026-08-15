@@ -94,7 +94,10 @@ void main() {
       await _pumpWithRouter(tester);
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      expect(
+        find.byKey(const Key('expert-directory-skeleton')),
+        findsOneWidget,
+      );
     },
   );
 
@@ -120,7 +123,7 @@ void main() {
     await _pumpWithRouter(tester);
     await tester.pumpAndSettle();
 
-    expect(find.text('Không tìm thấy chuyên gia phù hợp'), findsOneWidget);
+    expect(find.text('Không tìm thấy bác sĩ phù hợp'), findsOneWidget);
   });
 
   testWidgets('renders data rows for each returned expert', (tester) async {
@@ -134,20 +137,20 @@ void main() {
   });
 
   // Directory now directs the user to the profile; chat is exposed there only for existing conversations.
-  testWidgets(
-    'shows only the profile CTA on the first card',
-    (tester) async {
-      final service = _ScriptedDirectChatService(
-        onGetDirectory: () async => _pageWith(const [_expert]),
-      );
-      DirectChatService.instance = service;
-      await _pumpWithRouter(tester);
-      await tester.pumpAndSettle();
+  testWidgets('shows only the profile CTA on the first card', (tester) async {
+    final service = _ScriptedDirectChatService(
+      onGetDirectory: () async => _pageWith(const [_expert]),
+    );
+    DirectChatService.instance = service;
+    await _pumpWithRouter(tester);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Xem hồ sơ'), findsOneWidget);
-      expect(find.text('Trò chuyện'), findsNothing);
-    },
-  );
+    expect(
+      find.byKey(const Key('expert-directory-card-expert-profile-1')),
+      findsOneWidget,
+    );
+    expect(find.text('Trò chuyện'), findsNothing);
+  });
 
   // MEDI-FL-05
   testWidgets(
@@ -159,7 +162,9 @@ void main() {
       await _pumpWithRouter(tester);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('BS. Nguyễn Văn A'));
+      await tester.tap(
+        find.byKey(const Key('expert-directory-card-expert-profile-1')),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('profile:expert-profile-1'), findsOneWidget);

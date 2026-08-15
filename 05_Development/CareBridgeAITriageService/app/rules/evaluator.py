@@ -140,7 +140,7 @@ class RuleEvaluation:
     primary_pending_risk_status: str | None = None
     completion_reason: str | None = None
     audit_mismatches: tuple[Mapping[str, Any], ...] = field(default=())
-    triage_v2_readiness: str = "OK"
+    triage_readiness: str = "OK"
 
     @property
     def decisive_rule_ids(self) -> tuple[str, ...]:
@@ -697,5 +697,5 @@ def _verdict(
         primary_pending_risk_status=primary_pending,
         completion_reason=comp_reason,
         audit_mismatches=mismatches,
-        triage_v2_readiness=readiness,
+        triage_readiness=readiness,
     )

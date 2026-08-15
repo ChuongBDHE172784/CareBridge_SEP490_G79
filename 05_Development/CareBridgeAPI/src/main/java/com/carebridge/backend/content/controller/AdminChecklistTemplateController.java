@@ -3,14 +3,17 @@ package com.carebridge.backend.content.controller;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
+import com.carebridge.backend.content.dto.request.ChecklistTemplateBatchImportRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
+import com.carebridge.backend.content.dto.response.ChecklistTemplateBatchImportResponse;
 import com.carebridge.backend.content.dto.response.HideChecklistTemplateResponse;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.service.AdminChecklistTemplateService;
+import com.carebridge.backend.content.service.ChecklistTemplateBatchImportService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.UUID;
@@ -40,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminChecklistTemplateController {
 
     private final AdminChecklistTemplateService adminChecklistTemplateService;
+    private final ChecklistTemplateBatchImportService checklistTemplateBatchImportService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<AdminChecklistTemplateDetailResponse>>> list(
@@ -78,6 +82,17 @@ public class AdminChecklistTemplateController {
                 adminChecklistTemplateService.create(request, adminUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Checklist template created successfully"));
+    }
+
+    @PostMapping("/import-batch")
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
+    public ResponseEntity<ApiResponse<ChecklistTemplateBatchImportResponse>> importBatch(
+            @Valid @RequestBody ChecklistTemplateBatchImportRequest request,
+            Principal principal) {
+        UUID adminUserId = SecurityUtils.requireCurrentUserId(principal);
+        ChecklistTemplateBatchImportResponse response =
+                checklistTemplateBatchImportService.importBatch(request, adminUserId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Checklist templates imported"));
     }
 
     @PutMapping("/{id}")

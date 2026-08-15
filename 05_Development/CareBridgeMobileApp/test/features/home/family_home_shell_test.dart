@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
-import 'package:untitled/features/directChat/services/conversation_refresh_bus.dart';
 import 'package:untitled/features/checklist/services/checklist_assignment_refresh_bus.dart';
 import 'package:untitled/features/home/screens/family_home_shell.dart';
 
@@ -95,24 +94,38 @@ void main() {
   });
 
   testWidgets(
-      'FamilyHomeShell notifies ChecklistAssignmentRefreshBus when switching back to tab 0',
-      (tester) async {
-    bool notified = false;
-    final sub = ChecklistAssignmentRefreshBus.events.listen((_) {
-      notified = true;
-    });
+    'FamilyHomeShell notifies ChecklistAssignmentRefreshBus when switching back to tab 0',
+    (tester) async {
+      final notificationAssertion = expectLater(
+        ChecklistAssignmentRefreshBus.events.first.timeout(
+          const Duration(milliseconds: 100),
+        ),
+        completes,
+      );
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: FamilyHomeShell(initialIndex: 1),
-      ),
-    );
-    await tester.pumpAndSettle();
+      try {
+        await tester.pumpWidget(
+          const MaterialApp(home: FamilyHomeShell(initialIndex: 1)),
+        );
+        // One frame is enough to build the navigation shell. Waiting for the entire
+        // IndexedStack would also wait for unrelated background loads in inactive tabs.
+        await tester.pump();
 
-    await tester.tap(find.text('Trang chủ'));
-    await tester.pumpAndSettle();
+        await tester.tap(find.text('Trang chủ'));
+        // Switching tabs emits the in-process refresh signal synchronously. Do not wait
+        // for every child in the IndexedStack to settle: the newly visible home tab may
+        // legitimately start independent async refreshes and loading animations.
+        await tester.pump(const Duration(milliseconds: 100));
 
-    expect(notified, isTrue);
-    await sub.cancel();
-  });
+        await notificationAssertion;
+        final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+        expect(navBar.selectedIndex, 0);
+      } finally {
+        // Dispose the IndexedStack even when an assertion fails so background work
+        // cannot bleed into the next test file in a concurrent full-suite run.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      }
+    },
+  );
 }

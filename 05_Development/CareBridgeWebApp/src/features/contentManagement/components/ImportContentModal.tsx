@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CommunityTopic, ContentType } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import { fetchTopics, importContentBatch } from '../services/contentApi';
@@ -38,6 +38,25 @@ export default function ImportContentModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const resetState = useCallback(() => {
+    setSelectedFile(null);
+    setParsedRows([]);
+    setIsParsing(false);
+    setImporting(false);
+    setImportResults(null);
+    setPreviewRow(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTopics()
+        .then(setTopics)
+        .catch(() => setTopics([]));
+      resetState();
+    }
+  }, [isOpen, resetState]);
+
   useEffect(() => {
     if (isOpen) {
       fetchTopics()
@@ -47,15 +66,6 @@ export default function ImportContentModal({
     }
   }, [isOpen]);
 
-  const resetState = () => {
-    setSelectedFile(null);
-    setParsedRows([]);
-    setIsParsing(false);
-    setImporting(false);
-    setImportResults(null);
-    setPreviewRow(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
 
   if (!isOpen) return null;
 
@@ -172,7 +182,7 @@ export default function ImportContentModal({
                 </div>
                 <p className="text-xs text-on-surface-variant m-0">
                   File mẫu bao gồm các cột: <strong className="text-primary">tiêu_đề (*)</strong>,{' '}
-                  <strong className="text-primary">giai_đoạn (*)</strong> (Chuẩn bị mang thai: PRE_PREGNANCY / Thai kỳ: PREGNANCY / Hậu sản: POSTPARTUM),{' '}
+                  <strong className="text-primary">giai_đoạn (*)</strong> (Chuẩn bị mang thai: PRE_PREGNANCY / Thai kỳ: PREGNANCY / Hậu sản: POSTPARTUM / Chăm bé: BABY_CARE),{' '}
                   <strong className="text-primary">nội_dung (*)</strong> (Hỗ trợ Rich HTML: h1-h4, bold, italic, danh sách, bảng, trích dẫn, link), tóm_tắt, danh_mục, tên_nguồn, link_nguồn, nhà_xuất_bản.
                 </p>
               </div>

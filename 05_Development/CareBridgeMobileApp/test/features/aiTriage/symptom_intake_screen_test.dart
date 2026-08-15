@@ -1,1553 +1,278 @@
-import 'dart:async';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:untitled/core/auth/auth_state.dart';
-import 'package:untitled/core/network/api_client.dart';
-import 'package:untitled/features/aiTriage/models/triage_consent_status.dart';
-import 'package:untitled/features/aiTriage/models/triage_continuation.dart';
-import 'package:untitled/features/aiTriage/models/triage_intake_flow_model.dart';
 import 'package:untitled/features/aiTriage/models/triage_entry_context.dart';
-import 'package:untitled/features/aiTriage/models/triage_result_model.dart';
+import 'package:untitled/features/aiTriage/models/triage_session.dart';
 import 'package:untitled/features/aiTriage/screens/symptom_intake_screen.dart';
 import 'package:untitled/features/aiTriage/services/triage_service.dart';
-import 'package:untitled/features/aiTriage/services/triage_continuation_restore_coordinator.dart';
-import 'package:untitled/features/aiTriage/services/triage_continuation_store.dart';
-import 'package:untitled/features/emergency/models/emergency_session_model.dart';
-import 'package:untitled/features/emergency/services/emergency_service.dart';
 
 const _sessionId = '11111111-1111-1111-1111-111111111111';
 
-IntakeFlowResponse _complete(TriageResult result) => IntakeFlowResponse(
-  status: 'TRIAGE_COMPLETE',
-  intakeSessionId: _sessionId,
-  stage: result.stage,
-  mergedIntake: {'persisted': true, 'stage': result.stage},
-  round: 2,
-  triageResult: result,
-);
+class _CanonicalFixtureService extends TriageSessionService {
+  _CanonicalFixtureService(this.turns);
 
-TriageResult _result(
-  String risk, {
-  bool emergency = false,
-  String stage = 'INFANT',
-  List<TriageCitation> citations = const [],
-  String? ragAnswer,
-  String? ragDisclaimer,
-  bool? ragFallback,
-}) => TriageResult(
-  sessionId: _sessionId,
-  stage: stage,
-  status: 'COMPLETED',
-  riskLevel: risk,
-  emergencyActionRequired: emergency,
-  summary: 'Ket qua $risk',
-  recommendedAction: 'Theo doi huong dan',
-  citations: citations,
-  ragAnswer: ragAnswer,
-  ragDisclaimer: ragDisclaimer,
-  ragFallback: ragFallback,
-  disclaimer: 'Khong thay the chan doan y khoa',
-);
-
-class _StaticTriageService extends TriageService {
-  _StaticTriageService(this.response);
-  final IntakeFlowResponse response;
+  final List<TriageSession> turns;
+  final List<Map<String, dynamic>> starts = [];
+  final List<List<TriageAnswer>> answers = [];
+  final List<String> continuationMessages = [];
+  int _index = 0;
 
   @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
-  }) async => response;
-}
-
-class _RetryContinuationStore implements TriageContinuationStore {
-  _RetryContinuationStore(this.pending);
-
-  PendingTriageContinuation? pending;
-
-  @override
-  int generationFor(String userId) => 0;
-
-  @override
-  Future<PendingTriageContinuation?> read(String userId) async => pending;
-
-  @override
-  Future<void> invalidateUser(String userId) async => pending = null;
-
-  @override
-  Future<void> save({
-    required String userId,
-    required PendingTriageContinuation continuation,
-    required int generation,
-  }) async => pending = continuation;
-}
-
-class _OfflineContinuationGateway implements TriageContinuationGateway {
-  @override
-  Future<void> acknowledge(String token) async {}
-
-  @override
-  Future<TriageContinuationResolution> resolve(String token) =>
-      Future.error(StateError('offline'));
-}
-
-class _RecordingPostpartumTriageService extends TriageService {
-  Map<String, dynamic>? receivedIntake;
-
-  @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
+  Future<TriageSession> start({
+    required String message,
+    required String selectedTarget,
+    required String selectedStage,
+    String? profileId,
+    Map<String, dynamic> lifecycleBinding = const {},
   }) async {
-    receivedIntake = Map<String, dynamic>.from(currentIntake);
-    return const IntakeFlowResponse(
-      status: 'ASK_MORE',
-      intakeSessionId: _sessionId,
-      stage: 'POSTPARTUM',
-      mergedIntake: {'stage': 'POSTPARTUM'},
-      assistantMessage: 'Cần thêm thông tin về quá trình hồi phục.',
-      questions: [
-        IntakeQuestion(
-          questionKey: 'duration',
-          text: 'Triệu chứng đã xuất hiện bao lâu?',
-          answerType: 'TEXT',
+    starts.add({
+      'message': message,
+      'target': selectedTarget,
+      'stage': selectedStage,
+      'profileId': profileId,
+      ...lifecycleBinding,
+    });
+    return turns[_index++];
+  }
+
+  @override
+  Future<TriageSession> continueSession({
+    required TriageSession session,
+    required String message,
+    List<TriageAnswer> answers = const [],
+  }) async {
+    this.answers.add(List.of(answers));
+    continuationMessages.add(message);
+    return turns[_index++];
+  }
+}
+
+TriageSession _session({
+  int version = 1,
+  String target = 'BABY',
+  String stage = 'INFANT_0_12M',
+  String outcome = 'NEEDS_MORE_INFO',
+  String action = 'ASK_CLARIFYING_QUESTIONS',
+  bool stop = false,
+  List<String> questions = const ['Q_GLOBAL_DANGER'],
+}) => TriageSession(
+  sessionId: _sessionId,
+  stateVersion: version,
+  target: target,
+  intent: 'SYMPTOM_TRIAGE',
+  stage: stage,
+  outcome: outcome,
+  action: action,
+  stop: stop,
+  questionIds: questions,
+  questionDetails: questions.map(_question).toList(growable: false),
+  scope: 'IN_SCOPE',
+  pendingRisks: const [],
+  citations: const [],
+  disclaimer: 'Khong thay the chan doan y khoa.',
+  readiness: const {'technicalStatus': 'READY'},
+);
+
+TriageQuestion _question(String id) {
+  if (id == 'Q_GLOBAL_DANGER') {
+    return const TriageQuestion(
+      id: 'Q_GLOBAL_DANGER',
+      text: 'Hiện tại có dấu hiệu nào sau đây không?',
+      answerType: 'SINGLE_CHOICE',
+      options: [
+        TriageQuestionOption(
+          optionCode: 'DANGER_NONE',
+          displayText: 'Không có dấu hiệu nào',
         ),
       ],
-      round: 2,
     );
   }
-}
-
-class _MismatchedInfantTriageService extends TriageService {
-  @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
-  }) async => const IntakeFlowResponse(
-    status: 'ASK_MORE',
-    intakeSessionId: _sessionId,
-    stage: 'INFANT',
-    mergedIntake: {'stage': 'INFANT', 'childAgeMonths': 2},
-    questions: [
-      IntakeQuestion(
-        questionKey: 'childAgeMonths',
-        text: 'Bé bao nhiêu tháng?',
-        answerType: 'NUMBER',
-      ),
-    ],
-    round: 2,
-  );
-}
-
-class _AskMoreTriageService extends TriageService {
-  String? continuedSessionId;
-  int? continuedRound;
-  Map<String, dynamic>? continuedIntake;
-  Map<String, dynamic>? continuedAnswers;
-
-  @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
-  }) async => const IntakeFlowResponse(
-    status: 'ASK_MORE',
-    intakeSessionId: _sessionId,
-    mergedIntake: {'serverState': 'kept'},
-    assistantMessage: 'Cần thêm tuổi của bé',
-    questions: [
-      IntakeQuestion(
-        questionKey: 'childAgeMonths',
-        text: 'Bé bao nhiêu tháng?',
-        answerType: 'SINGLE_CHOICE',
-        options: ['24'],
-      ),
-    ],
-    round: 3,
-  );
-
-  @override
-  Future<IntakeFlowResponse> continueConversation({
-    required String intakeSessionId,
-    required Map<String, dynamic> currentIntake,
-    required Map<String, dynamic> newAnswers,
-    required int round,
-  }) async {
-    continuedSessionId = intakeSessionId;
-    continuedRound = round;
-    continuedIntake = currentIntake;
-    continuedAnswers = newAnswers;
-    return _complete(_result('GREEN'));
-  }
-}
-
-class _ThrowingTriageService extends TriageService {
-  @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
-  }) => Future.error(Exception('RAW_SECRET_BACKEND_DETAIL'));
-}
-
-class _ConsentGateTriageService extends TriageService {
-  _ConsentGateTriageService({
-    this.failStatus = false,
-    this.failAccept = false,
-    this.failRetry = false,
-    this.invalidAcceptResponse = false,
-    this.statusCompleter,
-    this.acceptCompleter,
-  });
-
-  final bool failStatus;
-  final bool failAccept;
-  final bool failRetry;
-  final bool invalidAcceptResponse;
-  final Completer<TriageConsentStatus>? statusCompleter;
-  final Completer<TriageConsentStatus>? acceptCompleter;
-  int startCalls = 0;
-  int statusCalls = 0;
-  int acceptCalls = 0;
-  String? acceptedVersion;
-
-  @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
-  }) async {
-    startCalls++;
-    if (startCalls == 1) {
-      throw const TriageConsentRequiredFailure();
-    }
-    if (failRetry) throw Exception('RAW_RETRY_FAILURE');
-    return _complete(_result('GREEN'));
-  }
-
-  @override
-  Future<TriageConsentStatus> getConsentStatus() async {
-    statusCalls++;
-    if (failStatus) throw Exception('RAW_CONSENT_STATUS_FAILURE');
-    if (statusCompleter != null) return statusCompleter!.future;
-    return const TriageConsentStatus(
-      status: 'REQUIRED',
-      currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
-      disclaimerText: 'Nội dung disclaimer chính thức từ backend.',
-      reason: 'NOT_ACCEPTED',
+  if (id == 'Q_BABY_AGE_MONTHS') {
+    return const TriageQuestion(
+      id: 'Q_BABY_AGE_MONTHS',
+      text: 'Bé hiện được bao nhiêu tháng tuổi?',
+      answerType: 'NUMBER',
+      options: [],
     );
   }
-
-  @override
-  Future<TriageConsentStatus> acceptConsent({
-    required String policyVersion,
-    String locale = 'vi',
-  }) async {
-    acceptCalls++;
-    acceptedVersion = policyVersion;
-    if (failAccept) throw Exception('RAW_CONSENT_ACCEPT_FAILURE');
-    if (acceptCompleter != null) return acceptCompleter!.future;
-    if (invalidAcceptResponse) {
-      return const TriageConsentStatus(
-        status: 'REQUIRED',
-        currentVersion: 'AI_TRIAGE_DISCLAIMER_V2',
-        disclaimerText: 'Nội dung disclaimer mới từ backend.',
-        reason: 'POLICY_UPDATED',
-      );
-    }
-    return const TriageConsentStatus(
-      status: 'ACCEPTED',
-      currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
-      acceptedVersion: 'AI_TRIAGE_DISCLAIMER_V1',
-      disclaimerText: 'Nội dung disclaimer chính thức từ backend.',
-    );
-  }
-}
-
-class _PendingTriageService extends TriageService {
-  final completer = Completer<IntakeFlowResponse>();
-
-  @override
-  Future<IntakeFlowResponse> startConversation({
-    required String initialText,
-    required Map<String, dynamic> currentIntake,
-  }) => completer.future;
-}
-
-class _DelayedEmergencyService extends EmergencyService {
-  int activeCalls = 0;
-  int openCalls = 0;
-  final completer = Completer<EmergencySession?>();
-
-  @override
-  Future<EmergencySession?> getActive() {
-    activeCalls++;
-    return completer.future;
-  }
-
-  @override
-  Future<EmergencySession> openFlow({
-    required String triggerSource,
-    double? latitude,
-    double? longitude,
-  }) {
-    openCalls++;
-    return Future.error(StateError('RED handoff must not POST a session'));
-  }
-}
-
-class _FailingEmergencyService extends EmergencyService {
-  int activeCalls = 0;
-  int openCalls = 0;
-
-  @override
-  Future<EmergencySession?> getActive() {
-    activeCalls++;
-    return Future.error(Exception('RAW_EMERGENCY_FAILURE'));
-  }
-
-  @override
-  Future<EmergencySession> openFlow({
-    required String triggerSource,
-    double? latitude,
-    double? longitude,
-  }) {
-    openCalls++;
-    return Future.error(Exception('RAW_EMERGENCY_FAILURE'));
-  }
-}
-
-Future<GoRouter> _pumpScreen(
-  WidgetTester tester, {
-  required TriageService triage,
-  EmergencyService? emergency,
-  TriageEntryContext entryContext = const TriageEntryContext(),
-  Future<bool> Function()? postpartumEmergencyLauncher,
-  TriageContinuationRestoreCoordinator? continuationCoordinator,
-}) async {
-  final router = GoRouter(
-    routes: [
-      GoRoute(
-        path: '/',
-        builder: (_, _) => SymptomIntakeScreen(
-          triageService: triage,
-          emergencyService: emergency,
-          entryContext: entryContext,
-          postpartumEmergencyLauncher: postpartumEmergencyLauncher,
-          continuationCoordinator: continuationCoordinator,
-        ),
-      ),
-      GoRoute(
-        path: '/emergency/map',
-        builder: (_, state) {
-          final session = state.extra as EmergencySession?;
-          return Scaffold(
-            body: Text(
-              'Emergency map ${session?.sessionId ?? 'manual'} '
-              '${state.uri.queryParameters['mode']} '
-              '${state.uri.queryParameters['stage']}',
-            ),
-          );
-        },
+  return TriageQuestion(
+    id: id,
+    text: 'Bé bú hoặc uống như thế nào so với bình thường?',
+    answerType: 'SINGLE_CHOICE',
+    options: const [
+      TriageQuestionOption(
+        optionCode: 'FEEDING_NORMAL',
+        displayText: 'Bú/uống như bình thường',
       ),
     ],
   );
-  await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-  return router;
 }
 
-Future<void> _submitInitial(WidgetTester tester) async {
-  await tester.enterText(find.byType(TextField).first, 'be kho tho');
+Future<void> _pump(
+  WidgetTester tester,
+  _CanonicalFixtureService service, {
+  TriageEntryContext context = const TriageEntryContext(),
+}) => tester.pumpWidget(
+  MaterialApp(
+    home: SymptomIntakeScreen(
+      triageSessionService: service,
+      entryContext: context,
+    ),
+  ),
+);
+
+Future<void> _send(WidgetTester tester, String message) async {
+  await tester.enterText(find.byType(TextField).first, message);
   await tester.tap(find.byKey(const Key('triage-chat-send')));
-  await tester.pump();
+  await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('unscoped floating entry requires an explicit stage before sending', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      triage: _ThrowingTriageService(),
-      entryContext: const TriageEntryContext(requiresStageSelection: true),
-    );
+  testWidgets('all stages use the canonical session start', (tester) async {
+    final service = _CanonicalFixtureService([_session()]);
+    await _pump(tester, service);
 
-    await _submitInitial(tester);
-    await tester.pumpAndSettle();
+    await _send(tester, 'Be bo bu');
 
-    // The send is inert until a stage is chosen, so the refusal is a stated missing step
-    // rather than an error raised after the fact. The service must still never be reached.
-    expect(find.byKey(const Key('triage-stage-required-hint')), findsOneWidget);
-    expect(find.textContaining('Không thể gửi triệu chứng'), findsNothing);
+    expect(service.starts, hasLength(1));
+    expect(service.starts.single['target'], 'BABY');
+    expect(service.starts.single['stage'], 'INFANT_0_12M');
+    expect(find.textContaining('dấu hiệu nào'), findsWidgets);
   });
 
-  testWidgets(
-    'typed postpartum entry is neutral and sends POSTPARTUM without infant defaults',
-    (tester) async {
-      final triage = _RecordingPostpartumTriageService();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SymptomIntakeScreen(
-            triageService: triage,
-            entryContext: const TriageEntryContext.postpartum(),
-          ),
-        ),
-      );
-
-      expect(find.textContaining('sau sinh'), findsWidgets);
-      expect(find.textContaining('Bé 0-12 tháng'), findsNothing);
-      expect(find.textContaining('triệu chứng của bé'), findsNothing);
-
-      await tester.enterText(
-        find.byType(TextField).first,
-        'Tôi thấy chóng mặt',
-      );
-      await tester.tap(find.byKey(const Key('triage-chat-send')));
-      await tester.pumpAndSettle();
-
-      expect(triage.receivedIntake?['stage'], 'POSTPARTUM');
-      expect(triage.receivedIntake?.containsKey('childAgeMonths'), isFalse);
-      expect(triage.receivedIntake?.containsKey('feedingStatus'), isFalse);
-      expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'maternal vomiting follow-up is not rejected as a child question',
-    (tester) async {
-      await _pumpScreen(
-        tester,
-        entryContext: const TriageEntryContext.locked(
-          stage: TriageStageIntent.pregnancy,
-          origin: TriageOriginIntent.direct,
-        ),
-        triage: _StaticTriageService(
-          const IntakeFlowResponse(
-            status: 'ASK_MORE',
-            intakeSessionId: _sessionId,
-            stage: 'PREGNANCY',
-            mergedIntake: {'stage': 'PREGNANCY'},
-            questions: [
-              IntakeQuestion(
-                questionKey: 'vomiting',
-                text: 'Bạn có buồn nôn hoặc nôn không?',
-                answerType: 'SINGLE_CHOICE',
-                options: ['Không', 'Buồn nôn', 'Nôn ít'],
-              ),
-            ],
-            round: 1,
-          ),
-        ),
-      );
-
-      await _submitInitial(tester);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Bạn có buồn nôn hoặc nôn không?'), findsWidgets);
-      expect(
-        find.textContaining('Không thể dùng bộ câu hỏi dành cho bé'),
-        findsNothing,
-      );
-    },
-  );
-
-  testWidgets('postpartum entry fails closed on an infant response', (
+  testWidgets('planned option continues the same versioned session', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SymptomIntakeScreen(
-          triageService: _MismatchedInfantTriageService(),
-          entryContext: TriageEntryContext.postpartum(),
-        ),
-      ),
-    );
+    final service = _CanonicalFixtureService([
+      _session(questions: const ['Q_GLOBAL_DANGER']),
+      _session(version: 2, questions: const ['Q_BABY_FEEDING']),
+    ]);
+    await _pump(tester, service);
+    await _send(tester, 'Be sot');
 
-    await tester.enterText(find.byType(TextField).first, 'Tôi thấy chóng mặt');
-    await tester.tap(find.byKey(const Key('triage-chat-send')));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('không khớp với giai đoạn sau sinh'), findsOne);
-    expect(find.text('Bé bao nhiêu tháng?'), findsNothing);
-  });
-
-  testWidgets(
-    'postpartum RED opens the backend session without posting another session',
-    (tester) async {
-      final emergency = _DelayedEmergencyService();
-      await _pumpScreen(
-        tester,
-        triage: _StaticTriageService(
-          IntakeFlowResponse(
-            status: 'TRIAGE_COMPLETE',
-            intakeSessionId: _sessionId,
-            stage: 'POSTPARTUM',
-            mergedIntake: const {'stage': 'POSTPARTUM'},
-            round: 1,
-            triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
-          ),
-        ),
-        emergency: emergency,
-        entryContext: const TriageEntryContext.postpartum(),
-      );
-
-      await _submitInitial(tester);
-      expect(
-        find.byKey(const Key('triage-postpartum-call-115')),
-        findsOneWidget,
-      );
-      await tester.tap(find.byKey(const Key('triage-emergency-cta')));
-      await tester.pump();
-
-      expect(emergency.activeCalls, 1);
-      expect(emergency.openCalls, 0);
-      emergency.completer.complete(
-        const EmergencySession(
-          sessionId: 'postpartum-emergency',
-          userId: 'mother',
-          status: 'ACTIVE',
-          triggerSource: 'AI_TRIAGE',
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Emergency map postpartum-emergency triage POSTPARTUM'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('bé'), findsNothing);
-    },
-  );
-
-  testWidgets('postpartum RED keeps manual 115 guidance when launch throws', (
-    tester,
-  ) async {
-    final emergency = _FailingEmergencyService();
-    await _pumpScreen(
-      tester,
-      triage: _StaticTriageService(
-        IntakeFlowResponse(
-          status: 'TRIAGE_COMPLETE',
-          intakeSessionId: _sessionId,
-          stage: 'POSTPARTUM',
-          mergedIntake: const {'stage': 'POSTPARTUM'},
-          round: 1,
-          triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
-        ),
-      ),
-      emergency: emergency,
-      entryContext: const TriageEntryContext.postpartum(),
-      postpartumEmergencyLauncher: () async =>
-          throw StateError('dialer unavailable'),
-    );
-
-    await _submitInitial(tester);
-    await tester.tap(find.byKey(const Key('triage-emergency-cta')));
-    await tester.pumpAndSettle();
-
-    await tester.drag(
-      find.byType(SingleChildScrollView),
-      const Offset(0, -600),
-    );
+    final option = find.widgetWithText(ChoiceChip, 'Không có dấu hiệu nào');
+    await tester.ensureVisible(option);
+    await tester.tap(option);
     await tester.pump();
-    expect(find.textContaining('Phiên có thể'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('triage-postpartum-call-115')));
+    final submit = find.byIcon(Icons.arrow_upward_rounded).last;
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
     await tester.pumpAndSettle();
+
+    expect(service.answers, hasLength(1));
+    expect(service.answers.single.single.questionId, 'Q_GLOBAL_DANGER');
+    expect(service.answers.single.single.optionCode, 'DANGER_NONE');
     expect(
-      find.byKey(const Key('triage-postpartum-manual-call-guidance')),
+      service.continuationMessages.single,
+      contains('Không có dấu hiệu nào'),
+    );
+    expect(service.continuationMessages.single, isNot(contains('DANGER_NONE')));
+    expect(find.textContaining('bú hoặc uống'), findsWidgets);
+  });
+
+  testWidgets('RED renders emergency action and never a safe result', (
+    tester,
+  ) async {
+    final service = _CanonicalFixtureService([
+      _session(
+        outcome: 'RED',
+        action: 'IMMEDIATE_EMERGENCY_ASSESSMENT',
+        stop: true,
+        questions: const [],
+      ),
+    ]);
+    await _pump(tester, service);
+    await _send(tester, 'Be khong tho duoc');
+
+    expect(find.textContaining('Mức rủi ro: Đỏ'), findsOneWidget);
+    expect(find.byKey(const Key('triage-emergency-cta')), findsOneWidget);
+    expect(find.textContaining('GREEN'), findsNothing);
+  });
+
+  testWidgets('mandatory disclaimer is always visible', (tester) async {
+    await _pump(tester, _CanonicalFixtureService([_session()]));
+
+    expect(
+      find.byKey(const Key('triage-mandatory-disclaimer')),
       findsOneWidget,
     );
-    expect(find.textContaining('tự gọi 115'), findsOneWidget);
-    expect(emergency.activeCalls, 1);
-    expect(emergency.openCalls, 0);
-    expect(find.textContaining('Phiên có thể'), findsOneWidget);
-  });
-
-  testWidgets('postpartum 115 action is immediate and skips backend lookup', (
-    tester,
-  ) async {
-    final emergency = _DelayedEmergencyService();
-    var dialerCalls = 0;
-    await _pumpScreen(
-      tester,
-      triage: _StaticTriageService(
-        IntakeFlowResponse(
-          status: 'TRIAGE_COMPLETE',
-          intakeSessionId: _sessionId,
-          stage: 'POSTPARTUM',
-          mergedIntake: const {'stage': 'POSTPARTUM'},
-          round: 1,
-          triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
-        ),
+    expect(
+      find.text(
+        'Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường.',
       ),
-      emergency: emergency,
-      entryContext: const TriageEntryContext.postpartum(),
-      postpartumEmergencyLauncher: () async {
-        dialerCalls++;
-        return true;
-      },
+      findsOneWidget,
     );
-
-    await _submitInitial(tester);
-    await tester.tap(find.byKey(const Key('triage-postpartum-call-115')));
-    await tester.pump();
-
-    expect(dialerCalls, 1);
-    expect(emergency.activeCalls, 0);
-    expect(emergency.openCalls, 0);
   });
 
-  testWidgets('ASK_MORE continues the same server-owned conversation', (
-    tester,
-  ) async {
-    final triage = _AskMoreTriageService();
-    await _pumpScreen(tester, triage: triage);
-    await _submitInitial(tester);
-    await tester.pumpAndSettle();
+  testWidgets('implausible Celsius never reaches the service', (tester) async {
+    final service = _CanonicalFixtureService([_session()]);
+    await _pump(tester, service);
 
-    expect(find.text('Bé bao nhiêu tháng?'), findsWidgets);
-    await tester.tap(find.text('24'));
+    await _send(tester, 'Bé sốt 100 độ C');
+
+    expect(service.starts, isEmpty);
+    expect(find.textContaining('30–45°C'), findsOneWidget);
+  });
+
+  testWidgets('negative baby age never continues the session', (tester) async {
+    final service = _CanonicalFixtureService([
+      _session(questions: const ['Q_BABY_AGE_MONTHS']),
+    ]);
+    await _pump(tester, service);
+    await _send(tester, 'Bé khó chịu');
+
+    await tester.enterText(find.byType(TextField).last, '-1');
     await tester.tap(find.text('Gửi câu trả lời'));
     await tester.pumpAndSettle();
 
-    expect(triage.continuedSessionId, _sessionId);
-    expect(triage.continuedRound, 3);
-    expect(triage.continuedIntake, {'serverState': 'kept'});
-    expect(triage.continuedAnswers, {'childAgeMonths': '24'});
-    expect(find.text('Mức rủi ro: GREEN'), findsOneWidget);
+    expect(service.answers, isEmpty);
+    expect(find.textContaining('0 đến 23'), findsOneWidget);
   });
 
-  testWidgets('RED inline result ignores duplicate emergency tap', (
+  testWidgets('valid baby age is sent as a structured numeric answer', (
     tester,
   ) async {
-    final emergency = _DelayedEmergencyService();
-    await _pumpScreen(
+    final service = _CanonicalFixtureService([
+      _session(questions: const ['Q_BABY_AGE_MONTHS']),
+      _session(version: 2, questions: const ['Q_GLOBAL_DANGER']),
+    ]);
+    await _pump(tester, service);
+    await _send(tester, 'Bé khó chịu');
+
+    await tester.enterText(find.byType(TextField).last, '2');
+    await tester.tap(find.text('Gửi câu trả lời'));
+    await tester.pumpAndSettle();
+
+    expect(service.answers.single.single.questionId, 'Q_BABY_AGE_MONTHS');
+    expect(service.answers.single.single.numericValue, 2);
+    expect(service.answers.single.single.optionCode, isNull);
+  });
+
+  testWidgets('trusted maternal lifecycle origin reaches canonical boundary', (
+    tester,
+  ) async {
+    final service = _CanonicalFixtureService([
+      _session(
+        target: 'MOTHER',
+        stage: 'PREGNANCY',
+        questions: const ['Q_GLOBAL_DANGER'],
+      ),
+    ]);
+    const journey = '68000000-0000-0000-0000-000000000002';
+    await _pump(
       tester,
-      triage: _StaticTriageService(_complete(_result('RED', emergency: true))),
-      emergency: emergency,
-    );
-    await _submitInitial(tester);
-
-    final cta = find.byKey(const Key('triage-emergency-cta'));
-    expect(cta, findsOneWidget);
-    await tester.tap(cta);
-    await tester.tap(cta);
-    expect(emergency.activeCalls, 1);
-    expect(emergency.openCalls, 0);
-
-    emergency.completer.complete(
-      const EmergencySession(
-        sessionId: 'e1',
-        userId: 'u1',
-        status: 'ACTIVE',
-        triggerSource: 'AI_TRIAGE',
+      service,
+      context: const TriageEntryContext.locked(
+        stage: TriageStageIntent.pregnancy,
+        origin: TriageOriginIntent.motherJourney,
+        journeyId: journey,
+        originReferenceId: journey,
       ),
     );
-    await tester.pumpAndSettle();
-    expect(find.text('Emergency map e1 triage INFANT'), findsOneWidget);
-  });
-
-  testWidgets(
-    'infant emergency GET discards a late previous-account response',
-    (tester) async {
-      FlutterSecureStorage.setMockInitialValues({});
-      await AuthState.instance.clear();
-      await AuthState.instance.setTokens(
-        accessToken: 'access-a',
-        refreshToken: 'refresh-a',
-        userId: 'account-a',
-        role: 'MOTHER',
-      );
-      addTearDown(AuthState.instance.clear);
-      final emergency = _DelayedEmergencyService();
-      final router = await _pumpScreen(
-        tester,
-        triage: _StaticTriageService(
-          _complete(_result('RED', emergency: true)),
-        ),
-        emergency: emergency,
-      );
-      addTearDown(router.dispose);
-      await _submitInitial(tester);
-
-      final action = find.byKey(const Key('triage-emergency-cta'));
-      await tester.tap(action);
-      await tester.pump();
-      await AuthState.instance.setTokens(
-        accessToken: 'access-b',
-        refreshToken: 'refresh-b',
-        userId: 'account-b',
-        role: 'MOTHER',
-      );
-      emergency.completer.complete(
-        const EmergencySession(
-          sessionId: 'account-a-infant-emergency',
-          userId: 'account-a',
-          status: 'ACTIVE',
-          triggerSource: 'AI_TRIAGE',
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Emergency map'), findsNothing);
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -600),
-      );
-      await tester.pump();
-      expect(
-        find.textContaining('Phiên đăng nhập đã thay đổi'),
-        findsOneWidget,
-      );
-      expect(tester.widget<ElevatedButton>(action).onPressed, isNotNull);
-    },
-  );
-
-  testWidgets(
-    'postpartum emergency GET discards a late previous-account response',
-    (tester) async {
-      FlutterSecureStorage.setMockInitialValues({});
-      await AuthState.instance.clear();
-      await AuthState.instance.setTokens(
-        accessToken: 'access-a',
-        refreshToken: 'refresh-a',
-        userId: 'account-a',
-        role: 'MOTHER',
-      );
-      addTearDown(AuthState.instance.clear);
-      final emergency = _DelayedEmergencyService();
-      final router = await _pumpScreen(
-        tester,
-        triage: _StaticTriageService(
-          IntakeFlowResponse(
-            status: 'TRIAGE_COMPLETE',
-            intakeSessionId: _sessionId,
-            stage: 'POSTPARTUM',
-            mergedIntake: const {'stage': 'POSTPARTUM'},
-            round: 1,
-            triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
-          ),
-        ),
-        emergency: emergency,
-        entryContext: const TriageEntryContext.postpartum(),
-      );
-      addTearDown(router.dispose);
-      await _submitInitial(tester);
-
-      final action = find.byKey(const Key('triage-emergency-cta'));
-      await tester.tap(action);
-      await tester.pump();
-      await AuthState.instance.setTokens(
-        accessToken: 'access-b',
-        refreshToken: 'refresh-b',
-        userId: 'account-b',
-        role: 'MOTHER',
-      );
-      emergency.completer.complete(
-        const EmergencySession(
-          sessionId: 'account-a-postpartum-emergency',
-          userId: 'account-a',
-          status: 'ACTIVE',
-          triggerSource: 'AI_TRIAGE',
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Emergency map'), findsNothing);
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -600),
-      );
-      await tester.pump();
-      expect(
-        find.textContaining('Phiên đăng nhập đã thay đổi'),
-        findsOneWidget,
-      );
-      expect(tester.widget<ElevatedButton>(action).onPressed, isNotNull);
-    },
-  );
-
-  testWidgets(
-    'failed RED emergency request has no false success and offers safe map fallback',
-    (tester) async {
-      final emergency = _FailingEmergencyService();
-      await _pumpScreen(
-        tester,
-        triage: _StaticTriageService(
-          _complete(_result('RED', emergency: true)),
-        ),
-        emergency: emergency,
-      );
-      await _submitInitial(tester);
-      await tester.tap(find.byKey(const Key('triage-emergency-cta')));
-      await tester.pumpAndSettle();
-
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -600),
-      );
-      await tester.pump();
-      expect(find.textContaining('Không thể tải phiên hỗ trợ'), findsOneWidget);
-      expect(find.textContaining('RAW_EMERGENCY_FAILURE'), findsNothing);
-      expect(find.textContaining('Da kich hoat'), findsNothing);
-      expect(emergency.activeCalls, 1);
-      expect(emergency.openCalls, 0);
-      final fallback = find.byKey(const Key('triage-emergency-fallback-map'));
-      expect(fallback, findsOneWidget);
-      tester.widget<TextButton>(fallback).onPressed!();
-      await tester.pumpAndSettle();
-      expect(find.text('Emergency map manual triage INFANT'), findsOneWidget);
-    },
-  );
-
-  testWidgets('only whitelisted HTTPS citations are interactive', (
-    tester,
-  ) async {
-    const allowed = TriageCitation(
-      id: 'allowed',
-      title: 'WHO guidance',
-      source: 'WHO',
-      domain: 'who.int',
-      url: 'https://www.who.int/example',
-      excerpt: 'Evidence',
-      retrievedAt: '2026-07-13',
-    );
-    const insecure = TriageCitation(
-      id: 'insecure',
-      title: 'Insecure',
-      source: 'WHO',
-      domain: 'who.int',
-      url: 'http://who.int/example',
-      excerpt: 'Evidence',
-      retrievedAt: '2026-07-13',
-    );
-    const lookalike = TriageCitation(
-      id: 'lookalike',
-      title: 'Lookalike',
-      source: 'Unknown',
-      domain: 'who.int',
-      url: 'https://who.int.attacker.example/e',
-      excerpt: 'Evidence',
-      retrievedAt: '2026-07-13',
-    );
-    await _pumpScreen(
-      tester,
-      triage: _StaticTriageService(
-        _complete(
-          _result('GREEN', citations: const [allowed, insecure, lookalike]),
-        ),
-      ),
-    );
-    await _submitInitial(tester);
-
-    final allowedInk = tester.widget<InkWell>(
-      find.byKey(const Key('triage-citation-allowed-0')),
-    );
-    final insecureInk = tester.widget<InkWell>(
-      find.byKey(const Key('triage-citation-insecure-1')),
-    );
-    final lookalikeInk = tester.widget<InkWell>(
-      find.byKey(const Key('triage-citation-lookalike-2')),
-    );
-    expect(allowedInk.onTap, isNotNull);
-    expect(insecureInk.onTap, isNull);
-    expect(lookalikeInk.onTap, isNull);
-    expect(find.text('Trạng thái: REVIEWED'), findsNothing);
-  });
-
-  testWidgets('duplicate citation URLs render with unique widget keys', (
-    tester,
-  ) async {
-    const first = TriageCitation(
-      title: 'MOH guidance one',
-      source: 'MOH',
-      domain: 'moh.gov.vn',
-      url: 'https://moh.gov.vn/evidence-one',
-      excerpt: 'Evidence one',
-      retrievedAt: '2026-07-13',
-    );
-    const second = TriageCitation(
-      title: 'MOH guidance two',
-      source: 'MOH',
-      domain: 'moh.gov.vn',
-      url: 'https://moh.gov.vn/evidence-two',
-      excerpt: 'Evidence two',
-      retrievedAt: '2026-07-13',
-    );
-    await _pumpScreen(
-      tester,
-      triage: _StaticTriageService(
-        _complete(_result('YELLOW', citations: const [first, second])),
-      ),
-    );
-
-    await _submitInitial(tester);
-
-    expect(
-      find.byKey(
-        const Key('triage-citation-https://moh.gov.vn/evidence-one-0'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const Key('triage-citation-https://moh.gov.vn/evidence-two-1'),
-      ),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('PENDING_REVIEW citation displays governance label', (
-    tester,
-  ) async {
-    const citation = TriageCitation(
-      id: 'pending',
-      title: 'Realtime official source',
-      source: 'MOH',
-      url: 'https://moh.gov.vn/example',
-      excerpt: 'Evidence',
-      retrievedAt: '2026-07-13',
-      sourceStatus: 'PENDING_REVIEW',
-    );
-    await _pumpScreen(
-      tester,
-      triage: _StaticTriageService(
-        _complete(_result('YELLOW', citations: const [citation])),
-      ),
-    );
-    await _submitInitial(tester);
-
-    expect(find.text('Trạng thái: PENDING_REVIEW'), findsNothing);
-    expect(find.textContaining('đang chờ kiểm duyệt nội bộ'), findsOneWidget);
-  });
-
-  testWidgets('raw triage exception is never rendered', (tester) async {
-    await _pumpScreen(tester, triage: _ThrowingTriageService());
-    await _submitInitial(tester);
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Không thể gửi triệu chứng'), findsOneWidget);
-    expect(find.textContaining('RAW_SECRET_BACKEND_DETAIL'), findsNothing);
-    expect(find.byKey(const Key('triage-consent-dialog')), findsNothing);
-  });
-
-  testWidgets('malformed intake error is actionable without exposing details', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      triage: TriageService(
-        postRequest: (_, _) => Future.error(
-          ApiException(
-            400,
-            jsonEncode({
-              'error': 'TRIAGE-010',
-              'message': 'RAW_BACKEND_DETAIL',
-            }),
-          ),
-        ),
-      ),
-    );
-
-    await _submitInitial(tester);
-    await tester.pumpAndSettle();
-
-    expect(
-      find.textContaining('Thông tin triệu chứng chưa hợp lệ'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('RAW_BACKEND_DETAIL'), findsNothing);
-  });
-
-  testWidgets('server failure is actionable without exposing details', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      triage: TriageService(
-        postRequest: (_, _) => Future.error(
-          ApiException(
-            500,
-            jsonEncode({
-              'error': 'INTERNAL_ERROR',
-              'message': 'RAW_BACKEND_DETAIL',
-            }),
-          ),
-        ),
-      ),
-    );
-
-    await _submitInitial(tester);
-    await tester.pumpAndSettle();
-
-    expect(
-      find.textContaining('Dịch vụ phân loại đang tạm thời'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('RAW_BACKEND_DETAIL'), findsNothing);
-  });
-
-  test('service maps only the exact backend consent-required code', () async {
-    final service = TriageService(
-      postRequest: (_, _) => Future.error(
-        ApiException(
-          409,
-          jsonEncode({
-            'success': false,
-            'error': 'TRIAGE_CONSENT_REQUIRED',
-            'message': 'RAW_BACKEND_DETAIL',
-          }),
-        ),
-      ),
-    );
-
-    await expectLater(
-      service.startConversation(
-        initialText: 'be kho tho',
-        currentIntake: const {'stage': 'INFANT'},
-      ),
-      throwsA(isA<TriageConsentRequiredFailure>()),
-    );
-  });
-
-  test(
-    'service rejects consent codes outside the top-level error field',
-    () async {
-      for (final body in [
-        {'code': 'TRIAGE_CONSENT_REQUIRED'},
-        {
-          'error': {'code': 'TRIAGE_CONSENT_REQUIRED'},
-        },
-        {'message': 'TRIAGE_CONSENT_REQUIRED'},
-      ]) {
-        final service = TriageService(
-          postRequest: (_, _) =>
-              Future.error(ApiException(409, jsonEncode(body))),
-        );
-
-        await expectLater(
-          service.startConversation(
-            initialText: 'be kho tho',
-            currentIntake: const {'stage': 'INFANT'},
-          ),
-          throwsA(isA<ApiException>()),
-        );
-      }
-    },
-  );
-
-  test(
-    'consent payload rejects unknown, malformed, or stale accepted states',
-    () {
-      for (final body in [
-        {
-          'status': 'UNKNOWN',
-          'currentVersion': 'V1',
-          'disclaimerText': 'Canonical policy',
-        },
-        {
-          'status': 1,
-          'currentVersion': 'V1',
-          'disclaimerText': 'Canonical policy',
-        },
-        {
-          'status': 'ACCEPTED',
-          'currentVersion': 'V2',
-          'acceptedVersion': 'V1',
-          'disclaimerText': 'Canonical policy',
-        },
-      ]) {
-        expect(
-          () => TriageConsentStatus.fromJson(body),
-          throwsA(isA<FormatException>()),
-        );
-      }
-    },
-  );
-
-  testWidgets('consent dialog accepts canonical policy then retries intake', (
-    tester,
-  ) async {
-    final triage = _ConsentGateTriageService();
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-
-    expect(find.byKey(const Key('triage-consent-dialog')), findsOneWidget);
-    expect(
-      find.text('Nội dung disclaimer chính thức từ backend.'),
-      findsOneWidget,
-    );
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 0);
-
-    await tester.tap(find.byKey(const Key('triage-consent-accept')));
-    await tester.pumpAndSettle();
-
-    expect(triage.acceptCalls, 1);
-    expect(triage.acceptedVersion, 'AI_TRIAGE_DISCLAIMER_V1');
-    expect(triage.startCalls, 2);
-    expect(find.text('Mức rủi ro: GREEN'), findsOneWidget);
-  });
-
-  testWidgets('cancelling consent keeps input and does not retry', (
-    tester,
-  ) async {
-    final triage = _ConsentGateTriageService();
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('triage-consent-cancel')));
-    await tester.pumpAndSettle();
-
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 0);
-    expect(find.textContaining('Bạn cần đồng ý'), findsOneWidget);
-    expect(find.text('be kho tho'), findsOneWidget);
-  });
-
-  testWidgets('system back cannot dismiss the consent dialog', (tester) async {
-    final triage = _ConsentGateTriageService();
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await tester.binding.handlePopRoute();
-    await tester.pump();
-
-    expect(find.byKey(const Key('triage-consent-dialog')), findsOneWidget);
-    expect(triage.acceptCalls, 0);
-    expect(triage.startCalls, 1);
-
-    await tester.tap(find.byKey(const Key('triage-consent-cancel')));
-    await tester.pumpAndSettle();
-  });
-
-  testWidgets('consent status failure is safe and never renders raw detail', (
-    tester,
-  ) async {
-    final triage = _ConsentGateTriageService(failStatus: true);
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 0);
-    expect(
-      find.textContaining('Không thể xác nhận điều khoản'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('RAW_CONSENT_STATUS_FAILURE'), findsNothing);
-  });
-
-  testWidgets('consent accept failure does not retry or leak raw detail', (
-    tester,
-  ) async {
-    final triage = _ConsentGateTriageService(failAccept: true);
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('triage-consent-accept')));
-    await tester.pumpAndSettle();
-
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 1);
-    expect(
-      find.textContaining('Không thể xác nhận điều khoản'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('RAW_CONSENT_ACCEPT_FAILURE'), findsNothing);
-  });
-
-  testWidgets('changed policy response fails closed without retrying intake', (
-    tester,
-  ) async {
-    final triage = _ConsentGateTriageService(invalidAcceptResponse: true);
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('triage-consent-accept')));
-    await tester.pumpAndSettle();
-
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 1);
-    expect(
-      find.textContaining('Không thể xác nhận điều khoản'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('Nội dung disclaimer mới'), findsNothing);
-  });
-
-  testWidgets('non-consent retry failure keeps the safe send error', (
-    tester,
-  ) async {
-    final triage = _ConsentGateTriageService(failRetry: true);
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('triage-consent-accept')));
-    await tester.pumpAndSettle();
-
-    expect(triage.startCalls, 2);
-    expect(find.textContaining('Không thể gửi triệu chứng'), findsOneWidget);
-    expect(find.textContaining('RAW_RETRY_FAILURE'), findsNothing);
-  });
-
-  testWidgets('disposed screen does not retry after consent status resolves', (
-    tester,
-  ) async {
-    final statusCompleter = Completer<TriageConsentStatus>();
-    final triage = _ConsentGateTriageService(statusCompleter: statusCompleter);
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-    statusCompleter.complete(
-      const TriageConsentStatus(
-        status: 'REQUIRED',
-        currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
-        disclaimerText: 'Canonical policy',
-      ),
-    );
-    await tester.pump();
-
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 0);
-  });
-
-  testWidgets('disposed screen does not retry after consent accept resolves', (
-    tester,
-  ) async {
-    final acceptCompleter = Completer<TriageConsentStatus>();
-    final triage = _ConsentGateTriageService(acceptCompleter: acceptCompleter);
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('triage-consent-accept')));
-    await tester.pump();
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-    acceptCompleter.complete(
-      const TriageConsentStatus(
-        status: 'ACCEPTED',
-        currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
-        acceptedVersion: 'AI_TRIAGE_DISCLAIMER_V1',
-        disclaimerText: 'Canonical policy',
-      ),
-    );
-    await tester.pump();
-
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 1);
-  });
-
-  testWidgets('account switch during consent lookup blocks dialog and retry', (
-    tester,
-  ) async {
-    FlutterSecureStorage.setMockInitialValues({});
-    await AuthState.instance.clear();
-    await AuthState.instance.setTokens(
-      accessToken: 'access-a',
-      refreshToken: 'refresh-a',
-      userId: 'account-a',
-      role: 'MOTHER',
-    );
-    addTearDown(AuthState.instance.clear);
-    final statusCompleter = Completer<TriageConsentStatus>();
-    final triage = _ConsentGateTriageService(statusCompleter: statusCompleter);
-    await _pumpScreen(tester, triage: triage);
-
-    await _submitInitial(tester);
-    await tester.pump();
-    await AuthState.instance.setTokens(
-      accessToken: 'access-b',
-      refreshToken: 'refresh-b',
-      userId: 'account-b',
-      role: 'MOTHER',
-    );
-    statusCompleter.complete(
-      const TriageConsentStatus(
-        status: 'REQUIRED',
-        currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
-        disclaimerText: 'Canonical policy',
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('triage-consent-dialog')), findsNothing);
-    expect(find.textContaining('Phiên đăng nhập đã thay đổi'), findsOneWidget);
-    expect(triage.startCalls, 1);
-    expect(triage.acceptCalls, 0);
-  });
-
-  for (final risk in ['GREEN', 'YELLOW']) {
-    testWidgets('$risk result preserves content without emergency CTA', (
-      tester,
-    ) async {
-      await _pumpScreen(
-        tester,
-        triage: _StaticTriageService(_complete(_result(risk))),
-      );
-      await _submitInitial(tester);
-
-      expect(find.text('Mức rủi ro: $risk'), findsOneWidget);
-      expect(find.text('Theo doi huong dan'), findsOneWidget);
-      expect(find.text('Khong thay the chan doan y khoa'), findsOneWidget);
-      expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);
-    });
-  }
-
-  testWidgets('terminal result renders symptom-scoped RAG guidance', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      triage: _StaticTriageService(
-        _complete(
-          _result(
-            'YELLOW',
-            stage: 'PREGNANCY',
-            ragAnswer: 'Theo dõi đau đầu và uống đủ nước.',
-            ragDisclaimer: 'Thông tin tham khảo.',
-          ),
-        ),
-      ),
-    );
-    await _submitInitial(tester);
-
-    expect(find.byKey(const Key('triage-rag-guidance')), findsOneWidget);
-    expect(find.text('Theo dõi đau đầu và uống đủ nước.'), findsOneWidget);
-    expect(find.text('Thông tin tham khảo.'), findsOneWidget);
-  });
-
-  testWidgets(
-    'offline continuation resolve keeps completed intake visible and retryable',
-    (tester) async {
-      FlutterSecureStorage.setMockInitialValues({});
-      await AuthState.instance.clear();
-      await AuthState.instance.setTokens(
-        accessToken: 'access-a',
-        refreshToken: 'refresh-a',
-        userId: 'account-a',
-        role: 'MOTHER',
-      );
-      addTearDown(AuthState.instance.clear);
-      const token = 'opaque-continuation';
-      final store = _RetryContinuationStore(
-        PendingTriageContinuation(
-          token: token,
-          intakeSessionId: _sessionId,
-          expiresAt: DateTime.utc(2026, 7, 30),
-        ),
-      );
-      final coordinator = TriageContinuationRestoreCoordinator(
-        store: store,
-        gateway: _OfflineContinuationGateway(),
-      );
-      final router = await _pumpScreen(
-        tester,
-        triage: _StaticTriageService(
-          _complete(_result('GREEN', stage: 'PREGNANCY')),
-        ),
-        entryContext: const TriageEntryContext.locked(
-          stage: TriageStageIntent.pregnancy,
-          origin: TriageOriginIntent.motherJourney,
-          journeyId: 'journey-a',
-          originReferenceId: 'journey-a',
-        ),
-        continuationCoordinator: coordinator,
-      );
-      addTearDown(router.dispose);
-      await _submitInitial(tester);
-      await tester.pumpAndSettle();
-
-      final returnAction = find.byKey(
-        const Key('triage-inline-return-to-origin'),
-      );
-      await tester.ensureVisible(returnAction);
-      await tester.tap(returnAction);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Ket qua GREEN'), findsWidgets);
-      expect(find.textContaining('thử lại'), findsWidgets);
-      final retry = tester.widget<FilledButton>(
-        find.byKey(const Key('triage-inline-return-to-origin')),
-      );
-      expect(retry.onPressed, isNotNull);
-      expect(store.pending?.token, token);
-    },
-  );
-
-  testWidgets('pending response is ignored after intake screen is disposed', (
-    tester,
-  ) async {
-    final triage = _PendingTriageService();
-    final router = await _pumpScreen(tester, triage: triage);
-    await _submitInitial(tester);
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-
-    triage.completer.complete(_complete(_result('GREEN')));
-    await tester.pump();
-
-    expect(tester.takeException(), isNull);
-    router.dispose();
-  });
-
-  test(
-    'postpartum flow preserves missing nested stage and rejects mismatch',
-    () {
-      final inherited = IntakeFlowResponse.fromJson({
-        'status': 'TRIAGE_COMPLETE',
-        'intakeSessionId': _sessionId,
-        'stage': 'POSTPARTUM',
-        'mergedIntake': {'stage': 'POSTPARTUM'},
-        'round': 1,
-        'triageResult': {'riskLevel': 'RED', 'emergencyActionRequired': true},
-      });
-
-      expect(inherited.triageResult?.stage, 'POSTPARTUM');
-      expect(
-        () => IntakeFlowResponse.fromJson({
-          'status': 'TRIAGE_COMPLETE',
-          'intakeSessionId': _sessionId,
-          'stage': 'POSTPARTUM',
-          'mergedIntake': {'stage': 'POSTPARTUM'},
-          'round': 1,
-          'triageResult': {'stage': 'INFANT', 'riskLevel': 'RED'},
-        }),
-        throwsFormatException,
-      );
-      expect(
-        () => IntakeFlowResponse.fromJson({
-          'status': 'ASK_MORE',
-          'intakeSessionId': _sessionId,
-          'stage': 'POSTPARTUM',
-          'mergedIntake': {'stage': 'INFANT'},
-          'round': 1,
-          'questions': const [],
-        }),
-        throwsFormatException,
-      );
-    },
-  );
-
-  test('flow-level lifecycle identity overrides untrusted nested metadata', () {
-    final response = IntakeFlowResponse.fromJson({
-      'status': 'TRIAGE_COMPLETE',
-      'intakeSessionId': _sessionId,
-      'stage': 'POSTPARTUM',
-      'mergedIntake': {'stage': 'POSTPARTUM'},
-      'round': 1,
-      'journeyId': 'journey-authoritative',
-      'originDashboard': 'POSTPARTUM_DASHBOARD',
-      'originReferenceId': 'origin-authoritative',
-      'continuationToken': 'continuation-authoritative',
-      'continuationExpiresAt': '2026-07-29T12:00:00Z',
-      'triageResult': {
-        'status': 'FAILED',
-        'triageStatus': 'FAILED',
-        'riskLevel': 'RED',
-        'continuationToken': 'continuation-untrusted',
-        'continuationExpiresAt': '2026-07-24T12:00:00Z',
-      },
-    });
-
-    expect(response.triageResult?.sessionId, _sessionId);
-    expect(response.triageResult?.status, 'COMPLETED');
-    expect(response.triageResult?.triageStatus, 'TRIAGE_COMPLETE');
-    expect(response.triageResult?.stage, 'POSTPARTUM');
-    expect(response.triageResult?.journeyId, 'journey-authoritative');
-    expect(response.triageResult?.originDashboard, 'POSTPARTUM_DASHBOARD');
-    expect(response.triageResult?.originReferenceId, 'origin-authoritative');
-    expect(
-      response.triageResult?.continuationToken,
-      'continuation-authoritative',
-    );
-    expect(
-      response.triageResult?.continuationExpiresAt,
-      DateTime.parse('2026-07-29T12:00:00Z'),
-    );
-  });
-
-  test('flow rejects mismatched nested lifecycle identity and origin', () {
-    Map<String, dynamic> payload(Map<String, dynamic> nested) => {
-      'status': 'TRIAGE_COMPLETE',
-      'intakeSessionId': _sessionId,
-      'stage': 'POSTPARTUM',
-      'mergedIntake': {'stage': 'POSTPARTUM'},
-      'round': 1,
-      'journeyId': 'journey-authoritative',
-      'originDashboard': 'POSTPARTUM_DASHBOARD',
-      'originReferenceId': 'origin-authoritative',
-      'triageResult': {'riskLevel': 'RED', ...nested},
-    };
-
-    for (final nested in const [
-      {'sessionId': 'different-session'},
-      {'journeyId': 'different-journey'},
-      {'originDashboard': 'PREGNANCY_DASHBOARD'},
-      {'originReferenceId': 'different-origin'},
-    ]) {
-      expect(
-        () => IntakeFlowResponse.fromJson(payload(nested)),
-        throwsFormatException,
-      );
-    }
-  });
-
-  testWidgets('applyResponse rejects a nested triage stage mismatch', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      triage: _StaticTriageService(
-        IntakeFlowResponse(
-          status: 'TRIAGE_COMPLETE',
-          intakeSessionId: _sessionId,
-          stage: 'POSTPARTUM',
-          mergedIntake: const {'stage': 'POSTPARTUM'},
-          round: 1,
-          triageResult: _result('RED', emergency: true, stage: 'INFANT'),
-        ),
-      ),
-      entryContext: const TriageEntryContext.postpartum(),
-    );
-
-    await _submitInitial(tester);
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('không khớp giai đoạn'), findsOneWidget);
-    expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);
-  });
-
-  test('legacy result and citation payloads receive safe defaults', () {
-    final result = TriageResult.fromJson({
-      'sessionId': 'legacy-session',
-      'status': 'COMPLETED',
-      'riskLevel': 'GREEN',
-    });
-    final citation = TriageCitation.fromJson({
-      'id': 'WHO_LEGACY',
-      'title': 'WHO',
-      'source': 'WHO',
-      'url': 'https://who.int/example',
-      'excerpt': 'evidence',
-    });
-
-    expect(result.sessionId, 'legacy-session');
-    expect(result.status, 'COMPLETED');
-    expect(result.emergencyActionRequired, isFalse);
-    expect(citation.id, 'WHO_LEGACY');
-    expect(citation.sourceVersion, isNull);
-    expect(citation.retrievalMode, 'LOCAL');
-    expect(citation.matchedRules, isEmpty);
+    await _send(tester, 'Toi dau dau');
+
+    expect(service.starts.single['target'], 'MOTHER');
+    expect(service.starts.single['stage'], 'PREGNANCY');
+    expect(service.starts.single['journeyId'], journey);
+    expect(service.starts.single['originDashboard'], 'MOTHER_JOURNEY');
   });
 }

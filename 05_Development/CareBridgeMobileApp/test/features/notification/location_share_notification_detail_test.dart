@@ -79,7 +79,9 @@ void main() {
     expect(find.textContaining('Đã gửi lúc'), findsOneWidget);
     expect(find.text('Mở chỉ đường đến Mother'), findsOneWidget);
 
-    final directions = tester.widget<FilledButton>(find.byType(FilledButton));
+    final directions = tester.widget<FilledButton>(
+      find.byKey(const Key('location-share-directions-action')),
+    );
     expect(directions.onPressed, isNotNull);
   });
 
@@ -101,7 +103,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Tọa độ không còn khả dụng.'), findsOneWidget);
-    final directions = tester.widget<FilledButton>(find.byType(FilledButton));
+    final directions = tester.widget<FilledButton>(
+      find.byKey(const Key('location-share-directions-action')),
+    );
     expect(directions.onPressed, isNull);
   });
 }

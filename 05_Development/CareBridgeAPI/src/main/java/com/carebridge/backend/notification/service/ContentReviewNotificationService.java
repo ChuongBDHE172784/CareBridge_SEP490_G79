@@ -40,5 +40,45 @@ public class ContentReviewNotificationService {
                 .metadata(Map.of("route", route))
                 .build());
     }
+
+    /**
+     * Notifies the author of reported community content that a moderator has acted on it
+     * (UC-102 report resolution: REQUEST_REVISION / WARN).
+     *
+     * <p>Reuses {@link NotificationType#CONTENT_REVIEW} and the existing
+     * {@code notification_records} table — no new type, column or table is introduced.
+     *
+     * @param title    user-facing heading ("Yêu cầu sửa nội dung" / "Cảnh báo từ kiểm duyệt viên")
+     * @param note     the moderator's handling note; shown verbatim to the author
+     * @param outcome  recorded in metadata so the client can distinguish the two cases
+     */
+    public void notifyModerationOutcome(
+            UUID recipientUserId,
+            UUID targetId,
+            String targetType,
+            String targetLabel,
+            String title,
+            String note,
+            String outcome) {
+        if (recipientUserId == null) {
+            return;
+        }
+        String body = "\"" + targetLabel + "\"";
+        if (note != null && !note.isBlank()) {
+            body = body + " — " + note.trim();
+        }
+        notificationRecordRepository.save(NotificationRecord.builder()
+                .userId(recipientUserId)
+                .type(NotificationType.CONTENT_REVIEW)
+                .title(title)
+                .body(body)
+                .referenceId(targetId)
+                .referenceType(targetType)
+                .status(NotificationRecordStatus.SENT)
+                .channel("IN_APP")
+                .sentAt(Instant.now())
+                .metadata(Map.of("outcome", outcome))
+                .build());
+    }
 }
 

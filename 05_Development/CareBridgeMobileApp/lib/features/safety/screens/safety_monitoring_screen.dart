@@ -31,39 +31,112 @@ Future<void> dispatchSafetyCountdownResult({
   }
 }
 
+Future<SafetyEvent> persistSafetyResponseThenRearm({
+  required void Function() beginResponse,
+  required Future<SafetyEvent> Function() persistResponse,
+  required void Function(SafetyEvent event) applyPersistedResponse,
+  required void Function() rearmDetector,
+  required Future<void> Function(SafetyEvent event) resolveEmergency,
+}) async {
+  beginResponse();
+  try {
+    final updated = await persistResponse();
+    applyPersistedResponse(updated);
+    rearmDetector();
+    await resolveEmergency(updated);
+    return updated;
+  } catch (_) {
+    rearmDetector();
+    rethrow;
+  }
+}
+
 SafetyEvent? selectNextOpenSafetyEvent(
   Iterable<SafetyEvent> events, {
   required String excludingId,
+  required DateTime now,
   Set<String> suppressedIds = const {},
 }) {
+  SafetyEvent? next;
   for (final event in events) {
-    if (isPendingSafetyCountdown(event) &&
+    if (isSafetyCountdownPresentationEligible(event, now) &&
         event.id != excludingId &&
         !suppressedIds.contains(event.id)) {
-      return event;
+      final nextDeadline = next?.countdownDeadlineAt;
+      final eventDeadline = event.countdownDeadlineAt!;
+      if (nextDeadline == null || eventDeadline.isBefore(nextDeadline)) {
+        next = event;
+      }
     }
   }
-  return null;
+  return next;
 }
 
 bool isPendingSafetyCountdown(SafetyEvent event) =>
     event.status == 'OPEN' || event.status == 'TEST_OPEN';
+
+bool isSafetyCountdownPresentationEligible(SafetyEvent event, DateTime now) {
+  final deadline = event.countdownDeadlineAt;
+  return isPendingSafetyCountdown(event) &&
+      deadline != null &&
+      deadline.toUtc().isAfter(now.toUtc());
+}
 
 bool shouldReleaseSafetyCountdownOwnership({
   required String? activeEventId,
   required String completedEventId,
 }) => activeEventId == completedEventId;
 
+/// Mirrors the backend's `DUPLICATE_FALL_WINDOW`: two detections this close
+/// together describe the same physical incident.
+const safetyDuplicateFallWindow = Duration(seconds: 10);
+
 bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {
   if (first.id == second.id ||
       first.eventType == 'SENSOR_SELF_TEST' ||
-      second.eventType == 'SENSOR_SELF_TEST') {
+      second.eventType == 'SENSOR_SELF_TEST' ||
+      !isPendingSafetyCountdown(first) ||
+      !isPendingSafetyCountdown(second) ||
+      first.responseType != null ||
+      second.responseType != null) {
     return false;
   }
   final firstAt = first.detectedAt;
   final secondAt = second.detectedAt;
   if (firstAt == null || secondAt == null) return false;
-  return firstAt.difference(secondAt).abs() <= const Duration(seconds: 10);
+  return firstAt.difference(secondAt).abs() <= safetyDuplicateFallWindow;
+}
+
+/// The response marker is captured from the device clock, so it only says
+/// *when* an alert was answered; it must never be compared against a backend
+/// `detectedAt`, because the API tolerates minutes of client clock skew and a
+/// skewed comparison would silently swallow a genuine new fall. Suppression
+/// therefore also requires [answeredEvent], so that "same incident" is decided
+/// between two backend timestamps, and the marker expires shortly after the
+/// response.
+const safetyAlertResponseStaleWindow = Duration(seconds: 30);
+
+bool isFallEventStaleAfterAlertResponse(
+  SafetyEvent event,
+  DateTime? responseStartedAt, {
+  SafetyEvent? answeredEvent,
+  DateTime? evaluatedAt,
+}) {
+  final detectedAt = event.detectedAt;
+  final answeredAt = answeredEvent?.detectedAt;
+  if (responseStartedAt == null || detectedAt == null || answeredAt == null) {
+    return false;
+  }
+  if (evaluatedAt != null &&
+      evaluatedAt.toUtc().difference(responseStartedAt.toUtc()) >
+          safetyAlertResponseStaleWindow) {
+    return false;
+  }
+  return event.id != answeredEvent!.id &&
+      event.eventType != 'SENSOR_SELF_TEST' &&
+      isPendingSafetyCountdown(event) &&
+      detectedAt.toUtc().difference(answeredAt.toUtc()).abs() <=
+          safetyDuplicateFallWindow;
 }
 
 typedef ReportDuplicateFalsePositive =
@@ -131,6 +204,13 @@ bool shouldAcceptSensorSelfTestResult({
 class SafetyRealEventQueue {
   final List<SafetyEvent> _events = [];
 
+  bool get hasPending => _events.isNotEmpty;
+
+  bool hasPresentableEvent(DateTime now) =>
+      _events.any((event) => isSafetyCountdownPresentationEligible(event, now));
+
+  Set<String> snapshotIds() => _events.map((event) => event.id).toSet();
+
   void enqueue(SafetyEvent event) {
     if (event.status != 'OPEN' || _events.any((item) => item.id == event.id)) {
       return;
@@ -142,10 +222,50 @@ class SafetyRealEventQueue {
     _events.removeWhere((event) => event.id == eventId);
   }
 
-  SafetyEvent? takeNext({required String excludingId}) {
-    final index = _events.indexWhere((event) => event.id != excludingId);
+  SafetyEvent? takeNext({
+    required Iterable<SafetyEvent> authoritativeEvents,
+    required String excludingId,
+    required DateTime now,
+    Set<String> suppressedIds = const {},
+    Set<String> requireCanonicalIds = const {},
+  }) {
+    final canonicalById = {
+      for (final event in authoritativeEvents) event.id: event,
+    };
+    _events.removeWhere((queued) {
+      if (suppressedIds.contains(queued.id) ||
+          (excludingId.isNotEmpty && queued.id == excludingId)) {
+        return true;
+      }
+      final canonical = canonicalById[queued.id];
+      if (canonical != null) {
+        return !isSafetyCountdownPresentationEligible(canonical, now);
+      }
+      return requireCanonicalIds.contains(queued.id) ||
+          !isSafetyCountdownPresentationEligible(queued, now);
+    });
+
+    var index = -1;
+    DateTime? nearestDeadline;
+    for (
+      var candidateIndex = 0;
+      candidateIndex < _events.length;
+      candidateIndex++
+    ) {
+      final queued = _events[candidateIndex];
+      if (queued.id == excludingId || suppressedIds.contains(queued.id)) {
+        continue;
+      }
+      final canonical = canonicalById[queued.id] ?? queued;
+      final deadline = canonical.countdownDeadlineAt!;
+      if (nearestDeadline == null || deadline.isBefore(nearestDeadline)) {
+        index = candidateIndex;
+        nearestDeadline = deadline;
+      }
+    }
     if (index < 0) return null;
-    return _events.removeAt(index);
+    final queued = _events.removeAt(index);
+    return canonicalById[queued.id] ?? queued;
   }
 }
 
@@ -184,12 +304,15 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   ImuDiagnosticsSnapshot? _imuDiagnostics;
   Timer? _demoRecoveryTimer;
   Timer? _demoGestureArmTimer;
+  Timer? _pendingEventRefreshTimer;
   DateTime? _sensorSelfTestArmedAt;
   final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
   final Set<String> _suppressedDuplicateEventIds = {};
   final Set<String> _duplicateCleanupInFlight = {};
   String? _countdownEventId;
   SafetyEvent? _countdownEvent;
+  DateTime? _latestAlertResponseStartedAt;
+  SafetyEvent? _latestAlertResponseEvent;
   bool _loading = true;
   // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
   // streams; backend fall detection remains controlled by SafetyConfig.
@@ -220,6 +343,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _diagnosticsSubscription?.cancel();
     _demoRecoveryTimer?.cancel();
     _demoGestureArmTimer?.cancel();
+    _pendingEventRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -286,8 +410,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     }
   }
 
-  Future<void> _load() async {
+  Future<bool> _load() async {
     setState(() => _loading = true);
+    final queuedBeforeRefresh = _pendingRealEvents.snapshotIds();
     try {
       final config = await _safetyService.getConfig();
       final events = await _safetyService.getSafetyEvents();
@@ -308,14 +433,21 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             }
           }
         } else {
-          SafetyEvent? pending;
-          for (final event in events) {
-            if (isPendingSafetyCountdown(event) &&
-                !_suppressedDuplicateEventIds.contains(event.id)) {
-              pending = event;
-              break;
-            }
-          }
+          final now = DateTime.now();
+          final pending =
+              selectNextOpenSafetyEvent(
+                events,
+                excludingId: '',
+                now: now,
+                suppressedIds: _suppressedDuplicateEventIds,
+              ) ??
+              _pendingRealEvents.takeNext(
+                authoritativeEvents: events,
+                excludingId: '',
+                now: now,
+                suppressedIds: _suppressedDuplicateEventIds,
+                requireCanonicalIds: queuedBeforeRefresh,
+              );
           if (pending != null) {
             for (final event in events) {
               if (event.id != pending.id &&
@@ -328,6 +460,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           }
         }
       }
+      return true;
     } catch (_) {
       if (mounted) {
         setState(
@@ -338,6 +471,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           ),
         );
       }
+      return false;
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -347,6 +481,18 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    if (isFallEventStaleAfterAlertResponse(
+      event,
+      _latestAlertResponseStartedAt,
+      answeredEvent: _latestAlertResponseEvent,
+      evaluatedAt: DateTime.now(),
+    )) {
+      _suppressDuplicateEvent(event);
+      setState(() {
+        _events = [event, ..._events.where((item) => item.id != event.id)];
+      });
+      return;
+    }
     final active = _countdownEvent;
     if (active != null && isLikelyDuplicateFallEvent(active, event)) {
       _suppressDuplicateEvent(event);
@@ -403,21 +549,51 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _pendingRealEvents.enqueue(event);
   }
 
+  void _schedulePendingEventRefresh() {
+    if (!_pendingRealEvents.hasPresentableEvent(DateTime.now()) ||
+        (_pendingEventRefreshTimer?.isActive ?? false)) {
+      return;
+    }
+    _pendingEventRefreshTimer = Timer(const Duration(seconds: 1), () {
+      _pendingEventRefreshTimer = null;
+      if (!mounted) return;
+      unawaited(
+        _load().then((succeeded) {
+          if (!succeeded && mounted) _schedulePendingEventRefresh();
+        }),
+      );
+    });
+  }
+
   Future<void> _showCountdown(
     SafetyEvent event, {
     bool simulated = false,
     bool presentAsRealAlert = false,
   }) async {
-    final deadline = event.countdownDeadlineAt;
-    if (!mounted ||
-        !isPendingSafetyCountdown(event) ||
-        deadline == null ||
-        _countdownEventId != null) {
+    if (!simulated &&
+        isFallEventStaleAfterAlertResponse(
+          event,
+          _latestAlertResponseStartedAt,
+          answeredEvent: _latestAlertResponseEvent,
+          evaluatedAt: DateTime.now(),
+        )) {
+      _suppressDuplicateEvent(event);
+      return;
+    }
+    if (!mounted || _countdownEventId != null) {
+      return;
+    }
+    if (!isSafetyCountdownPresentationEligible(event, DateTime.now())) {
+      unawaited(_load());
       return;
     }
     _countdownEventId = event.id;
     _countdownEvent = event;
     if (!simulated) _pendingRealEvents.remove(event.id);
+    // Suspend detection for as long as this alert is on screen. Handling the
+    // phone to answer it — and any retry of the same physical drop — must not
+    // mint a second event that would pop up straight after the user responds.
+    if (!simulated) _foregroundCoordinator.beginFallDetectorAlertResponse();
     final result = await showModalBottomSheet<SafetyCountdownResult>(
       context: context,
       isDismissible: false,
@@ -434,7 +610,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         },
       ),
     );
-    _releaseCountdownOwnership(event.id);
+    var responseHandled = simulated;
     try {
       final isSensorSelfTest = event.eventType == 'SENSOR_SELF_TEST';
       if (isSensorSelfTest) {
@@ -453,6 +629,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           onComplete: (outcome) =>
               _safetyService.completeSensorSelfTest(event.id, outcome: outcome),
         );
+        responseHandled = result != null;
       } else {
         await dispatchSafetyCountdownResult(
           result: result,
@@ -468,6 +645,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           onEmergency: () =>
               _safetyService.sendEmergencyAlertForEvent(event.id),
         );
+        responseHandled = result != null;
       }
       final showDemoEscalation =
           (isSensorSelfTest || (simulated && presentAsRealAlert)) &&
@@ -480,6 +658,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       if (error is ApiException &&
           error.statusCode == 409 &&
           error.errorCode == 'SAFETY-010') {
+        responseHandled = true;
         // Timeout escalation and the user's final safe tap may cross on the
         // wire. The server has already recorded one terminal response; close
         // the local flow and refresh instead of showing a raw conflict.
@@ -501,17 +680,42 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         );
       }
     } finally {
-      if (!simulated && mounted) await _load();
+      // Pairs the suspension above on every exit path, including timeout, the
+      // emergency route and a failed response, so detection can never stay
+      // switched off after an alert closes.
+      if (!simulated) _foregroundCoordinator.rearmFallDetectorAfterResponse();
+      var authoritativeRefreshSucceeded = simulated;
+      final queuedBeforeRefresh = simulated
+          ? const <String>{}
+          : _pendingRealEvents.snapshotIds();
+      if (!simulated && mounted) {
+        authoritativeRefreshSucceeded = await _load();
+      }
       _releaseCountdownOwnership(event.id);
-      if (mounted) {
+      if (mounted && authoritativeRefreshSucceeded) {
+        final now = DateTime.now();
+        final excludingId = responseHandled ? event.id : '';
         final next =
-            _pendingRealEvents.takeNext(excludingId: event.id) ??
             selectNextOpenSafetyEvent(
               _events,
-              excludingId: event.id,
+              excludingId: excludingId,
+              now: now,
               suppressedIds: _suppressedDuplicateEventIds,
+            ) ??
+            _pendingRealEvents.takeNext(
+              authoritativeEvents: _events,
+              excludingId: excludingId,
+              now: now,
+              suppressedIds: _suppressedDuplicateEventIds,
+              requireCanonicalIds: queuedBeforeRefresh,
             );
         if (next != null) unawaited(_showCountdown(next));
+      } else if (mounted && !simulated) {
+        if (!responseHandled &&
+            isSafetyCountdownPresentationEligible(event, DateTime.now())) {
+          _pendingRealEvents.enqueue(event);
+        }
+        _schedulePendingEventRefresh();
       }
     }
   }
@@ -590,24 +794,38 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
-    _foregroundCoordinator.rearmFallDetectorAfterResponse();
-    final updated = await _safetyService.confirmSafetyCheck(
-      event.id,
-      note: note,
+    await persistSafetyResponseThenRearm(
+      beginResponse: _beginFallDetectorAlertResponse,
+      persistResponse: () =>
+          _safetyService.confirmSafetyCheck(event.id, note: note),
+      applyPersistedResponse: _applyPersistedCountdownResponse,
+      rearmDetector: _foregroundCoordinator.rearmFallDetectorAfterResponse,
+      resolveEmergency: _resolveEventEmergency,
     );
-    await _resolveEventEmergency(updated);
   }
 
   Future<void> _reportEventFalsePositive(
     SafetyEvent event, {
     String? note,
   }) async {
-    _foregroundCoordinator.rearmFallDetectorAfterResponse();
-    final updated = await _safetyService.reportFalsePositive(
-      event.id,
-      note: note,
+    await persistSafetyResponseThenRearm(
+      beginResponse: _beginFallDetectorAlertResponse,
+      persistResponse: () =>
+          _safetyService.reportFalsePositive(event.id, note: note),
+      applyPersistedResponse: _applyPersistedCountdownResponse,
+      rearmDetector: _foregroundCoordinator.rearmFallDetectorAfterResponse,
+      resolveEmergency: _resolveEventEmergency,
     );
-    await _resolveEventEmergency(updated);
+  }
+
+  void _beginFallDetectorAlertResponse() {
+    _latestAlertResponseStartedAt = DateTime.now().toUtc();
+    _latestAlertResponseEvent = _countdownEvent;
+    _foregroundCoordinator.beginFallDetectorAlertResponse();
+  }
+
+  void _applyPersistedCountdownResponse(SafetyEvent event) {
+    if (_countdownEvent?.id == event.id) _countdownEvent = event;
   }
 
   Future<void> _resolveEventEmergency(SafetyEvent event) async {

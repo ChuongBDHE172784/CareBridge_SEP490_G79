@@ -8,6 +8,7 @@ class ContentStageOption {
 const prePregnancyContentStage = 'PRE_PREGNANCY';
 const pregnancyContentStage = 'PREGNANCY';
 const postpartumContentStage = 'POSTPARTUM';
+const babyCareContentStage = 'BABY_CARE';
 
 const contentStageOptions = <ContentStageOption>[
   ContentStageOption(
@@ -15,7 +16,10 @@ const contentStageOptions = <ContentStageOption>[
     label: 'Chuẩn bị mang thai',
   ),
   ContentStageOption(value: pregnancyContentStage, label: 'Thai kỳ'),
-  ContentStageOption(value: postpartumContentStage, label: 'Hậu sản & Chăm bé'),
+  ContentStageOption(
+    value: postpartumContentStage,
+    label: 'Hậu sản & Chăm bé',
+  ),
 ];
 
 const canonicalContentStages = <String>{
@@ -26,7 +30,7 @@ const canonicalContentStages = <String>{
 
 String? tryNormalizeContentStage(String? value) {
   final normalized = value?.trim().toUpperCase();
-  if (normalized == 'BABY_CARE') return postpartumContentStage;
+  if (normalized == babyCareContentStage) return postpartumContentStage;
   return canonicalContentStages.contains(normalized) ? normalized : null;
 }
 

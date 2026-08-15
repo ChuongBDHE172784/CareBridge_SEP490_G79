@@ -3,6 +3,70 @@ import 'package:untitled/features/reminder/models/today_task_model.dart';
 import 'package:untitled/features/reminder/models/today_task_support_function.dart';
 
 void main() {
+  test('maps canonical and compatibility cadence values', () {
+    expect(TodayTaskCadenceApi.fromApi('DAILY'), TodayTaskCadence.daily);
+    expect(TodayTaskCadenceApi.fromApi('WEEKLY'), TodayTaskCadence.weekly);
+    expect(TodayTaskCadenceApi.fromApi('ONCE'), TodayTaskCadence.once);
+    expect(
+      TodayTaskCadenceApi.fromApi(
+        null,
+        scheduleType: 'WEEKLY',
+        materializationPolicy: 'EACH_WEEK',
+      ),
+      TodayTaskCadence.weekly,
+    );
+    expect(
+      TodayTaskCadenceApi.fromApi(
+        null,
+        scheduleType: 'DAILY',
+        materializationPolicy: 'EACH_DAY',
+      ),
+      TodayTaskCadence.daily,
+    );
+    expect(
+      TodayTaskCadenceApi.fromApi(
+        'ONCE',
+        scheduleType: 'DAILY',
+        materializationPolicy: 'EACH_DAY',
+      ),
+      TodayTaskCadence.once,
+      reason: 'canonical cadence must win over compatibility fields',
+    );
+    expect(TodayTaskCadenceApi.fromApi(null), TodayTaskCadence.unknown);
+  });
+
+  test('parses cadence metadata onto a Today task', () {
+    final task = TodayTask.fromJson({
+      'taskKind': 'CHECKLIST',
+      'taskId': 'cadence-1',
+      'title': 'Duy trì thói quen',
+      'origin': 'SYSTEM_TEMPLATE',
+      'targetSubject': 'MOTHER',
+      'status': 'PENDING',
+      'timeBucket': 'TODAY',
+      'cadence': 'WEEKLY',
+      'allowedActions': ['COMPLETE'],
+    });
+
+    expect(task.cadence, TodayTaskCadence.weekly);
+    expect(task.cadenceLabel, 'Hằng tuần');
+
+    final legacyMetadataTask = TodayTask.fromJson({
+      'taskKind': 'CHECKLIST',
+      'taskId': 'cadence-compat-1',
+      'title': 'Nhắc mỗi ngày',
+      'origin': 'SYSTEM_TEMPLATE',
+      'targetSubject': 'MOTHER',
+      'status': 'PENDING',
+      'timeBucket': 'TODAY',
+      'scheduleType': 'DAILY',
+      'materializationPolicy': 'EACH_DAY',
+      'allowedActions': ['COMPLETE'],
+    });
+
+    expect(legacyMetadataTask.cadence, TodayTaskCadence.daily);
+  });
+
   test(
     'parses unified Today envelope without losing care context metadata',
     () {
@@ -23,7 +87,8 @@ void main() {
               'careContextId': 'baby-1',
               'careContextLabel': 'Bé An',
               'title': 'Chuẩn bị bình sữa',
-              'targetSubject': 'BABY',
+      'targetSubject': 'BABY',
+              'stage': 'BABY_CARE',
               'origin': 'SYSTEM_TEMPLATE',
               'status': 'PENDING',
               'timeBucket': 'OVERDUE',
@@ -43,6 +108,8 @@ void main() {
       expect(task.kind, TodayTaskKind.checklist);
       expect(task.origin, TodayTaskOrigin.systemTemplate);
       expect(task.target, TodayTaskTarget.baby);
+      expect(task.stage, TodayChecklistStage.babyCare);
+      expect(task.stage.label, 'Chăm bé');
       expect(task.bucket, TodayTimeBucket.overdue);
       expect(task.allowedActions, {TodayTaskAction.complete});
       expect(task.careGroupLabel, 'Gia đình An');
@@ -125,9 +192,45 @@ void main() {
     expect(task.supportFunction?.route, '/health-records');
   });
 
+  test('resolves maternal health metrics from a journey context', () {
+    final task = TodayTask.fromJson({
+      'taskKind': 'CHECKLIST',
+      'taskId': 'maternal-metrics-1',
+      'title': 'Theo dõi chỉ số',
+      'supportFunction': 'MATERNAL_HEALTH_METRICS',
+      'careContextType': 'JOURNEY',
+      'careContextId': 'journey-1',
+      'origin': 'SYSTEM_TEMPLATE',
+      'targetSubject': 'MOTHER',
+      'status': 'PENDING',
+      'timeBucket': 'TODAY',
+      'allowedActions': ['COMPLETE'],
+    });
+
+    expect(
+      task.supportFunction?.code,
+      TodayTaskSupportFunctionCode.maternalHealthMetrics,
+    );
+    expect(
+      task.supportFunction?.routeFor(
+        careContextType: task.careContextType,
+        careContextId: task.careContextId,
+      ),
+      '/journeys/journey-1/metrics/trend?metricType=BMI',
+    );
+    expect(
+      task.supportFunction?.routeFor(
+        careContextType: 'BABY',
+        careContextId: 'journey-1',
+      ),
+      isNull,
+    );
+  });
+
   test('maps every support function code to its safe native route', () {
     const expectedRoutes = <String, String>{
       'HEALTH_RECORDS': '/health-records',
+      'MATERNAL_EXERCISES': '/mother-exercise',
       'APPOINTMENTS': '/appointments/calendar',
       'REMINDERS': '/reminder-schedules',
       'JOURNEY': '/mother-home?tab=1',

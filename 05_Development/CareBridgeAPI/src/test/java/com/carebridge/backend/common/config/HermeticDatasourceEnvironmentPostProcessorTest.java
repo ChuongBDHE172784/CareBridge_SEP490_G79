@@ -279,6 +279,7 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
         properties.put("spring.profiles.active", "hermetic");
         properties.put("carebridge.datasource-guard.enabled", true);
         properties.put("carebridge.dotenv.enabled", false);
+        properties.put("carebridge.dev-seed.enabled", false);
         properties.put("carebridge.hermetic.datasource.url", "jdbc:postgresql://127.0.0.1:5432/carebridge_test");
         properties.put("carebridge.hermetic.datasource.username", "test-user");
         properties.put("carebridge.hermetic.datasource.password", "test-password");
@@ -290,7 +291,6 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
         properties.put("spring.datasource.hikari.schema", "batch4_test");
         properties.put("spring.jpa.hibernate.ddl-auto", "validate");
         properties.put("spring.flyway.enabled", true);
-        properties.put("carebridge.dev-seed.enabled", false);
         properties.putAll(overrides);
 
         StandardEnvironment environment = new StandardEnvironment();

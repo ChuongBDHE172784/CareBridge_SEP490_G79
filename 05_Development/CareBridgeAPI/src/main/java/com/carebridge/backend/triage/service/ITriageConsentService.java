@@ -33,9 +33,8 @@ public interface ITriageConsentService {
     TriageConsentStatusResponse revoke(UUID userId);
 
     /**
-     * GATE — called by {@code TriageService.runIntake()} and {@code startConversation()} ONLY
-     * (BR-TDC-004 / BR-SAFETY: never wire this into continueConversation, continuations,
-     * emergency escalation listeners, safety_events flows, or any UC62 path).
+     * Consent gate for canonical elective start and non-emergency continuation. Independent
+     * emergency screening runs before the continuation gate, so consent cannot suppress RED.
      *
      * @throws com.carebridge.backend.triage.exception.TriageException
      *         (409, TRIAGE_CONSENT_REQUIRED) when no ACTIVE row matches the current

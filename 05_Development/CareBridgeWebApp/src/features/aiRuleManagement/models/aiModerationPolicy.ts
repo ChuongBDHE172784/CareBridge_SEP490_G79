@@ -66,6 +66,9 @@ export interface AiModerationStatus {
   enabled: boolean;
   configured: boolean;
   model: string;
+  /** What Google reported running, once a call has succeeded. `model` is normally an
+   *  alias - gemini-flash-latest - so this is the only place the release shows. */
+  resolvedModel?: string | null;
   state: 'DISABLED' | 'NOT_CONFIGURED' | 'READY';
   businessToggleEnabled: boolean;
   queuedJobs: number;
@@ -173,3 +176,14 @@ export const POLICY_TARGET_TYPE_LABELS: Record<PolicyTargetType, string> = {
   ANSWER: 'Câu trả lời',
   CONTENT: 'Nội dung thư viện',
 };
+
+export function formatPolicyName(policyCode: string, category?: string): string {
+  if (policyCode && AI_VIOLATION_CATEGORY_LABELS[policyCode as AiViolationCategory]) {
+    return AI_VIOLATION_CATEGORY_LABELS[policyCode as AiViolationCategory];
+  }
+  if (category && AI_VIOLATION_CATEGORY_LABELS[category as AiViolationCategory]) {
+    return AI_VIOLATION_CATEGORY_LABELS[category as AiViolationCategory];
+  }
+  return policyCode;
+}
+

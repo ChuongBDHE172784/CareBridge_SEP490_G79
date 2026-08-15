@@ -129,7 +129,7 @@ public class ChecklistCurrentScopePolicy {
             return false;
         }
         ContentStage stage = template.getStage();
-        if (stage != null && stage != ContentStage.POSTPARTUM) {
+        if (stage != ContentStage.BABY_CARE) {
             return false;
         }
         ChecklistLifecycleDates dates = new ChecklistLifecycleDates(null, null, null, baby.getBirthDate());
@@ -149,28 +149,50 @@ public class ChecklistCurrentScopePolicy {
             boolean sameWindow = decision.eligible()
                     && Objects.equals(instance.getWindowStart(), decision.windowStart())
                     && Objects.equals(instance.getWindowEnd(), decision.windowEnd());
-            if (!sameWindow || instance.getPeriodKey() == null) {
-                return sameWindow;
+            if (!sameWindow) {
+                return false;
             }
-            if (template.getScheduleType() == ChecklistScheduleType.WEEKLY
-                    && template.getMaterializationPolicy() == ChecklistMaterializationPolicy.EACH_WEEK) {
-                LocalDate canonicalLmp = dates.lastMenstrualDate() != null
-                        ? dates.lastMenstrualDate()
-                        : dates.estimatedDueDate() == null
-                                ? null : dates.estimatedDueDate().minusDays(280);
-                if (canonicalLmp == null) {
+            if (template.getStage() == ContentStage.PRE_PREGNANCY
+                    && template.getScheduleType() == ChecklistScheduleType.SET
+                    && template.getMaterializationPolicy()
+                            == ChecklistMaterializationPolicy.SEQUENCE_STEP) {
+                Short templateContractVersion = template.getChecklistContractVersion();
+                if (templateContractVersion == null
+                        || Short.valueOf(ChecklistPeriodIdentity.V1_CONTRACT_VERSION)
+                                .equals(templateContractVersion)) {
+                    return ChecklistPeriodIdentity.isV1NonCadenceIdentity(
+                            instance.getChecklistContractVersion(),
+                            instance.getPeriodKey(),
+                            instance.getScheduleZoneId());
+                }
+                if (!Short.valueOf(ChecklistPeriodIdentity.V2_CONTRACT_VERSION)
+                        .equals(templateContractVersion)) {
                     return false;
                 }
-                long completedWeek = ChronoUnit.DAYS.between(canonicalLmp, effectiveDate) / 7;
-                return instance.getPeriodKey().equals(String.format(
-                        java.util.Locale.ROOT, "W:G:%04d:%s", completedWeek, decision.windowStart()));
+                return ChecklistPeriodIdentity.isV2NonCadenceIdentity(
+                        instance.getChecklistContractVersion(),
+                        instance.getPeriodKey(),
+                        instance.getScheduleZoneId(),
+                        instance.getMaterializationMode(),
+                        instance.getWasActionable());
             }
-            if (template.getScheduleType() == ChecklistScheduleType.WEEKLY
-                    && template.getMaterializationPolicy() == ChecklistMaterializationPolicy.ONCE_PER_WINDOW) {
-                String end = decision.windowEnd() == null ? "EXIT" : decision.windowEnd().toString();
-                return instance.getPeriodKey().equals("O:" + decision.windowStart() + ":" + end);
+            if (instance.getPeriodKey() == null) {
+                boolean unconfigured = template.getScheduleType() == null
+                        && template.getMaterializationPolicy() == null;
+                boolean legacyWindow = template.getScheduleType() == ChecklistScheduleType.LEGACY
+                        && template.getMaterializationPolicy()
+                                == ChecklistMaterializationPolicy.LEGACY_WINDOW;
+                return unconfigured || legacyWindow;
             }
-            return true;
+            String expectedPeriodKey = ChecklistPeriodIdentity.periodKey(
+                    template.getScheduleType(), template.getMaterializationPolicy(),
+                    decision, effectiveDate);
+            boolean cadenceConfigured = template.getScheduleType() != null
+                    || template.getMaterializationPolicy() != null;
+            if (cadenceConfigured && expectedPeriodKey == null) {
+                return false;
+            }
+            return expectedPeriodKey == null || instance.getPeriodKey().equals(expectedPeriodKey);
         } catch (IllegalArgumentException ignored) {
             return false;
         }

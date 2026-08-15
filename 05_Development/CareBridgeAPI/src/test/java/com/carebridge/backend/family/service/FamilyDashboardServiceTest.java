@@ -29,6 +29,11 @@ import com.carebridge.backend.health.entity.HealthObservation;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.repository.HealthObservationRepository;
 import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.entity.GestationalDatingBasis;
+import com.carebridge.backend.journey.entity.JourneyDateConfidence;
+import com.carebridge.backend.journey.entity.JourneyDateSource;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
@@ -44,6 +49,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -431,6 +438,85 @@ class FamilyDashboardServiceTest {
                 });
         verify(sharedDataService)
                 .getSharedData(groupId, userId, SharedDataCategory.LOGS, 0, Integer.MAX_VALUE);
+    }
+
+    @Test
+    void resolvedPregnancyProjectsServerOwnedDatingIntoFamilyDashboard() {
+        UUID groupId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDate canonicalLmp = today.minusWeeks(19).minusDays(3);
+        Instant effectiveAt = Instant.parse("2026-08-01T00:00:00Z");
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        CareGroup group = group(groupId, "A");
+        group.setLinkedJourneyId(journeyId);
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group));
+        when(memberRepository.findByCareGroupIdAndInviteStatusIn(groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+        when(journeyRepository.findById(journeyId)).thenReturn(Optional.of(MotherJourney.builder()
+                .id(journeyId)
+                .ownerUserId(motherId)
+                .journeyType(JourneyType.PREGNANCY)
+                .status(JourneyStatus.ACTIVE)
+                .lastMenstrualDate(canonicalLmp)
+                // Simulate a legacy row whose raw EDD conflicts with the LMP authority.
+                .estimatedDueDate(canonicalLmp.plusDays(275))
+                .dateSource(JourneyDateSource.CLINICIAN_CONFIRMED)
+                .dateConfidence(JourneyDateConfidence.CONFIRMED)
+                .gestationalDatingBasis(GestationalDatingBasis.LMP)
+                .gestationalDatingRevision(4L)
+                .gestationalDatingEffectiveAt(effectiveAt)
+                .build()));
+
+        var journey = service.get(userId, groupId).selectedGroupDetail().motherJourney();
+
+        assertThat(journey.gestationalDatingBasis()).isEqualTo(GestationalDatingBasis.LMP);
+        assertThat(journey.canonicalLmp()).isEqualTo(canonicalLmp);
+        assertThat(journey.pregnancyWeek()).isEqualTo(19);
+        assertThat(journey.completedGestationalWeek()).isEqualTo(19);
+        assertThat(journey.completedGestationalDays()).isEqualTo(3);
+        assertThat(journey.sourceWeekNumber()).isEqualTo(20);
+        assertThat(journey.plan()).isEqualTo(1);
+        assertThat(journey.gestationalDatingRevision()).isEqualTo(4L);
+        assertThat(journey.gestationalDatingEffectiveAt()).isEqualTo(effectiveAt);
+        assertThat(journey.lastMenstrualDate()).isEqualTo(canonicalLmp);
+        assertThat(journey.estimatedDueDate()).isEqualTo(canonicalLmp.plusDays(280));
+    }
+
+    @Test
+    void quarantinedPregnancyWithholdsDatesAndComputedWeekFromFamilyDashboard() {
+        UUID groupId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        LocalDate rawLmp = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusWeeks(12);
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        CareGroup group = group(groupId, "A");
+        group.setLinkedJourneyId(journeyId);
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group));
+        when(memberRepository.findByCareGroupIdAndInviteStatusIn(groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+        when(journeyRepository.findById(journeyId)).thenReturn(Optional.of(MotherJourney.builder()
+                .id(journeyId)
+                .ownerUserId(motherId)
+                .journeyType(JourneyType.PREGNANCY)
+                .status(JourneyStatus.ACTIVE)
+                .lastMenstrualDate(rawLmp)
+                .estimatedDueDate(rawLmp.plusDays(280))
+                .gestationalDatingBasis(GestationalDatingBasis.LMP)
+                .gestationalDatingRevision(2L)
+                .gestationalDatingEffectiveAt(Instant.parse("2026-08-01T00:00:00Z"))
+                .gestationalDatingQuarantineReasonCode("LEGACY_DATING_CONFLICT")
+                .build()));
+
+        var journey = service.get(userId, groupId).selectedGroupDetail().motherJourney();
+
+        assertThat(journey.gestationalDatingQuarantineReasonCode())
+                .isEqualTo("LEGACY_DATING_CONFLICT");
+        assertThat(journey.gestationalDatingBasis()).isNull();
+        assertThat(journey.canonicalLmp()).isNull();
+        assertThat(journey.pregnancyWeek()).isNull();
+        assertThat(journey.sourceWeekNumber()).isNull();
+        assertThat(journey.lastMenstrualDate()).isNull();
+        assertThat(journey.estimatedDueDate()).isNull();
     }
 
     @Test

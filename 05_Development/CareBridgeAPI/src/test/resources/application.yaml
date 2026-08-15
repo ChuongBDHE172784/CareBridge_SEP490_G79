@@ -39,8 +39,8 @@ carebridge:
   triage:
     disclaimer:
       # CB-TRIAGE-CONSENT-IMP-001-TEST FX-005 — synthetic single-oracle values (L4).
-      version: AI_TRIAGE_DISCLAIMER_V1
-      text: SYNTHETIC DISCLAIMER TEXT V1
+      version: AI_TRIAGE_DISCLAIMER_V2
+      text: "Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường."
   zego:
     app-id: 1
     server-secret: synthetic-test-secret
