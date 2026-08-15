@@ -261,6 +261,7 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
     void postProcessEnvironment_WithUnsafePersistenceSettings_Rejects() {
         assertRejected(Map.of("spring.jpa.hibernate.ddl-auto", "update"), "HERMETIC_DDL_MODE_UNSAFE", "update");
         assertRejected(Map.of("spring.flyway.enabled", false), "HERMETIC_FLYWAY_DISABLED", "false");
+        assertRejected(Map.of("carebridge.dev-seed.enabled", true), "HERMETIC_DEV_SEED_ENABLED", "true");
     }
 
     private void assertRejected(Map<String, Object> overrides, String code, String secret) {
@@ -278,6 +279,7 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
         properties.put("spring.profiles.active", "hermetic");
         properties.put("carebridge.datasource-guard.enabled", true);
         properties.put("carebridge.dotenv.enabled", false);
+        properties.put("carebridge.dev-seed.enabled", false);
         properties.put("carebridge.hermetic.datasource.url", "jdbc:postgresql://127.0.0.1:5432/carebridge_test");
         properties.put("carebridge.hermetic.datasource.username", "test-user");
         properties.put("carebridge.hermetic.datasource.password", "test-password");
