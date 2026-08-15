@@ -22,18 +22,10 @@ export type LegalSection = {
 type Props = {
   documentTitle: string;
   subtitle: string;
-  effectiveDate: string;
-  version: string;
   sections: LegalSection[];
 };
 
-export default function LegalPageLayout({
-  documentTitle,
-  subtitle,
-  effectiveDate,
-  version,
-  sections,
-}: Props) {
+export default function LegalPageLayout({ documentTitle, subtitle, sections }: Props) {
   useEffect(() => {
     document.title = `${documentTitle} — CareBridge`;
   }, [documentTitle]);
@@ -59,21 +51,6 @@ export default function LegalPageLayout({
       <main className="mx-auto max-w-4xl px-6 py-10">
         <h1 className="m-0 text-3xl font-bold leading-tight">{documentTitle}</h1>
         <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">{subtitle}</p>
-
-        <dl className="mt-6 grid gap-3 rounded-2xl bg-surface-container-low p-5 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-              Ngày hiệu lực
-            </dt>
-            <dd className="mt-1 text-sm font-medium">{effectiveDate}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-              Phiên bản
-            </dt>
-            <dd className="mt-1 text-sm font-medium">{version}</dd>
-          </div>
-        </dl>
 
         <nav aria-label="Mục lục" className="mt-8 rounded-2xl border border-outline-variant p-5">
           <h2 className="m-0 text-sm font-bold uppercase tracking-wide text-on-surface-variant">

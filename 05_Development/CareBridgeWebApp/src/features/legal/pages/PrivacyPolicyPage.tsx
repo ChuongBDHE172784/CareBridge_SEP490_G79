@@ -338,8 +338,6 @@ export default function PrivacyPolicyPage() {
     <LegalPageLayout
       documentTitle="Chính sách bảo mật dữ liệu cá nhân"
       subtitle="CareBridge xử lý dữ liệu sức khỏe — thuộc nhóm dữ liệu cá nhân nhạy cảm theo pháp luật Việt Nam. Tài liệu này nêu rõ chúng tôi thu thập gì, dùng để làm gì, chia sẻ với ai, và bạn có những quyền nào."
-      effectiveDate="14/08/2026"
-      version="1.0"
       sections={sections}
     />
   );

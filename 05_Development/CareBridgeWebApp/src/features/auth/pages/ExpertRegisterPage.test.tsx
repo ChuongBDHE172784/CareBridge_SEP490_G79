@@ -108,29 +108,58 @@ describe('expert registration validation errors', () => {
       target: { value: 'Password1' },
     });
 
-    // Hồ sơ hợp lệ nhưng chưa chấp thuận: không được gọi API, vì chưa có căn cứ
-    // hợp pháp để xử lý dữ liệu cá nhân.
-    fireEvent.click(screen.getByRole('button', { name: 'Đăng ký ngay' }));
-
-    const consentError = await screen.findByText(
-      'Bạn cần đồng ý với Điều khoản sử dụng và Chính sách bảo mật để tiếp tục.',
-    );
-    expect(consentError.id).toBe('expert-register-terms-error');
+    // Hồ sơ hợp lệ nhưng chưa chấp thuận: nút phải bị khoá, bấm không có tác dụng.
+    const submitButton = screen.getByRole('button', { name: 'Đăng ký ngay' }) as HTMLButtonElement;
+    expect(submitButton.disabled).toBe(true);
+    fireEvent.click(submitButton);
     expect(harness.registerExpert).not.toHaveBeenCalled();
 
-    // Tích vào ô thì lỗi biến mất và yêu cầu được gửi đi.
+    // Tích vào ô thì nút mở khoá và yêu cầu được gửi đi.
     harness.registerExpert.mockResolvedValue({ userId: 'u-1', otpExpiresAt: null });
     fireEvent.click(screen.getByRole('checkbox'));
     await waitFor(() => {
-      expect(
-        screen.queryByText('Bạn cần đồng ý với Điều khoản sử dụng và Chính sách bảo mật để tiếp tục.'),
-      ).toBeNull();
+      const enabled = screen.getByRole('button', { name: 'Đăng ký ngay' }) as HTMLButtonElement;
+      expect(enabled.disabled).toBe(false);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Đăng ký ngay' }));
     await waitFor(() => {
       expect(harness.registerExpert).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('still refuses a form submitted without consent by pressing Enter', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <ExpertRegisterPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Họ và tên *'), {
+      target: { value: 'Bác sĩ Test' },
+    });
+    fireEvent.change(screen.getByLabelText('Email *'), {
+      target: { value: 'expert@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Số điện thoại *'), {
+      target: { value: '+84912345678' },
+    });
+    fireEvent.change(screen.getByLabelText('Mật khẩu *'), {
+      target: { value: 'Password1' },
+    });
+    fireEvent.change(screen.getByLabelText('Nhập lại mật khẩu *'), {
+      target: { value: 'Password1' },
+    });
+
+    // Nút bị khoá vẫn không chặn được việc gửi form bằng phím Enter trong ô nhập,
+    // nên lớp kiểm tra trong submit() phải tự đứng vững.
+    fireEvent.submit(container.querySelector('form')!);
+
+    const consentError = await screen.findByText(
+      'Bạn cần đồng ý với Điều khoản sử dụng và Chính sách bảo mật để tiếp tục.',
+    );
+    expect(consentError.id).toBe('expert-register-terms-error');
+    expect(harness.registerExpert).not.toHaveBeenCalled();
   });
 
   it('points the consent links at the public legal pages', () => {

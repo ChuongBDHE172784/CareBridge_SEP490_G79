@@ -228,8 +228,6 @@ export default function TermsOfServicePage() {
     <LegalPageLayout
       documentTitle="Điều khoản sử dụng"
       subtitle="Điều kiện áp dụng khi bạn đăng ký và sử dụng CareBridge với tư cách chuyên gia y tế hoặc người dùng."
-      effectiveDate="16/08/2026"
-      version="1.0"
       sections={sections}
     />
   );

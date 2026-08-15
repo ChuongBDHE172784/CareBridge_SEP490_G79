@@ -225,9 +225,11 @@ export default function ExpertRegisterPage() {
               )}
             </div>
 
-            <button 
-              className="group mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-on-primary shadow-lg shadow-primary/25 transition-all duration-300 hover:bg-on-primary-fixed-variant hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none" 
-              disabled={submitting}
+            <button
+              className="group mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-on-primary shadow-lg shadow-primary/25 transition-all duration-300 hover:bg-on-primary-fixed-variant hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
+              // Khoá hẳn nút khi chưa chấp thuận. Kiểm tra trong submit() vẫn giữ
+              // nguyên vì phím Enter trong ô nhập vẫn gửi form được dù nút bị khoá.
+              disabled={submitting || !acceptedTerms}
             >
               {submitting ? 'Đang xử lý...' : 'Đăng ký ngay'}
               {!submitting && <ArrowRight size={19} className="transition-transform group-hover:translate-x-1" />}
