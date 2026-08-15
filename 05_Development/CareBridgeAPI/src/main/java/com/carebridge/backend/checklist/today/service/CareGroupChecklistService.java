@@ -13,6 +13,7 @@ import com.carebridge.backend.checklist.today.dto.CurrentChecklistTaskResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCounts;
 import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskSections;
+import com.carebridge.backend.checklist.today.dto.TodayTasksResponse;
 import com.carebridge.backend.checklist.today.dto.CurrentChecklistActionResponse;
 import com.carebridge.backend.checklist.today.dto.TaskActionRequest;
 import com.carebridge.backend.checklist.today.dto.TaskActionResponse;
@@ -94,32 +95,31 @@ public class CareGroupChecklistService {
     public CurrentChecklistResponse getCurrentTasks(
             UUID actorUserId, UUID careGroupId, LocalDate date, String timezoneHeader) {
         CareGroupChecklistScope scope = requireView(actorUserId, careGroupId);
-        boolean canComplete = (lockScope
-                ? scopeResolver.resolveCompleteForUpdate(actorUserId, careGroupId)
-                : scopeResolver.resolveComplete(actorUserId, careGroupId)) != null;
-        // Family current is sourced from the actor's own materialized rows.  A
-        // Mother-owned row has no member/epoch snapshot and must never be
-        // adopted by this route as a writable (or Family-current) projection.
-        var familyResponse = unifiedTodayTaskService.getTodayTasks(
-                actorUserId, date, timezoneHeader, Set.of(TaskKind.CHECKLIST), false);
-        TodayTaskSections familySections = familyResponse.sections();
-        List<CurrentChecklistTaskResponse> personalTasks = mapPersonalTasks(
-                actorUserId, scope, canComplete);
-        List<CurrentChecklistTaskResponse> unscheduled = new ArrayList<>(
-                map(familySections.unscheduled(), scope, canComplete));
-        unscheduled.addAll(personalTasks);
+        // Mother-owned tasks (both SYSTEM_TEMPLATE and USER_CREATED) are queried using
+        // the care group owner's userId so that suggestions and personal tasks are synced.
+        UUID motherUserId = scope.ownerUserId();
+        TodayTasksResponse motherResponse = unifiedTodayTaskService.getTodayTasks(
+                motherUserId, date, timezoneHeader, Set.of(TaskKind.CHECKLIST), false);
+        TodayTaskSections motherSections = motherResponse.sections();
+
+        List<CurrentChecklistTaskResponse> overdue = mapTasks(motherSections.overdue(), scope);
+        List<CurrentChecklistTaskResponse> today = mapTasks(motherSections.today(), scope);
+        List<CurrentChecklistTaskResponse> upcoming = mapTasks(motherSections.upcoming(), scope);
+        List<CurrentChecklistTaskResponse> unscheduled = new ArrayList<>(mapTasks(motherSections.unscheduled(), scope));
+
+        // In addition, include any personal tasks created by the family member themselves
+        List<CurrentChecklistTaskResponse> memberPersonalTasks = mapMemberPersonalTasks(actorUserId, scope);
+        unscheduled.addAll(memberPersonalTasks);
+
         CurrentChecklistSections sections = new CurrentChecklistSections(
-                map(familySections.overdue(), scope, canComplete),
-                map(familySections.today(), scope, canComplete),
-                map(familySections.upcoming(), scope, canComplete),
-                List.copyOf(unscheduled));
+                overdue, today, upcoming, List.copyOf(unscheduled));
         requireSameScope(actorUserId, careGroupId, scope);
         TodayTaskCounts counts = new TodayTaskCounts(
                 sections.overdue().size(), sections.today().size(),
                 sections.upcoming().size(), sections.unscheduled().size());
         return new CurrentChecklistResponse(
-                familyResponse.asOf(), familyResponse.zoneId(), familyResponse.horizonDays(),
-                sections, counts, familyResponse.correlationId(), null);
+                motherResponse.asOf(), motherResponse.zoneId(), motherResponse.horizonDays(),
+                sections, counts, motherResponse.correlationId(), null);
     }
 
     private CareGroupChecklistScope requireView(UUID actorUserId, UUID careGroupId) {
@@ -133,65 +133,60 @@ public class CareGroupChecklistService {
         return scope;
     }
 
-    private static List<CurrentChecklistTaskResponse> map(
+    private static List<CurrentChecklistTaskResponse> mapTasks(
             List<TodayTaskItemResponse> items,
-            CareGroupChecklistScope scope,
-            boolean canComplete) {
+            CareGroupChecklistScope scope) {
         return items.stream()
-                .filter(item -> item.origin() == ChecklistOrigin.SYSTEM_TEMPLATE)
-                .filter(item -> scope.careGroupId().equals(item.careGroupId()))
-                .filter(item -> scope.includes(item.careContextType(), item.careContextId()))
+                .filter(item -> isTaskInCareGroupScope(item, scope))
                 .map(item -> new CurrentChecklistTaskResponse(
                         item.taskId(), item.instanceId(), item.templateVersionId(),
-                        item.careGroupId(), item.careContextType(), item.careContextId(),
+                        scope.careGroupId(), item.careContextType(), item.careContextId(),
                         scope.careGroupLabel(), item.careContextLabel(), item.title(),
                         item.targetSubject(), item.origin(), item.status(), item.timeBucket(),
-                canComplete ? item.allowedActions() : java.util.Set.of(), item.dueAt(),
-                item.description(), item.supportFunction()))
+                        Set.of(), // Family cannot tick mother's tasks!
+                        item.dueAt(),
+                        item.description(), item.supportFunction()))
                 .toList();
     }
 
-    /** Projects the selected member's private FAMILY USER_CREATED tasks AND Mother's shared USER_CREATED tasks. */
-    private List<CurrentChecklistTaskResponse> mapPersonalTasks(
-            UUID actorUserId, CareGroupChecklistScope scope, boolean canComplete) {
+    private static boolean isTaskInCareGroupScope(
+            TodayTaskItemResponse item,
+            CareGroupChecklistScope scope) {
+        if (item.careGroupId() != null && !scope.careGroupId().equals(item.careGroupId())) {
+            return false;
+        }
+        if (item.careContextType() != null && item.careContextId() != null) {
+            return scope.includes(item.careContextType(), item.careContextId());
+        }
+        return true;
+    }
+
+    /** Projects the selected member's private FAMILY USER_CREATED tasks. */
+    private List<CurrentChecklistTaskResponse> mapMemberPersonalTasks(
+            UUID actorUserId, CareGroupChecklistScope scope) {
         if (instanceRepository == null || taskRepository == null) {
             return List.of();
         }
-        // 1. Family member's own user-created tasks
+        // Family member's own user-created tasks in this care group
         List<ChecklistInstance> memberParents = instanceRepository
                 .findByRecipientUserIdAndHistoricalAtIsNull(actorUserId).stream()
                 .filter(instance -> instance.getRecipientRole() == ChecklistRecipientRole.FAMILY)
                 .filter(instance -> instance.getOrigin() == ChecklistOrigin.USER_CREATED)
                 .filter(instance -> scope.careGroupId().equals(instance.getCareGroupId()))
                 .filter(instance -> instance.getStatus() != com.carebridge.backend.checklist.model.ChecklistInstanceStatus.CANCELLED)
-                .filter(instance -> scope.includes(instance.getCareContextType(), instance.getCareContextId()))
+                .filter(instance -> instance.getCareContextId() == null || scope.includes(instance.getCareContextType(), instance.getCareContextId()))
                 .toList();
 
-        // 2. Mother's shared user-created tasks
-        List<ChecklistInstance> motherParents = scope.ownerUserId() == null
-                ? List.of()
-                : instanceRepository
-                        .findByRecipientUserIdAndHistoricalAtIsNull(scope.ownerUserId()).stream()
-                        .filter(instance -> instance.getRecipientRole() == ChecklistRecipientRole.MOTHER)
-                        .filter(instance -> instance.getOrigin() == ChecklistOrigin.USER_CREATED)
-                        .filter(instance -> instance.getStatus() != com.carebridge.backend.checklist.model.ChecklistInstanceStatus.CANCELLED)
-                        .filter(instance -> scope.includes(instance.getCareContextType(), instance.getCareContextId()))
-                        .toList();
-
-        List<ChecklistInstance> allParents = new ArrayList<>(memberParents);
-        allParents.addAll(motherParents);
-        if (allParents.isEmpty()) {
+        if (memberParents.isEmpty()) {
             return List.of();
         }
-        Map<UUID, ChecklistInstance> parentsById = allParents.stream()
+        Map<UUID, ChecklistInstance> parentsById = memberParents.stream()
                 .collect(Collectors.toMap(ChecklistInstance::getId, value -> value, (a, b) -> a));
         return taskRepository.findAllByChecklistInstanceIds(parentsById.keySet().stream().toList()).stream()
                 .filter(task -> task.getStatus() != ChecklistTaskStatus.CANCELLED)
                 .map(task -> {
                     ChecklistInstance parent = parentsById.get(task.getChecklistInstanceId());
-                    boolean isOwn = parent.getRecipientUserId() != null
-                            && parent.getRecipientUserId().equals(actorUserId);
-                    return personalTaskResponse(parent, task, scope, isOwn || canComplete);
+                    return personalTaskResponse(parent, task, scope, true);
                 })
                 .toList();
     }

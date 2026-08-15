@@ -6,18 +6,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.carebridge.backend.checklist.entity.ChecklistInstance;
-import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
-import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
-import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
-import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.today.dto.CurrentChecklistResponse;
 import com.carebridge.backend.checklist.today.dto.CurrentChecklistTaskResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCounts;
+import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskSections;
 import com.carebridge.backend.checklist.today.dto.TodayTasksResponse;
 import com.carebridge.backend.checklist.today.model.TaskAction;
@@ -71,110 +67,108 @@ class CareGroupMotherPersonalChecklistTest {
     }
 
     @Test
-    void projectsMotherPersonalTasksWhenFamilyHasChecklistViewOnly() {
+    void projectsMotherSystemAndPersonalTasksWithSyncedStatusAndNoActionsForFamily() {
         when(scopeResolver.resolveView(FAMILY_ID, GROUP_ID)).thenReturn(scope);
-        when(scopeResolver.resolveComplete(FAMILY_ID, GROUP_ID)).thenReturn(null); // view only
 
-        TodayTasksResponse emptyFamilyResponse = new TodayTasksResponse(
+        UUID systemTaskId = UUID.randomUUID();
+        UUID personalTaskId = UUID.randomUUID();
+
+        TodayTaskItemResponse systemTask = new TodayTaskItemResponse(
+                com.carebridge.backend.checklist.today.model.TaskKind.CHECKLIST,
+                systemTaskId, UUID.randomUUID(), UUID.randomUUID(),
+                null, ChecklistCareContextType.JOURNEY, JOURNEY_ID,
+                "Family Care Group", "Thai kỳ 12 tuần",
+                "Uống vitamin và axit folic",
+                com.carebridge.backend.checklist.model.ChecklistTargetSubject.MOTHER,
+                ChecklistOrigin.SYSTEM_TEMPLATE,
+                "COMPLETED",
+                com.carebridge.backend.checklist.today.model.TaskTimeBucket.TODAY,
+                java.util.Set.of(TaskAction.REOPEN),
+                Instant.now(), null, "Mô tả bổ sung vitamin", null, null, null);
+
+        TodayTaskItemResponse personalTask = new TodayTaskItemResponse(
+                com.carebridge.backend.checklist.today.model.TaskKind.CHECKLIST,
+                personalTaskId, UUID.randomUUID(), null,
+                null, ChecklistCareContextType.JOURNEY, JOURNEY_ID,
+                "Family Care Group", null,
+                "Mua sữa bầu dinh dưỡng",
+                com.carebridge.backend.checklist.model.ChecklistTargetSubject.MOTHER,
+                ChecklistOrigin.USER_CREATED,
+                "PENDING",
+                com.carebridge.backend.checklist.today.model.TaskTimeBucket.TODAY,
+                java.util.Set.of(TaskAction.COMPLETE),
+                Instant.now(), null, "Hộp 800g tại siêu thị", null, null, null);
+
+        TodayTasksResponse motherResponse = new TodayTasksResponse(
                 Instant.now(), "Asia/Ho_Chi_Minh", 7,
-                new TodayTaskSections(List.of(), List.of(), List.of(), List.of()),
-                new TodayTaskCounts(0, 0, 0, 0), UUID.randomUUID(), null);
-        when(unifiedTodayTaskService.getTodayTasks(eq(FAMILY_ID), any(), any(), any(), eq(false)))
-                .thenReturn(emptyFamilyResponse);
+                new TodayTaskSections(List.of(), List.of(systemTask, personalTask), List.of(), List.of()),
+                new TodayTaskCounts(0, 2, 0, 0), UUID.randomUUID(), null);
 
-        // Mother has a user-created task for this journey
-        UUID motherInstanceId = UUID.randomUUID();
-        ChecklistInstance motherInstance = ChecklistInstance.builder()
-                .id(motherInstanceId)
-                .recipientUserId(MOTHER_ID)
-                .contextOwnerUserId(MOTHER_ID)
-                .recipientRole(ChecklistRecipientRole.MOTHER)
-                .origin(ChecklistOrigin.USER_CREATED)
-                .careContextType(ChecklistCareContextType.JOURNEY)
-                .careContextId(JOURNEY_ID)
-                .status(ChecklistInstanceStatus.IN_PROGRESS)
-                .build();
-
-        UUID motherTaskId = UUID.randomUUID();
-        ChecklistTaskInstance motherTask = ChecklistTaskInstance.builder()
-                .id(motherTaskId)
-                .checklistInstanceId(motherInstanceId)
-                .titleSnapshot("Mua sữa bầu dinh dưỡng")
-                .descriptionSnapshot("Hộp 800g tại siêu thị")
-                .status(ChecklistTaskStatus.PENDING)
-                .build();
-
-        when(instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(MOTHER_ID))
-                .thenReturn(List.of(motherInstance));
+        when(unifiedTodayTaskService.getTodayTasks(eq(MOTHER_ID), any(), any(), any(), eq(false)))
+                .thenReturn(motherResponse);
         when(instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(FAMILY_ID))
                 .thenReturn(List.of());
-        when(taskRepository.findAllByChecklistInstanceIds(List.of(motherInstanceId)))
-                .thenReturn(List.of(motherTask));
 
         CurrentChecklistResponse response = service.getCurrentTasks(
                 FAMILY_ID, GROUP_ID, LocalDate.now(), "Asia/Ho_Chi_Minh");
 
         assertThat(response).isNotNull();
-        List<CurrentChecklistTaskResponse> unscheduled = response.sections().unscheduled();
-        assertThat(unscheduled).hasSize(1);
+        List<CurrentChecklistTaskResponse> todayTasks = response.sections().today();
+        assertThat(todayTasks).hasSize(2);
 
-        CurrentChecklistTaskResponse projected = unscheduled.get(0);
-        assertThat(projected.taskId()).isEqualTo(motherTaskId);
-        assertThat(projected.title()).isEqualTo("Mua sữa bầu dinh dưỡng");
-        assertThat(projected.origin()).isEqualTo(ChecklistOrigin.USER_CREATED);
-        // View-only family member should have no actions on mother's task
-        assertThat(projected.allowedActions()).isEmpty();
+        CurrentChecklistTaskResponse projectedSystem = todayTasks.stream()
+                .filter(t -> t.taskId().equals(systemTaskId))
+                .findFirst().orElseThrow();
+        assertThat(projectedSystem.title()).isEqualTo("Uống vitamin và axit folic");
+        assertThat(projectedSystem.origin()).isEqualTo(ChecklistOrigin.SYSTEM_TEMPLATE);
+        assertThat(projectedSystem.status()).isEqualTo("COMPLETED");
+        // Family cannot tick or modify mother's system task
+        assertThat(projectedSystem.allowedActions()).isEmpty();
+
+        CurrentChecklistTaskResponse projectedPersonal = todayTasks.stream()
+                .filter(t -> t.taskId().equals(personalTaskId))
+                .findFirst().orElseThrow();
+        assertThat(projectedPersonal.title()).isEqualTo("Mua sữa bầu dinh dưỡng");
+        assertThat(projectedPersonal.origin()).isEqualTo(ChecklistOrigin.USER_CREATED);
+        assertThat(projectedPersonal.status()).isEqualTo("PENDING");
+        // Family cannot tick or modify mother's personal task
+        assertThat(projectedPersonal.allowedActions()).isEmpty();
     }
 
     @Test
-    void allowsCompletionOnMotherPersonalTaskWhenFamilyHasChecklistComplete() {
+    void filtersOutMotherTasksOutsideCareGroupScope() {
         when(scopeResolver.resolveView(FAMILY_ID, GROUP_ID)).thenReturn(scope);
-        when(scopeResolver.resolveComplete(FAMILY_ID, GROUP_ID)).thenReturn(scope); // has complete grant
 
-        TodayTasksResponse emptyFamilyResponse = new TodayTasksResponse(
+        UUID otherJourneyId = UUID.randomUUID();
+        UUID otherTaskId = UUID.randomUUID();
+
+        TodayTaskItemResponse otherTask = new TodayTaskItemResponse(
+                com.carebridge.backend.checklist.today.model.TaskKind.CHECKLIST,
+                otherTaskId, UUID.randomUUID(), UUID.randomUUID(),
+                null, ChecklistCareContextType.JOURNEY, otherJourneyId,
+                "Other Care Group", "Khác",
+                "Việc không thuộc nhóm này",
+                com.carebridge.backend.checklist.model.ChecklistTargetSubject.MOTHER,
+                ChecklistOrigin.SYSTEM_TEMPLATE,
+                "PENDING",
+                com.carebridge.backend.checklist.today.model.TaskTimeBucket.TODAY,
+                java.util.Set.of(TaskAction.COMPLETE),
+                Instant.now(), null, "Mô tả", null, null, null);
+
+        TodayTasksResponse motherResponse = new TodayTasksResponse(
                 Instant.now(), "Asia/Ho_Chi_Minh", 7,
-                new TodayTaskSections(List.of(), List.of(), List.of(), List.of()),
-                new TodayTaskCounts(0, 0, 0, 0), UUID.randomUUID(), null);
-        when(unifiedTodayTaskService.getTodayTasks(eq(FAMILY_ID), any(), any(), any(), eq(false)))
-                .thenReturn(emptyFamilyResponse);
+                new TodayTaskSections(List.of(), List.of(otherTask), List.of(), List.of()),
+                new TodayTaskCounts(0, 1, 0, 0), UUID.randomUUID(), null);
 
-        UUID motherInstanceId = UUID.randomUUID();
-        ChecklistInstance motherInstance = ChecklistInstance.builder()
-                .id(motherInstanceId)
-                .recipientUserId(MOTHER_ID)
-                .contextOwnerUserId(MOTHER_ID)
-                .recipientRole(ChecklistRecipientRole.MOTHER)
-                .origin(ChecklistOrigin.USER_CREATED)
-                .careContextType(ChecklistCareContextType.JOURNEY)
-                .careContextId(JOURNEY_ID)
-                .status(ChecklistInstanceStatus.IN_PROGRESS)
-                .build();
-
-        UUID motherTaskId = UUID.randomUUID();
-        ChecklistTaskInstance motherTask = ChecklistTaskInstance.builder()
-                .id(motherTaskId)
-                .checklistInstanceId(motherInstanceId)
-                .titleSnapshot("Chuẩn bị giỏ đồ đi sinh")
-                .status(ChecklistTaskStatus.PENDING)
-                .build();
-
-        when(instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(MOTHER_ID))
-                .thenReturn(List.of(motherInstance));
+        when(unifiedTodayTaskService.getTodayTasks(eq(MOTHER_ID), any(), any(), any(), eq(false)))
+                .thenReturn(motherResponse);
         when(instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(FAMILY_ID))
                 .thenReturn(List.of());
-        when(taskRepository.findAllByChecklistInstanceIds(List.of(motherInstanceId)))
-                .thenReturn(List.of(motherTask));
 
         CurrentChecklistResponse response = service.getCurrentTasks(
                 FAMILY_ID, GROUP_ID, LocalDate.now(), "Asia/Ho_Chi_Minh");
 
         assertThat(response).isNotNull();
-        List<CurrentChecklistTaskResponse> unscheduled = response.sections().unscheduled();
-        assertThat(unscheduled).hasSize(1);
-
-        CurrentChecklistTaskResponse projected = unscheduled.get(0);
-        assertThat(projected.taskId()).isEqualTo(motherTaskId);
-        // Family member with complete permission can complete mother's pending personal task
-        assertThat(projected.allowedActions()).contains(TaskAction.COMPLETE);
+        assertThat(response.sections().today()).isEmpty();
     }
 }
