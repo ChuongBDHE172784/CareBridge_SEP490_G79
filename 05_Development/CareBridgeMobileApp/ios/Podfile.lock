@@ -1502,6 +1502,9 @@ PODS:
     - Trackasia (= 2.0.3)
   - url_launcher_ios (0.0.1):
     - Flutter
+  - video_player_avfoundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - zego_express_engine (3.24.1):
     - Flutter
 
@@ -1526,6 +1529,7 @@ DEPENDENCIES:
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - trackasia_gl (from `.symlinks/plugins/trackasia_gl/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
   - zego_express_engine (from `.symlinks/plugins/zego_express_engine/ios`)
 
 SPEC REPOS:
@@ -1606,6 +1610,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/trackasia_gl/ios"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
+  video_player_avfoundation:
+    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
   zego_express_engine:
     :path: ".symlinks/plugins/zego_express_engine/ios"
 
@@ -1663,6 +1669,7 @@ SPEC CHECKSUMS:
   Trackasia: 8e0e885ade38efd0193dbabb9c2a942918951d3a
   trackasia_gl: f3a519396cdb45afbf0e6ebe943f8ea5aea918fa
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
+  video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
   zego_express_engine: c5bb7c034b0618cecf84b109b8c5329fc73bc3a3
 
 PODFILE CHECKSUM: f6e29f41417aadc26cd7e663d7bb1c54042afb86
