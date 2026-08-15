@@ -64,7 +64,15 @@ def test_response_hotlines_always_exactly_four_and_whitelisted():
     assert response.hotlines[0].number == "115"
 
 
-def test_consent_true_with_latlng_returns_snapshot_id():
+def test_consent_true_with_latlng_reports_no_snapshot_until_one_is_stored():
+    """No store, no id.
+
+    The spec asked for an identifier here. Returning one while nothing is written would tell the
+    caller a snapshot exists that it can refer to later, and the Java boundary persists request
+    state — it would be holding a dangling reference to health-adjacent data. Null until a
+    `location_snapshots` table and its retention policy exist; the ranking below still works.
+    """
+
     response = build_response(
         _request(
             consentGiven=True,
@@ -75,9 +83,9 @@ def test_consent_true_with_latlng_returns_snapshot_id():
         )
     )
 
-    assert response.snapshotId is not None
-    assert len(response.snapshotId) == 32
-    assert all(character in "0123456789abcdef" for character in response.snapshotId)
+    assert response.snapshotId is None
+    assert response.facilities, "consent plus a position must still rank nearby hospitals"
+    assert all(facility.distanceKm is not None for facility in response.facilities)
 
 
 def test_consent_false_returns_none_snapshot_id():
@@ -85,6 +93,24 @@ def test_consent_false_returns_none_snapshot_id():
 
     assert response.snapshotId is None
     assert "không chia sẻ vị trí" in response.disclaimer
+
+
+def test_declining_location_still_returns_the_hospital_list():
+    """Declining must not cost the caller the list itself, only the distance ordering.
+
+    These are national referral hospitals with public addresses; none of that needs a position.
+    Returning nothing here while consent returned three would make the private choice the
+    expensive one.
+    """
+
+    declined = build_response(_request(consentGiven=False))
+    shared = build_response(
+        _request(consentGiven=True, latitude=_HANOI_LAT, longitude=_HANOI_LNG)
+    )
+
+    assert declined.facilities, "declining location must still list hospitals"
+    assert len(declined.facilities) >= len(shared.facilities)
+    assert all(facility.distanceKm is None for facility in declined.facilities)
 
 
 def test_unverified_facility_phone_is_null():
@@ -101,9 +127,44 @@ def test_unverified_facility_phone_is_null():
     )
 
 
-def test_empty_verified_facility_returns_115_in_disclaimer():
+def test_no_verified_facility_yet():
+    """Every seeded hospital is still PENDING, which is why no phone is ever rendered."""
+
     assert load_verified_facilities() == []
 
+
+@pytest.mark.parametrize(
+    "latitude, longitude",
+    [
+        (Decimal("16.047"), Decimal("108.206")),   # Đà Nẵng
+        (Decimal("10.045"), Decimal("105.746")),   # Cần Thơ
+        (Decimal("12.680"), Decimal("108.038")),   # Buôn Ma Thuột
+    ],
+)
+def test_a_city_with_nothing_seeded_nearby_still_gets_the_national_list(latitude, longitude):
+    """Sharing a location must never return less than withholding it.
+
+    The seed covers Hà Nội and TP.HCM. Everywhere else has nothing inside the radius, and an
+    empty screen is the worst possible answer to someone who has just pressed an emergency
+    button — so the national referral list stands in, without distances.
+    """
+
+    response = build_response(
+        _request(consentGiven=True, latitude=latitude, longitude=longitude)
+    )
+
+    assert response.facilities, "an out-of-range city must not get an empty list"
+    assert all(facility.distanceKm is None for facility in response.facilities)
+    assert len(response.hotlines) == 4
+
+
+def test_115_is_named_when_the_seed_cannot_be_read(monkeypatch):
+    """The only path that legitimately yields no hospitals: the seed itself failed to load."""
+
+    import app.services.emergency_support_service as service
+
+    monkeypatch.setattr(service, "load_facilities", lambda: [])
+    monkeypatch.setattr(service, "load_verified_facilities", lambda: [])
     response = build_response(_request(consentGiven=False))
 
     assert response.facilities == []

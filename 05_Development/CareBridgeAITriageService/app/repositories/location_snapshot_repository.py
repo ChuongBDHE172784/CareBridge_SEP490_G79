@@ -24,12 +24,18 @@ def save_snapshot(
     accuracyMeters: Decimal | None = None,
     contextType: str | None = None,
     contextId: str | None = None,
-) -> str:
-    """Record a consented location snapshot and return its identifier.
+) -> str | None:
+    """Record a consented location snapshot and return its identifier, or ``None``.
 
-    Returns a fresh 32-character hex identifier. Coordinates are accepted and deliberately not
-    retained until the retention policy for this data is agreed — see the open items in the
-    MF07 report.
+    Returns ``None`` while there is nothing to record into. An earlier version minted a
+    ``uuid4().hex`` and returned it, which told the caller a snapshot existed and could be
+    referred to later; nothing was stored, so that reference pointed at nothing. A caller
+    persisting it — the Java boundary keeps request state — would have been holding a dangling
+    id for health-adjacent data.
+
+    The signature already returns what the real implementation will: once a
+    ``location_snapshots`` table exists and its retention policy is agreed, this returns the row
+    id and no other file changes.
     """
 
-    return uuid4().hex
+    return None

@@ -78,6 +78,19 @@ def _coordinate(value: object) -> Decimal | None:
         return None
 
 
+def _national_list() -> list[FacilityDto]:
+    """The seeded referral hospitals, unranked.
+
+    Used whenever distance cannot be applied — no position, or no position given consent, or a
+    position with nothing seeded near it. These are national referral hospitals with public
+    addresses, so nothing here depends on knowing where the caller is. The rule this enforces is
+    that neither declining to share a location nor being outside the seeded cities may leave
+    someone with an empty screen during an emergency.
+    """
+
+    return [_to_facility(raw, None) for raw in load_facilities()[:_MAX_FACILITIES]]
+
+
 def _nearby(latitude: Decimal, longitude: Decimal) -> list[FacilityDto]:
     scored: list[tuple[float, dict]] = []
     for raw in load_facilities():
@@ -112,12 +125,17 @@ def build_response(request: EmergencySupportRequest) -> EmergencySupportResponse
             contextId=request.contextId,
         )
         facilities = _nearby(request.latitude, request.longitude)
+        if not facilities:
+            # Nothing seeded within the radius. The seed covers Hà Nội and TP.HCM only, so this
+            # is every other city — and returning an empty list there would mean sharing a
+            # location got the caller less than withholding it, which is the same trap as the
+            # branch below, pointing the other way. Fall back to the national list, unsorted
+            # because there is nothing meaningful to sort by at that range.
+            facilities = _national_list()
     else:
         if not request.consentGiven:
             disclaimer += DISCLAIMER_NO_CONSENT_SUFFIX
-        facilities = [
-            _to_facility(raw, None) for raw in load_verified_facilities()[:_MAX_FACILITIES]
-        ]
+        facilities = _national_list()
 
     if not facilities:
         disclaimer += DISCLAIMER_EMPTY_FACILITIES_SUFFIX
