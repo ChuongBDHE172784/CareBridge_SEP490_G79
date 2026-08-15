@@ -73,35 +73,35 @@ class FallCandidate {
 }
 
 class ImuFallDetector {
-  static const double freeFallThreshold = 7.2;
-  static const double impactThreshold = 9.5;
-  static const double softLandingImpactThreshold = 8.5;
-  static const double minimumJerk = 40.0;
-  static const double minimumSoftFallJerk = 20.0;
+  static const double freeFallThreshold = 4.5;
+  static const double impactThreshold = 35.0;
+  static const double softLandingImpactThreshold = 22.0;
+  static const double minimumJerk = 80.0;
+  static const double minimumSoftFallJerk = 40.0;
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 2.0;
   static const double stationaryGyroscopeThreshold = 0.5;
-  static const double softLandingStationaryAccelerationTolerance = 2.8;
-  static const double softLandingStationaryGyroscopeThreshold = 0.9;
-  static const double cancellationGyroscopeThreshold = 1.5;
+  static const double softLandingStationaryAccelerationTolerance = 2.5;
+  static const double softLandingStationaryGyroscopeThreshold = 0.8;
+  static const double cancellationGyroscopeThreshold = 1.8;
   static const double strongMovementAccelerationDeviation = 6.0;
-  static const double softLandingCancellationGyroscopeThreshold = 2.5;
-  static const double softLandingStrongMovementAccelerationDeviation = 8.0;
+  static const double softLandingCancellationGyroscopeThreshold = 2.2;
+  static const double softLandingStrongMovementAccelerationDeviation = 7.5;
   static const double minimumStationaryRatio = 0.8;
   static const double minimumSoftLandingStationaryRatio = 0.6;
-  static const Duration minimumFreeFallDuration = Duration(milliseconds: 60);
+  static const Duration minimumFreeFallDuration = Duration(milliseconds: 350);
   static const Duration softFallQualificationDuration = Duration(
-    milliseconds: 60,
+    milliseconds: 350,
   );
-  static const Duration impactWindow = Duration(milliseconds: 1500);
+  static const Duration impactWindow = Duration(milliseconds: 1400);
   static const Duration impactSettlingGrace = Duration(milliseconds: 250);
   static const Duration maximumSettlingDuration = Duration(milliseconds: 2500);
   static const Duration maximumPostImpactSampleGap = Duration(
     milliseconds: 500,
   );
-  static const Duration immobilityWindow = Duration(seconds: 1);
+  static const Duration immobilityWindow = Duration(milliseconds: 1000);
   static const Duration softLandingImmobilityWindow = Duration(
-    milliseconds: 600,
+    milliseconds: 800,
   );
   static const Duration maximumGyroscopeAge = Duration(milliseconds: 200);
   static const Duration cooldown = Duration(seconds: 3);
@@ -145,9 +145,9 @@ class ImuFallDetector {
 
     return <ImuSample>[
       sample(Duration.zero, 2),
-      sample(const Duration(milliseconds: 100), 30, gyro: 0.2),
+      sample(const Duration(milliseconds: 400), 40, gyro: 0.2),
       for (var index = 1; index <= 5; index++)
-        sample(Duration(milliseconds: 100 + index * 200), gravity),
+        sample(Duration(milliseconds: 400 + index * 200), gravity),
     ];
   }
 

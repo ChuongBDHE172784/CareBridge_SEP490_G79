@@ -908,32 +908,32 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         }
       }
       if (route == null || route.steps.isEmpty) return;
+      final currentIndex = _currentStepIndex;
+      if (currentIndex + 1 < route.steps.length) {
+        final currentStep = route.steps[currentIndex];
+        final nextStep = route.steps[currentIndex + 1];
 
-      var nearestStepIndex = _currentStepIndex;
-      var nearestStepDistance = double.infinity;
-      for (var index = _currentStepIndex; index < route.steps.length; index++) {
-        final candidate = route.steps[index];
-        final distance = Geolocator.distanceBetween(
+        final distanceToEnd = Geolocator.distanceBetween(
           position.latitude,
           position.longitude,
-          candidate.latitude,
-          candidate.longitude,
+          nextStep.latitude,
+          nextStep.longitude,
         );
-        if (distance < nearestStepDistance) {
-          nearestStepDistance = distance;
-          nearestStepIndex = index;
+        final distanceFromStart = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          currentStep.latitude,
+          currentStep.longitude,
+        );
+
+        final reachedNextStep = distanceToEnd < 12 ||
+            (distanceToEnd < 28 &&
+                (distanceFromStart > 15 || currentStep.distanceMeters < 20));
+
+        if (reachedNextStep) {
+          setState(() => _currentStepIndex = currentIndex + 1);
+          await _speakCurrentStep();
         }
-      }
-      if (nearestStepIndex > _currentStepIndex) {
-        setState(() => _currentStepIndex = nearestStepIndex);
-        await _speakCurrentStep();
-      }
-      if (_currentStepIndex == route.steps.length - 1 &&
-          nearestStepDistance <= 35) {
-        final facilityName = _selected?.name ?? 'cơ sở y tế';
-        await _speak('Bạn đã đến nơi. $facilityName.');
-        await _stopNavigation();
-        return;
       }
       if (route.coordinates.isEmpty) {
         await _reroute(position);
@@ -1001,14 +1001,53 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     }
   }
 
+  CareRouteStep? get _activeUpcomingStep {
+    final route = _route;
+    if (route == null || route.steps.isEmpty) return null;
+    if (_currentStepIndex + 1 < route.steps.length) {
+      return route.steps[_currentStepIndex + 1];
+    }
+    return route.steps.last;
+  }
+
+  double get _distanceToUpcomingStep {
+    final pos = _position;
+    final route = _route;
+    if (pos == null || route == null || route.steps.isEmpty) return 0;
+    if (_currentStepIndex + 1 < route.steps.length) {
+      final nextStep = route.steps[_currentStepIndex + 1];
+      return Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        nextStep.latitude,
+        nextStep.longitude,
+      );
+    }
+    final sel = _selected;
+    if (sel != null && sel.hasCoordinates) {
+      return Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        sel.latitude!,
+        sel.longitude!,
+      );
+    }
+    return 0;
+  }
+
   Future<void> _speakCurrentStep({String prefix = ''}) async {
     if (!_voiceEnabled) return;
-    final route = _route;
-    if (route == null || route.steps.isEmpty) return;
-    final step =
-        route.steps[_currentStepIndex.clamp(0, route.steps.length - 1)];
-    final instruction = _formatStepInstruction(step);
-    await _speak('$prefix$instruction');
+    final target = _activeUpcomingStep;
+    if (target == null) return;
+    final dist = _formatStepDistance(_distanceToUpcomingStep);
+    final instruction = _formatStepInstruction(target);
+    await _speak('$prefix$dist, $instruction.');
+  }
+
+  String _formatStepDistance(double meters) {
+    if (meters < 20) return 'Trong vài mét';
+    if (meters < 1000) return 'Trong ${meters.round()}m';
+    return 'Sau ${(meters / 1000).toStringAsFixed(1)}km';
   }
 
   String _vietnameseManeuver(String maneuver) {
@@ -1548,10 +1587,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                               isArrived
                                   ? Icons.location_on_rounded
                                   : _stepManeuverIcon(
-                                      route.steps[_currentStepIndex.clamp(
-                                        0,
-                                        route.steps.length - 1,
-                                      )].maneuver,
+                                      _activeUpcomingStep?.maneuver ??
+                                          route.steps.first.maneuver,
                                     ),
                               color: const Color(0xFF845143),
                               size: 28,
@@ -1566,7 +1603,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                                 Text(
                                   isArrived
                                       ? 'Tại điểm đến'
-                                      : 'Trong ${route.steps[_currentStepIndex.clamp(0, route.steps.length - 1)].distanceMeters}m',
+                                      : _formatStepDistance(_distanceToUpcomingStep),
                                   style: const TextStyle(
                                     fontFamily: 'Lexend',
                                     color: Color(0xFF845143),
@@ -1577,12 +1614,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                                 Text(
                                   isArrived
                                       ? 'Bạn đang ở vị trí của ${_selected?.name ?? "cơ sở y tế"}'
-                                      : _formatStepInstruction(
-                                          route.steps[_currentStepIndex.clamp(
-                                            0,
-                                            route.steps.length - 1,
-                                          )],
-                                        ),
+                                      : _formatStepInstruction(_activeUpcomingStep),
                                   key: const Key('navigation-instruction'),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -2427,12 +2459,9 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
               const SizedBox(height: 8),
               Text(
                 () {
-                  final step =
-                      route!.steps[_currentStepIndex.clamp(
-                        0,
-                        route.steps.length - 1,
-                      )];
-                  return '${_vietnameseManeuver(step.maneuver)} · ${step.distanceMeters} m';
+                  final target = _activeUpcomingStep;
+                  if (target == null) return 'Tiếp tục đi thẳng';
+                  return '${_vietnameseManeuver(target.maneuver)} · ${_distanceToUpcomingStep.round()} m';
                 }(),
                 key: const Key('navigation-instruction'),
                 style: const TextStyle(

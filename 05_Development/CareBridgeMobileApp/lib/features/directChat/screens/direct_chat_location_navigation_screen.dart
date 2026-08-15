@@ -213,28 +213,37 @@ class _DirectChatLocationNavigationScreenState
 
     final steps = _route?.steps;
     if (steps == null || steps.isEmpty) return;
-    final nextIndex = _currentStepIndex;
-    if (nextIndex < steps.length) {
-      final step = steps[nextIndex];
-      final distance = Geolocator.distanceBetween(
+    final currentIndex = _currentStepIndex;
+    if (currentIndex + 1 < steps.length) {
+      final currentStep = steps[currentIndex];
+      final nextStep = steps[currentIndex + 1];
+
+      final distanceToEnd = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,
-        step.latitude,
-        step.longitude,
+        nextStep.latitude,
+        nextStep.longitude,
       );
-      if (distance < 25 && nextIndex + 1 < steps.length) {
-        _currentStepIndex = nextIndex + 1;
+      final distanceFromStart = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        currentStep.latitude,
+        currentStep.longitude,
+      );
+
+      // Advance only when user genuinely approaches and arrives at the next intersection
+      final reachedNextStep = distanceToEnd < 12 ||
+          (distanceToEnd < 28 &&
+              (distanceFromStart > 15 || currentStep.distanceMeters < 20));
+
+      if (reachedNextStep) {
+        _currentStepIndex = currentIndex + 1;
         if (_isNavigating) {
-          final nextStep = steps[_currentStepIndex];
-          final stepDist = Geolocator.distanceBetween(
-            position.latitude,
-            position.longitude,
-            nextStep.latitude,
-            nextStep.longitude,
-          );
+          final target = _activeUpcomingStep;
+          final stepDist = _distanceToUpcomingStep;
           unawaited(
             _speak(
-              '${_formatStepDistance(stepDist)}, ${_formatStepInstruction(nextStep)}.',
+              '${_formatStepDistance(stepDist)}, ${_formatStepInstruction(target)}.',
             ),
           );
         }
@@ -439,9 +448,9 @@ class _DirectChatLocationNavigationScreenState
     if (pos != null) {
       unawaited(_trackUserCamera(pos));
     }
-    final step = _currentStep;
-    final dist = _formatStepDistance(_distanceToCurrentStep);
-    final instruction = _formatStepInstruction(step);
+    final target = _activeUpcomingStep;
+    final dist = _formatStepDistance(_distanceToUpcomingStep);
+    final instruction = _formatStepInstruction(target);
     unawaited(_speak('Bắt đầu dẫn đường. $dist, $instruction.'));
   }
 
@@ -486,25 +495,30 @@ class _DirectChatLocationNavigationScreenState
     );
   }
 
-  CareRouteStep? get _currentStep {
+  CareRouteStep? get _activeUpcomingStep {
     final steps = _route?.steps;
     if (steps == null || steps.isEmpty) return null;
-    if (_currentStepIndex < steps.length) {
-      return steps[_currentStepIndex];
+    if (_currentStepIndex + 1 < steps.length) {
+      return steps[_currentStepIndex + 1];
     }
     return steps.last;
   }
 
-  double get _distanceToCurrentStep {
+  double get _distanceToUpcomingStep {
     final pos = _position;
-    final step = _currentStep;
-    if (pos == null || step == null) return 0;
-    return Geolocator.distanceBetween(
-      pos.latitude,
-      pos.longitude,
-      step.latitude,
-      step.longitude,
-    );
+    if (pos == null) return 0;
+    final steps = _route?.steps;
+    if (steps == null || steps.isEmpty) return 0;
+    if (_currentStepIndex + 1 < steps.length) {
+      final nextStep = steps[_currentStepIndex + 1];
+      return Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        nextStep.latitude,
+        nextStep.longitude,
+      );
+    }
+    return _distanceToDestination;
   }
 
   IconData _stepManeuverIcon(CareRouteStep? step) {
@@ -566,7 +580,7 @@ class _DirectChatLocationNavigationScreenState
   }
 
   String _formatStepDistance(double meters) {
-    if (meters < 30) return 'Trong vài mét';
+    if (meters < 20) return 'Trong vài mét';
     if (meters < 1000) return 'Trong ${meters.round()}m';
     return 'Sau ${(meters / 1000).toStringAsFixed(1)}km';
   }
@@ -575,8 +589,8 @@ class _DirectChatLocationNavigationScreenState
   Widget build(BuildContext context) {
     final route = _route;
     final isArrived = _distanceToDestination < 35;
-    final currentStep = isArrived ? null : _currentStep;
-    final stepDistance = isArrived ? 0.0 : _distanceToCurrentStep;
+    final currentStep = isArrived ? null : _activeUpcomingStep;
+    final stepDistance = isArrived ? 0.0 : _distanceToUpcomingStep;
 
     return Scaffold(
       backgroundColor: _background,

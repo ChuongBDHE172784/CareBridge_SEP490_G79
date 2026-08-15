@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
 
 /// CB-130 — Disable Fall Detection Confirmation (UC-135)
@@ -56,6 +57,7 @@ class _DisableFallDetectionSheetState
         sensorPermissionGranted: config.sensorPermissionGranted,
       );
       await service.disableFallDetection();
+      await SafetyForegroundServiceCoordinator.instance.stop();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {

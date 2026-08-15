@@ -7,6 +7,7 @@ import '../models/safety_config_model.dart';
 import '../services/safety_demo_mode.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
+import '../widgets/disable_fall_detection_sheet.dart';
 import '../widgets/safety_countdown_sheet.dart';
 import 'enable_fall_detection_screen.dart';
 import '../../emergency/services/emergency_service.dart';
@@ -835,18 +836,28 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _onFallDetectionToggle([bool? _]) async {
-    final activated = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
-    );
-    if (activated == true) await _load();
+    final currentlyEnabled = _config?.fallDetectionEnabled ?? false;
+    if (currentlyEnabled) {
+      final disabled = await showDisableFallDetectionSheet(context);
+      if (disabled == true) {
+        await _foregroundCoordinator.stop();
+        await _load();
+      }
+    } else {
+      final activated = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
+      );
+      if (activated == true) await _load();
+    }
   }
 
   Future<void> _onImuSensorToggle(bool enable) async {
     if (enable) {
       if (!(_config?.fallDetectionEnabled ?? false)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng bật phát hiện ngã trước')),
+        final activated = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
         );
+        if (activated == true) await _load();
         return;
       }
       await _load();
@@ -860,7 +871,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         );
       }
     } else {
-      await _foregroundCoordinator.stop();
+      final disabled = await showDisableFallDetectionSheet(context);
+      if (disabled == true) {
+        await _foregroundCoordinator.stop();
+        await _load();
+      }
     }
     if (mounted) {
       setState(() => _imuSensorActive = _foregroundCoordinator.isRunning);
