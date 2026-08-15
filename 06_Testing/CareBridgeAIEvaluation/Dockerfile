@@ -4,7 +4,8 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     GEMINI_ENABLED=false \
-    CAREBRIDGE_AI_SERVICE_PATH=/opt/carebridge/ai-service
+    CAREBRIDGE_AI_SERVICE_PATH=/opt/carebridge/ai-service \
+    PYTHONPATH=/opt/carebridge/ai-service:/opt/carebridge/evaluator/src
 
 WORKDIR /opt/carebridge/evaluator
 
