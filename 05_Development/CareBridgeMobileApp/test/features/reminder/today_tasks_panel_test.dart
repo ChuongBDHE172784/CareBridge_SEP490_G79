@@ -1020,4 +1020,110 @@ void main() {
     expect(getCount, 2);
     expect(find.text('User-added task'), findsNothing);
   });
+
+  testWidgets(
+    'family audience shows adaptive empty message when no personal tasks are shared',
+    (tester) async {
+      final envelope = {
+        'asOf': '2026-08-03T01:00:00Z',
+        'zoneId': 'Asia/Ho_Chi_Minh',
+        'horizonDays': 7,
+        'sections': {
+          'overdue': <Map<String, dynamic>>[],
+          'today': [
+            {
+              'taskKind': 'CHECKLIST',
+              'taskId': 'sys-1',
+              'title': 'Hệ thống CareBridge',
+              'origin': 'SYSTEM_TEMPLATE',
+              'targetSubject': 'MOTHER',
+              'status': 'PENDING',
+              'timeBucket': 'TODAY',
+              'allowedActions': ['COMPLETE'],
+            },
+          ],
+          'upcoming': <Map<String, dynamic>>[],
+          'unscheduled': <Map<String, dynamic>>[],
+        },
+        'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
+        'correlationId': 'family-empty-user-tab',
+      };
+
+      await tester.pumpWidget(
+        _wrap(
+          TodayTasksPanel(
+            service: _service(() async => {'data': envelope}),
+            audience: TodayTasksAudience.family,
+            layout: TodayTasksLayout.sourceGroups,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on "Việc cá nhân" tab
+      await tester.tap(find.text('Việc cá nhân'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Chưa có việc cá nhân nào được chia sẻ.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Bạn chưa tạo công việc cá nhân nào.'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'family audience renders shared mother personal tasks in user tasks tab',
+    (tester) async {
+      final envelope = {
+        'asOf': '2026-08-03T01:00:00Z',
+        'zoneId': 'Asia/Ho_Chi_Minh',
+        'horizonDays': 7,
+        'sections': {
+          'overdue': <Map<String, dynamic>>[],
+          'today': <Map<String, dynamic>>[],
+          'upcoming': <Map<String, dynamic>>[],
+          'unscheduled': [
+            {
+              'taskKind': 'CHECKLIST',
+              'taskId': 'mother-personal-1',
+              'title': 'Mua sữa bầu cho Mẹ',
+              'origin': 'USER_CREATED',
+              'targetSubject': 'MOTHER',
+              'status': 'PENDING',
+              'timeBucket': 'UNSCHEDULED',
+              'allowedActions': <String>[],
+            },
+          ],
+        },
+        'counts': {'overdue': 0, 'today': 0, 'upcoming': 0, 'unscheduled': 1},
+        'correlationId': 'family-mother-personal-tab',
+      };
+
+      await tester.pumpWidget(
+        _wrap(
+          TodayTasksPanel(
+            service: _service(() async => {'data': envelope}),
+            audience: TodayTasksAudience.family,
+            layout: TodayTasksLayout.sourceGroups,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on "Việc cá nhân" tab
+      await tester.tap(find.text('Việc cá nhân'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mua sữa bầu cho Mẹ'), findsOneWidget);
+      // Family cannot delete mother's personal task
+      expect(
+        find.byKey(const Key('delete-task-mother-personal-1')),
+        findsNothing,
+      );
+    },
+  );
 }

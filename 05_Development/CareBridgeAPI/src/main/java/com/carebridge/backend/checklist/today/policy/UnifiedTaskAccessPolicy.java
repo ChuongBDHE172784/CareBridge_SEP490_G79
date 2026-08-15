@@ -72,7 +72,7 @@ public class UnifiedTaskAccessPolicy {
                     && hasCurrentGroupContext(instance, careGroupId)
                     && hasCurrentAccessEpoch(instance, actorUserId);
         }
-        if (!isCanonicalMotherInstance(instance)) {
+        if (!isCanonicalMotherInstance(instance) && !isSharedMotherUserCreatedInstance(instance)) {
             return false;
         }
         if (careGroupId == null || actorUserId == null
@@ -140,6 +140,16 @@ public class UnifiedTaskAccessPolicy {
                 && instance.getRecipientUserId().equals(instance.getContextOwnerUserId())
                 && instance.getCareGroupId() == null
                 && instance.getOrigin() == com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+                && instance.getCareContextType() != null
+                && instance.getCareContextId() != null;
+    }
+
+    private static boolean isSharedMotherUserCreatedInstance(ChecklistInstance instance) {
+        return instance != null
+                && instance.getRecipientRole() == ChecklistRecipientRole.MOTHER
+                && instance.getRecipientUserId() != null
+                && instance.getRecipientUserId().equals(instance.getContextOwnerUserId())
+                && instance.getOrigin() == com.carebridge.backend.checklist.model.ChecklistOrigin.USER_CREATED
                 && instance.getCareContextType() != null
                 && instance.getCareContextId() != null;
     }

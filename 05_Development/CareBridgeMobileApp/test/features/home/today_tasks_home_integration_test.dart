@@ -190,4 +190,91 @@ void main() {
       expect(todayLoads, afterRefresh);
     },
   );
+
+  testWidgets(
+    'Family Home displays friendly notice when mother has not granted checklistView permission',
+    (tester) async {
+      final service = _service();
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final snapshotNoPermission = FamilyHomeSnapshot(
+        groups: [
+          FamilyHomeGroup(
+            id: 'group-1',
+            name: 'Nhà mình',
+            joinedAt: DateTime(2026, 1, 1),
+            lastActivityAt: DateTime(2026, 8, 1),
+            relationshipRole: 'HUSBAND',
+            customRelationshipRole: null,
+            permissionScope: const FamilyHomePermission(
+              calendar: true,
+              logs: true,
+              alerts: true,
+              checklistView: false,
+              records: true,
+            ),
+            aggregate: const FamilyHomeAggregate(
+              overdue: 0,
+              dueSoon: 0,
+              inProgress: 0,
+              alerts: 0,
+            ),
+          ),
+        ],
+        globalAggregate: const FamilyHomeAggregate(
+          overdue: 0,
+          dueSoon: 0,
+          inProgress: 0,
+          alerts: 0,
+        ),
+        selectedCareGroupId: 'group-1',
+        selectedGroupDetail: const FamilyHomeGroupDetail(
+          careGroupId: 'group-1',
+          motherDisplayName: 'Mẹ Lan',
+          relationshipRole: 'HUSBAND',
+          customRelationshipRole: null,
+          permissionScope: FamilyHomePermission(
+            calendar: true,
+            logs: true,
+            alerts: true,
+            checklistView: false,
+            records: true,
+          ),
+          members: [],
+          todayReminders: [],
+          healthMetricSummaries: [],
+          alerts: [],
+          memberCount: 2,
+          sharedDataSummary: FamilyHomeSharedDataSummary(
+            totalItems: 0,
+            categories: [],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FamilyMemberHomeScreen(
+            todayTaskService: service,
+            dashboardLoader: ({selectedCareGroupId}) async =>
+                snapshotNoPermission,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TodayTasksPanel), findsNothing);
+      expect(
+        find.byKey(const Key('family-dashboard-no-checklist-permission')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Mẹ chưa cấp quyền chia sẻ việc cần làm.'),
+        findsOneWidget,
+      );
+    },
+  );
 }

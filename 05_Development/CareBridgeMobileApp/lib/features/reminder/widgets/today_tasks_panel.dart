@@ -509,9 +509,11 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     showTitle: false,
                   )
                 else
-                  const _EmptyTabState(
+                  _EmptyTabState(
                     icon: Icons.playlist_add_check_rounded,
-                    message: 'Bạn chưa tạo công việc cá nhân nào.',
+                    message: widget.audience == TodayTasksAudience.family
+                        ? 'Chưa có việc cá nhân nào được chia sẻ.'
+                        : 'Bạn chưa tạo công việc cá nhân nào.',
                   ),
               ],
             ] else ...[
