@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowRight, Stethoscope, CheckCircle2 } from 'lucide-react';
 import { registerExpert } from '../services/authApi';
+import { normalizeVietnamesePhone, VIETNAMESE_PHONE_ERROR } from '../../../shared/utils/vietnamesePhone';
 
 type FormState = {
   name: string;
@@ -14,7 +15,6 @@ type FormState = {
 type FieldErrors = Partial<Record<keyof FormState, string>>;
 
 const initialForm: FormState = { name: '', email: '', phone: '', password: '', confirmPassword: '' };
-const VIETNAMESE_PHONE_PATTERN = /^\+84[35789]\d{8}$/;
 
 const TERMS_FIELD_ID = 'expert-register-terms';
 const TERMS_ERROR_ID = `${TERMS_FIELD_ID}-error`;
@@ -76,8 +76,11 @@ export default function ExpertRegisterPage() {
       });
       return;
     }
-    if (!VIETNAMESE_PHONE_PATTERN.test(form.phone.trim())) {
-      setFieldErrors({ phone: 'Số điện thoại cần là số di động Việt Nam dạng +84xxxxxxxxx.' });
+    // Người dùng gõ 0912345678; máy chủ lưu +84912345678. Quy đổi ngay tại đây để
+    // màn hình nhận đúng thứ người ta quen gõ mà dữ liệu gửi đi vẫn ở dạng chuẩn.
+    const normalizedPhone = normalizeVietnamesePhone(form.phone);
+    if (!normalizedPhone) {
+      setFieldErrors({ phone: VIETNAMESE_PHONE_ERROR });
       return;
     }
     if (form.password.length < 8) {
@@ -94,7 +97,7 @@ export default function ExpertRegisterPage() {
       const result = await registerExpert({
         name: form.name.trim(),
         email: form.email.trim(),
-        phone: form.phone.trim(),
+        phone: normalizedPhone,
         password: form.password,
       });
       navigate('/login/otp', {
@@ -182,7 +185,7 @@ export default function ExpertRegisterPage() {
           <form className="grid gap-5" onSubmit={submit}>
             <Field name="name" label="Họ và tên" required value={form.name} error={fieldErrors.name} onChange={update('name')} autoComplete="name" placeholder="Nguyễn Văn A" />
             <Field name="email" label="Email" type="email" required value={form.email} error={fieldErrors.email} onChange={update('email')} autoComplete="email" placeholder="email@example.com" />
-            <Field name="phone" label="Số điện thoại" type="tel" required value={form.phone} error={fieldErrors.phone} onChange={update('phone')} autoComplete="tel" placeholder="+84901234567" />
+            <Field name="phone" label="Số điện thoại" type="tel" required value={form.phone} error={fieldErrors.phone} onChange={update('phone')} autoComplete="tel" placeholder="0901234567" />
             <div className="grid gap-5 sm:grid-cols-2">
               <Field name="password" label="Mật khẩu" type="password" required value={form.password} error={fieldErrors.password} onChange={update('password')} autoComplete="new-password" placeholder="••••••••" />
               <Field name="confirmPassword" label="Nhập lại mật khẩu" type="password" required value={form.confirmPassword} error={fieldErrors.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" placeholder="••••••••" />

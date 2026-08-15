@@ -162,6 +162,44 @@ describe('expert registration validation errors', () => {
     expect(harness.registerExpert).not.toHaveBeenCalled();
   });
 
+  it('accepts a 0-prefixed number and sends it in canonical form', async () => {
+    harness.registerExpert.mockResolvedValue({ userId: 'u-1', otpExpiresAt: null });
+
+    render(
+      <MemoryRouter>
+        <ExpertRegisterPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Họ và tên *'), {
+      target: { value: 'Bác sĩ Test' },
+    });
+    fireEvent.change(screen.getByLabelText('Email *'), {
+      target: { value: 'expert@example.com' },
+    });
+    // Dạng người Việt gõ hằng ngày — trước đây bị màn hình từ chối dù máy chủ nhận được.
+    fireEvent.change(screen.getByLabelText('Số điện thoại *'), {
+      target: { value: '0342149031' },
+    });
+    fireEvent.change(screen.getByLabelText('Mật khẩu *'), {
+      target: { value: 'Password1' },
+    });
+    fireEvent.change(screen.getByLabelText('Nhập lại mật khẩu *'), {
+      target: { value: 'Password1' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng ký ngay' }));
+
+    await waitFor(() => {
+      expect(harness.registerExpert).toHaveBeenCalledWith(
+        expect.objectContaining({ phone: '+84342149031' }),
+      );
+    });
+    expect(
+      screen.queryByText(/Số điện thoại cần là số di động Việt Nam/),
+    ).toBeNull();
+  });
+
   it('points the consent links at the public legal pages', () => {
     render(
       <MemoryRouter>

@@ -6,6 +6,7 @@ import { federatedAuthenticate } from '../services/authApi';
 import type { RegistrationDraft } from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
+import { normalizeVietnamesePhone, VIETNAMESE_PHONE_ERROR } from '../../../shared/utils/vietnamesePhone';
 import {
   clearRegistrationDraft,
   getRegistrationDraft,
@@ -17,7 +18,6 @@ type FormState = Omit<RegistrationDraft, 'role'> & {
   role: 'MOTHER' | 'FAMILY';
 };
 
-const VIETNAMESE_PHONE_PATTERN = /^\+84[35789]\d{8}$/;
 const isStrongPassword = (password: string) =>
   password.length >= 8
   && /[A-Z]/.test(password)
@@ -62,8 +62,8 @@ export default function FederatedRegisterPage() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       return 'Vui lòng nhập email hợp lệ.';
     }
-    if (!VIETNAMESE_PHONE_PATTERN.test(form.phone.trim())) {
-      return 'Số điện thoại cần là số di động Việt Nam dạng +84xxxxxxxxx.';
+    if (!normalizeVietnamesePhone(form.phone)) {
+      return VIETNAMESE_PHONE_ERROR;
     }
     if (!isStrongPassword(form.password)) {
       return 'Mật khẩu cần có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.';
@@ -83,7 +83,8 @@ export default function FederatedRegisterPage() {
     const draft: RegistrationDraft = {
       name: form.name.trim(),
       email: form.email.trim().toLowerCase(),
-      phone: form.phone.trim(),
+      // Máy chủ lưu dạng E.164; người dùng gõ 0912345678. Quy đổi trước khi gửi.
+      phone: normalizeVietnamesePhone(form.phone) ?? form.phone.trim(),
       password: form.password,
       role: form.role,
     };
@@ -161,7 +162,7 @@ export default function FederatedRegisterPage() {
             <Field id="register-name" name="name" label="Họ và tên" value={form.name} onChange={update('name')} autoComplete="name" required />
             <div className="grid gap-5 sm:grid-cols-2">
               <Field id="register-email" name="email" label="Email" type="email" value={form.email} onChange={update('email')} autoComplete="email" required />
-              <Field id="register-phone" name="phone" label="Số điện thoại" type="tel" value={form.phone} onChange={update('phone')} autoComplete="tel" placeholder="+84901234567" required />
+              <Field id="register-phone" name="phone" label="Số điện thoại" type="tel" value={form.phone} onChange={update('phone')} autoComplete="tel" placeholder="0901234567" required />
             </div>
 
             <label className="grid gap-2 text-sm font-semibold" htmlFor="register-role">Vai trò</label>
