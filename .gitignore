@@ -153,6 +153,7 @@ docs/Report6/
 !.gitkeep
 # Added by code-review-graph
 .code-review-graph/
+.gitnexus/
 .mcp.json
 .github/code-review-graph.instruction.md
 .pytest_cache/
