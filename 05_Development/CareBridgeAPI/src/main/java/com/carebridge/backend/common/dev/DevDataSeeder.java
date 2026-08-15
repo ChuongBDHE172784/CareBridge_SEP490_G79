@@ -114,6 +114,7 @@ public class DevDataSeeder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         validateSeedPassword(testPassword);
         seedProductionReferenceData();
+        seedAdditionalApprovedKnowledgeSources();
         String passwordHash = passwordEncoder.encode(testPassword);
         retireObsoleteSeedAccounts();
 
@@ -195,6 +196,21 @@ public class DevDataSeeder implements ApplicationRunner {
         } catch (IOException ex) {
             throw new IllegalStateException("Unable to read production reference data script", ex);
         }
+    }
+
+    private void seedAdditionalApprovedKnowledgeSources() {
+        jdbcTemplate.execute("""
+            INSERT INTO public."knowledge_sources" (
+                "knowledge_source_id", "domain", "base_url", "organization", "category",
+                "status", "discovery_mode", "applicable_stages", "added_by", "reviewed_by",
+                "reviewed_at", "notes", "source_version", "created_at", "updated_at"
+            ) VALUES
+            ('f1a2b3c4-5d6e-4f70-8a91-b2c3d4e5f604'::uuid, 'benhviennhitrunguong.gov.vn', 'https://benhviennhitrunguong.gov.vn', 'Bệnh viện Nhi Trung ương', 'HOSPITAL', 'APPROVED', 'SEED', 'PRECONCEPTION,PREGNANCY,POSTPARTUM,INFANT,TODDLER', NULL, NULL, now(), 'Seeded national children hospital source', NULL, now(), now()),
+            ('f1a2b3c4-5d6e-4f70-8a91-b2c3d4e5f605'::uuid, 'nhidong.org.vn', 'https://nhidong.org.vn', 'Bệnh viện Nhi Đồng 1', 'HOSPITAL', 'APPROVED', 'SEED', 'PRECONCEPTION,PREGNANCY,POSTPARTUM,INFANT,TODDLER', NULL, NULL, now(), 'Seeded children hospital 1 source', NULL, now(), now()),
+            ('f1a2b3c4-5d6e-4f70-8a91-b2c3d4e5f606'::uuid, 'who.int', 'https://www.who.int', 'Tổ chức Y tế Thế giới (WHO)', 'INTERNATIONAL_AGENCY', 'APPROVED', 'SEED', 'PRECONCEPTION,PREGNANCY,POSTPARTUM,INFANT,TODDLER', NULL, NULL, now(), 'Seeded WHO international guidance', NULL, now(), now()),
+            ('f1a2b3c4-5d6e-4f70-8a91-b2c3d4e5f607'::uuid, 'moh.gov.vn', 'https://moh.gov.vn', 'Bộ Y tế Việt Nam', 'GOVERNMENT', 'APPROVED', 'SEED', 'PRECONCEPTION,PREGNANCY,POSTPARTUM,INFANT,TODDLER', NULL, NULL, now(), 'Seeded Ministry of Health Vietnam guidance', NULL, now(), now())
+            ON CONFLICT DO NOTHING;
+        """);
     }
 
     /**

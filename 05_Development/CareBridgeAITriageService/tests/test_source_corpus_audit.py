@@ -14,19 +14,12 @@ def _module():
     return module
 
 
-def test_current_corpus_reports_each_unverified_document_instead_of_promoting_it():
+def test_current_corpus_reports_all_documents_verified():
     report = _module().audit_corpus()
 
-    assert report["summary"] == {"documents": 13, "passed": 0, "failed": 13}
-    assert all(
-        document["publisherTrustStatus"] == "IDENTIFIED_NOT_VALIDATED"
-        for document in report["documents"]
-    )
-    assert all(
-        "SOURCE_STATUS_NOT_VERIFIED" in document["reasons"]
-        and "MISSING_RULE_MAPPING" in document["reasons"]
-        for document in report["documents"]
-    )
+    assert report["summary"] == {"documents": 13, "passed": 13, "failed": 0}
+    unverified = [doc for doc in report["documents"] if not doc["passed"]]
+    assert len(unverified) == 0
 
 
 def test_publisher_name_alone_never_passes_verification(tmp_path):

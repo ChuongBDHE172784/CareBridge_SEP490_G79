@@ -94,7 +94,11 @@ def _is_unmeasurable(question: Question, signals: dict[str, object] | None) -> b
     return False
 
 
-def is_eligible(question: Question, context: FilterContext) -> bool:
+def is_eligible(
+    question: Question,
+    context: FilterContext,
+    candidate_question_ids: Sequence[str] | None = None,
+) -> bool:
     """Whether a single question may be asked in this context."""
 
     if (
@@ -128,6 +132,9 @@ def is_eligible(question: Question, context: FilterContext) -> bool:
         # actually needs clarifying. Offering "whose symptom is this?" after the subject is
         # already settled would just make the system look like it was not listening.
         return context.context_status.blocks_symptom_questions
+
+    if candidate_question_ids is not None and question.question_id in candidate_question_ids:
+        return True
 
     resolves_something = (
         set(question.resolves_fields) & set(context.missing_fields)
@@ -167,7 +174,7 @@ def eligible_questions(
     )
     eligible = [
         CATALOG[question_id] for question_id in dict.fromkeys(candidates)
-        if question_id in CATALOG and is_eligible(CATALOG[question_id], context)
+        if question_id in CATALOG and is_eligible(CATALOG[question_id], context, candidate_question_ids)
     ]
     eligible.sort(key=lambda question: (question.priority, question.question_id))
     return tuple(eligible)

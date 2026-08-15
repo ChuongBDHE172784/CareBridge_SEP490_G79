@@ -240,9 +240,11 @@ def execute_turn(request: TriageTurnRequest) -> TriageTurnResponse:
         stage = str(getattr(completed_state.get("stage"), "value",
                             completed_state.get("stage", "UNKNOWN")))
         if outcome == "RED":
-            evidence_domains = {
-                source.domain for source in cached_approved_sources_for_stage(stage)
-            }
+            cached = cached_approved_sources_for_stage(stage)
+            if cached:
+                evidence_domains = {source.domain for source in cached}
+            else:
+                evidence_domains = approved_domains(stage)
         elif outcome == "YELLOW" and monotonic() < extraction_deadline:
             retrieval_attempted = True
             evidence_domains = approved_domains(stage)

@@ -22,11 +22,23 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
     private final Path dotenvPath;
 
     public DotenvEnvironmentPostProcessor() {
-        this(Path.of(".env"));
+        this(resolveDotenvPath());
     }
 
     DotenvEnvironmentPostProcessor(Path dotenvPath) {
         this.dotenvPath = dotenvPath;
+    }
+
+    private static Path resolveDotenvPath() {
+        Path direct = Path.of(".env");
+        if (Files.isRegularFile(direct)) {
+            return direct;
+        }
+        Path modulePath = Path.of("05_Development", "CareBridgeAPI", ".env");
+        if (Files.isRegularFile(modulePath)) {
+            return modulePath;
+        }
+        return direct;
     }
 
     @Override
