@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import sys
 import time
 from pathlib import Path
@@ -16,7 +15,6 @@ from ..models import (
     ExecutionStatus,
     ExpectedExecutionStatus,
 )
-from ..sanitization import minimize_response
 
 STANDARD_DISCLAIMER = (
     "Kết quả đánh giá từ CareBridge AI chỉ mang tính tham khảo và sàng lọc nguy cơ, "
