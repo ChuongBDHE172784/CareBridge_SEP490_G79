@@ -14,6 +14,8 @@ from pathlib import Path
 from time import perf_counter
 from uuid import NAMESPACE_URL, uuid5
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 if str(SERVICE_ROOT) not in sys.path:

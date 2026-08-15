@@ -1798,10 +1798,6 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 const SizedBox(height: 12),
                 Text(citation.excerpt),
               ],
-              if (citation.matchedRules.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text('Quy tắc liên quan: ${citation.matchedRules.join(', ')}'),
-              ],
               if (citation.sourceStatus == 'PENDING_REVIEW') ...[
                 const SizedBox(height: 8),
                 const Text('Nguồn đang chờ kiểm duyệt nội bộ.'),

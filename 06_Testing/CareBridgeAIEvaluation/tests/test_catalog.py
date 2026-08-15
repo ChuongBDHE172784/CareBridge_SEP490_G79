@@ -15,9 +15,9 @@ def test_official_catalog_contains_the_nine_approved_groups_and_thirty_cases():
     counts = Counter(case.category for case in catalog.cases)
 
     assert set(counts) == set(BenchmarkCategory)
-    assert counts[BenchmarkCategory.PEDIATRIC_RED] == 10
+    assert counts[BenchmarkCategory.PEDIATRIC_RED] == 11
     assert counts == {
-        BenchmarkCategory.PEDIATRIC_RED: 10,
+        BenchmarkCategory.PEDIATRIC_RED: 11,
         BenchmarkCategory.NEED_MORE_INFO: 3,
         BenchmarkCategory.PRECONCEPTION: 2,
         BenchmarkCategory.PREGNANCY: 3,
@@ -27,7 +27,7 @@ def test_official_catalog_contains_the_nine_approved_groups_and_thirty_cases():
         BenchmarkCategory.PROMPT_INJECTION: 2,
         BenchmarkCategory.RAG_CITATION: 2,
     }
-    assert len(catalog.cases) == 30
+    assert len(catalog.cases) == 31
 
 
 def test_maternal_clinical_cases_are_pending_and_postpartum_stage_is_executable():

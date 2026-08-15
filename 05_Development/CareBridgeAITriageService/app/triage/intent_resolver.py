@@ -45,15 +45,22 @@ def intent_resolver(state: Mapping[str, object]) -> dict[str, object]:
     if (
         resolution.intent is IntentType.UNKNOWN
         or resolution.source is ResolutionSource.CONFIRMED_CONVERSATION_INTENT
-    ) and _has_current_reported_temperature(state):
-        # A valid Celsius reading with a local clinical anchor is itself an explicit current
-        # health report. This lets an utterance such as "Bé hai tháng đo được 38,2 độ" reach the
-        # existing paediatric rule without adding a symptom phrase or bypassing intent routing.
-        resolution = IntentResolution(
-            IntentType.SYMPTOM_TRIAGE,
-            ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE,
-            ("temperatureC:USER_REPORTED_TEXT",),
-        )
+    ):
+        if _has_current_reported_temperature(state):
+            # A valid Celsius reading with a local clinical anchor is itself an explicit current
+            # health report. This lets an utterance such as "Bé hai tháng đo được 38,2 độ" reach the
+            # existing paediatric rule without adding a symptom phrase or bypassing intent routing.
+            resolution = IntentResolution(
+                IntentType.SYMPTOM_TRIAGE,
+                ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE,
+                ("temperatureC:USER_REPORTED_TEXT",),
+            )
+        elif _has_triage_context_or_signals(state):
+            resolution = IntentResolution(
+                IntentType.SYMPTOM_TRIAGE,
+                ResolutionSource.STAGE_SPECIFIC_CONTEXT,
+                ("triageContext",),
+            )
     updates = {"intent": resolution.intent, "intentSource": resolution.source}
     if (
         resolution.intent.is_resolved
@@ -62,6 +69,16 @@ def intent_resolver(state: Mapping[str, object]) -> dict[str, object]:
     ):
         updates["confirmedConversationIntent"] = resolution.intent
     return updates
+
+
+def _has_triage_context_or_signals(state: Mapping[str, object]) -> bool:
+    signals = state.get("signals")
+    if type(signals) is dict and any(
+        (obs.get("presence") == "PRESENT" if type(obs) is dict else obs == "PRESENT")
+        for obs in signals.values()
+    ):
+        return True
+    return False
 
 
 def _has_current_reported_temperature(state: Mapping[str, object]) -> bool:

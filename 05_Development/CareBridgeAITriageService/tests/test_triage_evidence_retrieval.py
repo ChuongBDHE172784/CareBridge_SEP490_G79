@@ -203,7 +203,57 @@ def test_verified_vietnam_source_is_prioritized_and_who_is_capped_at_one(tmp_pat
 def test_current_corpus_inventory_proves_pgvector_is_not_justified():
     inventory = corpus_inventory()
     assert inventory["documents"] == 13
-    assert inventory["declaredSourceVerified"] == 0
+    assert inventory["declaredSourceVerified"] == 13
+
+
+def test_real_verified_corpus_yellow_pregnancy_returns_citations():
+    pregnancy_yellow_state = {
+        "triageOutcome": "YELLOW",
+        "targetEntity": "MOTHER",
+        "stage": "PREGNANCY",
+        "decisiveRuleIds": ["PREG_YELLOW_001"],
+        "reasonCodes": ["VAGINAL_BLEEDING"],
+        "signals": {"VAGINAL_BLEEDING": {"presence": "PRESENT"}},
+    }
+    citations = retrieve_verified_evidence(
+        pregnancy_yellow_state,
+        allowed_domains={"vinmec.com", "hmu.edu.vn", "ump.edu.vn"},
+    )
+    assert len(citations) >= 1
+    for citation in citations:
+        assert citation["url"].startswith("https://")
+        assert citation["domain"] in {"vinmec.com", "hmu.edu.vn", "ump.edu.vn"}
+        assert citation["sourceStatus"] == "SOURCE_VERIFIED"
+        assert citation["section"]
+        assert len(citation["contentHash"]) == 64
+
+
+def test_content_hash_single_char_drift_is_rejected(tmp_path):
+    write_source(tmp_path, source_id="VALID_SRC")
+    path = tmp_path / "VALID_SRC.md"
+    original_text = path.read_text(encoding="utf-8")
+    # Mutate 1 character in the contentHash line
+    lines = original_text.splitlines()
+    for idx, line in enumerate(lines):
+        if line.startswith("contentHash:"):
+            # Replace last char of hash with a different hex char
+            last_char = line[-1]
+            replacement_char = "0" if last_char != "0" else "1"
+            lines[idx] = line[:-1] + replacement_char
+            break
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    rejections: list[str] = []
+    documents = load_verified_corpus(
+        corpus_dir=tmp_path,
+        allowed_domains={"health.example"},
+        target="MOTHER",
+        stage="PREGNANCY",
+        rule_ids=("GLOBAL_RED_001",),
+        on_reject=rejections.append,
+    )
+    assert documents == []
+    assert "CITATION_REJECTED" in rejections
 
 
 def test_malformed_frontmatter_is_skipped_without_losing_valid_documents(tmp_path):

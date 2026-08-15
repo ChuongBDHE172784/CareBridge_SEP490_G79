@@ -2,7 +2,7 @@
   "schemaVersion": "2.0",
   "name": "CareBridge AI Triage Official Benchmark",
   "canonicalParitySource": "datasets/pediatric_red_parity_vectors.json",
-  "canonicalParitySha256": "88040c7fdf1c2cd947231992547dbef76b3f73cf28e1f2f34f8fea77c6a90e4e",
+  "canonicalParitySha256": "fb1298a459f87d67c0133e9945c938432cd6b24e11db99a707d2e2e3435cbceb",
   "cases": [
     {
       "id": "NMI_UNKNOWN_SYMPTOM",

@@ -378,3 +378,13 @@ def test_legacy_default_report_remains_green_and_schema_compatible():
     assert set(report) == {"governance", "total", "passed", "failed", "metrics", "coverage", "results"}
     assert report["coverage"]["allRequiredCategoriesCovered"] is True
     assert report["coverage"]["allRequiredMetricFieldsReported"] is True
+
+
+def test_safety_metrics_remain_pinned_at_zero_and_hundred_percent(vague_report):
+    """Safety metrics must stay locked at zero violations and full safety coverage."""
+    metrics = vague_report["metrics"]
+    assert metrics["forbiddenQuestionRate"] == 0.0, f"forbiddenQuestionRate is {metrics['forbiddenQuestionRate']}, expected 0.0"
+    assert metrics["wrongEntityQuestionRate"] == 0.0, f"wrongEntityQuestionRate is {metrics['wrongEntityQuestionRate']}, expected 0.0"
+    assert metrics["wrongStageQuestionRate"] == 0.0, f"wrongStageQuestionRate is {metrics['wrongStageQuestionRate']}, expected 0.0"
+    assert metrics["repeatedQuestionRate"] == 0.0, f"repeatedQuestionRate is {metrics['repeatedQuestionRate']}, expected 0.0"
+    assert metrics["safetyQuestionRate"] == 1.0, f"safetyQuestionRate is {metrics['safetyQuestionRate']}, expected 1.0 (100%)"
