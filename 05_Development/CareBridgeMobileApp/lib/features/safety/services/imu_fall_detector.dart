@@ -73,26 +73,25 @@ class FallCandidate {
 }
 
 class ImuFallDetector {
-  static const double freeFallThreshold = 6.0;
+  static const double freeFallThreshold = 7.2;
   static const double impactThreshold = 9.5;
   static const double softLandingImpactThreshold = 8.5;
   static const double minimumJerk = 40.0;
   static const double minimumSoftFallJerk = 20.0;
   static const double gravity = 9.81;
-  static const double freeFallMaxGyroscope = 3.2;
-  static const double stationaryAccelerationTolerance = 1.8;
-  static const double stationaryGyroscopeThreshold = 0.4;
-  static const double softLandingStationaryAccelerationTolerance = 2.2;
-  static const double softLandingStationaryGyroscopeThreshold = 0.5;
+  static const double stationaryAccelerationTolerance = 2.0;
+  static const double stationaryGyroscopeThreshold = 0.5;
+  static const double softLandingStationaryAccelerationTolerance = 2.8;
+  static const double softLandingStationaryGyroscopeThreshold = 0.9;
   static const double cancellationGyroscopeThreshold = 1.5;
-  static const double strongMovementAccelerationDeviation = 4.5;
-  static const double softLandingCancellationGyroscopeThreshold = 1.8;
-  static const double softLandingStrongMovementAccelerationDeviation = 5.0;
+  static const double strongMovementAccelerationDeviation = 6.0;
+  static const double softLandingCancellationGyroscopeThreshold = 2.5;
+  static const double softLandingStrongMovementAccelerationDeviation = 8.0;
   static const double minimumStationaryRatio = 0.8;
-  static const double minimumSoftLandingStationaryRatio = 0.7;
-  static const Duration minimumFreeFallDuration = Duration(milliseconds: 80);
+  static const double minimumSoftLandingStationaryRatio = 0.6;
+  static const Duration minimumFreeFallDuration = Duration(milliseconds: 60);
   static const Duration softFallQualificationDuration = Duration(
-    milliseconds: 160,
+    milliseconds: 60,
   );
   static const Duration impactWindow = Duration(milliseconds: 1500);
   static const Duration impactSettlingGrace = Duration(milliseconds: 250);
@@ -102,7 +101,7 @@ class ImuFallDetector {
   );
   static const Duration immobilityWindow = Duration(seconds: 1);
   static const Duration softLandingImmobilityWindow = Duration(
-    milliseconds: 700,
+    milliseconds: 600,
   );
   static const Duration maximumGyroscopeAge = Duration(milliseconds: 200);
   static const Duration cooldown = Duration(seconds: 3);
@@ -172,13 +171,9 @@ class ImuFallDetector {
     switch (_phase) {
       case FallDetectionPhase.idle:
         if (sample.accelerationMagnitude < freeFallThreshold) {
-          if (sample.gyroscopeMagnitude > freeFallMaxGyroscope) {
-            _setDecision(ImuDetectorDecisionReason.excessiveMovement);
-          } else {
-            _phase = FallDetectionPhase.freeFall;
-            _freeFallAt = sample.timestamp;
-            _setDecision(ImuDetectorDecisionReason.freeFallDetected);
-          }
+          _phase = FallDetectionPhase.freeFall;
+          _freeFallAt = sample.timestamp;
+          _setDecision(ImuDetectorDecisionReason.freeFallDetected);
         } else {
           _setDecision(ImuDetectorDecisionReason.awaitingFreeFall);
         }
@@ -196,18 +191,10 @@ class ImuFallDetector {
         sample.timestamp.difference(freeFallAt) > impactWindow) {
       _resetCandidate();
       if (sample.accelerationMagnitude < freeFallThreshold) {
-        if (sample.gyroscopeMagnitude <= freeFallMaxGyroscope) {
-          _phase = FallDetectionPhase.freeFall;
-          _freeFallAt = sample.timestamp;
-        }
+        _phase = FallDetectionPhase.freeFall;
+        _freeFallAt = sample.timestamp;
       }
       _setDecision(ImuDetectorDecisionReason.impactWindowExpired);
-      return null;
-    }
-
-    if (sample.gyroscopeMagnitude > freeFallMaxGyroscope) {
-      _resetCandidate();
-      _setDecision(ImuDetectorDecisionReason.excessiveMovement);
       return null;
     }
 
@@ -216,26 +203,18 @@ class ImuFallDetector {
       if (sample.accelerationMagnitude > impactThreshold) {
         _resetCandidate();
         _setDecision(ImuDetectorDecisionReason.freeFallTooShort);
-      } else if (sample.accelerationMagnitude >= freeFallThreshold) {
-        _resetCandidate();
-        _setDecision(ImuDetectorDecisionReason.awaitingFreeFall);
       } else {
         _setDecision(ImuDetectorDecisionReason.awaitingImpact);
       }
       return null;
     }
 
-    final isSoftFall = freeFallDuration >= softFallQualificationDuration;
-    final impactThresholdForSequence = isSoftFall
+    final impactThresholdForSequence =
+        freeFallDuration >= softFallQualificationDuration
         ? softLandingImpactThreshold
         : impactThreshold;
     if (sample.accelerationMagnitude <= impactThresholdForSequence ||
         previous == null) {
-      if (sample.accelerationMagnitude >= freeFallThreshold && !isSoftFall) {
-        _resetCandidate();
-        _setDecision(ImuDetectorDecisionReason.awaitingFreeFall);
-        return null;
-      }
       _setDecision(ImuDetectorDecisionReason.awaitingImpact);
       return null;
     }
@@ -252,7 +231,7 @@ class ImuFallDetector {
     final jerk =
         (sample.accelerationMagnitude - previous.accelerationMagnitude).abs() /
         elapsedSeconds;
-    final requiredJerk = isSoftFall
+    final requiredJerk = freeFallDuration >= softFallQualificationDuration
         ? minimumSoftFallJerk
         : minimumJerk;
     if (jerk < requiredJerk) {
@@ -287,11 +266,8 @@ class ImuFallDetector {
 
     final sinceFirstImpact = sample.timestamp.difference(impactStartedAt);
     if (sinceFirstImpact <= impactSettlingGrace) {
-      final isDynamicSpike =
-          (sample.accelerationMagnitude - gravity).abs() > 2.0;
       if (sample.accelerationMagnitude > impact.accelerationMagnitude + 1 &&
           sample.accelerationMagnitude > impactThreshold &&
-          isDynamicSpike &&
           _hasFreshGyroscope(sample)) {
         _impactSample = sample;
       }
