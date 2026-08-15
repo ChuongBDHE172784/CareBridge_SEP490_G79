@@ -808,3 +808,26 @@
   then prove repeat reads, required completion, and sequence advancement against PostgreSQL.
 - A code fix that prevents future historicalization does not authorize restoring an already-historical
   production row. Keep data remediation separate, explicit, scoped, and independently approved.
+
+## 2026-08-15 - Exercise camera native notification parity planning
+
+- A platform camera adapter must honor one lifecycle contract: startup either reaches
+  `isRunning=true` or emits a canonical failure and fails the call. Swallowing a native
+  `CameraException` lets the shared screen overwrite the error with a false
+  "Đang nhận diện tư thế..." state and start transport against a stopped source.
+- When Flutter Web is the requested behavioral baseline, keep its shared posture
+  severity, SILENT-feedback, overlay, and TTS semantics unchanged. Native-enablement
+  work in shared files can otherwise change Web while claiming only to synchronize
+  Android/iOS.
+- Translate browser, Android, and iOS camera failures into typed shared notice
+  categories, then derive copy, retryability, and actions from the category. Raw
+  exception-text matching belongs only at the platform boundary; HTTPS/CDN and OS
+  Settings remain legitimate platform-specific details.
+- Camera permission rationale is a cross-layer contract: the in-app consent sheet and
+  iOS `NSCameraUsageDescription` must both explain exercise posture analysis and the
+  no-video-storage boundary. Unit/widget tests cannot replace fresh-install permission,
+  permanent-denial, background/resume, and camera-busy checks on real devices.
+- Verify native ML dependencies against the repository deployment baseline before
+  accepting a lockfile update. `google_mlkit_pose_detection 0.15.0` declares iOS 15.5
+  in both its README and podspec, while this app still targets iOS 13.0; either raising
+  the product floor or pinning an audited older ML Kit line is a human-owned decision.

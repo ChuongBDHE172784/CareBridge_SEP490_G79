@@ -5,7 +5,9 @@ import type { CommunityTopic, ContentStage, ContentType, RecommendationTag } fro
 import { TYPE_LABELS, STAGE_OPTIONS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
 import { isRichTextEmpty } from '../components/richTextUtils';
+import RecommendationAudienceSelector from '../components/RecommendationAudienceSelector';
 import {
+  formatRecommendationTagLabel,
   recommendationApiErrorCode,
   recommendationApiErrorMessage,
   recommendationClassification,
@@ -208,16 +210,12 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
           <div className="mb-5 rounded-2xl border border-primary/30 bg-primary-container/10 p-4">
             <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">Recommendation audience</p>
             <p className="text-xs text-outline mb-3">Tín hiệu kiểm soát; nội dung vẫn phải được System Admin duyệt.</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {recommendationTags.map((tag) => {
-                const selected = recommendationTagIds.includes(tag.id);
-                return (
-                  <label key={tag.id} className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs ${selected ? 'border-primary bg-primary-container text-primary' : 'border-outline-variant bg-surface text-on-surface'}`}>
-                    <input type="checkbox" checked={selected} onChange={() => setRecommendationTagIds((ids) => selected ? ids.filter((id) => id !== tag.id) : [...ids, tag.id])} className="h-4 w-4 accent-primary" />
-                    {tag.label}
-                  </label>
-                );
-              })}
+            <div className="mb-4">
+              <RecommendationAudienceSelector
+                catalog={recommendationTags}
+                selectedTagIds={recommendationTagIds}
+                onChange={setRecommendationTagIds}
+              />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <label className="text-xs text-outline">Từ tuần
@@ -232,9 +230,9 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
             </div>
             {metadataError && <p role="alert" className="mt-3 text-xs text-error">{metadataError}</p>}
             {!metadataError && <div className="mt-3 rounded-xl bg-surface p-3 text-xs text-on-surface-variant">
-              <p className="font-semibold">Recommendation summary</p>
-              <p>Classification: {recommendationClassification(recommendationTagIds)} · {recommendationWindowLabel(stage, from, to)} · Priority {priority}</p>
-              <p>Audience: {recommendationTagIds.length === 0 ? 'No controlled audience tags (fallback eligible)' : recommendationTags.filter((tag) => recommendationTagIds.includes(tag.id)).map((tag) => tag.label).join(', ')}</p>
+              <p className="font-semibold">Tóm tắt thiết lập đối tượng (Recommendation summary)</p>
+              <p>Phân loại: {recommendationClassification(recommendationTagIds)} · {recommendationWindowLabel(stage, from, to)} · Độ ưu tiên {priority}</p>
+              <p>Đối tượng: {recommendationTagIds.length === 0 ? 'Không có tag chỉ định (áp dụng toàn bộ người dùng đủ điều kiện)' : recommendationTags.filter((tag) => recommendationTagIds.includes(tag.id)).map((tag) => formatRecommendationTagLabel(tag)).join(', ')}</p>
             </div>}
             {stage !== 'PREGNANCY' && <p className="mt-2 text-[11px] text-outline">Pre-pregnancy/postpartum luôn stage-wide; không dùng khoảng tuần.</p>}
           </div>

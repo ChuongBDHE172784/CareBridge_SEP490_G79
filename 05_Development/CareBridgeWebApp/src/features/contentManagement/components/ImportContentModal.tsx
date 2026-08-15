@@ -57,15 +57,6 @@ export default function ImportContentModal({
     }
   }, [isOpen, resetState]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchTopics()
-        .then(setTopics)
-        .catch(() => setTopics([]));
-      resetState();
-    }
-  }, [isOpen]);
-
 
   if (!isOpen) return null;
 

@@ -204,7 +204,10 @@ class PostureCameraSource {
     }
   }
 
+  Future<void> switchCamera() async {}
+
   Future<void> stop() async {
+
     _runGeneration++;
     _starting = false;
     _running = false;
