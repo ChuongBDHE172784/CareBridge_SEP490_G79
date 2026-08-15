@@ -107,7 +107,7 @@ void main() {
       id: 'tmpl-v2',
       name: 'WHO Plan 2',
       stage: 'PREGNANCY',
-      description: 'Mô tả checklist v2',
+      description: 'Mô tả khuyến nghị',
       templateType: 'MANDATORY',
       checklistContractVersion: 2,
       planNumber: 2,
@@ -138,9 +138,9 @@ void main() {
       ),
     );
 
-    expect(find.text('Nội dung khuyến nghị'), findsOneWidget);
+    expect(find.text('Mô tả khuyến nghị'), findsOneWidget);
     expect(find.text('Plan 2 · WEEKLY'), findsOneWidget);
-    expect(find.text('Tuần 20–24'), findsOneWidget);
+    expect(find.text('Tuần 21–25'), findsOneWidget);
     expect(find.text('Theo tuần'), findsWidgets);
     expect(find.text('Cần thiết'), findsOneWidget);
     expect(find.text('Khuyến nghị'), findsNothing);

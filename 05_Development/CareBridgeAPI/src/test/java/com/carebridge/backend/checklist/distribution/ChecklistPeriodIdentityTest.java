@@ -10,6 +10,27 @@ import org.junit.jupiter.api.Test;
 class ChecklistPeriodIdentityTest {
 
     @Test
+    void legacyNonCadenceIdentityAcceptsOnlyNullableV1Shape() {
+        assertThat(ChecklistPeriodIdentity.isV1NonCadenceIdentity(null, null, null)).isTrue();
+        assertThat(ChecklistPeriodIdentity.isV1NonCadenceIdentity(
+                ChecklistPeriodIdentity.V1_CONTRACT_VERSION, null, null)).isTrue();
+        assertThat(ChecklistPeriodIdentity.isV1NonCadenceIdentity(
+                ChecklistPeriodIdentity.V2_CONTRACT_VERSION, null, null)).isFalse();
+        assertThat(ChecklistPeriodIdentity.isV1NonCadenceIdentity(
+                ChecklistPeriodIdentity.V1_CONTRACT_VERSION, "O:OTHER", null)).isFalse();
+    }
+
+    @Test
+    void sequenceStepDoesNotProduceATimeDerivedPeriodKey() {
+        assertThat(ChecklistPeriodIdentity.periodKey(
+                ChecklistScheduleType.SET,
+                ChecklistMaterializationPolicy.SEQUENCE_STEP,
+                ChecklistEligibilityDecision.neutral(),
+                LocalDate.of(2026, 8, 15)))
+                .isNull();
+    }
+
+    @Test
     void oncePerWindowUsesTheEvaluatedLifecycleWindow() {
         LocalDate delivery = LocalDate.of(2026, 8, 13);
         ChecklistEligibilityDecision decision = ChecklistEligibilityDecision.eligible(

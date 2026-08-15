@@ -27,6 +27,7 @@ public class ChecklistItemResponse {
     private ChecklistSupportFunction supportFunction;
     private Boolean repeatWeekly;
     private Boolean repeatDaily;
+    private String sourceUrl;
 
     /** Compatibility constructor for the pre-detail response shape. */
     public ChecklistItemResponse(
@@ -35,6 +36,21 @@ public class ChecklistItemResponse {
             Integer order,
             Boolean isRequired,
             ChecklistTargetSubject targetSubject) {
-        this(id, itemText, null, order, isRequired, targetSubject, null, false, false);
+        this(id, itemText, null, order, isRequired, targetSubject, null, false, false, null);
+    }
+
+    /** Compatibility constructor for the pre-source-link response shape. */
+    public ChecklistItemResponse(
+            UUID id,
+            String itemText,
+            String description,
+            Integer order,
+            Boolean isRequired,
+            ChecklistTargetSubject targetSubject,
+            ChecklistSupportFunction supportFunction,
+            Boolean repeatWeekly,
+            Boolean repeatDaily) {
+        this(id, itemText, description, order, isRequired, targetSubject, supportFunction,
+                repeatWeekly, repeatDaily, null);
     }
 }

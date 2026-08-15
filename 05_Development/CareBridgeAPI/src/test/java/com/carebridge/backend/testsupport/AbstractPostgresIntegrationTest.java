@@ -60,7 +60,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
         // Keep the DB clean and deterministic: each test class seeds its own data.
         // (Leaving the dev seeder on would re-insert the same accounts for every
         // Spring context sharing this singleton container and hit unique clashes.)
-        "carebridge.dev-seed.enabled=false"
 })
 public abstract class AbstractPostgresIntegrationTest {
 

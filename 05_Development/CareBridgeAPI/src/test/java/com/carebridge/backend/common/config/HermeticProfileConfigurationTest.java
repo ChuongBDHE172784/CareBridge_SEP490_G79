@@ -167,6 +167,18 @@ class HermeticProfileConfigurationTest {
                 .contains(HermeticDatasourceEnvironmentPostProcessor.class.getName());
     }
 
+    @Test
+    void productionFlywayDefaults_AreStrictForTheSquashedBaseline() throws IOException {
+        StandardEnvironment environment = loadConfiguration("application.yaml", Map.of());
+
+        assertThat(environment.getProperty("spring.flyway.validate-on-migrate", Boolean.class))
+                .isTrue();
+        assertThat(environment.getProperty("spring.flyway.out-of-order", Boolean.class))
+                .isFalse();
+        assertThat(environment.getProperty("spring.flyway.ignore-migration-patterns"))
+                .isEqualTo("*:future");
+    }
+
     private void processRuntimeDatasource(StandardEnvironment environment) {
         new RuntimeDatasourceEnvironmentPostProcessor()
                 .postProcessEnvironment(environment, new SpringApplication());

@@ -11,8 +11,14 @@ import {
   STAGE_LABELS,
   STAGE_OPTIONS,
 } from '../models/content';
-import { archiveChecklistTemplate, fetchAdminChecklistTemplates } from '../services/contentApi';
+import {
+  archiveChecklistTemplate,
+  fetchAdminChecklistTemplates,
+  updateChecklistTemplate,
+} from '../services/contentApi';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
+import ChecklistImportModal from '../components/ChecklistImportModal';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { nextSortDirection, sortRows } from '../utils/tableSorting';
@@ -77,6 +83,7 @@ export default function ChecklistListPage() {
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [stageFilter, setStageFilter] = useState<ContentStage | ''>('');
   const [statusFilter, setStatusFilter] = useState<ChecklistTemplateStatus | ''>('');
   const [searchInput, setSearchInput] = useState('');
@@ -85,6 +92,16 @@ export default function ChecklistListPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [sortKey, setSortKey] = useState<'name' | 'stage' | 'itemCount' | 'status'>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Submit all state
+  const [isSubmitAllConfirmOpen, setIsSubmitAllConfirmOpen] = useState(false);
+  const [isFetchingDrafts, setIsFetchingDrafts] = useState(false);
+  const [isSubmittingAll, setIsSubmittingAll] = useState(false);
+  const [submitAllError, setSubmitAllError] = useState('');
+  const [draftItemsToSubmit, setDraftItemsToSubmit] = useState<ChecklistListRow[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isListExpanded, setIsListExpanded] = useState(false);
+
   const latestRequestId = useRef(0);
   const archivingIdRef = useRef<string | null>(null);
   const debouncedKeyword = useDebouncedValue(searchInput.trim());
@@ -146,6 +163,107 @@ export default function ChecklistListPage() {
     setActionError('');
   }, [page, stageFilter, statusFilter, debouncedKeyword]);
 
+  const handleOpenSubmitAllModal = async () => {
+    setIsFetchingDrafts(true);
+    setSubmitAllError('');
+    setIsListExpanded(false);
+    try {
+      let allDrafts: ChecklistListRow[] = [];
+      let pageNum = 0;
+      let totalP = 1;
+
+      do {
+        const data = await fetchAdminChecklistTemplates({
+          status: 'DRAFT',
+          size: 50,
+          page: pageNum,
+        });
+        allDrafts = [...allDrafts, ...data.content];
+        totalP = data.totalPages;
+        pageNum += 1;
+      } while (pageNum < totalP && pageNum < 10);
+
+      setDraftItemsToSubmit(allDrafts);
+      setSelectedItemIds(new Set(allDrafts.map((item) => item.id)));
+      setIsSubmitAllConfirmOpen(true);
+    } catch {
+      setSubmitAllError('Không thể lấy danh sách bản nháp. Vui lòng thử lại.');
+      setIsSubmitAllConfirmOpen(true);
+    } finally {
+      setIsFetchingDrafts(false);
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItemIds.size === draftItemsToSubmit.length) {
+      setSelectedItemIds(new Set());
+    } else {
+      setSelectedItemIds(new Set(draftItemsToSubmit.map((item) => item.id)));
+    }
+  };
+
+  const handleConfirmSubmitAll = async () => {
+    const itemsToSubmit = draftItemsToSubmit.filter((item) => selectedItemIds.has(item.id));
+    if (itemsToSubmit.length === 0) {
+      setIsSubmitAllConfirmOpen(false);
+      return;
+    }
+
+    setIsSubmittingAll(true);
+    setSubmitAllError('');
+
+    try {
+      const results = await Promise.allSettled(
+        itemsToSubmit.map((item) =>
+          updateChecklistTemplate(item.id, {
+            name: item.name,
+            description: item.description,
+            templateType: item.templateType ?? 'MANDATORY',
+            checklistContractVersion: item.checklistContractVersion ?? null,
+            recipientRoles: item.recipientRoles ?? ['MOTHER'],
+            stage: item.stage,
+            substage: item.stage === 'PRE_PREGNANCY' ? null : (item.substage ?? null),
+            displayOrder: item.displayOrder ?? 0,
+            scheduleType: item.scheduleType ?? null,
+            materializationPolicy: item.materializationPolicy ?? null,
+            scheduleGroupKey: item.scheduleGroupKey ?? null,
+            scheduleContextType: item.scheduleContextType ?? null,
+            scheduleEndMode: item.scheduleEndMode ?? null,
+            weekBoundaryRule: item.weekBoundaryRule ?? null,
+            status: 'PENDING_REVIEW',
+            items: undefined,
+          }),
+        ),
+      );
+
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+      if (failedCount > 0) {
+        const successCount = results.length - failedCount;
+        setSubmitAllError(`Đã gửi duyệt ${successCount}/${results.length} mục. ${failedCount} mục gặp lỗi, vui lòng thử lại.`);
+        await latestLoadData.current();
+      } else {
+        setIsSubmitAllConfirmOpen(false);
+        await latestLoadData.current();
+      }
+    } catch {
+      setSubmitAllError('Không thể gửi duyệt các mục đã chọn. Vui lòng thử lại.');
+    } finally {
+      setIsSubmittingAll(false);
+    }
+  };
+
   const handleDelete = async (checklist: ChecklistListRow) => {
     if (checklist.status === 'ARCHIVED' || archivingIdRef.current !== null) return;
 
@@ -196,15 +314,40 @@ export default function ChecklistListPage() {
             Theo dõi đúng trạng thái duyệt và số mục của từng checklist.
           </p>
         </div>
-        <button
-          type="button"
-          aria-label="Tạo checklist mới"
-          onClick={() => navigate('/content/checklists/create')}
-          className="inline-flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-md hover:bg-primary/90 cursor-pointer transition-all active:scale-95 self-start md:self-auto"
-        >
-          <span aria-hidden="true" className="material-symbols-outlined text-lg">add</span>
-          Tạo Checklist
-        </button>
+        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+          <button
+            type="button"
+            aria-label="Gửi phê duyệt tất cả checklist"
+            onClick={() => void handleOpenSubmitAllModal()}
+            disabled={isLoading || isFetchingDrafts}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-primary/40 bg-surface px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-container/20 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+          >
+            {isFetchingDrafts ? (
+              <span aria-hidden="true" className="material-symbols-outlined text-lg animate-spin">sync</span>
+            ) : (
+              <span aria-hidden="true" className="material-symbols-outlined text-lg">send</span>
+            )}
+            Gửi phê duyệt tất cả
+          </button>
+          <button
+            type="button"
+            aria-label="Import dữ liệu checklist"
+            onClick={() => setIsImportOpen(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">upload_file</span>
+            Import dữ liệu
+          </button>
+          <button
+            type="button"
+            aria-label="Tạo checklist mới"
+            onClick={() => navigate('/content/checklists/create')}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-on-primary shadow-md transition-all hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30 active:scale-95"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">add</span>
+            Tạo Checklist
+          </button>
+        </div>
       </div>
 
       {actionError && (
@@ -462,6 +605,92 @@ export default function ChecklistListPage() {
           </>
         )}
       </section>
+      <ChecklistImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onSuccess={() => void latestLoadData.current()}
+      />
+
+      <ConfirmDialog
+        key="submit-all-confirm-dialog"
+        open={isSubmitAllConfirmOpen}
+        title="Gửi phê duyệt tất cả checklist?"
+        description={
+          draftItemsToSubmit.length === 0
+            ? 'Không có checklist bản nháp nào cần gửi phê duyệt.'
+            : `Bạn có chắc chắn muốn gửi phê duyệt ${selectedItemIds.size}/${draftItemsToSubmit.length} checklist bản nháp đã chọn không? Các mục này sẽ được chuyển sang trạng thái Chờ duyệt.`
+        }
+        icon="send"
+        tone="default"
+        confirmLabel={
+          draftItemsToSubmit.length === 0
+            ? 'Đóng'
+            : selectedItemIds.size > 0
+              ? `Gửi phê duyệt (${selectedItemIds.size} mục)`
+              : 'Chọn ít nhất 1 mục'
+        }
+        submitting={isSubmittingAll}
+        errorText={submitAllError}
+        onConfirm={selectedItemIds.size > 0 ? handleConfirmSubmitAll : () => setIsSubmitAllConfirmOpen(false)}
+        onCancel={() => setIsSubmitAllConfirmOpen(false)}
+      >
+        {draftItemsToSubmit.length > 0 && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setIsListExpanded((prev) => !prev)}
+              className="w-full py-2.5 px-3.5 rounded-xl border border-outline-variant bg-surface-container-low hover:bg-surface-container flex items-center justify-between text-xs font-semibold text-on-surface cursor-pointer font-sans transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-primary">list_alt</span>
+                <span>
+                  Danh sách checklist bản nháp ({selectedItemIds.size}/{draftItemsToSubmit.length} đã chọn)
+                </span>
+              </span>
+              <span className="material-symbols-outlined text-base text-outline">
+                {isListExpanded ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {isListExpanded && (
+              <div className="mt-2.5 max-h-56 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-2 space-y-1">
+                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-surface-container-highest text-xs font-semibold text-outline">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="text-primary cursor-pointer hover:underline bg-transparent border-0 p-0 text-xs font-semibold font-sans"
+                  >
+                    {selectedItemIds.size === draftItemsToSubmit.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                  <span>
+                    Đã chọn {selectedItemIds.size} / {draftItemsToSubmit.length}
+                  </span>
+                </div>
+
+                {draftItemsToSubmit.map((item) => {
+                  const isChecked = selectedItemIds.has(item.id);
+                  return (
+                    <label
+                      key={item.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors"
+                    >
+                      <span className="text-xs font-medium text-on-surface line-clamp-1 flex-1 pr-3">
+                        {item.name}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelectItem(item.id)}
+                        className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary/20 cursor-pointer accent-primary"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </ConfirmDialog>
     </main>
   );
 }

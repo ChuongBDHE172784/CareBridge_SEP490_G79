@@ -407,6 +407,24 @@ export interface BulkImportResult {
   createdIds: string[];
 }
 
+export interface ChecklistBatchImportTemplate {
+  rowIndex: number;
+  checklistCode: string;
+  template: CreateChecklistTemplatePayload;
+}
+
+export type ChecklistBatchImportResult = BulkImportResult;
+
+export async function importChecklistTemplatesBatch(data: {
+  templates: ChecklistBatchImportTemplate[];
+}): Promise<ChecklistBatchImportResult> {
+  const res = await apiClient.post<ApiResponse<ChecklistBatchImportResult>>(
+    '/api/v1/admin/checklist-templates/import-batch',
+    data,
+  );
+  return res.data.data;
+}
+
 export async function importContentBatch(data: {
   type: ContentType;
   items: BulkImportItemPayload[];

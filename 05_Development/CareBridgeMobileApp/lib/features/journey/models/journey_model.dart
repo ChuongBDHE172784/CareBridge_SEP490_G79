@@ -77,9 +77,9 @@ class JourneyDashboard {
         lastMenstrualDate.month,
         lastMenstrualDate.day,
       );
-      return (normalizedToday.difference(normalizedLmp).inDays / 7)
-          .floor()
-          .clamp(0, 42);
+      final days = normalizedToday.difference(normalizedLmp).inDays;
+      if (days < 0) return null;
+      return ((days / 7).floor() + 1).clamp(1, 42);
     }
     if (estimatedDueDate != null) {
       final normalizedDueDate = DateTime(
@@ -88,7 +88,9 @@ class JourneyDashboard {
         estimatedDueDate.day,
       );
       final daysUntilDue = normalizedDueDate.difference(normalizedToday).inDays;
-      return ((280 - daysUntilDue) / 7).floor().clamp(0, 42);
+      final daysSinceLmp = 280 - daysUntilDue;
+      if (daysSinceLmp < 0) return null;
+      return ((daysSinceLmp / 7).floor() + 1).clamp(1, 42);
     }
     return null;
   }
@@ -123,7 +125,8 @@ class JourneyDashboard {
     // A quarantined response is explicitly fail-closed. Do not infer a week
     // from raw legacy dates while the server withholds its dating authority.
     if (datingQuarantineReason != null) return null;
-    // Preserve an explicitly server-supplied legacy week.
+    // Prefer sourceWeekNumber if available (1-based), then server-supplied pregnancyWeek (1-based)
+    if (sourceWeekNumber != null) return sourceWeekNumber;
     if (pregnancyWeek != null) return pregnancyWeek;
     if (isPregnancy && datingBasis == null &&
         (completedGestationalWeek == null || sourceWeekNumber == null) &&
