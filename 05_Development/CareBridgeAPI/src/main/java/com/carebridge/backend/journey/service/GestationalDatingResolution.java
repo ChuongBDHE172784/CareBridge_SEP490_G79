@@ -5,11 +5,22 @@ import com.carebridge.backend.journey.entity.GestationalDatingBasis;
 import java.time.LocalDate;
 
 /**
- * Immutable result of resolving the server-owned pregnancy dating contract.
- *
- * <p>The source dates are kept separate from {@link #canonicalLmp()}: an EDD
- * based journey deliberately retains a null source LMP while the resolver
- * still exposes the derived canonical anchor used by cadence.</p>
+ * =========================================================================================
+ * DỮ LIỆU KẾT QUẢ TÍNH TOÁN TUỔI THAI & ĐỊNH THỜI GIAN THAI KỲ (GESTATIONAL DATING RESOLUTION)
+ * =========================================================================================
+ * 
+ * Record bất biến (Immutable) chứa đầy đủ các chỉ số tính toán tuổi thai:
+ * @param basis Cơ sở định thời gian (LMP hoặc EDD)
+ * @param lastMenstrualDate Ngày đầu kỳ kinh cuối do người dùng nhập (nếu có)
+ * @param estimatedDueDate Ngày dự sinh (do người dùng nhập hoặc suy diễn)
+ * @param canonicalLmp Ngày kinh cuối chuẩn hóa (điểm neo tính toán trung tâm)
+ * @param resolved Đã xác định được thẩm quyền tính toán tuổi thai hay chưa
+ * @param semanticNoOp Cờ đánh dấu dữ liệu tính toán không thay đổi so với bản ghi trước
+ * @param datingScope Phạm vi request có chứa thông tin cập nhật ngày thai kỳ không
+ * @param completedGestationalWeek Số tuần thai trọn vẹn đã hoàn thành (0-based: 0..42+)
+ * @param completedGestationalDays Số ngày lẻ trong tuần thai hiện tại (0..6)
+ * @param sourceWeekNumber Tuần thai hiển thị cho người dùng và đối soát lâm sàng (1-based)
+ * @param plan Chỉ số giai đoạn chăm sóc thai sản theo chuẩn WHO (1..8)
  */
 public record GestationalDatingResolution(
         GestationalDatingBasis basis,
@@ -24,6 +35,9 @@ public record GestationalDatingResolution(
         int sourceWeekNumber,
         Integer plan) {
 
+    /**
+     * Tạo đối tượng kết quả cho trường hợp chưa thể xác định được tuổi thai (chưa đủ dữ liệu LMP/EDD)
+     */
     public static GestationalDatingResolution unresolved(
             LocalDate lastMenstrualDate,
             LocalDate estimatedDueDate,
@@ -42,6 +56,9 @@ public record GestationalDatingResolution(
                 null);
     }
 
+    /**
+     * Tạo đối tượng kết quả khi dữ liệu tuổi thai không thay đổi (Idempotent No-Op)
+     */
     public static GestationalDatingResolution noOp(
             GestationalDatingBasis basis,
             LocalDate lastMenstrualDate,
@@ -55,6 +72,9 @@ public record GestationalDatingResolution(
                 completedGestationalWeek, completedGestationalDays, sourceWeekNumber, plan, true);
     }
 
+    /**
+     * Tạo đối tượng kết quả khi dữ liệu tuổi thai không thay đổi với tùy chọn datingScope
+     */
     public static GestationalDatingResolution noOp(
             GestationalDatingBasis basis,
             LocalDate lastMenstrualDate,
@@ -79,3 +99,4 @@ public record GestationalDatingResolution(
                 plan);
     }
 }
+

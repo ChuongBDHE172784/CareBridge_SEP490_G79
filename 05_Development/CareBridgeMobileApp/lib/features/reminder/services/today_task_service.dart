@@ -41,21 +41,29 @@ class TodayTaskService {
   final TodayPostRequest _postRequest;
   final String Function() _clientRequestIdFactory;
 
+  /// [BƯỚC 1 - FRONTEND: GỬI REQUEST LẤY DANH SÁCH VIỆC CẦN LÀM HÔM NAY]
+  /// Gọi GET /api/v1/checklists/current/tasks hoặc endpoint theo nhóm gia đình
+  /// Trả về TodayTasksSnapshot đã phân loại theo 4 bucket: Overdue, Today, Upcoming, Unscheduled
   Future<TodayTasksSnapshot> loadToday({
     DateTime? date,
     String? careGroupId,
   }) async {
     try {
       final effective = date ?? DateTime.now();
+      // Chọn đường dẫn API: Nếu có careGroupId thì gọi theo Care Group, ngược lại gọi cá nhân
       final path = careGroupId == null
           ? '/api/v1/checklists/current/tasks'
           : '/api/v1/care-groups/$careGroupId/checklists/current/tasks';
+      
+      // Gửi HTTP GET request kèm query param date
       final payload = await _getRequest(
         path,
         queryParams: {'date': _dateOnly(effective)},
       );
       final envelope = Map<String, dynamic>.from(payload as Map);
       final raw = envelope['data'] is Map ? envelope['data'] as Map : envelope;
+      
+      // [BƯỚC 5 - FRONTEND: PARSE VÀ CẬP NHẬT SNAPSHOT MODEL ĐỂ RENDER UI]
       return TodayTasksSnapshot.fromJson(Map<String, dynamic>.from(raw));
     } catch (error) {
       if (error is TodayTasksFailure) rethrow;
@@ -63,12 +71,15 @@ class TodayTaskService {
     }
   }
 
+  /// [THỰC HIỆN HÀNH ĐỘNG TRÊN TASK - COMPLETE, REOPEN HOẶC SKIP]
+  /// Gửi POST action kèm clientRequestId (UUID v4) để đảm bảo Idempotency
   Future<Map<String, dynamic>> performAction({
     required TodayTaskKind taskKind,
     required String taskId,
     required TodayTaskAction action,
     TodayTaskSkipReason? reason,
   }) async {
+    // Validate phía Frontend: Checklist task chỉ cho phép COMPLETE và REOPEN
     if (taskKind == TodayTaskKind.checklist &&
         action != TodayTaskAction.complete &&
         action != TodayTaskAction.reopen) {
@@ -81,11 +92,14 @@ class TodayTaskService {
         'SKIP requires a controlled reason',
       );
     }
+    
+    // Định tuyến endpoint theo loại task
     final actionPath = taskKind == TodayTaskKind.checklist
         ? '/api/v1/checklists/tasks/$taskId/actions'
-        // Kept only for older family/reminder clients during the compatibility
-        // window; canonical checklist callers never send these task kinds.
+        // Dành cho tương thích với Reminder / CareTask
         : '/api/v1/tasks/${taskKind.apiValue}/$taskId/actions';
+    
+    // Gửi POST request cập nhật trạng thái
     final payload = await _postRequest(actionPath, {
       'action': action.apiValue,
       'clientRequestId': _clientRequestIdFactory(),
@@ -96,8 +110,8 @@ class TodayTaskService {
     return Map<String, dynamic>.from(raw);
   }
 
-  /// Canonical current-stage checklist action. It never accepts a task kind
-  /// discriminator or falls back to a mixed compatibility endpoint.
+  /// [HÀNH ĐỘNG RIÊNG CHO CHECKLIST TASK - COMPLETE / REOPEN]
+  /// Gọi trực tiếp API /api/v1/checklists/tasks/{taskId}/actions
   Future<Map<String, dynamic>> performChecklistAction({
     required String taskId,
     required TodayTaskAction action,
@@ -120,6 +134,7 @@ class TodayTaskService {
     return Map<String, dynamic>.from(raw);
   }
 
+  /// [CHUYỂN SANG TUẦN / GIAI ĐOẠN TIẾP THEO TRONG CHUỖI CHECKLIST]
   Future<Map<String, dynamic>> advanceSequence({
     required String currentInstanceId,
     String? clientRequestId,

@@ -74,26 +74,46 @@ public class ChecklistDistributionService {
         this.clock = clock;
     }
 
+    // =========================================================================
+    // HÀM SERVICE CHÍNH THỰC THI LUỒNG PHÂN PHỐI VIỆC CẦN LÀM (CHECKLIST DISTRIBUTION)
+    // =========================================================================
     @Transactional
     public ChecklistDistributionResult distribute(ChecklistDistributionCommand command) {
         return distributeDetailed(command).total();
     }
 
+    /**
+     * Phân phối việc cần làm chi tiết theo từng người nhận (Mẹ / Người thân trong Care Group).
+     * Đảm bảo tính Idempotent (chạy nhiều lần không trùng lặp) và kiểm tra tính hợp lệ vòng đời y tế.
+     *
+     * @param command Lệnh phân phối chứa thông tin template, chu kỳ, người nhận, ngữ cảnh hành trình
+     * @return ChecklistDistributionExecutionResult Kết quả chi tiết số lượng instance/task tạo mới, tồn tại, hủy hoặc xung đột
+     */
     @Transactional
     public ChecklistDistributionExecutionResult distributeDetailed(ChecklistDistributionCommand command) {
+        // [BƯỚC 1 & 2: Validate nghiệp vụ & Tiếp nhận Request]
+        // 1. Kiểm tra cấu trúc Command: bắt buộc phải có version template, context, timezone, người nhận, danh sách task items
         validateCommand(command);
+
+        // 2. Validate quyền sở hữu ngữ cảnh (Context Owner Check): Chủ nhóm chăm sóc phải trùng khớp với chủ context (Mẹ)
         if (!command.careGroupOwnerUserId().equals(command.contextOwnerUserId())) {
             recordFailure(command, OWNER_MISMATCH, command.contextId());
             ChecklistDistributionResult result = new ChecklistDistributionResult(0, 0, 0, 0, 0, 0, 1, 0);
             return commandResult(result, OWNER_MISMATCH);
         }
+
+        // 3. Kiểm tra tính hợp lệ về mặt Vòng đời y tế (Giai đoạn thai kỳ / Sau sinh / Tuần tuổi bé)
         ChecklistEligibilityDecision decision = eligibilityService.evaluate(
                 command.stage(), command.substage(), command.lifecycleDates(), command.effectiveDate());
+        
+        // 3.1. Nếu gặp lỗi dữ liệu mốc thời gian (thiếu LMP/EDD/BirthDate), ghi nhận thất bại và dừng
         if (decision.failureCode() != null) {
             auditFailure(command, decision.failureCode());
             ChecklistDistributionResult result = new ChecklistDistributionResult(0, 0, 0, 0, 0, 0, 0, 1);
             return commandResult(result, decision.failureCode());
         }
+
+        // 3.2. Nếu người dùng chưa đến hoặc đã qua giai đoạn áp dụng checklist này (chưa đủ tuần hoặc quá tuần), bỏ qua
         if (!decision.eligible()) {
             List<ChecklistRecipientDistributionResult> recipients = command.recipients().stream()
                     .filter(Objects::nonNull)
@@ -105,6 +125,8 @@ public class ChecklistDistributionService {
             return new ChecklistDistributionExecutionResult(
                     new ChecklistDistributionResult(0, 0, 0, 0, 0, 0, 0, 0), recipients);
         }
+
+        // 3.3. Kiểm tra mốc neo tính ngày hết hạn (Anchor Due Date) của từng task con
         boolean missingItemAnchor = command.items().stream()
                 .filter(Objects::nonNull)
                 .anyMatch(item -> item.dueAnchor() != null
@@ -117,16 +139,23 @@ public class ChecklistDistributionService {
             return commandResult(result, ITEM_DUE_ANCHOR_MISSING);
         }
 
+        // [BƯỚC 3.1: Khóa bi quan chống Race-Condition & Thu thập danh sách phân phối]
         Counters totals = new Counters();
         List<ChecklistRecipientDistributionResult> recipientResults = new ArrayList<>();
+
+        // Khóa theo Distribution Key để tránh trường hợp nhiều luồng cùng phân phối 1 checklist cho 1 user cùng lúc
         command.recipients().stream()
                 .filter(recipient -> mayReceive(command, recipient))
                 .map(recipient -> lifecycleScopeKey(command, recipient))
                 .distinct()
                 .sorted()
                 .forEach(instanceRepository::acquireDistributionKeyLock);
+
+        // [BƯỚC 3.2: Lặp qua từng Người nhận (Mẹ / Thành viên Care Group) để phân phối việc]
         for (ChecklistDistributionRecipient recipient : command.recipients()) {
             Counters counters = new Counters();
+
+            // Kiểm tra quyền nhận checklist của người nhận (Role MOTHER hoặc thành viên Family có quyền VIEW)
             if (!mayReceive(command, recipient)) {
                 counters.denied++;
                 totals.add(counters);
@@ -135,17 +164,20 @@ public class ChecklistDistributionService {
                         counters.result(), "RECIPIENT_NOT_ELIGIBLE"));
                 continue;
             }
-            // A catch-up replay addresses one closed cadence period only.  It must
-            // never run the ordinary "obsolete current window" sweep, otherwise a
-            // replay for last week could historyize a newer live occurrence.
+
+            // Quét và hủy/chuyển vào lịch sử các checklist cũ đã hết hạn nếu đang ở chu kỳ mới (trừ chế độ catch-up bù lịch sử)
             if (!isCatchUp(command)) {
                 cancelObsoletePending(command, recipient, decision, counters);
             }
+
+            // Thực thi phân phối checklist và các task con cho người nhận cụ thể này
             distributeToRecipient(command, recipient, decision, counters);
             totals.add(counters);
             recipientResults.add(new ChecklistRecipientDistributionResult(
                     recipient.userId(), decision.windowStart(), decision.windowEnd(), counters.result(), null));
         }
+
+        // [BƯỚC 4 & 5: Đóng gói phản hồi & Trạng thái Database]
         if (recipientResults.isEmpty()) {
             return commandResult(new ChecklistDistributionResult(0, 0, 0, 0, 0, 0, 0, 1),
                     "RECIPIENT_NOT_RESOLVED");
@@ -160,14 +192,21 @@ public class ChecklistDistributionService {
                 List.of(new ChecklistRecipientDistributionResult(null, null, null, result, dispositionCode)));
     }
 
+    /**
+     * Phân phối checklist và các task con cho một người nhận cụ thể (Mẹ hoặc Người thân).
+     * Tạo ChecklistInstance và ChecklistTaskInstance tương ứng, đảm bảo tính duy nhất qua Distribution Key.
+     */
     private void distributeToRecipient(
             ChecklistDistributionCommand command,
             ChecklistDistributionRecipient recipient,
             ChecklistEligibilityDecision decision,
             Counters counters) {
+        // Tạo token mốc cửa sổ thời gian (windowStart, windowEnd)
         String windowStartToken = decision.windowStart() == null ? "NONE" : decision.windowStart().toString();
         String windowEndToken = decision.windowEnd() == null ? "NONE" : decision.windowEnd().toString();
         UUID recipientCareGroupId = recipientCareGroupId(command, recipient);
+
+        // Sinh Distribution Key chuẩn hóa để đảm bảo Idempotency (chống trùng lặp)
         String key = command.cadence() == null
                 ? Short.valueOf((short) 2).equals(materializedContractVersion(command))
                         ? ChecklistDistributionKeyFactory.instanceKey(
@@ -186,11 +225,11 @@ public class ChecklistDistributionService {
                         command.cadence().periodKey(),
                         command.cadence().scheduleZone().getId(),
                         command.gestationalDatingRevision());
+
+        // Kiểm tra xem ChecklistInstance này đã tồn tại trong DB chưa
         ChecklistInstance instance = instanceRepository.findByDistributionKey(key).orElse(null);
-        // A targetless V2 aggregate owns a separate key namespace.  Do not
-        // search the legacy logical identity fallback for it, otherwise a
-        // pre-existing V1 row could be mistaken for the V2 occurrence and
-        // surface as a false key conflict.
+
+        // Fallback tìm kiếm theo định danh logic cũ đối với Mẹ (nếu là V1 template)
         if (instance == null && isPersonalMother(recipient)
                 && !Short.valueOf((short) 2).equals(materializedContractVersion(command))) {
             List<ChecklistInstance> legacy = instanceRepository.findAllByLogicalPersonalIdentity(
@@ -208,12 +247,9 @@ public class ChecklistDistributionService {
                 instance = instanceRepository.findForUpdateById(instance.getId()).orElse(null);
             }
         }
+
+        // Xử lý xung đột dữ liệu nếu instance đã tồn tại nhưng không khớp metadata
         if (instance != null && !matches(instance, command, recipient, decision)) {
-            // The V2 key intentionally excludes materialization mode.  A repair
-            // replay therefore finds either an already-closed catch-up row or the
-            // interactive row that was left open when the user missed the period.
-            // Both cases are the same occurrence identity and must converge rather
-            // than becoming a key conflict.
             if (sameOccurrenceIdentity(instance, command, recipient, decision)) {
                 if (isCatchUp(command)) {
                     counters.existingInstances++;
@@ -229,6 +265,8 @@ public class ChecklistDistributionService {
             counters.conflicts++;
             return;
         }
+
+        // Nếu chưa tồn tại -> Tạo mới ChecklistInstance (Đợt việc cần làm cha)
         if (instance == null) {
             ChecklistInstance proposed = ChecklistInstance.builder()
                     .distributionKey(key)
@@ -257,12 +295,16 @@ public class ChecklistDistributionService {
                     .status(ChecklistInstanceStatus.PENDING)
                     .build();
             try {
+                // Lưu ChecklistInstance vào cơ sở dữ liệu
                 instance = instanceRepository.save(proposed);
                 counters.createdInstances++;
+
+                // Ghi Audit Log hành động phân phối checklist instance
                 auditWriter.write(event(AuditAction.CHECKLIST_DISTRIBUTED, command, recipient.userId(),
                         ChecklistAuditResourceType.CHECKLIST_INSTANCE, instance.getId(),
                         null, null, ChecklistInstanceStatus.PENDING.name(), null));
             } catch (DataIntegrityViolationException loser) {
+                // Xử lý concurrency winner-loser: lấy instance đã được luồng khác tạo trước đó
                 instance = instanceRepository.findByDistributionKey(key).orElseThrow(() -> loser);
                 if (!matches(instance, command, recipient, decision)) {
                     recordFailure(command, KEY_CONFLICT, instance.getId());
@@ -275,6 +317,7 @@ public class ChecklistDistributionService {
             counters.existingInstances++;
         }
 
+        // [Tạo các ChecklistTaskInstance con tương ứng từ template]
         ChecklistInstance lockedParent = instance;
         List<ChecklistTaskInstance> lockedTasks = taskRepository
                 .findAllForUpdateByChecklistInstanceIdOrderByTaskKey(lockedParent.getId());
@@ -284,16 +327,20 @@ public class ChecklistDistributionService {
                 .sorted(java.util.Comparator.comparing(item -> ChecklistDistributionKeyFactory.childKey(
                         lockedParent.getId(), item.templateItemVersionId())))
                 .toList();
+
         for (ChecklistDistributionItem item : orderedItems) {
             String taskKey = ChecklistDistributionKeyFactory.childKey(instance.getId(), item.templateItemVersionId());
             ChecklistTaskInstance existing = tasksByKey.get(taskKey);
             if (existing == null && instance.getStatus() == ChecklistInstanceStatus.COMPLETED) {
                 continue;
             }
+
+            // Tính toán thời hạn Due Date theo mốc thai kỳ/sinh nở (Anchor + Offset)
             Instant dueAt = item.dueAnchor() == null || item.dueOffsetDays() == null
                     ? null
                     : eligibilityService.dueAt(item.dueAnchor(), command.lifecycleDates(),
                             item.dueOffsetDays(), item.dueOffsetUnit(), command.timezone());
+
             if (existing != null) {
                 if (!matches(existing, instance, command, item, dueAt)) {
                     recordFailure(command, KEY_CONFLICT, existing.getId());
@@ -303,6 +350,8 @@ public class ChecklistDistributionService {
                 counters.existingTasks++;
                 continue;
             }
+
+            // Tạo mới ChecklistTaskInstance (Từng đầu việc cụ thể)
             ChecklistTaskInstance proposed = ChecklistTaskInstance.builder()
                     .checklistInstanceId(instance.getId())
                     .templateVersionId(command.templateVersionId())
@@ -320,8 +369,11 @@ public class ChecklistDistributionService {
                     .status(ChecklistTaskStatus.PENDING)
                     .build();
             try {
+                // Lưu Task con vào cơ sở dữ liệu
                 ChecklistTaskInstance created = taskRepository.save(proposed);
                 counters.createdTasks++;
+
+                // Ghi Audit Log gán đầu việc cần làm (CHECKLIST_ASSIGNED)
                 auditWriter.write(event(AuditAction.CHECKLIST_ASSIGNED, command, recipient.userId(),
                         ChecklistAuditResourceType.CHECKLIST_TASK_INSTANCE, created.getId(),
                         created.getId(), null, ChecklistTaskStatus.PENDING.name(), null));
@@ -335,11 +387,16 @@ public class ChecklistDistributionService {
                 counters.existingTasks++;
             }
         }
+
+        // Nếu là luồng Catch-up (bù lịch sử), tự động đóng instance sau khi materialize
         if (isCatchUp(command)) {
             closeCatchUpOccurrence(instance, command, recipient, counters);
         }
     }
 
+    /**
+     * Quét và chuyển các ChecklistInstance cũ đã hết hạn vào History hoặc Hủy (CANCELLED).
+     */
     private void cancelObsoletePending(
             ChecklistDistributionCommand command,
             ChecklistDistributionRecipient recipient,
@@ -352,6 +409,9 @@ public class ChecklistDistributionService {
         cancelObsoleteNonMotherPending(command, recipient, decision, counters);
     }
 
+    /**
+     * Đánh dấu các checklist thai kỳ/sau sinh cũ của Mẹ vào History khi chuyển sang tuần/giai đoạn mới.
+     */
     private void markObsoleteMotherHistory(
             ChecklistDistributionCommand command,
             ChecklistDistributionRecipient recipient,
@@ -379,6 +439,9 @@ public class ChecklistDistributionService {
         }
     }
 
+    /**
+     * Hủy bỏ các checklist pending của thành viên gia đình khi đợt việc đã lỗi thời.
+     */
     private void cancelObsoleteNonMotherPending(
             ChecklistDistributionCommand command,
             ChecklistDistributionRecipient recipient,

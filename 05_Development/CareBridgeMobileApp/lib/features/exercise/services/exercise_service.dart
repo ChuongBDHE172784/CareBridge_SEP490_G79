@@ -83,11 +83,8 @@ class ExerciseService {
     await apiPatch('/api/v1/exercises/sessions/$sessionId/resume', {});
   }
 
-  /// Sends one normalized landmark sample to Spring.
-  ///
-  /// The caller is responsible for sampling camera frames. A realtime source
-  /// should use [PostureEventStreamer] so only one request is in flight and
-  /// stale frames are dropped while Spring or the sidecar is busy.
+  /// Gửi dữ liệu mốc tọa độ cơ thể (Keypoint Landmarks) lên Backend Spring Boot
+  /// Endpoint: `POST /api/v1/exercises/sessions/{sessionId}/posture-events`
   Future<PostureFeedback> analyzePostureEvent({
     required String sessionId,
     required int eventTimeMs,
@@ -107,6 +104,7 @@ class ExerciseService {
       throw ArgumentError.value(landmarks, 'landmarks', 'must not be empty');
     }
 
+    // Đóng gói payload gửi lên endpoint posture-events
     final response = await _post(
       '/api/v1/exercises/sessions/$sessionId/posture-events',
       <String, dynamic>{

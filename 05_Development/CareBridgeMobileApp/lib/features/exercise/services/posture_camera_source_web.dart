@@ -284,8 +284,11 @@ class PostureCameraSource {
     await loaded.future;
   }
 
+  /// [BƯỚC 1.1: Khởi tạo và cấu hình MediaPipe Pose trên Trình duyệt]
+  /// Tải thư viện JS từ CDN, cấu hình mô hình (modelComplexity=1, minConfidence=0.5) và đăng ký callback onResults.
   Future<void> _startPoseAnalysis(int runGeneration) async {
     try {
+      // Đảm bảo script MediaPipe Pose đã được nhúng vào DOM head
       await _ensurePoseScript();
       if (!_isCurrentRun(runGeneration)) return;
 
@@ -297,6 +300,7 @@ class PostureCameraSource {
         throw StateError('MEDIAPIPE_POSE_NOT_EXPOSED');
       }
 
+      // Khởi tạo đối tượng Pose với đường dẫn tải tệp mô hình WASM
       final options = js_util.jsify(<String, Object?>{
         'locateFile': js_util.allowInteropString(
           (String file) => '$_poseModelBase$file',
@@ -308,6 +312,8 @@ class PostureCameraSource {
       if (pose == null) {
         throw StateError('MEDIAPIPE_POSE_CONSTRUCTION_FAILED');
       }
+
+      // Thiết lập cấu hình nhận diện: độ phức tạp mô hình, làm mịn mốc, ngưỡng tin cậy
       js_util.callMethod(pose, 'setOptions', <Object?>[
         js_util.jsify(<String, Object?>{
           'modelComplexity': 1,
@@ -317,6 +323,8 @@ class PostureCameraSource {
           'minTrackingConfidence': 0.5,
         }),
       ]);
+
+      // Đăng ký hàm callback hứng kết quả 33 điểm mốc mỗi khi xử lý xong một khung hình
       js_util.callMethod(pose, 'onResults', <Object?>[
         js_util.allowInteropResults(
           (results) => _onResults(runGeneration, results),
@@ -328,6 +336,7 @@ class PostureCameraSource {
       }
 
       _pose = pose;
+      // Khởi chạy vòng lặp gửi frame ảnh từ video sang MediaPipe mỗi 66ms (~15 FPS)
       _frameTimer = Timer.periodic(const Duration(milliseconds: 66), (_) {
         unawaited(_sendFrame(runGeneration, pose));
       });
@@ -339,6 +348,7 @@ class PostureCameraSource {
     }
   }
 
+  /// [BƯỚC 1.2: Trích xuất Frame ảnh từ Video Element và đẩy vào MediaPipe WASM]
   Future<void> _sendFrame(int runGeneration, Object pose) async {
     if (!_isCurrentRun(runGeneration) ||
         _sendInFlightGeneration == runGeneration ||
@@ -348,6 +358,7 @@ class PostureCameraSource {
     }
     _sendInFlightGeneration = runGeneration;
     try {
+      // Gửi đối tượng HTML VideoElement trực tiếp vào MediaPipe Pose JS
       final result = js_util.callMethod(pose, 'send', <Object?>[
         js_util.jsify(<String, Object?>{'image': _video}),
       ]);
@@ -369,11 +380,13 @@ class PostureCameraSource {
     }
   }
 
+  /// [BƯỚC 1.3: Hứng 33 điểm mốc MediaPipe -> Vẽ Canvas cục bộ -> Phát Stream dữ liệu]
   void _onResults(int runGeneration, JSAny? results) {
     if (!_isCurrentRun(runGeneration)) return;
     _clearOverlay();
     try {
       if (results == null) return;
+      // Trích xuất danh sách 33 điểm mốc (poseLandmarks) từ kết quả MediaPipe
       final rawLandmarks = js_util.getProperty<Object?>(
         results,
         'poseLandmarks',
@@ -384,6 +397,7 @@ class PostureCameraSource {
       final length = rawLength is num ? rawLength.toInt() : 0;
       if (length == 0) return;
 
+      // Đồng bộ kích thước Canvas khớp hoàn toàn với Video
       _syncCanvasDimensions();
       final overlayPoints = <PostureOverlayPoint?>[];
 
@@ -391,6 +405,8 @@ class PostureCameraSource {
       final count = length < _landmarkNames.length
           ? length
           : _landmarkNames.length;
+
+      // Duyệt qua 33 điểm mốc, chuẩn hóa tọa độ x, y, z, visibility
       for (var index = 0; index < count; index++) {
         final landmark = _arrayItem(rawLandmarks, index);
         if (landmark == null) {
@@ -412,11 +428,15 @@ class PostureCameraSource {
           'visibility': _number(landmark, 'visibility'),
         };
       }
+
+      // [VẼ CANVAS]: Gọi renderer vẽ khung xương trực tiếp lên HTML Canvas 2D
       PostureOverlayRenderer.draw(
         _canvas.context2D,
         overlayPoints,
         error: _feedbackError,
       );
+
+      // [STREAMING]: Đẩy dữ liệu 33 mốc cơ thể vào stream để PostureEventStreamer tiếp nhận và gửi Backend
       if (frame.isNotEmpty && !_framesController.isClosed) {
         _framesController.add(frame);
       }

@@ -64,13 +64,13 @@ public class PostureSessionTracker {
     }
 
     /**
-     * Folds one frame into the session's history.
+     * Tích hợp khung hình hiện tại vào lịch sử theo dõi chuyển động đa khung hình của phiên tập.
      *
-     * @param modelStage the phase reported by the model for squats and lunges;
-     *                   ignored for curls, whose stage upstream derives from the
-     *                   elbow angle rather than from a model
-     * @return the running repetition count plus any finding that only a full
-     *         repetition could reveal
+     * @param sessionId  ID phiên tập luyện
+     * @param exerciseKey Định danh bài tập ("bicep_curl", "squat", "lunge")
+     * @param landmarks  Dữ liệu tọa độ khớp MediaPipe
+     * @param modelStage Pha chuyển động do model AI dự đoán ("up", "down", "I", "M", "D")
+     * @return TrackedFrame chứa tổng số rep đã đếm và danh sách cảnh báo lỗi chuyển động
      */
     public TrackedFrame track(
             UUID sessionId, String exerciseKey, Map<String, Object> landmarks, String modelStage) {
@@ -99,12 +99,10 @@ public class PostureSessionTracker {
     }
 
     /**
-     * Reports whether this posture code differs from the one last seen, so callers
-     * can persist an event when a posture is entered instead of on every frame that
-     * holds it. Upstream applies the same gate before recording an error.
-     *
-     * <p>Calling this advances the session's last-seen posture, so it must be called
-     * once per frame and its answer acted on.
+     * Cổng lọc trùng lặp (Occurrence Gate):
+     * Chỉ trả về true khi mã tư thế (postureCode) thay đổi so với khung hình trước đó.
+     * Mục đích kỹ thuật & nghiệp vụ: Ngăn chặn việc ghi hàng trăm bản ghi trùng lặp mỗi giây vào database,
+     * chỉ lưu khi thai phụ bắt đầu chuyển từ tư thế đúng sang sai (hoặc ngược lại).
      */
     public boolean isNewOccurrence(UUID sessionId, String postureCode) {
         if (sessionId == null) {
@@ -141,10 +139,10 @@ public class PostureSessionTracker {
     }
 
     /**
-     * Upstream's curl state machine, run independently per arm: the arm is "down"
-     * past 120 degrees, and crossing below 100 from there completes a repetition.
-     * While curled, the tightest angle reached is remembered; when the arm extends
-     * again, a peak that never got tighter than 60 degrees is a weak contraction.
+     * Máy trạng thái chuyển động Bicep Curl (FSM):
+     * - Tay hạ xuống (angle > 120°): Đánh dấu STAGE_DOWN.
+     * - Tay gập lên (angle < 100° từ STAGE_DOWN): Chuyển STAGE_UP và tăng 1 lần đếm (repetition++).
+     * - Đỉnh gập cơ (Peak Contraction): Nếu đỉnh gập không đạt dưới 60°, cảnh báo WEAK_PEAK_CONTRACTION.
      */
     private List<RuleFinding> trackCurl(SessionState state, Map<String, Object> landmarks) {
         List<RuleFinding> findings = new ArrayList<>();

@@ -11,13 +11,22 @@ import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 /**
- * Implements the normative named-anchor calendar algorithm for checklist
- * eligibility.
+ * Service tính toán và đánh giá tính đủ điều kiện theo Vòng đời y tế (Giai đoạn Thai kỳ, Sau sinh, Chăm con).
+ * Áp dụng thuật toán mốc neo lịch chuẩn (Named-Anchor Calendar Algorithm) để xác định tuần thai hoặc ngày tuổi của bé.
  */
 public class ChecklistLifecycleEligibilityService {
 
-    private static final long PREGNANCY_TERM_DAYS = 280;
+    private static final long PREGNANCY_TERM_DAYS = 280; // Chu kỳ thai chuẩn: 280 ngày (40 tuần)
 
+    /**
+     * Đánh giá xem tại ngày chỉ định (effectiveDate), người dùng có nằm trong cửa sổ áp dụng của Checklist hay không.
+     *
+     * @param stage Giai đoạn (PRE_PREGNANCY, PREGNANCY, POSTPARTUM)
+     * @param substage Cấu hình khoảng tuần/ngày áp dụng (ví dụ: Tuần 4 - Tuần 8 thai kỳ)
+     * @param dates Các mốc ngày y tế (LMP - Kỳ kinh cuối, EDD - Ngày dự sinh, BirthDate - Ngày sinh em bé)
+     * @param effectiveDate Ngày cần kiểm tra hiệu lực
+     * @return ChecklistEligibilityDecision Quyết định đủ điều kiện cùng cửa sổ thời gian (windowStart, windowEnd)
+     */
     public ChecklistEligibilityDecision evaluate(
             ContentStage stage,
             ChecklistLifecycleEligibility substage,
@@ -25,9 +34,13 @@ public class ChecklistLifecycleEligibilityService {
             LocalDate effectiveDate) {
         Objects.requireNonNull(dates, "Lifecycle dates are required");
         Objects.requireNonNull(effectiveDate, "Effective date is required");
+
+        // Nếu không yêu cầu ràng buộc giai đoạn -> Mặc định hợp lệ
         if (stage == null && substage == null) {
             return ChecklistEligibilityDecision.neutral();
         }
+
+        // Giai đoạn chuẩn bị mang thai (Pre-Pregnancy) không cần mốc neo thai kỳ
         if (stage == ContentStage.PRE_PREGNANCY) {
             if (substage == null || !Boolean.TRUE.equals(substage.getActive())
                     || !stage.name().equals(substage.getStage())
@@ -36,24 +49,28 @@ public class ChecklistLifecycleEligibilityService {
             }
             return ChecklistEligibilityDecision.neutral();
         }
+
+        // Validate tính hợp lệ của các mốc ngày y tế
         validateLifecycleDates(stage, dates);
         validate(stage, substage);
+
+        // Lấy ngày mốc neo (Ví dụ: Ngày LMP hoặc Ngày sinh của bé)
         LocalDate anchor = anchorDate(substage.getAnchorType(), dates);
         if (anchor == null) {
             return ChecklistEligibilityDecision.failure("LIFECYCLE_ANCHOR_MISSING");
         }
+
+        // Tính ngày bắt đầu và kết thúc của cửa sổ hiệu lực
         LocalDate start = add(anchor, substage.getRangeUnit(), substage.getStartInclusive());
-        // Integer.MAX_VALUE is the persisted open-ended sentinel used by a
-        // stage-exit Plan (currently pregnancy Plan 8). Do not feed it into
-        // LocalDate.plusWeeks/plusDays: that overflows before the lifecycle
-        // exit can close the occurrence. A null end is also the existing
-        // representation for an active stage-exit window.
         boolean openEnded = substage.getEndInclusive() == Integer.MAX_VALUE;
         LocalDate end = openEnded ? null
                 : add(anchor, substage.getRangeUnit(), substage.getEndInclusive());
+
+        // Tính toán vị trí hiện tại (ví dụ: đang ở tuần thứ mấy sau mốc neo)
         long position = completedUnits(anchor, effectiveDate, substage.getRangeUnit());
         boolean eligible = position >= substage.getStartInclusive()
                 && (openEnded || position <= substage.getEndInclusive());
+
         return eligible
                 ? ChecklistEligibilityDecision.eligible(anchor, start, end)
                 : ChecklistEligibilityDecision.outside(anchor, start, end);
