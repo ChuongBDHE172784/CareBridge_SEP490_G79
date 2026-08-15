@@ -13,9 +13,7 @@ const bool safetyDemoMode = bool.fromEnvironment(
 
 const bool safetyDiagnosticsEnabled = kDebugMode || safetyDemoMode;
 
-const String safetyDiagnosticsModeLabel = safetyDemoMode
-    ? 'CHẾ ĐỘ TRÌNH DIỄN'
-    : 'DEBUG';
+const String safetyDiagnosticsModeLabel = safetyDemoMode ? 'Số Liệu' : 'DEBUG';
 
 /// Recognizes an intentionally exaggerated hand swing for the user-initiated
 /// sensor self-test, or a controlled soft-surface drop. These thresholds never

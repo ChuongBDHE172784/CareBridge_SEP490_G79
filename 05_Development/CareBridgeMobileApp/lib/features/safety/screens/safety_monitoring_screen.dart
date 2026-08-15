@@ -1184,7 +1184,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           if (safetyDemoMode) ...[
             const SizedBox(height: 6),
             const Text(
-              'BẢN TRÌNH DIỄN · MÔ PHỎNG KHÔNG GỬI SOS',
+              'Thông số hiện tại',
               key: Key('safety-demo-mode-banner'),
               style: TextStyle(
                 color: _onErrorContainer,
