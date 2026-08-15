@@ -61,4 +61,10 @@ paths = [
   # which is already allowlisted; trivy_fs still scans these with no exclusions.
   '''05_Development/CareBridgeMobileApp/test/.*''',
   '''05_Development/CareBridgeWebApp/src/.*\.test\.(ts|tsx)$''',
+
+  # Checklist database backups containing synthetic distribution_key SHA-256 hashes,
+  # not API keys or secrets.
+  '''05_Development/Database/backup/.*''',
+  '''05_Development/Database/.*backup.*''',
 ]
+
