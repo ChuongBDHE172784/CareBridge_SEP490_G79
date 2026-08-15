@@ -403,7 +403,7 @@ as needing the same standard: an existing registry rule to port, or a clinical d
 haemorrhage and pre-eclampsia danger signs. Sixteen candidate phrases came back. Ten of them cite
 `tudu.com.vn` (Bệnh viện Từ Dũ), which is not a `.gov.vn` domain, so D-029 as written did not admit them.
 Only two rows were true `.gov.vn`, and both were case-report news items rather than guidance.
-**Decision, part "../../../docs/Detailed_Design/MF06_AI_Nurse_Assistant_Risk_Triage"1** D-029's source test is widened from "a `.gov.vn` source" to "a `.gov.vn` source, or a
+**Decision, part 1** D-029's source test is widened from "a `.gov.vn` source" to "a `.gov.vn` source, or a
 top-tier public hospital's own health-education pages". Bệnh viện Từ Dũ qualifies as the leading public
 obstetric hospital in the south. Everything else in D-029 is unchanged: a quoted phrase may only add
 another spelling of a sign the catalogue already acts on, each phrase cites its source in a comment, and
@@ -411,7 +411,7 @@ quoting a source still does not make the mapping reviewed.
 **Still excluded** Commercial and private-hospital content — Vinmec, Hello Bacsi, Medlatec, Long Châu —
 along with news portals, forums and AI-generated pages. A case-report news article on a `.gov.vn` domain
 describes one patient; it is not wording guidance and does not qualify either.
-**Decision, part "../../../docs/Detailed_Design/MF06_AI_Nurse_Assistant_Risk_Triage"2** The four visual-disturbance phrases are refused: `ruồi bay`, `đèn nhấp nháy`,
+**Decision, part 2** The four visual-disturbance phrases are refused: `ruồi bay`, `đèn nhấp nháy`,
 `chói sáng`, `thấy các đốm sáng trước mắt`. Measured against the existing matcher, the first three fired on
 six of six ordinary sentences — "nhà em nhiều ruồi bay quá", "bóng đèn nhấp nháy hỏng rồi, phòng bé tối
 quá", "trời nắng chói sáng". `VISUAL_DISTURBANCE` is the second half of `PREG_RED_002`, so a pregnant user
