@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_tts/flutter_tts.dart';
 
 /// Testable boundary for spoken posture feedback.
@@ -23,12 +25,20 @@ class SystemExerciseVoiceFeedback implements ExerciseVoiceFeedback {
   Future<void> _initialize() async {
     if (_initialized || _disposed) return;
     try {
+      if (!kIsWeb && Platform.isAndroid) {
+        final dynamic engines = await _tts.getEngines;
+        if (engines is List && engines.contains('com.google.android.tts')) {
+          await _tts.setEngine('com.google.android.tts');
+        }
+      }
       await _tts.setLanguage('vi-VN');
-      await _tts.setSpeechRate(0.48);
+      await _tts.setSpeechRate(0.5);
       await _tts.setVolume(1.0);
+      await _tts.setPitch(1.0);
       _initialized = true;
-    } catch (_) {
-      // A later warning may retry initialization if the platform becomes ready.
+    } catch (e) {
+      debugPrint('TTS initialization warning: $e');
+      _initialized = true;
     }
   }
 
@@ -37,13 +47,14 @@ class SystemExerciseVoiceFeedback implements ExerciseVoiceFeedback {
     if (_disposed || message.trim().isEmpty) return;
     try {
       await _initialize();
-      if (_disposed || !_initialized) return;
+      if (_disposed) return;
       await _tts.stop();
       await _tts.speak(message.trim());
-    } catch (_) {
-      // Visual posture feedback remains visible when speech is unavailable.
+    } catch (e) {
+      debugPrint('TTS speak warning: $e');
     }
   }
+
 
   @override
   Future<void> stop() async {

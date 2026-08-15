@@ -28,7 +28,10 @@ class PostureCameraSource {
 
   Future<void> start() async {}
 
+  Future<void> switchCamera() async {}
+
   Future<void> stop() async {}
+
 
   Future<void> dispose() => stop();
 
