@@ -28,6 +28,7 @@ interface ItemRow {
   id?: string;
   itemText: string;
   description: string;
+  sourceUrl: string;
   isRequired: boolean | null;
   targetSubject: ChecklistTargetSubject | null;
   supportFunction: ChecklistSupportFunction | '';
@@ -40,6 +41,7 @@ interface ItemRow {
 const AUTHORABLE_STAGES: readonly ContentStage[] = STAGE_OPTIONS.map(({ value }) => value);
 const DEFAULT_CHECKLIST_CONTRACT_VERSION = 2;
 const OPEN_ENDED_OFFSET = 2_147_483_647;
+const MAX_SOURCE_URL_LENGTH = 2_048;
 // The authoring surface uses the source-facing week number (1, 2, 3, ...).
 // Runtime eligibility remains zero-based, so the conversion is kept at this
 // boundary instead of leaking an implementation offset into the form.
@@ -99,12 +101,31 @@ function newRow(targetless = false, repeatWeekly = false, repeatDaily = false): 
       : `row-${Date.now()}-${fallbackRowSequence++}`,
     itemText: '',
     description: '',
+    sourceUrl: '',
     isRequired: true,
     targetSubject: targetless ? null : 'MOTHER',
     supportFunction: '',
     repeatWeekly,
     repeatDaily,
   };
+}
+
+function sourceUrlValidationError(value: string): string | null {
+  const normalizedValue = value.trim();
+  if (!normalizedValue) return null;
+  if (normalizedValue.length > MAX_SOURCE_URL_LENGTH) {
+    return 'Link nguồn không được vượt quá 2.048 ký tự.';
+  }
+
+  try {
+    const url = new URL(normalizedValue);
+    const usesHttp = url.protocol === 'http:' || url.protocol === 'https:';
+    const hasSafeAuthority = Boolean(url.hostname) && !url.username && !url.password;
+    if (usesHttp && hasSafeAuthority) return null;
+  } catch {
+    // The shared message below covers malformed and non-absolute URLs.
+  }
+  return 'Link nguồn phải là URL đầy đủ bắt đầu bằng http:// hoặc https://.';
 }
 
 export default function ChecklistFormPage() {
@@ -206,6 +227,7 @@ export default function ChecklistFormPage() {
           id: item.id,
           itemText: item.itemText,
           description: item.description ?? '',
+          sourceUrl: item.sourceUrl ?? '',
           isRequired: item.isRequired ?? true,
           targetSubject: loadedContractVersion === 2 ? null : (item.targetSubject ?? 'MOTHER'),
           supportFunction: item.supportFunction ?? '',
@@ -230,6 +252,7 @@ export default function ChecklistFormPage() {
   const cadenceFlags = populatedItems;
   const hasWeeklyItems = cadenceFlags.some((row) => row.repeatWeekly);
   const hasDailyItems = cadenceFlags.some((row) => row.repeatDaily);
+  const hasInvalidSourceUrl = items.some((row) => sourceUrlValidationError(row.sourceUrl) !== null);
 
   const listRepeatWeekly = items.length > 0 && items.every((row) => row.repeatWeekly);
   const listRepeatDaily = items.length > 0 && items.every((row) => row.repeatDaily);
@@ -279,6 +302,7 @@ export default function ChecklistFormPage() {
     && (!hasMotherRecipient || (stage !== ''
       && (stage === 'PRE_PREGNANCY' || (substage !== null && substage.anchor !== 'NONE'))))
     && !hasUnsupportedPrePregnancyWeekly
+    && !hasInvalidSourceUrl
     && populatedItems.every((row) => isTargetlessV2
       ? row.targetSubject == null && row.isRequired != null
       : row.targetSubject != null && row.isRequired != null)
@@ -368,6 +392,7 @@ export default function ChecklistFormPage() {
     .filter((row) => row.itemText.trim())
     .map((row, index) => {
       const description = row.description.trim();
+      const sourceUrl = row.sourceUrl.trim();
       return {
         ...(row.id ? { id: row.id } : {}),
         itemText: row.itemText.trim(),
@@ -375,6 +400,7 @@ export default function ChecklistFormPage() {
         isRequired: row.isRequired,
         ...(isTargetlessV2 ? {} : { targetSubject: row.targetSubject }),
         ...(description ? { description } : {}),
+        ...(sourceUrl ? { sourceUrl } : {}),
         ...(row.supportFunction ? { supportFunction: row.supportFunction } : {}),
         repeatWeekly: row.repeatWeekly,
         repeatDaily: row.repeatDaily,
@@ -610,7 +636,11 @@ export default function ChecklistFormPage() {
               </div>
             </div>
             <div className="grid gap-4">
-              {items.map((row, index) => (
+              {items.map((row, index) => {
+                const sourceUrlError = sourceUrlValidationError(row.sourceUrl);
+                const sourceUrlHintId = `source-url-hint-${row.key}`;
+                const sourceUrlErrorId = `source-url-error-${row.key}`;
+                return (
                 <div key={row.key} className="grid gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                   <label className="grid gap-2 text-sm font-semibold text-on-surface">Mục {index + 1}<input aria-label={`Item ${index + 1} text`} disabled={isImmutable} value={row.itemText} onChange={(event) => updateItem(row.key, { itemText: event.target.value })} className={field} /></label>
                   <button aria-label={`Delete item ${index + 1}`} type="button" disabled={isImmutable || items.length === 1} onClick={() => setItems((previous) => previous.filter((item) => item.key !== row.key))} className="flex h-10 w-10 items-center justify-center rounded-xl border border-error-container text-error hover:bg-error-container/20 cursor-pointer disabled:opacity-30 self-end mb-0.5"><Trash2 size={18} /></button>
@@ -631,6 +661,25 @@ export default function ChecklistFormPage() {
                   <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">Nội dung chi tiết
                     <textarea aria-label={`Nội dung chi tiết mục ${index + 1}`} disabled={isImmutable} value={row.description} onChange={(event) => updateItem(row.key, { description: event.target.value })} rows={3} className={`${field} py-3`} />
                   </label>
+                  <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">
+                    Link nguồn (không bắt buộc)
+                    <input
+                      aria-label={`Link nguồn mục ${index + 1}`}
+                      aria-describedby={`${sourceUrlHintId}${sourceUrlError ? ` ${sourceUrlErrorId}` : ''}`}
+                      aria-invalid={sourceUrlError ? 'true' : undefined}
+                      type="url"
+                      inputMode="url"
+                      maxLength={MAX_SOURCE_URL_LENGTH}
+                      disabled={isImmutable}
+                      value={row.sourceUrl}
+                      onChange={(event) => updateItem(row.key, { sourceUrl: event.target.value })}
+                      className={`${field} ${sourceUrlError ? 'border-error focus:border-error focus:ring-error/20' : ''}`}
+                    />
+                    <span id={sourceUrlHintId} className="text-xs font-normal text-on-surface-variant">
+                      Chỉ chấp nhận liên kết đầy đủ bắt đầu bằng http:// hoặc https://.
+                    </span>
+                    {sourceUrlError && <span id={sourceUrlErrorId} role="alert" className="text-xs font-normal text-error">{sourceUrlError}</span>}
+                  </label>
                   <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">Chức năng hỗ trợ
                     <select aria-label={`Chức năng hỗ trợ mục ${index + 1}`} disabled={isImmutable} value={row.supportFunction} onChange={(event) => updateItem(row.key, { supportFunction: event.target.value as ChecklistSupportFunction | '' })} className={field}>
                       <option value="">Không liên kết</option>
@@ -639,7 +688,8 @@ export default function ChecklistFormPage() {
                   </label>
                   <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-2"><input type="checkbox" disabled={isImmutable} checked={Boolean(row.isRequired)} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </div>

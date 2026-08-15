@@ -23,6 +23,7 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistScheduleEndMode;
 import com.carebridge.backend.checklist.model.ChecklistScheduleType;
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
 import com.carebridge.backend.content.dto.request.ChecklistSubstageRequest;
@@ -41,6 +42,7 @@ import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.service.AdminChecklistTemplateServiceImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -67,6 +69,9 @@ class AdminChecklistTemplateServiceImplTest {
 
         @Spy
         private ContentMapper contentMapper = new ContentMapper();
+
+        @Spy
+        private ObjectMapper objectMapper = new ObjectMapper();
 
         @Mock
         private AuditService auditService;
@@ -116,6 +121,66 @@ class AdminChecklistTemplateServiceImplTest {
                                 eq("ChecklistTemplate"), any(), any());
         }
 
+        @Test
+        void create_withItemSourceUrl_persistsAndReturnsSourceUrl() {
+                when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                                .thenAnswer(inv -> {
+                                        ChecklistTemplate t = inv.getArgument(0);
+                                        t.setId(TEMPLATE_ID);
+                                        return t;
+                                });
+                when(checklistItemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+                String sourceUrl = "https://www.who.int/health-topics/maternal-health";
+                CreateChecklistTemplateRequest request = makeCreateRequest(List.of(
+                                new ChecklistItemRequest(
+                                                null,
+                                                "Đọc hướng dẫn chăm sóc",
+                                                1,
+                                                true,
+                                                ChecklistTargetSubject.MOTHER,
+                                                null,
+                                                null,
+                                                false,
+                                                false,
+                                                sourceUrl)));
+
+                AdminChecklistTemplateDetailResponse response = service.create(request, ADMIN_ID);
+
+                ArgumentCaptor<List<ChecklistItem>> captor = ArgumentCaptor.forClass(List.class);
+                verify(checklistItemRepository).saveAll(captor.capture());
+                assertTrue(captor.getValue().getFirst().getConfigurationJson().contains("\"sourceUrl\""));
+                assertEquals(sourceUrl, response.getItems().getFirst().getSourceUrl());
+                assertEquals(Boolean.FALSE, response.getItems().getFirst().getRepeatWeekly());
+                assertEquals(Boolean.FALSE, response.getItems().getFirst().getRepeatDaily());
+        }
+
+        @Test
+        void create_withInvalidItemSourceUrl_rejectsBeforePersistence() {
+                for (String invalidSourceUrl : List.of(
+                                "ftp://example.org/document",
+                                "https://?",
+                                "https://user:password@example.org/document")) {
+                        CreateChecklistTemplateRequest request = makeCreateRequest(List.of(
+                                        new ChecklistItemRequest(
+                                                        null,
+                                                        "Đọc tài liệu",
+                                                        1,
+                                                        true,
+                                                        ChecklistTargetSubject.MOTHER,
+                                                        null,
+                                                        null,
+                                                        false,
+                                                        false,
+                                                        invalidSourceUrl)));
+
+                        ContentException error = assertThrows(ContentException.class,
+                                        () -> service.create(request, ADMIN_ID));
+                        assertEquals("CNT-001", error.getCode());
+                }
+                verify(checklistTemplateRepository, never()).save(any(ChecklistTemplate.class));
+        }
+
         // CHKTPL-TC-002
         @Test
         void create_emptyItems_returnsDraftWithNoItems() {
@@ -154,6 +219,7 @@ class AdminChecklistTemplateServiceImplTest {
                 ChecklistTemplate template = makeTemplate();
                 ChecklistItem old1 = makeItem(template, 1);
                 old1.setIsActive(false);
+                old1.setConfigurationJson("{\"sourceUrl\":\"https://example.org/original\"}");
                 ChecklistItem old2 = makeItem(template, 2);
                 when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
                 when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
@@ -164,7 +230,9 @@ class AdminChecklistTemplateServiceImplTest {
 
                 UpdateChecklistTemplateRequest request = makeUpdateRequest(
                                 "Tên mới", "Mô tả mới", ChecklistTemplateStatus.DRAFT,
-                                List.of(new ChecklistItemRequest(old1.getId(), "Mục 1", 1, true),
+                                List.of(new ChecklistItemRequest(old1.getId(), "Mục 1", 1, true,
+                                                ChecklistTargetSubject.MOTHER, null, null, false, false,
+                                                "https://example.org/updated"),
                                                 new ChecklistItemRequest("Mục 2", 2, false),
                                                 new ChecklistItemRequest("Mục 3", 3, true)));
 
@@ -175,11 +243,34 @@ class AdminChecklistTemplateServiceImplTest {
                 verify(checklistItemRepository).saveAll(captor.capture());
                 assertEquals(4, captor.getValue().size());
                 assertEquals(old1.getId(), response.getItems().getFirst().getId());
+                assertEquals("https://example.org/updated", response.getItems().getFirst().getSourceUrl());
                 assertTrue(old1.getIsActive());
                 assertEquals(false, old2.getIsActive());
                 assertEquals(3, response.getItems().size());
                 verify(auditService).log(eq(AuditAction.CHECKLIST_TEMPLATE_UPDATED), eq(ADMIN_ID),
                                 eq("ChecklistTemplate"), any(), any());
+        }
+
+        @Test
+        void update_omittedItemSourceUrl_clearsExistingMetadata() {
+                ChecklistTemplate template = makeTemplate();
+                ChecklistItem existing = makeItem(template, 1);
+                existing.setConfigurationJson("{\"sourceUrl\":\"https://example.org/original\"}");
+                when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+                when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
+                                .thenReturn(List.of(existing));
+                when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                                .thenAnswer(inv -> inv.getArgument(0));
+                when(checklistItemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+                UpdateChecklistTemplateRequest request = makeUpdateRequest(
+                                template.getName(), template.getDescription(), ChecklistTemplateStatus.DRAFT,
+                                List.of(new ChecklistItemRequest(existing.getId(), "Mục 1", 1, true)));
+
+                AdminChecklistTemplateDetailResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
+
+                assertEquals("{}", existing.getConfigurationJson());
+                assertEquals(null, response.getItems().getFirst().getSourceUrl());
         }
 
         @Test
@@ -511,5 +602,28 @@ class AdminChecklistTemplateServiceImplTest {
 
                 verify(checklistTemplateRepository).findAdminByOptionalStageAndStatus(
                                 eq(ContentStage.PREGNANCY), eq(null), eq("thai"), any());
+        }
+
+        @Test
+        void update_prePregnancySubstage_acceptsNullOrNoneAnchor() {
+                ChecklistTemplate template = makeTemplate();
+                template.setStage(ContentStage.PRE_PREGNANCY);
+                template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+                when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+                when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                                .thenAnswer(inv -> inv.getArgument(0));
+
+                ChecklistSubstageRequest noneSubstage = new ChecklistSubstageRequest(
+                                "PRE_PREGNANCY_NONE_DAY_0_0", ChecklistAnchorType.NONE, 0, 0, ChecklistRangeUnit.DAY);
+
+                UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
+                                "Chuẩn bị mang thai", "Mô tả", ChecklistTemplateType.MANDATORY, (short) 1,
+                                Set.of(ChecklistRecipientRole.MOTHER), ContentStage.PRE_PREGNANCY,
+                                noneSubstage, ChecklistTemplateStatus.PENDING_REVIEW, null, 1);
+
+                AdminChecklistTemplateDetailResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
+
+                assertEquals(ChecklistTemplateStatus.PENDING_REVIEW, response.getStatus());
+                assertEquals(ContentStage.PRE_PREGNANCY, response.getStage());
         }
 }

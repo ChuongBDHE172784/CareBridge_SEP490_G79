@@ -1,14 +1,46 @@
 package com.carebridge.backend.checklist.distribution;
 
+import com.carebridge.backend.checklist.model.ChecklistMaterializationMode;
 import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistScheduleType;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
-/** Canonical cadence period identity derived from the evaluated lifecycle window. */
+/** Canonical period identities for cadence and exact V2 non-cadence occurrences. */
 final class ChecklistPeriodIdentity {
 
+    static final short V1_CONTRACT_VERSION = 1;
+    static final short V2_CONTRACT_VERSION = 2;
+    static final String V2_NON_CADENCE_PERIOD_KEY = "O:USER_CREATED";
+    static final String V2_NON_CADENCE_ZONE_ID = "UTC";
+    static final ChecklistMaterializationMode V2_NON_CADENCE_MODE =
+            ChecklistMaterializationMode.INTERACTIVE;
+    static final boolean V2_NON_CADENCE_WAS_ACTIONABLE = true;
+
     private ChecklistPeriodIdentity() {
+    }
+
+    static boolean isV1NonCadenceIdentity(
+            Short contractVersion,
+            String periodKey,
+            String scheduleZoneId) {
+        return (contractVersion == null
+                || Short.valueOf(V1_CONTRACT_VERSION).equals(contractVersion))
+                && periodKey == null
+                && scheduleZoneId == null;
+    }
+
+    static boolean isV2NonCadenceIdentity(
+            Short contractVersion,
+            String periodKey,
+            String scheduleZoneId,
+            ChecklistMaterializationMode materializationMode,
+            Boolean wasActionable) {
+        return Short.valueOf(V2_CONTRACT_VERSION).equals(contractVersion)
+                && V2_NON_CADENCE_PERIOD_KEY.equals(periodKey)
+                && V2_NON_CADENCE_ZONE_ID.equals(scheduleZoneId)
+                && materializationMode == V2_NON_CADENCE_MODE
+                && Boolean.valueOf(V2_NON_CADENCE_WAS_ACTIONABLE).equals(wasActionable);
     }
 
     static String periodKey(

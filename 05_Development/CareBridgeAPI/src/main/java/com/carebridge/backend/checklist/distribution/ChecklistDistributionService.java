@@ -41,8 +41,6 @@ public class ChecklistDistributionService {
     private static final String OWNER_MISMATCH = "CONTEXT_OWNER_MISMATCH";
     private static final String KEY_CONFLICT = "DISTRIBUTION_KEY_CONFLICT";
     static final String ITEM_DUE_ANCHOR_MISSING = "ITEM_DUE_ANCHOR_MISSING";
-    private static final String V2_NON_CADENCE_PERIOD = "O:USER_CREATED";
-    private static final String V2_NON_CADENCE_ZONE = "UTC";
     private final ChecklistInstanceRepository instanceRepository;
     private final ChecklistTaskInstanceRepository taskRepository;
     private final ChecklistActionCommandRepository commandRepository;
@@ -538,29 +536,33 @@ public class ChecklistDistributionService {
 
     private static String materializedPeriodKey(ChecklistDistributionCommand command) {
         return command.cadence() == null
-                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
-                        ? V2_NON_CADENCE_PERIOD : null)
+                ? (Short.valueOf(ChecklistPeriodIdentity.V2_CONTRACT_VERSION)
+                        .equals(materializedContractVersion(command))
+                        ? ChecklistPeriodIdentity.V2_NON_CADENCE_PERIOD_KEY : null)
                 : command.cadence().periodKey();
     }
 
     private static String materializedScheduleZoneId(ChecklistDistributionCommand command) {
         return command.cadence() == null
-                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
-                        ? V2_NON_CADENCE_ZONE : null)
+                ? (Short.valueOf(ChecklistPeriodIdentity.V2_CONTRACT_VERSION)
+                        .equals(materializedContractVersion(command))
+                        ? ChecklistPeriodIdentity.V2_NON_CADENCE_ZONE_ID : null)
                 : command.cadence().scheduleZone().getId();
     }
 
     private static ChecklistMaterializationMode materializedMode(ChecklistDistributionCommand command) {
         return command.cadence() == null
-                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
-                        ? ChecklistMaterializationMode.INTERACTIVE : null)
+                ? (Short.valueOf(ChecklistPeriodIdentity.V2_CONTRACT_VERSION)
+                        .equals(materializedContractVersion(command))
+                        ? ChecklistPeriodIdentity.V2_NON_CADENCE_MODE : null)
                 : command.cadence().materializationMode();
     }
 
     private static Boolean materializedWasActionable(ChecklistDistributionCommand command) {
         return command.cadence() == null
-                ? (Short.valueOf((short) 2).equals(materializedContractVersion(command))
-                        ? Boolean.TRUE : null)
+                ? (Short.valueOf(ChecklistPeriodIdentity.V2_CONTRACT_VERSION)
+                        .equals(materializedContractVersion(command))
+                        ? ChecklistPeriodIdentity.V2_NON_CADENCE_WAS_ACTIONABLE : null)
                 : command.cadence().wasActionable();
     }
 
@@ -585,12 +587,14 @@ public class ChecklistDistributionService {
             ChecklistCadenceMetadata cadence,
             Short contractVersion) {
         if (cadence == null) {
-            if (Short.valueOf((short) 2).equals(contractVersion)) {
-                return Objects.equals(instance.getPeriodKey(), V2_NON_CADENCE_PERIOD)
-                        && Objects.equals(instance.getScheduleZoneId(), V2_NON_CADENCE_ZONE)
-                        && instance.getMaterializationMode() == ChecklistMaterializationMode.INTERACTIVE
-                        && Boolean.TRUE.equals(instance.getWasActionable())
-                        && Objects.equals(instance.getChecklistContractVersion(), (short) 2);
+            if (Short.valueOf(ChecklistPeriodIdentity.V2_CONTRACT_VERSION)
+                    .equals(contractVersion)) {
+                return ChecklistPeriodIdentity.isV2NonCadenceIdentity(
+                        instance.getChecklistContractVersion(),
+                        instance.getPeriodKey(),
+                        instance.getScheduleZoneId(),
+                        instance.getMaterializationMode(),
+                        instance.getWasActionable());
             }
             return instance.getPeriodKey() == null
                     && instance.getScheduleZoneId() == null

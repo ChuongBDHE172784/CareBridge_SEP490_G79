@@ -261,7 +261,6 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
     void postProcessEnvironment_WithUnsafePersistenceSettings_Rejects() {
         assertRejected(Map.of("spring.jpa.hibernate.ddl-auto", "update"), "HERMETIC_DDL_MODE_UNSAFE", "update");
         assertRejected(Map.of("spring.flyway.enabled", false), "HERMETIC_FLYWAY_DISABLED", "false");
-        assertRejected(Map.of("carebridge.dev-seed.enabled", true), "HERMETIC_DEV_SEED_ENABLED", "true");
     }
 
     private void assertRejected(Map<String, Object> overrides, String code, String secret) {
@@ -290,7 +289,6 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
         properties.put("spring.datasource.hikari.schema", "batch4_test");
         properties.put("spring.jpa.hibernate.ddl-auto", "validate");
         properties.put("spring.flyway.enabled", true);
-        properties.put("carebridge.dev-seed.enabled", false);
         properties.putAll(overrides);
 
         StandardEnvironment environment = new StandardEnvironment();

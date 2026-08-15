@@ -23,6 +23,22 @@ public final class EmbeddedPostgresRoleFixture {
     }
 
     public static void provision(Connection connection) throws Exception {
+        String currentUser;
+        try (var statement = connection.createStatement();
+             var result = statement.executeQuery("SELECT current_user")) {
+            if (!result.next()) {
+                throw new IllegalStateException("Cannot resolve Flyway fixture user");
+            }
+            currentUser = result.getString(1);
+        }
+        provisionForFlywayRunner(connection, currentUser);
+    }
+
+    public static void provisionForFlywayRunner(Connection connection, String flywayRunner)
+            throws Exception {
+        if (flywayRunner == null || !flywayRunner.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+            throw new IllegalArgumentException("Unsafe Flyway runner role: " + flywayRunner);
+        }
         try (var statement = connection.createStatement()) {
             statement.execute("""
                     DO $$ BEGIN
@@ -64,27 +80,21 @@ public final class EmbeddedPostgresRoleFixture {
                         END IF;
                     END $$
                     """);
-            // The embedded harness runs Flyway as the database owner.  Treat
-            // that owner as the explicitly provisioned schema/migration role
-            // for the P1/P2 writer barrier; application-role SET ROLE tests
-            // still exercise the deny path.
-            statement.execute("DO $$ BEGIN EXECUTE format('GRANT carebridge_checklist_schema_owner TO %I', current_user); END $$");
+            // The deployment runner is separate from runtime roles. V1 itself requires
+            // SUPERUSER/CREATEROLE for the final ownership handoff, grants the temporary
+            // retention membership, and revokes it before completing.
+            statement.execute("GRANT carebridge_checklist_schema_owner TO " + flywayRunner);
+            statement.execute("GRANT USAGE, CREATE ON SCHEMA public TO " + flywayRunner);
             // Spring Boot may create a fresh Flyway connection after the
             // datasource has been initialised, so spring.flyway.init-sql is
             // not guaranteed to survive into every migration transaction.
             // Model the production runner's pre-set session contract at the
             // embedded role level; this is test-only and never changes the
             // application role's privileges.
-            statement.execute("""
-                    DO $$ BEGIN
-                        EXECUTE format(
-                            'ALTER ROLE %I SET carebridge.checklist_v1_writes_frozen = %L',
-                            current_user, 'true');
-                        EXECUTE format(
-                            'ALTER ROLE %I SET carebridge.checklist_p1_p2_role = %L',
-                            current_user, 'MIGRATION');
-                    END $$
-                    """);
+            statement.execute("ALTER ROLE " + flywayRunner
+                    + " SET carebridge.checklist_v1_writes_frozen = 'true'");
+            statement.execute("ALTER ROLE " + flywayRunner
+                    + " SET carebridge.checklist_p1_p2_role = 'MIGRATION'");
         }
     }
 }

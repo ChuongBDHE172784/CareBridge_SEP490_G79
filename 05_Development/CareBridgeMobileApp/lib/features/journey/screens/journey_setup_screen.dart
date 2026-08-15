@@ -31,9 +31,9 @@ class JourneySetupScreen extends StatefulWidget {
   State<JourneySetupScreen> createState() => _JourneySetupScreenState();
 }
 
-enum _SetupStep { method, lmpDate, dueDate, dueDateResult, loading }
+enum _SetupStep { method, lmpDate, dueDate, gestationalAge, dueDateResult, loading }
 
-enum _DatingMethod { lmp, dueDate }
+enum _DatingMethod { lmp, dueDate, gestationalAge }
 
 class _JourneySetupScreenState extends State<JourneySetupScreen> {
   static const _primary = Color(0xFF845143);
@@ -54,6 +54,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   _DatingMethod? _selectedMethod;
   DateTime? _lmpDate;
   DateTime? _dueDate;
+  int _gestationalWeeks = 12;
+  int _gestationalDays = 0;
   bool _loading = false;
   bool _allowRoutePop = false;
   String? _error;
@@ -71,11 +73,10 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
 
   String get _dateConfidence => 'ESTIMATED';
 
-  /// The backend accepts only a server-owned LMP or EDD authority.  Legacy
-  /// wizard methods still calculate an EDD for compatibility, so they map to
-  /// the EDD shape rather than sending a fabricated LMP.
+  /// The backend accepts only a server-owned LMP or EDD authority. Legacy
+  /// wizard methods calculate an exact LMP or EDD to conform to the server contract.
   String get _datingBasis => switch (_selectedMethod) {
-    _DatingMethod.lmp => 'LMP',
+    _DatingMethod.lmp || _DatingMethod.gestationalAge => 'LMP',
     _DatingMethod.dueDate => 'EDD',
     null => '',
   };
@@ -101,6 +102,10 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         return lmp.add(const Duration(days: 280));
       case _DatingMethod.dueDate:
         return _dueDate;
+      case _DatingMethod.gestationalAge:
+        final totalDays = _gestationalWeeks * 7 + _gestationalDays;
+        final lmp = _today.subtract(Duration(days: totalDays));
+        return lmp.add(const Duration(days: 280));
       case null:
         return null;
     }
@@ -124,6 +129,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         return _lmpDate != null;
       case _SetupStep.dueDate:
         return _dueDate != null;
+      case _SetupStep.gestationalAge:
+        return _gestationalWeeks >= 1;
       case _SetupStep.dueDateResult:
         return true;
       case _SetupStep.loading:
@@ -131,7 +138,11 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     }
   }
 
-  int get _totalProgressSteps => _selectedMethod == _DatingMethod.lmp ? 4 : 3;
+  int get _totalProgressSteps => switch (_selectedMethod) {
+    _DatingMethod.lmp || _DatingMethod.gestationalAge => 4,
+    _DatingMethod.dueDate => 3,
+    null => 3,
+  };
 
   int get _progressIndex {
     switch (_step) {
@@ -139,6 +150,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
         return 1;
       case _SetupStep.lmpDate:
       case _SetupStep.dueDate:
+      case _SetupStep.gestationalAge:
         return 2;
       case _SetupStep.dueDateResult:
       case _SetupStep.loading:
@@ -163,6 +175,9 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     final parts = <String>[
       'Setup source: ${_selectedMethod?.name ?? 'unknown'}',
     ];
+    if (_selectedMethod == _DatingMethod.gestationalAge) {
+      parts.add('Gestational age: ${_gestationalWeeks}w ${_gestationalDays}d');
+    }
     if (_lmpDate != null) parts.add('LMP: ${_formatApiDate(_lmpDate!)}');
     if (_dueDate != null) parts.add('Doctor EDD: ${_formatApiDate(_dueDate!)}');
     return parts.join('; ');
@@ -227,12 +242,14 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             _goTo(_SetupStep.lmpDate);
           case _DatingMethod.dueDate:
             _goTo(_SetupStep.dueDate);
+          case _DatingMethod.gestationalAge:
+            _goTo(_SetupStep.gestationalAge);
           case null:
             break;
         }
       case _SetupStep.lmpDate:
-        _goTo(_SetupStep.dueDateResult);
       case _SetupStep.dueDate:
+      case _SetupStep.gestationalAge:
         _goTo(_SetupStep.dueDateResult);
       case _SetupStep.dueDateResult:
         unawaited(_submitJourney());
@@ -244,10 +261,16 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   Future<void> _submitJourney() async {
     final dueDate = _calculatedDueDate;
     if (dueDate == null) return;
-    final lastMenstrualDate =
-        _selectedMethod == _DatingMethod.lmp && _lmpDate != null
-        ? _formatApiDate(_lmpDate!)
-        : null;
+    final lastMenstrualDate = switch (_selectedMethod) {
+      _DatingMethod.lmp =>
+        _lmpDate != null ? _formatApiDate(_lmpDate!) : null,
+      _DatingMethod.gestationalAge => _formatApiDate(
+        _today.subtract(
+          Duration(days: _gestationalWeeks * 7 + _gestationalDays),
+        ),
+      ),
+      _ => null,
+    };
     // V2 accepts exactly one dating authority. LMP sends only LMP; EDD sends
     // only EDD. The server remains authoritative for week and plan resolution.
     final estimatedDueDate = _datingBasis == 'EDD'
@@ -480,6 +503,8 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           lastDate: _today.add(const Duration(days: 280)),
           onChanged: (date) => setState(() => _dueDate = date),
         );
+      case _SetupStep.gestationalAge:
+        return _buildGestationalAgeStep();
       case _SetupStep.dueDateResult:
         return _buildDueDateResultStep();
       case _SetupStep.loading:
@@ -492,7 +517,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Chọn một trong hai nguồn chuẩn để hệ thống tính tuần thai và chọn checklist.',
+          'Chọn một trong các phương thức để hệ thống tính tuần thai và chọn checklist.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Lexend',
@@ -537,6 +562,18 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           selectedBg: const Color(0xFFEFF7F6),
           selected: _selectedMethod == _DatingMethod.dueDate,
           onTap: () => _selectMethod(_DatingMethod.dueDate),
+        ),
+        const SizedBox(height: 10),
+        _MethodCard(
+          key: const Key('dating-method-gestational-age'),
+          badge: 'TUẦN THAI',
+          title: 'Tôi biết số tuần thai hiện tại',
+          subtitle: 'Nhập số tuần và ngày thai để hệ thống tính ngày dự sinh.',
+          icon: Icons.pregnant_woman_rounded,
+          accentColor: const Color(0xFF8C5FB2),
+          selectedBg: const Color(0xFFF7F2FA),
+          selected: _selectedMethod == _DatingMethod.gestationalAge,
+          onTap: () => _selectMethod(_DatingMethod.gestationalAge),
         ),
       ],
     );
@@ -603,6 +640,84 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           text: selectedDate == null
               ? 'Chọn một ngày để tiếp tục'
               : 'Đã chọn ${_formatDisplayDate(selectedDate)}',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGestationalAgeStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Số tuần thai hiện tại',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: _textDark,
+            height: 1.22,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Chọn số tuần và ngày thai tính đến hôm nay.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: _textMuted,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Container(
+          height: 220,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _borderNormal.withValues(alpha: 0.8)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF5A463F).withValues(alpha: 0.06),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _NumberWheel(
+                  key: const Key('wheel-gestational-weeks'),
+                  min: 1,
+                  max: 41,
+                  value: _gestationalWeeks,
+                  label: 'tuần',
+                  onChanged: (val) => setState(() => _gestationalWeeks = val),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _NumberWheel(
+                  key: const Key('wheel-gestational-days'),
+                  min: 0,
+                  max: 6,
+                  value: _gestationalDays,
+                  label: 'ngày',
+                  onChanged: (val) => setState(() => _gestationalDays = val),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _InfoPill(
+          icon: Icons.access_time_rounded,
+          text: 'Hiện tại: $_gestationalWeeks tuần $_gestationalDays ngày',
         ),
       ],
     );
@@ -1071,6 +1186,96 @@ class _MethodCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NumberWheel extends StatelessWidget {
+  const _NumberWheel({
+    super.key,
+    required this.min,
+    required this.max,
+    required this.value,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final int min;
+  final int max;
+  final int value;
+  final String label;
+  final ValueChanged<int> onChanged;
+
+  static const _primary = Color(0xFF845143);
+  static const _textDark = Color(0xFF2E211C);
+  static const _textMuted = Color(0xFF7A6860);
+  static const _surfaceLow = Color(0xFFFAF2EF);
+
+  @override
+  Widget build(BuildContext context) {
+    final values = List<int>.generate(max - min + 1, (index) => min + index);
+    final initialItem = values
+        .indexOf(value)
+        .clamp(0, values.length - 1)
+        .toInt();
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: _surfaceLow,
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        CupertinoPicker(
+          scrollController: FixedExtentScrollController(
+            initialItem: initialItem,
+          ),
+          itemExtent: 52,
+          magnification: 1.12,
+          squeeze: 1.05,
+          useMagnifier: true,
+          selectionOverlay: const SizedBox.shrink(),
+          onSelectedItemChanged: (index) => onChanged(values[index]),
+          children: values
+              .map(
+                (item) => Center(
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _textMuted,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '$item',
+                          style: TextStyle(
+                            color: item == value
+                                ? _primary
+                                : _textDark.withValues(alpha: 0.55),
+                            fontSize: item == value ? 32 : 26,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' $label',
+                          style: TextStyle(
+                            color: item == value ? _primary : _textMuted,
+                            fontSize: item == value ? 14 : 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 }

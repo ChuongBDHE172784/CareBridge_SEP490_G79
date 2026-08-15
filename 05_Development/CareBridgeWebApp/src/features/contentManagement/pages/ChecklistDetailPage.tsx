@@ -95,7 +95,7 @@ export default function ChecklistDetailPage() {
         description: detail.description,
         recipientRoles: detail.recipientRoles ?? ['MOTHER'],
         stage: detail.stage,
-        substage: detail.substage ?? null,
+        substage: detail.stage === 'PRE_PREGNANCY' ? null : (detail.substage ?? null),
         status: 'PENDING_REVIEW',
         items: undefined,
       });
