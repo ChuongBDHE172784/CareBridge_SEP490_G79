@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../directChat/screens/direct_chat_location_navigation_screen.dart';
 import '../models/emergency_alert_model.dart';
 import '../services/emergency_service.dart';
 
@@ -112,23 +113,15 @@ class _FamilyAlertDetailScreenState extends State<FamilyAlertDetailScreen> {
       _showMessage('Cảnh báo này không có dữ liệu vị trí.');
       return;
     }
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination='
-      '${alert!.latitude},${alert.longitude}',
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DirectChatLocationNavigationScreen(
+          latitude: alert!.latitude!,
+          longitude: alert.longitude!,
+          label: 'Vị trí của ${alert.personName}',
+        ),
+      ),
     );
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched && mounted) {
-        _showMessage('Không thể mở ứng dụng bản đồ trên thiết bị.');
-      }
-    } catch (_) {
-      if (mounted) {
-        _showMessage('Không thể mở ứng dụng bản đồ trên thiết bị.');
-      }
-    }
   }
 
   void _showMessage(String message) {

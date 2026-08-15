@@ -240,7 +240,7 @@ VALUES (
         true,
         false,
         'score',
-        '["score"]'::jsonb,
+        '["score", "điểm"]'::jsonb,
         0,
         '{}'::jsonb,
         '{}'::jsonb,

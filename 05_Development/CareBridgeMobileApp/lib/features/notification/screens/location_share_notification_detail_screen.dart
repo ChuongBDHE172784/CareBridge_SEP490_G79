@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../directChat/screens/direct_chat_location_navigation_screen.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
@@ -37,15 +37,15 @@ class LocationShareNotificationDetailScreen extends StatelessWidget {
     final latitude = _latitude;
     final longitude = _longitude;
     if (latitude == null || longitude == null) return;
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude',
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DirectChatLocationNavigationScreen(
+          latitude: latitude,
+          longitude: longitude,
+          label: 'Vị trí của $_motherName',
+        ),
+      ),
     );
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể mở ứng dụng bản đồ.')),
-      );
-    }
   }
 
   Future<void> _markRead(BuildContext context) async {

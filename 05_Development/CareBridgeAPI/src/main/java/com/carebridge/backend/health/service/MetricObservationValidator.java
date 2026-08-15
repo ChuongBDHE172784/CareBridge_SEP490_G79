@@ -73,8 +73,8 @@ public class MetricObservationValidator {
             }
         } else if (definition.getObservationShape() == ObservationShape.SESSION) {
             validateFetalMovement(request, primary);
-        } else if ("STRESS".equals(metricCode)) {
-            requirePositiveOrZero(primary, "Stress value is required");
+        } else if ("STRESS".equals(metricCode) || "EPDS_SCORE".equals(metricCode)) {
+            requirePositiveOrZero(primary, "EPDS_SCORE".equals(metricCode) ? "EPDS score is required" : "Stress value is required");
         } else {
             requirePositive(primary, "Metric value must be positive");
         }
@@ -89,6 +89,14 @@ public class MetricObservationValidator {
         if ("STRESS".equals(metricCode)) {
             requireRange(primary, BigDecimal.ZERO, new BigDecimal("100"),
                     "Stress value must be between 0 and 100");
+        }
+        if ("EPDS_SCORE".equals(metricCode)) {
+            requireRange(primary, BigDecimal.ZERO, new BigDecimal("30"),
+                    "EPDS score must be between 0 and 30");
+            if (secondary != null) {
+                requireRange(secondary, BigDecimal.ZERO, new BigDecimal("3"),
+                        "Question 10 score must be between 0 and 3");
+            }
         }
 
         Instant periodStart = request.getPeriodStart();
@@ -158,9 +166,11 @@ public class MetricObservationValidator {
     }
 
     private String normalizeUnit(String requested, MetricDefinition definition) {
-        String unit = requested == null || requested.isBlank() ? definition.getCanonicalUnit() : requested.trim();
+        String rawUnit = requested == null || requested.isBlank() ? definition.getCanonicalUnit() : requested.trim();
+        final String unit = "EPDS_SCORE".equals(definition.getMetricCode()) && ("điểm".equalsIgnoreCase(rawUnit) || "diem".equalsIgnoreCase(rawUnit))
+                ? "score" : rawUnit;
         if (definition.getAcceptedInputUnits() != null && definition.getAcceptedInputUnits().stream()
-                .noneMatch(candidate -> candidate.equalsIgnoreCase(unit))) {
+                .noneMatch(candidate -> candidate.equalsIgnoreCase(unit) || ("score".equalsIgnoreCase(candidate) && ("điểm".equalsIgnoreCase(requested) || "diem".equalsIgnoreCase(requested))))) {
             reject("METRIC-033", "Unsupported unit for metric: " + unit);
         }
         if ("BLOOD_GLUCOSE".equals(definition.getMetricCode()) && "mmol/L".equalsIgnoreCase(unit)) {

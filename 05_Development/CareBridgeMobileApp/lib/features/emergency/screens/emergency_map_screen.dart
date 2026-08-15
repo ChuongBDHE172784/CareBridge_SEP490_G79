@@ -173,6 +173,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   int _mapGeneration = 0;
   Timer? _mapStyleTimer;
   bool _navigationActive = false;
+  bool _voiceEnabled = true;
+  bool _followUser = true;
   int _currentStepIndex = 0;
   StreamSubscription<Position>? _navigationSubscription;
   DateTime? _lastRerouteAt;
@@ -226,11 +228,16 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     try {
       await _tts.setLanguage('vi-VN');
       await _tts.setSpeechRate(0.48);
-      await _tts.setVolume(1);
-      await _tts.setAudioAttributesForNavigation();
-    } catch (_) {
-      // Text guidance remains available when speech is unsupported.
-    }
+      await _tts.setVolume(1.0);
+    } catch (_) {}
+  }
+
+  Future<void> _speak(String text) async {
+    if (!_voiceEnabled || text.trim().isEmpty) return;
+    try {
+      await _tts.stop();
+      await _tts.speak(text);
+    } catch (_) {}
   }
 
   void _handleAuthChanged() {
@@ -773,9 +780,26 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     }
     _navigationConsentValid = true;
     _lastNavigationConsentCheck = DateTime.now();
+    final pos = _position;
+    if (pos != null && facility.hasCoordinates) {
+      final distanceToDest = Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        facility.latitude!,
+        facility.longitude!,
+      );
+      if (distanceToDest <= 35) {
+        _currentStepIndex = (_route?.steps.length ?? 1) - 1;
+        _followUser = true;
+        setState(() => _navigationActive = true);
+        await _speak('Bạn đang ở vị trí của ${facility.name}.');
+        return;
+      }
+    }
     _currentStepIndex = 0;
+    _followUser = true;
     setState(() => _navigationActive = true);
-    await _speakCurrentStep();
+    await _speakCurrentStep(prefix: 'Bắt đầu dẫn đường đến ${facility.name}. ');
     await _navigationSubscription?.cancel();
     _navigationSubscription =
         Geolocator.getPositionStream(
@@ -807,7 +831,12 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     try {
       await _tts.stop();
     } catch (_) {}
-    if (mounted) setState(() => _navigationActive = false);
+    if (mounted) {
+      setState(() {
+        _navigationActive = false;
+        _followUser = false;
+      });
+    }
   }
 
   Future<void> _handleNavigationPosition(Position position) async {
@@ -832,18 +861,52 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       if (!_navigationActive || !mounted) return;
       setState(() => _position = position);
       final mapController = _mapController;
-      if (mapController != null) {
+      final route = _route;
+      if (mapController != null && _followUser) {
         try {
+          final bearing = position.heading > 0 && position.heading <= 360
+              ? position.heading
+              : (route != null &&
+                      route.steps.isNotEmpty &&
+                      _currentStepIndex < route.steps.length
+                  ? (Geolocator.bearingBetween(
+                          position.latitude,
+                          position.longitude,
+                          route.steps[_currentStepIndex].latitude,
+                          route.steps[_currentStepIndex].longitude,
+                        ) +
+                        360) %
+                      360
+                  : 0.0);
           await mapController.animateCamera(
-            CameraUpdate.newLatLng(
-              LatLng(position.latitude, position.longitude),
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: LatLng(position.latitude, position.longitude),
+                zoom: 17.5,
+                tilt: 50.0,
+                bearing: bearing,
+              ),
             ),
           );
         } catch (_) {
           // Text directions continue if the map camera cannot follow location.
         }
       }
-      final route = _route;
+      final facility = _selected;
+      if (facility != null && facility.hasCoordinates) {
+        final distanceToDest = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          facility.latitude!,
+          facility.longitude!,
+        );
+        if (distanceToDest <= 35) {
+          final facilityName = facility.name;
+          await _speak('Bạn đã đến nơi. $facilityName.');
+          await _stopNavigation();
+          return;
+        }
+      }
       if (route == null || route.steps.isEmpty) return;
 
       var nearestStepIndex = _currentStepIndex;
@@ -867,6 +930,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       }
       if (_currentStepIndex == route.steps.length - 1 &&
           nearestStepDistance <= 35) {
+        final facilityName = _selected?.name ?? 'cơ sở y tế';
+        await _speak('Bạn đã đến nơi. $facilityName.');
         await _stopNavigation();
         return;
       }
@@ -921,10 +986,9 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         transportMode: _transportMode,
       );
       if (!mounted ||
-          !_navigationActive ||
-          generation != _selectionGeneration ||
+          _selectionGeneration != generation ||
           !identical(facility, _selected) ||
-          transportMode != _transportMode) {
+          _transportMode != transportMode) {
         return;
       }
       setState(() {
@@ -938,31 +1002,93 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   }
 
   Future<void> _speakCurrentStep({String prefix = ''}) async {
+    if (!_voiceEnabled) return;
     final route = _route;
     if (route == null || route.steps.isEmpty) return;
     final step =
         route.steps[_currentStepIndex.clamp(0, route.steps.length - 1)];
-    final road = step.roadName?.trim();
-    final instruction = _vietnameseManeuver(step.maneuver);
-    try {
-      await _tts.stop();
-      await _tts.speak(
-        '$prefix$instruction${road == null || road.isEmpty ? '' : ' vào $road'}',
-      );
-    } catch (_) {
-      // Visual guidance remains active when TTS fails at runtime.
-    }
+    final instruction = _formatStepInstruction(step);
+    await _speak('$prefix$instruction');
   }
 
   String _vietnameseManeuver(String maneuver) {
     final value = maneuver.toLowerCase();
-    if (value.contains('left')) return 'Rẽ trái';
+    if (value.contains('slight-right') || value.contains('slight_right')) {
+      return 'Chếch sang phải';
+    }
+    if (value.contains('sharp-right') || value.contains('sharp_right')) {
+      return 'Rẽ ngoặt sang phải';
+    }
     if (value.contains('right')) return 'Rẽ phải';
-    if (value.contains('uturn')) return 'Quay đầu';
-    if (value.contains('arrive')) return 'Bạn đã đến nơi';
+    if (value.contains('slight-left') || value.contains('slight_left')) {
+      return 'Chếch sang trái';
+    }
+    if (value.contains('sharp-left') || value.contains('sharp_left')) {
+      return 'Rẽ ngoặt sang trái';
+    }
+    if (value.contains('left')) return 'Rẽ trái';
+    if (value.contains('uturn') || value.contains('u-turn')) return 'Quay đầu xe';
+    if (value.contains('arrive') || value.contains('destination')) return 'Bạn đã đến nơi';
     if (value.contains('depart')) return 'Bắt đầu đi';
     if (value.contains('roundabout')) return 'Đi vào vòng xuyến';
     return 'Tiếp tục đi thẳng';
+  }
+
+  IconData _stepManeuverIcon(String maneuver) {
+    final m = maneuver.toLowerCase();
+    if (m.contains('uturn') || m.contains('u-turn')) {
+      return Icons.u_turn_left_rounded;
+    }
+    if (m.contains('roundabout')) {
+      return Icons.roundabout_right_rounded;
+    }
+    if (m.contains('arrive') || m.contains('destination')) {
+      return Icons.location_on_rounded;
+    }
+    if (m.contains('right')) {
+      return Icons.turn_right_rounded;
+    }
+    if (m.contains('left')) {
+      return Icons.turn_left_rounded;
+    }
+    return Icons.straight_rounded;
+  }
+
+  String _formatStepInstruction(CareRouteStep? step) {
+    if (step == null) return 'Đi thẳng theo tuyến đường';
+    final m = step.maneuver.toLowerCase();
+    final road = step.roadName?.trim();
+    final roadSuffix = (road != null && road.isNotEmpty) ? ' vào $road' : '';
+    if (m.contains('slight-right') || m.contains('slight_right')) {
+      return 'Chếch sang phải$roadSuffix';
+    }
+    if (m.contains('sharp-right') || m.contains('sharp_right')) {
+      return 'Rẽ ngoặt sang phải$roadSuffix';
+    }
+    if (m.contains('right')) {
+      return 'Rẽ phải$roadSuffix';
+    }
+    if (m.contains('slight-left') || m.contains('slight_left')) {
+      return 'Chếch sang trái$roadSuffix';
+    }
+    if (m.contains('sharp-left') || m.contains('sharp_left')) {
+      return 'Rẽ ngoặt sang trái$roadSuffix';
+    }
+    if (m.contains('left')) {
+      return 'Rẽ trái$roadSuffix';
+    }
+    if (m.contains('uturn') || m.contains('u-turn')) {
+      return 'Quay đầu xe';
+    }
+    if (m.contains('roundabout')) {
+      return 'Đi vào vòng xuyến';
+    }
+    if (m.contains('arrive') || m.contains('destination')) {
+      return 'Đến cơ sở y tế';
+    }
+    return (road != null && road.isNotEmpty)
+        ? 'Tiếp tục trên $road'
+        : 'Tiếp tục đi thẳng';
   }
 
   String _facilityTypeLabel() => switch (_facilityType) {
@@ -970,6 +1096,38 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     'health_station' => 'Trạm y tế',
     _ => 'Bệnh viện',
   };
+
+  Future<void> _openGoogleMaps() async {
+    final target = _selected ?? (_results.isNotEmpty ? _results.first : null);
+    if (target?.latitude == null || target?.longitude == null) {
+      final pos = _position;
+      final uri = Uri.parse(
+        pos != null
+            ? 'https://www.google.com/maps/search/hospital/@${pos.latitude},${pos.longitude},14z'
+            : 'https://www.google.com/maps/search/hospital/',
+      );
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (mounted) setState(() => _notice = 'Không thể mở Google Maps trên thiết bị.');
+      }
+      return;
+    }
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination='
+      '${target!.latitude},${target.longitude}&travelmode=driving',
+    );
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        setState(() => _notice = 'Không thể mở Google Maps trên thiết bị.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _notice = 'Không thể mở Google Maps trên thiết bị.');
+      }
+    }
+  }
 
   double _minimumDistanceToRoute(
     Position position,
@@ -1145,15 +1303,35 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         );
       }
       final coordinates = _route?.coordinates ?? const [];
-      if (coordinates.length >= 2) {
+      final points = coordinates.length >= 2
+          ? coordinates
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList(growable: false)
+          : (_selected != null && _selected!.hasCoordinates
+              ? <LatLng>[
+                  LatLng(position.latitude, position.longitude),
+                  LatLng(_selected!.latitude!, _selected!.longitude!),
+                ]
+              : const <LatLng>[]);
+
+      if (points.length >= 2) {
+        // High contrast casing border line
         await controller.addLine(
           LineOptions(
-            geometry: coordinates
-                .map((point) => LatLng(point.latitude, point.longitude))
-                .toList(growable: false),
-            lineColor: '#845143',
-            lineWidth: 6,
-            lineOpacity: 0.9,
+            geometry: points,
+            lineColor: '#1E40AF',
+            lineWidth: 8,
+            lineOpacity: 0.8,
+            lineJoin: 'round',
+          ),
+        );
+        // Main high-visibility active route line
+        await controller.addLine(
+          LineOptions(
+            geometry: points,
+            lineColor: '#3B82F6',
+            lineWidth: 5,
+            lineOpacity: 1.0,
             lineJoin: 'round',
           ),
         );
@@ -1262,6 +1440,19 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final route = _route;
+    final pos = _position;
+    final sel = _selected;
+    final distanceToDest = (pos != null && sel != null && sel.hasCoordinates)
+        ? Geolocator.distanceBetween(
+            pos.latitude,
+            pos.longitude,
+            sel.latitude!,
+            sel.longitude!,
+          )
+        : double.infinity;
+    final isArrived = distanceToDest <= 35;
+
     return Scaffold(
       backgroundColor: _surface,
       appBar: AppBar(
@@ -1270,10 +1461,40 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           onPressed: _restoringContinuation ? null : _leaveEmergency,
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Cơ sở y tế gần đây'),
+        title: Text(
+          _navigationActive ? 'Đang dẫn đường' : 'Cơ sở y tế gần đây',
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF17324D),
-        elevation: 1,
+        foregroundColor: const Color(0xFF5A463F),
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        actions: [
+          IconButton(
+            tooltip: _voiceEnabled ? 'Tắt giọng nói' : 'Bật giọng nói',
+            onPressed: () {
+              setState(() => _voiceEnabled = !_voiceEnabled);
+              if (!_voiceEnabled) {
+                unawaited(_tts.stop());
+              } else {
+                unawaited(_speak('Đã bật giọng nói'));
+              }
+            },
+            icon: Icon(
+              _voiceEnabled
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Mở Google Maps',
+            onPressed: _openGoogleMaps,
+            icon: const Icon(Icons.open_in_new_rounded),
+          ),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -1288,6 +1509,193 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                   top: 0,
                   child: LinearProgressIndicator(key: Key('nearby-loading')),
                 ),
+
+              // Floating top turn-by-turn banner when navigating
+              if (_navigationActive &&
+                  route != null &&
+                  route.steps.isNotEmpty)
+                Positioned(
+                  top: 12,
+                  left: 16,
+                  right: 16,
+                  child: SafeArea(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x205A463F),
+                            blurRadius: 24,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: const BoxDecoration(
+                              color: Color(0x1FC98C7B),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isArrived
+                                  ? Icons.location_on_rounded
+                                  : _stepManeuverIcon(
+                                      route.steps[_currentStepIndex.clamp(
+                                        0,
+                                        route.steps.length - 1,
+                                      )].maneuver,
+                                    ),
+                              color: const Color(0xFF845143),
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  isArrived
+                                      ? 'Tại điểm đến'
+                                      : 'Trong ${route.steps[_currentStepIndex.clamp(0, route.steps.length - 1)].distanceMeters}m',
+                                  style: const TextStyle(
+                                    fontFamily: 'Lexend',
+                                    color: Color(0xFF845143),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  isArrived
+                                      ? 'Bạn đang ở vị trí của ${_selected?.name ?? "cơ sở y tế"}'
+                                      : _formatStepInstruction(
+                                          route.steps[_currentStepIndex.clamp(
+                                            0,
+                                            route.steps.length - 1,
+                                          )],
+                                        ),
+                                  key: const Key('navigation-instruction'),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: 'Lexend',
+                                    color: Color(0xFF5A463F),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: _voiceEnabled
+                                ? 'Tắt giọng nói'
+                                : 'Bật giọng nói',
+                            onPressed: () {
+                              setState(() => _voiceEnabled = !_voiceEnabled);
+                              if (!_voiceEnabled) {
+                                unawaited(_tts.stop());
+                              } else {
+                                unawaited(_speak('Đã bật giọng nói'));
+                              }
+                            },
+                            icon: Icon(
+                              _voiceEnabled
+                                  ? Icons.volume_up_rounded
+                                  : Icons.volume_off_rounded,
+                              color: _voiceEnabled
+                                  ? const Color(0xFF845143)
+                                  : const Color(0xFF9C857C),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Floating map buttons on the right
+              Positioned(
+                right: 16,
+                bottom: _panelCollapsed ? 120 : (desktop ? 20 : 360),
+                child: SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FloatingActionButton.small(
+                        heroTag: 'emergency_voice_btn',
+                        onPressed: () {
+                          setState(() => _voiceEnabled = !_voiceEnabled);
+                          if (!_voiceEnabled) {
+                            unawaited(_tts.stop());
+                          } else {
+                            unawaited(_speak('Đã bật giọng nói'));
+                          }
+                        },
+                        backgroundColor: _voiceEnabled
+                            ? Colors.white
+                            : const Color(0xFFF2EAE4),
+                        foregroundColor: _voiceEnabled
+                            ? const Color(0xFF845143)
+                            : const Color(0xFF9C857C),
+                        tooltip:
+                            _voiceEnabled ? 'Tắt giọng nói' : 'Bật giọng nói',
+                        child: Icon(
+                          _voiceEnabled
+                              ? Icons.volume_up_rounded
+                              : Icons.volume_off_rounded,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      FloatingActionButton.small(
+                        heroTag: 'emergency_overview_btn',
+                        onPressed: () => unawaited(_fitMapCamera()),
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF5A463F),
+                        tooltip: 'Toàn cảnh tuyến đường',
+                        child: const Icon(Icons.route_rounded),
+                      ),
+                      const SizedBox(height: 10),
+                      FloatingActionButton.small(
+                        heroTag: 'emergency_recenter_btn',
+                        onPressed: () {
+                          setState(() => _followUser = true);
+                          final pos = _position;
+                          if (pos != null && _mapController != null) {
+                            _mapController!.animateCamera(
+                              CameraUpdate.newCameraPosition(
+                                CameraPosition(
+                                  target: LatLng(pos.latitude, pos.longitude),
+                                  zoom: _navigationActive ? 17.5 : 15,
+                                  tilt: _navigationActive ? 50.0 : 0,
+                                  bearing: 0,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        backgroundColor: _followUser
+                            ? const Color(0xFFC98C7B)
+                            : Colors.white,
+                        foregroundColor:
+                            _followUser ? Colors.white : const Color(0xFF5A463F),
+                        tooltip: 'Định vị lại',
+                        child: const Icon(Icons.my_location_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               if (desktop)
                 Positioned(
                   left: 16,
@@ -1653,55 +2061,186 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
 
   Widget _buildSearchFilters() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
+      child: Row(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                const Icon(Icons.radar, size: 18, color: Color(0xFF50657A)),
-                const SizedBox(width: 6),
-                for (final radius in const [5000, 10000, 15000])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      key: Key('radius-$radius'),
-                      label: Text('${radius ~/ 1000} km'),
-                      selected: _radiusMeters == radius,
-                      onSelected: (_) => _changeRadius(radius),
-                    ),
+          // Dropdown 1: Loại cơ sở y tế (Facility Type)
+          Expanded(
+            flex: 3,
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F6F3),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE8DDD6)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  key: const Key('facility-type-dropdown'),
+                  value: _facilityType,
+                  isExpanded: true,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF845143),
+                    size: 20,
                   ),
-              ],
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Color(0xFF5A463F),
+                  ),
+                  dropdownColor: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  onChanged: (type) {
+                    if (type != null) _changeFacilityType(type);
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'hospital',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.local_hospital_rounded,
+                            size: 16,
+                            color: Color(0xFF845143),
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Bệnh viện',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'clinic',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.medical_services_rounded,
+                            size: 16,
+                            color: Color(0xFF845143),
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Phòng khám',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'health_station',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.health_and_safety_rounded,
+                            size: 16,
+                            color: Color(0xFF845143),
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Trạm y tế',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final entry in const {
-                  'hospital': 'Bệnh viện',
-                  'clinic': 'Phòng khám',
-                  'health_station': 'Trạm y tế',
-                }.entries)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      key: Key('facility-type-${entry.key}'),
-                      avatar: Icon(
-                        entry.key == 'hospital'
-                            ? Icons.local_hospital_outlined
-                            : Icons.medical_services_outlined,
-                        size: 16,
-                      ),
-                      label: Text(entry.value),
-                      selected: _facilityType == entry.key,
-                      onSelected: (_) => _changeFacilityType(entry.key),
-                    ),
+          const SizedBox(width: 8),
+          // Dropdown 2: Bán kính tìm kiếm (Radius km)
+          Expanded(
+            flex: 2,
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F6F3),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE8DDD6)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  key: const Key('radius-dropdown'),
+                  value: _radiusMeters,
+                  isExpanded: true,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF845143),
+                    size: 20,
                   ),
-              ],
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Color(0xFF5A463F),
+                  ),
+                  dropdownColor: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  onChanged: (radius) {
+                    if (radius != null) _changeRadius(radius);
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      key: Key('radius-5000'),
+                      value: 5000,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.radar_rounded,
+                            size: 16,
+                            color: Color(0xFF845143),
+                          ),
+                          SizedBox(width: 6),
+                          Text('5 km'),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      key: Key('radius-10000'),
+                      value: 10000,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.radar_rounded,
+                            size: 16,
+                            color: Color(0xFF845143),
+                          ),
+                          SizedBox(width: 6),
+                          Text('10 km'),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      key: Key('radius-15000'),
+                      value: 15000,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.radar_rounded,
+                            size: 16,
+                            color: Color(0xFF845143),
+                          ),
+                          SizedBox(width: 6),
+                          Text('15 km'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -1796,30 +2335,115 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   }
 
   Widget _buildSelected(CareFacility facility) {
+    final route = _route;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(facility.name, style: Theme.of(context).textTheme.titleMedium),
-            if (_route != null)
-              Text('ETA ${_route!.etaMinutes} phút · ${_distance(facility)}'),
-            if (_navigationActive && _route?.steps.isNotEmpty == true)
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0x1AC98C7B),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.local_hospital_rounded,
+                    color: Color(0xFF845143),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        facility.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: Color(0xFF5A463F),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      if (facility.address != null &&
+                          facility.address!.trim().isNotEmpty)
+                        Text(
+                          facility.address!.trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: Color(0xFF9C857C),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (route != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2EAE4),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.directions_car_rounded,
+                      size: 16,
+                      color: Color(0xFF845143),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'ETA ${route.etaMinutes} phút · ${_distance(facility)}',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Color(0xFF845143),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (_navigationActive && route?.steps.isNotEmpty == true) ...[
+              const SizedBox(height: 8),
               Text(
                 () {
                   final step =
-                      _route!.steps[_currentStepIndex.clamp(
+                      route!.steps[_currentStepIndex.clamp(
                         0,
-                        _route!.steps.length - 1,
+                        route.steps.length - 1,
                       )];
                   return '${_vietnameseManeuver(step.maneuver)} · ${step.distanceMeters} m';
                 }(),
                 key: const Key('navigation-instruction'),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: Color(0xFF2563EB),
+                ),
               ),
-            const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -1828,11 +2452,25 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                     onPressed: facility.phone == null
                         ? null
                         : () => _call(facility.phone),
-                    icon: const Icon(Icons.call),
-                    label: const Text('Gọi cơ sở'),
+                    icon: const Icon(Icons.call_rounded),
+                    label: const Text(
+                      'Gọi cơ sở',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF5A463F),
+                      side: const BorderSide(color: Color(0xFFE8DDD6)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
                     key: const Key('facility-navigate'),
@@ -1840,12 +2478,28 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                         ? () => _navigate(facility)
                         : null,
                     icon: Icon(
-                      _navigationActive ? Icons.stop_circle : Icons.navigation,
+                      _navigationActive
+                          ? Icons.stop_circle_rounded
+                          : Icons.navigation_rounded,
                     ),
                     label: Text(
                       _navigationActive
                           ? 'Dừng dẫn đường'
                           : 'Bắt đầu dẫn đường',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _navigationActive
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFFC98C7B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
                   ),
                 ),
