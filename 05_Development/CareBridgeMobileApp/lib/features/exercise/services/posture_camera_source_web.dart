@@ -133,12 +133,16 @@ class PostureCameraSource {
 
   bool get isRunning => _running;
 
+  bool get isSwitching => false;
+
   String? get lastError => _lastError;
 
   /// Whether the next locally rendered skeleton should use the warning
   /// palette.  This state is intentionally local and is not part of the
   /// posture-event request.
   bool get hasFeedbackError => _feedbackError;
+
+  bool get isFrontCamera => true;
 
   /// Applies the current model severity to the local canvas.  The next pose
   /// result is drawn with the selected palette; no frame is discarded.

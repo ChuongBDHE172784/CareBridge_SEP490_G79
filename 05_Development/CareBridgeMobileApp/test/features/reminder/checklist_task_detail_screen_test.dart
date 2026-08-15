@@ -326,4 +326,32 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'hides support function section when showSupportFunction is false',
+    (tester) async {
+      final supportFunction = TodayTaskSupportFunction.fromApi(
+        'MATERNAL_EXERCISES',
+      )!;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChecklistTaskDetailScreen(
+            task: _task(supportFunction: supportFunction),
+            showSupportFunction: false,
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('task-support-function-label')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('task-support-function-button')),
+        findsNothing,
+      );
+      expect(find.text('Chức năng hỗ trợ'), findsNothing);
+      expect(find.text('Mở chức năng hỗ trợ'), findsNothing);
+    },
+  );
 }

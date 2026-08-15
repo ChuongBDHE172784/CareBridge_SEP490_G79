@@ -86,6 +86,8 @@ class PostureCameraSource {
   final ValueNotifier<List<PosePoint?>> _overlayPointsNotifier =
       ValueNotifier<List<PosePoint?>>(<PosePoint?>[]);
   final ValueNotifier<bool> _errorNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<CameraController?> _cameraControllerNotifier =
+      ValueNotifier<CameraController?>(null);
 
   CameraController? _cameraController;
   PoseDetector? _poseDetector;
@@ -93,6 +95,7 @@ class PostureCameraSource {
   bool _isProcessingFrame = false;
   bool _running = false;
   bool _starting = false;
+  bool _isSwitching = false;
   String? _lastError;
   bool _feedbackError = false;
 
@@ -100,6 +103,7 @@ class PostureCameraSource {
   Stream<String> get errors => _errorsController.stream;
   bool get isSupported => true;
   bool get isRunning => _running;
+  bool get isSwitching => _isSwitching;
   String? get lastError => _lastError;
   bool get hasFeedbackError => _feedbackError;
   bool get isFrontCamera =>
@@ -140,6 +144,7 @@ class PostureCameraSource {
       );
       _cameraController = controller;
       await controller.initialize();
+      _cameraControllerNotifier.value = controller;
 
       _poseDetector = PoseDetector(
         options: PoseDetectorOptions(
@@ -164,7 +169,8 @@ class PostureCameraSource {
   }
 
   Future<void> switchCamera() async {
-    if (_starting) return;
+    if (_starting || _isSwitching) return;
+    _isSwitching = true;
     try {
       final cameras = await availableCameras();
       if (cameras.length < 2) return;
@@ -184,14 +190,27 @@ class PostureCameraSource {
 
       if (nextCamera == _cameraDescription) return;
 
-      _starting = true;
       _overlayPointsNotifier.value = <PosePoint?>[];
 
-      if (_cameraController != null && _cameraController!.value.isStreamingImages) {
-        await _cameraController!.stopImageStream();
-      }
-      await _cameraController?.dispose();
+      // Safely detach old controller so UI unmounts old CameraPreview texture
+      final oldController = _cameraController;
       _cameraController = null;
+      _cameraControllerNotifier.value = null;
+
+      if (oldController != null) {
+        if (oldController.value.isStreamingImages) {
+          try {
+            await oldController.stopImageStream();
+          } catch (_) {}
+        }
+        // Small delay to ensure any in-flight _processImageStream finishes
+        while (_isProcessingFrame) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        try {
+          await oldController.dispose();
+        } catch (_) {}
+      }
 
       _cameraDescription = nextCamera;
 
@@ -203,16 +222,17 @@ class PostureCameraSource {
             ? ImageFormatGroup.nv21
             : ImageFormatGroup.bgra8888,
       );
-      _cameraController = controller;
       await controller.initialize();
+      _cameraController = controller;
+      _cameraControllerNotifier.value = controller;
 
-      _starting = false;
       if (_running) {
         await controller.startImageStream(_processImageStream);
       }
     } catch (e) {
-      _starting = false;
       debugPrint('Error switching camera: $e');
+    } finally {
+      _isSwitching = false;
     }
   }
 
@@ -331,18 +351,24 @@ class PostureCameraSource {
   Future<void> stop() async {
     _running = false;
     _starting = false;
+    _isSwitching = false;
     _overlayPointsNotifier.value = <PosePoint?>[];
 
-    try {
-      if (_cameraController != null && _cameraController!.value.isStreamingImages) {
-        await _cameraController?.stopImageStream();
-      }
-    } catch (_) {}
-
-    try {
-      await _cameraController?.dispose();
-    } catch (_) {}
+    final controller = _cameraController;
     _cameraController = null;
+    _cameraControllerNotifier.value = null;
+
+    if (controller != null) {
+      try {
+        if (controller.value.isStreamingImages) {
+          await controller.stopImageStream();
+        }
+      } catch (_) {}
+
+      try {
+        await controller.dispose();
+      } catch (_) {}
+    }
 
     try {
       await _poseDetector?.close();
@@ -352,6 +378,7 @@ class PostureCameraSource {
 
   Future<void> dispose() async {
     await stop();
+    _cameraControllerNotifier.dispose();
     _overlayPointsNotifier.dispose();
     _errorNotifier.dispose();
     if (!_framesController.isClosed) {
@@ -363,60 +390,67 @@ class PostureCameraSource {
   }
 
   Widget buildPreview() {
-    final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized) {
-      return const ColoredBox(
-        color: Colors.black,
-        child: Center(
-          child: CircularProgressIndicator(color: Colors.white70),
-        ),
-      );
-    }
+    return ValueListenableBuilder<CameraController?>(
+      valueListenable: _cameraControllerNotifier,
+      builder: (context, controller, _) {
+        if (controller == null || !controller.value.isInitialized) {
+          return const ColoredBox(
+            color: Colors.black,
+            child: Center(
+              child: CircularProgressIndicator(color: Colors.white70),
+            ),
+          );
+        }
 
-    final size = controller.value.previewSize;
-    // On portrait mobile devices, the camera sensor width is the longer dimension (e.g. 1280)
-    // and height is the shorter dimension (e.g. 720).
-    final isSensorLandscape = size != null && size.width > size.height;
-    final double previewWidth =
-        size != null ? (isSensorLandscape ? size.height : size.width) : 720;
-    final double previewHeight =
-        size != null ? (isSensorLandscape ? size.width : size.height) : 1280;
+        final size = controller.value.previewSize;
+        // On portrait mobile devices, the camera sensor width is the longer dimension (e.g. 1280)
+        // and height is the shorter dimension (e.g. 720).
+        final isSensorLandscape = size != null && size.width > size.height;
+        final double previewWidth =
+            size != null ? (isSensorLandscape ? size.height : size.width) : 720;
+        final double previewHeight =
+            size != null ? (isSensorLandscape ? size.width : size.height) : 1280;
 
-    return ClipRect(
-      child: Container(
-        color: Colors.black,
-        alignment: Alignment.center,
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: previewWidth,
-            height: previewHeight,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CameraPreview(controller),
-                ValueListenableBuilder<bool>(
-                  valueListenable: _errorNotifier,
-                  builder: (context, hasError, _) {
-                    return ValueListenableBuilder<List<PosePoint?>>(
-                      valueListenable: _overlayPointsNotifier,
-                      builder: (context, points, _) {
-                        return CustomPaint(
-                          painter: PoseSkeletonPainter(
-                            points: points,
-                            hasError: hasError,
-                            isFrontCamera: isFrontCamera,
-                          ),
+        return ClipRect(
+          child: Container(
+            color: Colors.black,
+            alignment: Alignment.center,
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: previewWidth,
+                height: previewHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CameraPreview(
+                      controller,
+                      key: ValueKey<int>(controller.cameraId),
+                    ),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _errorNotifier,
+                      builder: (context, hasError, _) {
+                        return ValueListenableBuilder<List<PosePoint?>>(
+                          valueListenable: _overlayPointsNotifier,
+                          builder: (context, points, _) {
+                            return CustomPaint(
+                              painter: PoseSkeletonPainter(
+                                points: points,
+                                hasError: hasError,
+                                isFrontCamera: isFrontCamera,
+                              ),
+                            );
+                          },
                         );
                       },
-                    );
-                  },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

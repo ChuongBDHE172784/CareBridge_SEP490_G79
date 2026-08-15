@@ -858,6 +858,56 @@ void main() {
   );
 
   testWidgets(
+    'tapping a task card in family audience passes audience=family query parameter',
+    (tester) async {
+      String? openedLocation;
+      TodayTask? receivedTask;
+      final service = TodayTaskService(
+        getRequest: (_, {queryParams}) async => {
+          'data': _singleTaskEnvelope(),
+        },
+      );
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => Scaffold(
+              body: SingleChildScrollView(
+                child: TodayTasksPanel(
+                  service: service,
+                  audience: TodayTasksAudience.family,
+                  layout: TodayTasksLayout.sourceGroups,
+                ),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/checklists/task-detail',
+            builder: (_, state) {
+              openedLocation = state.uri.toString();
+              final extra = state.extra;
+              if (extra is TodayTask) receivedTask = extra;
+              return const Scaffold(body: Text('Chi tiết đã mở'));
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('task-item-navigation-task')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chi tiết đã mở'), findsOneWidget);
+      expect(openedLocation, '/checklists/task-detail?audience=family');
+      expect(receivedTask?.id, 'navigation-task');
+    },
+  );
+
+  testWidgets(
     'the separate 48dp status control acts without opening task detail',
     (tester) async {
       var getCount = 0;

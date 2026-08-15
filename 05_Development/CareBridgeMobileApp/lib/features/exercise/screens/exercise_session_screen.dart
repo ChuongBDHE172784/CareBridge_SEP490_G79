@@ -77,6 +77,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   bool _cameraStarted = false;
   bool _cameraStarting = false;
   bool _pauseChanging = false;
+  bool _isSwitchingCamera = false;
   late final ExerciseFeedbackAnalyzer _feedbackAnalyzer;
   late final ExerciseVoiceFeedbackAnnouncer _voiceFeedbackAnnouncer;
   ExerciseFeedbackMetrics? _latestFeedbackMetrics;
@@ -287,8 +288,6 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     }
   }
 
-
-
   String _postureErrorText(Object error) {
     if (error is ApiException) {
       return 'Không thể nhận phản hồi tư thế (${error.statusCode}).';
@@ -311,31 +310,52 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     if (_pauseChanging || _isCompleting) return;
     final pausing = !_isPaused;
     _pauseChanging = true;
-    if (mounted) {
-      setState(() => _isPaused = pausing);
-    }
+    if (mounted) setState(() {});
+
     final streamer = _postureStreamer;
     try {
       // Invalidate any in-flight response before a pause can be followed by a
-      // resume.  PostureEventStreamer suppresses callbacks after stop(); the
+      // resume. PostureEventStreamer suppresses callbacks after stop(); the
       // same instance can be started again once the server accepts resume.
       if (pausing) {
         await _voiceFeedbackAnnouncer.stop();
         await streamer?.stop();
         await ExerciseService.instance.pauseSession(widget.sessionId);
+        if (mounted) {
+          setState(() => _isPaused = true);
+        }
       } else {
         await ExerciseService.instance.resumeSession(widget.sessionId);
+        if (mounted) {
+          setState(() => _isPaused = false);
+        }
         if (!_isCompleting) streamer?.start();
       }
-    } on ApiException {
+    } catch (error) {
       if (pausing && !_isCompleting) {
         streamer?.start();
+      } else if (!pausing) {
+        await streamer?.stop();
       }
       if (mounted) {
-        setState(() => _isPaused = !pausing);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              pausing
+                  ? 'Không thể tạm dừng bài tập. Vui lòng thử lại.'
+                  : 'Không thể tiếp tục bài tập. Vui lòng thử lại.',
+              style: const TextStyle(fontFamily: 'Lexend'),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } finally {
-      _pauseChanging = false;
+      if (mounted) {
+        setState(() => _pauseChanging = false);
+      } else {
+        _pauseChanging = false;
+      }
     }
   }
 
@@ -848,23 +868,40 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () {
-                  unawaited(_cameraSource?.switchCamera());
-                  if (mounted) setState(() {});
-                },
+                onTap: _isSwitchingCamera
+                    ? null
+                    : () async {
+                        setState(() => _isSwitchingCamera = true);
+                        try {
+                          await _cameraSource?.switchCamera();
+                        } catch (_) {
+                        } finally {
+                          if (mounted) {
+                            setState(() => _isSwitchingCamera = false);
+                          }
+                        }
+                      },
                 borderRadius: BorderRadius.circular(9999),
                 child: Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.white.withValues(alpha: _isSwitchingCamera ? 0.5 : 0.9),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.flip_camera_ios_outlined,
-                    color: _onSurface,
-                    size: 20,
-                  ),
+                  child: _isSwitchingCamera
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _primary,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.flip_camera_ios_outlined,
+                          color: _onSurface,
+                          size: 20,
+                        ),
                 ),
               ),
             ),
@@ -956,7 +993,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: _isCompleting || _pauseChanging ? null : _togglePause,
-                child: _isCompleting
+                child: _isCompleting || _pauseChanging
                     ? const Padding(
                         padding: EdgeInsets.all(20),
                         child: CircularProgressIndicator(

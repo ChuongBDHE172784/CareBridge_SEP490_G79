@@ -9,10 +9,12 @@ class ChecklistTaskDetailScreen extends StatefulWidget {
     super.key,
     required this.task,
     this.service,
+    this.showSupportFunction = true,
   });
 
   final TodayTask task;
   final TodayTaskService? service;
+  final bool showSupportFunction;
 
   @override
   State<ChecklistTaskDetailScreen> createState() =>
@@ -156,7 +158,7 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
             _TaskHeaderCard(task: task, targetLabel: _targetLabel),
             const SizedBox(height: 20),
             _DetailSection(description: _description),
-            if (supportFunction != null) ...[
+            if (widget.showSupportFunction && supportFunction != null) ...[
               const SizedBox(height: 20),
               _SupportFunctionCard(
                 label: supportFunction.label,

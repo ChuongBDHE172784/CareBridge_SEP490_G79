@@ -216,8 +216,10 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   }
 
   Future<void> _openDetail(TodayTask task) async {
+    final audienceParam =
+        widget.audience == TodayTasksAudience.family ? '?audience=family' : '';
     final changed = await context.push<bool>(
-      '/checklists/task-detail',
+      '/checklists/task-detail$audienceParam',
       extra: task,
     );
     if (!mounted || changed != true) return;

@@ -353,7 +353,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final task = state.extra;
         if (task is! TodayTask) return const _InvalidRouteScreen();
-        return ChecklistTaskDetailScreen(task: task);
+        final audience = state.uri.queryParameters['audience'];
+        return ChecklistTaskDetailScreen(
+          task: task,
+          showSupportFunction: audience != 'family',
+        );
       },
     ),
     GoRoute(
