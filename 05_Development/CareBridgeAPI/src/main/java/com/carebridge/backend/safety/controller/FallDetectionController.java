@@ -20,6 +20,9 @@ import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Controller xử lý các API giám sát an toàn và phát hiện té ngã (UC-134 đến UC-137).
+ */
 @RestController
 @RequestMapping("/api/v1/safety")
 @RequiredArgsConstructor
@@ -28,6 +31,9 @@ public class FallDetectionController {
     private final IFallDetectionService fallDetectionService;
     private final ISafetyConfigService safetyConfigService;
 
+    /**
+     * UC-134: Kích hoạt phiên giám sát an toàn IMU cho người dùng (Role: MOTHER).
+     */
     @PostMapping("/fall-detection/enable")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<ImuMonitoringSessionResponse>> enable(Principal principal) {
@@ -37,6 +43,9 @@ public class FallDetectionController {
                 .body(ApiResponse.success(fallDetectionService.enable(userId, sensitivityLevel)));
     }
 
+    /**
+     * UC-135: Hủy / Dừng phiên giám sát an toàn IMU (Role: MOTHER).
+     */
     @PostMapping("/fall-detection/disable")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<Void>> disable(Principal principal) {
@@ -45,6 +54,10 @@ public class FallDetectionController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
+    /**
+     * UC-136/UC-137: Tiếp nhận dữ liệu cảm biến IMU & vị trí GPS từ điện thoại.
+     * Kiểm tra thuật toán phát hiện ngã và ghi nhận sự kiện SafetyEvent ở trạng thái OPEN.
+     */
     @PostMapping("/imu-data")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<SafetyEventResponse>> processImuData(
@@ -59,6 +72,9 @@ public class FallDetectionController {
         return ResponseEntity.ok(ApiResponse.success(fallDetectionService.processImuData(userId, payload)));
     }
 
+    /**
+     * Lấy danh sách lịch sử các sự kiện ngã / cảnh báo an toàn của người dùng (phân trang).
+     */
     @GetMapping("/events")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<List<SafetyEventResponse>>> listEvents(
@@ -70,6 +86,9 @@ public class FallDetectionController {
                 fallDetectionService.listSafetyEvents(userId, PageRequest.of(page, size))));
     }
 
+    /**
+     * Người dùng xác nhận an toàn ("Tôi vẫn ổn") trong thời gian đếm ngược 30s.
+     */
     @PostMapping("/events/{eventId}/confirm")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<SafetyEventResponse>> confirmSafetyCheck(
@@ -81,6 +100,9 @@ public class FallDetectionController {
                 fallDetectionService.confirmSafetyCheck(userId, eventId, request.getNote())));
     }
 
+    /**
+     * Người dùng báo phát hiện nhầm (báo động giả) cho sự kiện ngã.
+     */
     @PostMapping("/events/{eventId}/false-positive")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<SafetyEventResponse>> reportFalsePositive(
@@ -92,6 +114,10 @@ public class FallDetectionController {
                 fallDetectionService.reportFalsePositive(userId, eventId, request.getNote())));
     }
 
+    /**
+     * Gửi cảnh báo khẩn cấp (Emergency Alert) tới người thân trong gia đình (Family members).
+     * Được gọi khi hết 30s đếm ngược (Timeout) hoặc khi người dùng ấn nút yêu cầu trợ giúp.
+     */
     @PostMapping("/events/{eventId}/emergency-alert")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<Void>> sendEmergencyAlert(

@@ -44,14 +44,30 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.service.IEmergencyService;
 
+/**
+ * Service triển khai nghiệp vụ giám sát an toàn và phát hiện té ngã trên Backend (UC-134 đến UC-137).
+ *
+ * **Trách nhiệm chính:**
+ * 1. Quản lý vòng đời phiên giám sát IMU ([ImuMonitoringSession]).
+ * 2. Tiếp nhận, lọc trùng lặp và phân tích dữ liệu cảm biến IMU & vị trí GPS gửi từ Client.
+ * 3. Tạo bản ghi sự kiện té ngã ([SafetyEvent]) ở trạng thái OPEN kèm thời hạn đếm ngược (30s).
+ * 4. Xử lý phản hồi của người dùng: "Tôi vẫn ổn" (CONFIRMED_SAFE) hoặc "Báo nhầm" (FALSE_POSITIVE).
+ * 5. Tự động chuyển cấp sang phiên khẩn cấp ([EmergencySession]) và gửi thông báo cảnh báo tới người thân trong gia đình (Family Alert) khi hết thời gian 30s hoặc người dùng yêu cầu trợ giúp.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class FallDetectionService implements IFallDetectionService {
 
     private static final Logger log = LoggerFactory.getLogger(FallDetectionService.class);
+
+    /** Giới hạn độ lệch thời gian cho phép giữa Client và Server (Quá khứ: 24 giờ). */
     private static final Duration MAX_CLIENT_PAST_SKEW = Duration.ofHours(24);
+
+    /** Giới hạn độ lệch thời gian cho phép giữa Client và Server (Tương lai: 5 phút). */
     private static final Duration MAX_CLIENT_FUTURE_SKEW = Duration.ofMinutes(5);
+
+    /** Cửa sổ lọc trùng lặp cú ngã (10 giây): Nhiều mẫu va đập trong vòng 10s được coi là cùng 1 sự cố ngã. */
     private static final Duration DUPLICATE_FALL_WINDOW = Duration.ofSeconds(10);
 
     private final IImuMonitoringSessionRepository imuSessionRepository;
@@ -65,6 +81,10 @@ public class FallDetectionService implements IFallDetectionService {
     private final AuditService auditService;
     private final SafetyCountdownTransactionRunner countdownTransactionRunner;
 
+    /**
+     * UC-134: Kích hoạt phiên giám sát an toàn IMU.
+     * Kiểm tra quyền thu thập cảm biến (PDPA Consent) và quyền phần cứng trước khi tạo session.
+     */
     @Override
     public ImuMonitoringSessionResponse enable(UUID userId, String sensitivityLevel) {
         SafetyMonitoringConfig config = requireActiveConfig(userId);
@@ -93,6 +113,9 @@ public class FallDetectionService implements IFallDetectionService {
                 });
     }
 
+    /**
+     * UC-135: Hủy / dừng phiên giám sát an toàn IMU.
+     */
     @Override
     public void disable(UUID userId) {
         imuSessionRepository.acquireUserLock(userId);
@@ -107,6 +130,9 @@ public class FallDetectionService implements IFallDetectionService {
         });
     }
 
+    /**
+     * UC-136/UC-137: Tiếp nhận dữ liệu IMU từ điện thoại, phân tích vật lý và tạo sự kiện ngã nếu xác nhận.
+     */
     @Override
     public SafetyEventResponse processImuData(UUID userId, ImuDataPayload payload) {
         consentPolicy.requireSensorCollection(userId);
@@ -130,10 +156,8 @@ public class FallDetectionService implements IFallDetectionService {
             return toEventResponse(duplicate.get());
         }
 
-        // A recent CareBridge mobile client only sets this after its local IMU
-        // detector has verified free-fall, a rebound, and post-impact
-        // immobility. This prevents the legacy single-sample, hard-impact
-        // heuristic from discarding an otherwise verified soft-surface fall.
+        // Nếu thiết bị di động đã xác thực ngã 3 pha (rơi tự do -> va đập -> nằm yên)
+        // thì tin cậy cờ onDeviceFallConfirmed=true để không bị loại bỏ nhầm trường hợp rơi lên bề mặt mềm.
         FallAnalysisResult analysis = payload.onDeviceFallConfirmed()
                 ? onDeviceConfirmedAnalysis(payload)
                 : algorithmService.analyze(payload, activeSession.getSensitivityLevel());
@@ -142,10 +166,7 @@ public class FallDetectionService implements IFallDetectionService {
             return null;
         }
 
-        // A single physical drop can produce two verified peaks while the
-        // phone is settling on a pillow. Reuse the recent event for this IMU
-        // session only while it is unanswered, so a new fall can be recorded
-        // immediately after the user closes the previous alert as safe.
+        // Chống nhân đôi sự kiện ngã trong cửa sổ 10 giây (DUPLICATE_FALL_WINDOW)
         Optional<SafetyEvent> recentEvent = safetyEventRepository
                 .findFirstByImuSessionIdAndResponseTypeIsNullAndDetectedAtAfterOrderByDetectedAtDesc(
                         activeSession.getId(), receivedAt.minus(DUPLICATE_FALL_WINDOW));
@@ -153,6 +174,7 @@ public class FallDetectionService implements IFallDetectionService {
             return toEventResponse(recentEvent.get());
         }
 
+        // Kiểm tra quyền chia sẻ vị trí (PDPA Consent LOCATION:SHARE) trước khi lưu tọa độ GPS
         boolean includeLocation = payload.latitude() != null && payload.longitude() != null
                 && consentPolicy.mayPersistLocation(userId);
         SafetyEvent event = SafetyEvent.builder()
@@ -195,16 +217,25 @@ public class FallDetectionService implements IFallDetectionService {
                 .toList();
     }
 
+    /**
+     * Người dùng nhấn "Tôi vẫn ổn" -> Cập nhật trạng thái CONFIRMED_SAFE.
+     */
     @Override
     public SafetyEventResponse confirmSafetyCheck(UUID userId, UUID eventId, String note) {
         return respond(userId, eventId, "I_AM_OK", SafetyEventStatus.CONFIRMED_SAFE, note, false);
     }
 
+    /**
+     * Người dùng báo phát hiện nhầm -> Cập nhật trạng thái FALSE_POSITIVE.
+     */
     @Override
     public SafetyEventResponse reportFalsePositive(UUID userId, UUID eventId, String note) {
         return respond(userId, eventId, "FALSE_POSITIVE", SafetyEventStatus.FALSE_POSITIVE, note, false);
     }
 
+    /**
+     * Kích hoạt phiên cấp cứu khẩn cấp (EmergencySession) và gửi cảnh báo tới gia đình khi hết thời gian đếm ngược hoặc nhấn nút cứu hộ.
+     */
     @Override
     public void sendEmergencyAlert(UUID userId, UUID eventId) {
         SafetyEvent requestedEvent = findOwnedEvent(userId, eventId);
@@ -212,17 +243,12 @@ public class FallDetectionService implements IFallDetectionService {
             throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-013",
                     "Sensor self-test events cannot trigger emergency alerts");
         }
-        // The countdown timeout callback can race with the user's final
-        // "I am safe" tap. Once a safe/false-positive response is persisted,
-        // a late emergency request is already obsolete and must be harmless.
+        // Nếu người dùng đã kịp nhấn "Tôi vẫn ổn" trước đó thì bỏ qua yêu cầu khẩn cấp đến muộn
         if ("I_AM_OK".equals(requestedEvent.getResponseType())
                 || "FALSE_POSITIVE".equals(requestedEvent.getResponseType())) {
             return;
         }
-        // The expiry job can persist TIMEOUT milliseconds before the mobile
-        // countdown sheet posts its timeout action. Both outcomes mean the
-        // same thing: no safety acknowledgement arrived, so emergency alerting
-        // must continue instead of rejecting the mobile request as a conflict.
+        // Xử lý khi quá thời gian đếm ngược (TIMEOUT)
         if ("TIMEOUT".equals(requestedEvent.getResponseType())) {
             requestedEvent.setStatus(SafetyEventStatus.ESCALATION_REQUESTED);
             requestedEvent.setResolvedAt(null);

@@ -3,13 +3,15 @@ import 'package:flutter/foundation.dart';
 import '../models/safety_config_model.dart';
 import 'safety_demo_mode.dart';
 
+/// Dịch vụ giao tiếp API Backend cho phân hệ Giám sát An toàn (Safety Monitoring - UC-133 đến UC-137).
 class SafetyService {
-  // UC-133
+  /// UC-133: Lấy cấu hình giám sát an toàn hiện tại của người dùng (trạng thái bật ngã, độ nhạy, chia sẻ vị trí).
   Future<SafetyConfig> getConfig() async {
     final data = await apiGet('/api/v1/safety/config');
     return SafetyConfig.fromJson(data['data'] as Map<String, dynamic>);
   }
 
+  /// UC-133: Cập nhật cấu hình giám sát an toàn lên Backend.
   Future<SafetyConfig> updateConfig({
     required bool fallDetectionEnabled,
     required String sensitivityLevel,
@@ -47,7 +49,7 @@ class SafetyService {
     'sensorPermissionGranted': ?sensorPermissionGranted,
   };
 
-  // UC-134: idempotent — returns existing ACTIVE session if already enabled.
+  /// UC-134: Bật phiên giám sát ngã IMU trên Backend (trả về phiên ACTIVE).
   Future<ImuMonitoringSession> enableFallDetection() async {
     final data = await apiPost(
       '/api/v1/safety/fall-detection/enable',
@@ -56,12 +58,13 @@ class SafetyService {
     return ImuMonitoringSession.fromJson(data['data'] as Map<String, dynamic>);
   }
 
-  // UC-135
+  /// UC-135: Tắt phiên giám sát ngã IMU trên Backend.
   Future<void> disableFallDetection() async {
     await apiPost('/api/v1/safety/fall-detection/disable', const {});
   }
 
-  // UC-136/UC-137: send real phone IMU samples to backend fall analysis.
+  /// UC-136/UC-137: Gửi mẫu dữ liệu cảm biến IMU (Gia tốc + Con quay) kèm tọa độ GPS lên Backend.
+  /// Backend phân tích và tạo bản ghi sự kiện té ngã [SafetyEvent] ở trạng thái OPEN.
   Future<SafetyEvent?> sendImuData({
     required double accelerometerX,
     required double accelerometerY,
@@ -94,6 +97,7 @@ class SafetyService {
         : null;
   }
 
+  /// Lấy danh sách lịch sử các sự kiện an toàn / té ngã.
   Future<List<SafetyEvent>> getSafetyEvents({
     int page = 0,
     int size = 20,
@@ -105,6 +109,7 @@ class SafetyService {
         .toList();
   }
 
+  /// Tạo sự kiện kiểm tra cử chỉ cảm biến (Sensor Self-Test / Diễn tập).
   Future<SafetyEvent> createSensorSelfTestEvent(
     SensorSelfTestResult result,
   ) async {
@@ -126,6 +131,7 @@ class SafetyService {
     'gyroscopeMagnitude': result.gyroscopeMagnitude,
   };
 
+  /// Hoàn tất diễn tập kiểm tra cảm biến.
   Future<SafetyEvent> completeSensorSelfTest(
     String eventId, {
     required String outcome,
@@ -137,6 +143,7 @@ class SafetyService {
     return SafetyEvent.fromJson(data['data'] as Map<String, dynamic>);
   }
 
+  /// Xác nhận an toàn: Người dùng nhấn nút "Tôi vẫn ổn" trên màn hình đếm ngược.
   Future<SafetyEvent> confirmSafetyCheck(String eventId, {String? note}) async {
     final data = await apiPost('/api/v1/safety/events/$eventId/confirm', {
       'note': note,
@@ -144,6 +151,7 @@ class SafetyService {
     return SafetyEvent.fromJson(data['data'] as Map<String, dynamic>);
   }
 
+  /// Báo phát hiện nhầm: Người dùng phản hồi là báo động giả.
   Future<SafetyEvent> reportFalsePositive(
     String eventId, {
     String? note,
@@ -155,6 +163,8 @@ class SafetyService {
     return SafetyEvent.fromJson(data['data'] as Map<String, dynamic>);
   }
 
+  /// Kích hoạt cảnh báo khẩn cấp (Emergency Alert) gửi tới người thân trong gia đình (Family members).
+  /// Được gọi khi hết thời gian đếm ngược 30s hoặc khi người dùng yêu cầu trợ giúp.
   Future<void> sendEmergencyAlertForEvent(String eventId) async {
     await apiPost('/api/v1/safety/events/$eventId/emergency-alert', const {});
   }

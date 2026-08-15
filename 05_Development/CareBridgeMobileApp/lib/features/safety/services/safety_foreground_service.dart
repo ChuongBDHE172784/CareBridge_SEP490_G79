@@ -44,6 +44,13 @@ abstract class SafetyForegroundGateway {
   Future<void> stop();
 }
 
+/// Bộ điều phối dịch vụ Foreground Service chạy nền thường trực cho tính năng Giám sát An toàn (Fall Detection).
+///
+/// **Cơ chế hoạt động:**
+/// 1. Tự động kiểm tra quyền cảm biến, đăng nhập Auth và cấu hình Backend (`reconcile`).
+/// 2. Khởi chạy Notification thường trực trên Android/iOS (`health` & `location` service types).
+/// 3. Duy trì lắng nghe cảm biến ngay cả khi người dùng tắt màn hình hoặc chuyển sang ứng dụng khác.
+/// 4. Giao tiếp 2 chiều giữa Main UI Isolate và Background Task Isolate (qua `FlutterForegroundTask.sendDataToTask` / `sendDataToMain`).
 class SafetyForegroundServiceCoordinator {
   SafetyForegroundServiceCoordinator._({
     required SafetyForegroundGateway gateway,
@@ -83,6 +90,7 @@ class SafetyForegroundServiceCoordinator {
     sendTaskData: sendTaskData ?? (_) {},
   );
 
+  /// Singleton instance của bộ điều phối Foreground Service.
   static final SafetyForegroundServiceCoordinator instance =
       SafetyForegroundServiceCoordinator._(
         gateway: _FlutterSafetyForegroundGateway(),

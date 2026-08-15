@@ -12,6 +12,7 @@ import '../widgets/safety_countdown_sheet.dart';
 import 'enable_fall_detection_screen.dart';
 import '../../emergency/services/emergency_service.dart';
 
+/// Điều phối kết quả phản hồi của người dùng từ màn hình đếm ngược (An toàn, Báo nhầm, hoặc Khẩn cấp).
 Future<void> dispatchSafetyCountdownResult({
   required SafetyCountdownResult? result,
   required bool simulated,
@@ -32,6 +33,7 @@ Future<void> dispatchSafetyCountdownResult({
   }
 }
 
+/// Gửi phản hồi an toàn lên Backend, sau đó tái kích hoạt (rearm) lại bộ phát hiện té ngã.
 Future<SafetyEvent> persistSafetyResponseThenRearm({
   required void Function() beginResponse,
   required Future<SafetyEvent> Function() persistResponse,
@@ -52,6 +54,7 @@ Future<SafetyEvent> persistSafetyResponseThenRearm({
   }
 }
 
+/// Lựa chọn sự kiện té ngã tiếp theo đang ở trạng thái OPEN để hiển thị đếm ngược (ưu tiên deadline gần nhất).
 SafetyEvent? selectNextOpenSafetyEvent(
   Iterable<SafetyEvent> events, {
   required String excludingId,
@@ -88,8 +91,7 @@ bool shouldReleaseSafetyCountdownOwnership({
   required String completedEventId,
 }) => activeEventId == completedEventId;
 
-/// Mirrors the backend's `DUPLICATE_FALL_WINDOW`: two detections this close
-/// together describe the same physical incident.
+/// Khoảng thời gian lọc trùng (10 giây): 2 lần phát hiện ngã cách nhau dưới 10s được coi là cùng 1 cú rơi vật lý.
 const safetyDuplicateFallWindow = Duration(seconds: 10);
 
 bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {

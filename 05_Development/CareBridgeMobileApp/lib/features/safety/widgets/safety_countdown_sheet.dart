@@ -7,8 +7,22 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/safety_config_model.dart';
 
-enum SafetyCountdownAction { safe, falsePositive, help, timeout }
+/// Các loại hành động phản hồi trong phiên đếm ngược cảnh báo té ngã.
+enum SafetyCountdownAction {
+  /// Người dùng bấm "Tôi vẫn ổn" -> Xác nhận an toàn và đóng cảnh báo.
+  safe,
 
+  /// Người dùng báo phát hiện nhầm (báo động giả).
+  falsePositive,
+
+  /// Người dùng bấm nút yêu cầu cứu hộ khẩn cấp.
+  help,
+
+  /// Hết thời gian đếm ngược (thường là 30 giây) mà không có phản hồi -> Kích hoạt gửi cảnh báo khẩn cấp tới gia đình.
+  timeout,
+}
+
+/// Kết quả phản hồi từ màn hình đếm ngược cảnh báo té ngã.
 class SafetyCountdownResult {
   const SafetyCountdownResult._(this.action, {this.reasonCode, this.reason});
 
@@ -32,11 +46,15 @@ class SafetyCountdownResult {
   final String? reason;
 }
 
+/// Giao diện điều khiển phản hồi xúc giác (Haptic) và âm thanh báo động (TTS/Sound).
 abstract class SafetyCountdownFeedback {
+  /// Bắt đầu phát âm thanh/rung cảnh báo.
   void start();
 
+  /// Phát xung rung và chuông theo nhịp giây đếm ngược còn lại.
   void pulse(int remainingSeconds);
 
+  /// Dừng phát âm thanh/rung khi kết thúc cảnh báo.
   void stop();
 }
 
