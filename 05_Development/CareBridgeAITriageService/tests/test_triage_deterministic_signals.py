@@ -130,3 +130,134 @@ def test_ordinary_sentences_do_not_reach_red_in_v2(case, monkeypatch):
     assert state.get("triageOutcome") != "RED", (
         f"{case['text']!r} escalated on {state.get('reasonCodes')}"
     )
+
+
+# --------------------------------------------------------------- lexicon additions 2026-08-15
+
+
+_TRUSTED_PREGNANCY = {"stage": "PREGNANCY", "stage_source": "EXPLICIT_SELECTED_PROFILE"}
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # Từ Dũ's own wording for postpartum haemorrhage, added under D-029/D-031.
+        "Chảy máu lượng lớn từ âm đạo",
+        "Em đang bầu, chảy máu lượng lớn không dứt",
+        # Từ Dũ's quantified definition of heavy bleeding in pregnancy, added 2026-08-15.
+        "Em phải thay băng vệ sinh chỉ sau 1-2 giờ",
+        # Từ Dũ words the postpartum warning as "Nếu sản dịch ra nhiều (1 giờ mà ướt đẫm băng vệ
+        # sinh) thì nên đi khám lại ngay."
+        # (https://www.tudu.com.vn/vn/y-hoc-thuong-thuc/suc-khoe-sau-sanh-sau-mo/
+        #  nhung-van-de-thuong-gap-o-giai-doan-hau-san/, truy cập 2026-08-15).
+        # No phrase was added for it: "ướt đẫm băng" already covers "ướt đẫm băng vệ sinh", the
+        # word boundary falling after "băng". Pinned so that coverage is not lost by accident.
+        "Em đang bầu, 1 giờ mà ướt đẫm băng vệ sinh",
+        "sản dịch ra nhiều ướt đẫm băng vệ sinh",
+    ],
+)
+def test_official_heavy_bleeding_wording_reaches_the_floor(message):
+    assert "HEAVY_VAGINAL_BLEEDING" in detect_danger_signals(message, **_TRUSTED_PREGNANCY)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # A smaller volume is not the danger sign, and the negated form is not a report.
+        "Chảy máu lượng nhỏ thôi",
+        "chảy máu lượng nhỏ",
+        "Em không chảy máu lượng lớn",
+        "Bé bị chảy máu cam lượng ít",
+        # A different construction, not this phrase.
+        "băng đẫm máu",
+        # Changing a pad is ordinary; only the frequency Từ Dũ names is the danger sign. The
+        # sourced phrase is kept long precisely so these two stay out.
+        "Em thay băng vệ sinh 2 lần một ngày như bình thường",
+        "Bao lâu thì nên thay băng vệ sinh?",
+        # The same Từ Dũ page carries both instructions, which is what makes it a good anchor:
+        # "thay băng mỗi 3 – 4 giờ 1 lần" is hygiene, "trong vòng 1 giờ thấm ướt 2 – 3 miếng BVS
+        # dày" is the warning. Only the second is a danger sign, and routine pad-changing at any
+        # interval must stay out of the floor.
+        # (https://www.tudu.com.vn/vn/y-hoc-thuong-thuc/suc-khoe-sau-sanh-sau-mo/
+        #  cham-soc-ve-sinh-dinh-duong-van-dong-hau-phau-mo-lay-thai/, truy cập 2026-08-15)
+        "Thay băng vệ sinh mỗi 4 tiếng cho sạch",
+        "Con phải thay băng 3-4 giờ một lần",
+        "thay băng thường xuyên",
+    ],
+)
+def test_heavy_bleeding_wording_does_not_over_match(message):
+    assert detect_danger_signals(message, **_TRUSTED_PREGNANCY) == {}
+
+
+def test_bleeding_in_pregnancy_matches_however_the_writer_labels_it():
+    """How the writer explains the bleeding does not change what the phrase reports.
+
+    "chảy máu lượng lớn kinh nguyệt trong mang thai tuần 20" was proposed as a false positive
+    and is not one. Bệnh viện Từ Dũ lists vaginal bleeding in pregnancy as a danger sign in its
+    own right — "Ra máu âm đạo trong thai kỳ thì bạn cần đến ngay cơ sở y tế…vì có thể chảy máu
+    nhiều gây nguy hiểm đến tính mạng mẹ và con"
+    (https://www.tudu.com.vn/vn/y-hoc-thuong-thuc/suc-khoe-thai-ky/nhung-dau-hieu-nguy-hiem-trong-thai-ky/,
+    truy cập 2026-08-15) — so a user calling it a period does not make it safe. Ruled by the
+    clinician on the project, 2026-08-15; the matcher does not get to decide this.
+    """
+
+    assert "HEAVY_VAGINAL_BLEEDING" in detect_danger_signals(
+        "chảy máu lượng lớn kinh nguyệt trong mang thai tuần 20", **_TRUSTED_PREGNANCY
+    )
+
+
+# TODO chờ D-032 (mở nhóm nhi khoa cho sàn cụm từ). Cho tới khi có quyết định, "thở rút lõm"
+# (CHEST_INDRAWING, pediatric_011) và "nôn liên tục" (PERSISTENT_VOMITING, pediatric_016) không
+# được thêm: hai signal đó có rule đọc nhưng _STAGE_PHRASE_SIGNALS chưa nối dây cho giai đoạn
+# nhi khoa, nên thêm cụm từ vào cũng không chạy.
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # The corpus case this fixed: a count between "ướt đẫm" and "băng" used to stop the match,
+        # so describing the bleeding more precisely made the rule stop firing.
+        "Em đang bầu, máu ra ướt đẫm hai miếng băng chỉ trong một lúc.",
+        "ướt đẫm 3 miếng băng",
+        "ướt đẫm ba miếng băng vệ sinh",
+        "ướt đẫm nhiều băng",
+        "thấm ướt hai băng",
+        "ướt đẫm băng",
+    ],
+)
+def test_a_counted_pad_still_matches_the_soaking_phrase(message):
+    assert "HEAVY_VAGINAL_BLEEDING" in detect_danger_signals(message, **_TRUSTED_PREGNANCY)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # The quantity gap is allowed only inside the pad-soaking phrases. Applied to every
+        # phrase it made "co hai giật mình" read as a seizure, which is why it is scoped.
+        "co hai giật mình",
+        "Em giặt hai cái băng cho bé",
+        "Em mua năm miếng băng dán",
+        "Tôi tự nhiên thấy vài cái tử tế",
+        "Bé bú từ từ hai lần",
+        # A count with nothing countable after it does not complete "ướt đẫm băng".
+        "ướt đẫm một",
+        # Words that are neither an intensifier nor a count still break the phrase.
+        "đau đầu nhẹ vừa dữ dội",
+    ],
+)
+def test_a_count_cannot_bridge_two_unrelated_words(message):
+    assert detect_danger_signals(message, **_TRUSTED_PREGNANCY) == {}
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # Refused on 2026-08-15 for want of a source that meets D-029/D-031. Pinned so the
+        # refusal is visible if someone adds them later without recording a source.
+        "Em bầu 31 tuần, đầu đau dữ dội",
+        "nhìn mọi thứ nhòe đi",
+        "máu chảy ào ra và không giảm",
+    ],
+)
+def test_wording_refused_for_want_of_a_source_stays_out(message):
+    assert detect_danger_signals(message, **_TRUSTED_PREGNANCY) == {}
