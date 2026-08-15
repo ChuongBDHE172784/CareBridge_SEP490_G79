@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchRecommendationTags, fetchStaffContentDetail, fetchTags, updateContent, archiveContent } from '../services/contentApi';
 import type { ContentDetail, RecommendationTag } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS, TYPE_LABELS } from '../models/content';
-import { recommendationClassification } from './recommendationMetadata';
+import { formatRecommendationTagLabel, recommendationClassification } from './recommendationMetadata';
 import { useAuth } from '../../../shared/auth/useAuth';
 import '../richContentBody.css';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
@@ -204,22 +204,22 @@ export default function ContentDetailPage() {
 
           {detail.type === 'ARTICLE' && (
             <div className="bg-surface rounded-2xl p-5 shadow-md mb-6">
-              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">RECOMMENDATION METADATA</div>
+              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">THIẾT LẬP ĐỐI TƯỢNG GỢI Ý (RECOMMENDATION)</div>
               <div className="text-sm text-on-surface">
-                Classification: {recommendationClassification(recommendationTagIds)} {' · '}
+                Phân loại: {recommendationClassification(recommendationTagIds)} {' · '}
                 {detail.eligibleFromWeek == null && detail.eligibleToWeek == null
-                  ? 'Stage-wide'
-                  : `Pregnancy weeks ${detail.eligibleFromWeek}-${detail.eligibleToWeek}`}
-                {' · '}Priority {detail.recommendationPriority ?? 0}
+                  ? 'Toàn bộ giai đoạn'
+                  : `Tuần thai ${detail.eligibleFromWeek}–${detail.eligibleToWeek}`}
+                {' · '}Độ ưu tiên {detail.recommendationPriority ?? 0}
               </div>
               <div className="text-xs text-outline mt-1">
-                Audience: {controlledRecommendationTags.length > 0
-                  ? controlledRecommendationTags.map((tag) => tag.label).join(', ')
-                  : 'No controlled audience tags (fallback eligible)'}
+                Đối tượng: {controlledRecommendationTags.length > 0
+                  ? controlledRecommendationTags.map((tag) => formatRecommendationTagLabel(tag)).join(', ')
+                  : 'Không có tag chỉ định (áp dụng toàn bộ người dùng đủ điều kiện)'}
               </div>
               {staleRecommendationTagIds.length > 0 && (
                 <div className="text-xs text-error mt-1" role="alert">
-                  Retired or unknown audience IDs: {staleRecommendationTagIds.join(', ')}
+                  Mã tag đối tượng không xác định: {staleRecommendationTagIds.join(', ')}
                 </div>
               )}
             </div>
