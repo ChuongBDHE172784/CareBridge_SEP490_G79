@@ -34,7 +34,7 @@ class DatabaseSettings(BaseModel):
 
 class GeminiSettings(BaseModel):
     api_key: str = os.getenv("GEMINI_API_KEY", "")
-    model: str = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
+    model: str = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
     embedding_model: str = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
     embedding_dimension: int = 768
     temperature: float = float(os.getenv("GEMINI_TEMPERATURE", "0.3"))

@@ -1,4 +1,4 @@
-"""Google GenAI Client for Gemini 3.7 Flash & gemini-embedding-001."""
+"""Google GenAI Client with multi-model auto-fallback and error resilience."""
 
 from __future__ import annotations
 
@@ -9,6 +9,13 @@ from google.genai import types
 from app.config import GEMINI_SETTINGS
 
 logger = logging.getLogger(__name__)
+
+# Fallback model candidates if primary model is unavailable
+FALLBACK_GENERATION_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemini-2.5-flash",
+    "gemini-flash-latest",
+]
 
 
 class GeminiClient:
@@ -63,7 +70,6 @@ class GeminiClient:
         if self._client:
             try:
                 embeddings = []
-                # Process in batches
                 for i in range(0, len(texts), 16):
                     batch = texts[i : i + 16]
                     response = self._client.models.embed_content(
@@ -90,25 +96,33 @@ class GeminiClient:
         system_instruction: str,
         temperature: float | None = None,
     ) -> str:
-        """Generate a structured response using Gemini 3.7 Flash."""
+        """Generate a response with automatic model fallback for maximum uptime."""
         temp = temperature if temperature is not None else GEMINI_SETTINGS.temperature
 
         if self._client:
-            try:
-                response = self._client.models.generate_content(
-                    model=GEMINI_SETTINGS.model,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction,
-                        temperature=temp,
-                    ),
-                )
-                if response and response.text:
-                    return response.text.strip()
-            except Exception as e:
-                logger.warning(f"Gemini generation notice ({e}), using fallback response generator")
+            models_to_try = [GEMINI_SETTINGS.model] + [
+                m for m in FALLBACK_GENERATION_MODELS if m != GEMINI_SETTINGS.model
+            ]
 
-        # Fallback for testing / offline
+            for model_name in models_to_try:
+                try:
+                    response = self._client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=temp,
+                        ),
+                    )
+                    if response and response.text:
+                        return response.text.strip()
+                except Exception as e:
+                    logger.warning(
+                        f"Notice calling model '{model_name}' ({e}), attempting fallback model..."
+                    )
+                    continue
+
+        # Safe fallback if all network/API calls fail
         return (
             "Chào mẹ, CareBridge AI Nurse Assistant xin được giải đáp: Dựa trên cẩm nang y tế thai kỳ chính thống, "
             "mẹ cần chú ý theo dõi kỹ các thay đổi sinh lý, bổ sung đầy đủ vi chất (sắt, canxi, axit folic), "
