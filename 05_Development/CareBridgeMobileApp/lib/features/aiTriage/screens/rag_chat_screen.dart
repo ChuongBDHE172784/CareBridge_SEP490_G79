@@ -25,28 +25,30 @@ class _Message {
   });
 
   Map<String, dynamic> toJson() => {
-        'text': text,
-        'isUser': isUser,
-        'time': time.toIso8601String(),
-        'sources': sources,
-        'followups': followups,
-        'isWarning': isWarning,
-      };
+    'text': text,
+    'isUser': isUser,
+    'time': time.toIso8601String(),
+    'sources': sources,
+    'followups': followups,
+    'isWarning': isWarning,
+  };
 
   factory _Message.fromJson(Map<String, dynamic> json) => _Message(
-        text: json['text'] as String? ?? '',
-        isUser: json['isUser'] as bool? ?? false,
-        time: DateTime.tryParse(json['time'] as String? ?? '') ?? DateTime.now(),
-        sources: (json['sources'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        followups: (json['followups'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        isWarning: json['isWarning'] as bool? ?? false,
-      );
+    text: json['text'] as String? ?? '',
+    isUser: json['isUser'] as bool? ?? false,
+    time: DateTime.tryParse(json['time'] as String? ?? '') ?? DateTime.now(),
+    sources:
+        (json['sources'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
+    followups:
+        (json['followups'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
+    isWarning: json['isWarning'] as bool? ?? false,
+  );
 }
 
 class _ChatSession {
@@ -63,22 +65,23 @@ class _ChatSession {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'updatedAt': updatedAt.toIso8601String(),
-        'messages': messages.map((m) => m.toJson()).toList(),
-      };
+    'id': id,
+    'title': title,
+    'updatedAt': updatedAt.toIso8601String(),
+    'messages': messages.map((m) => m.toJson()).toList(),
+  };
 
   factory _ChatSession.fromJson(Map<String, dynamic> json) => _ChatSession(
-        id: json['id'] as String? ?? '',
-        title: json['title'] as String? ?? 'Cuộc trò chuyện',
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
-            DateTime.now(),
-        messages: (json['messages'] as List<dynamic>?)
-                ?.map((e) => _Message.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [],
-      );
+    id: json['id'] as String? ?? '',
+    title: json['title'] as String? ?? 'Cuộc trò chuyện',
+    updatedAt:
+        DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+    messages:
+        (json['messages'] as List<dynamic>?)
+            ?.map((e) => _Message.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
 }
 
 class RagChatScreen extends StatefulWidget {
@@ -106,7 +109,6 @@ class _RagChatScreenState extends State<RagChatScreen> {
   bool _loadingHistory = true;
 
   final List<String> _quickPrompts = [
-    'Cách tính tuần thai và ngày dự sinh chuẩn xác?',
     'Mang thai 3 tháng đầu cần bổ sung vi chất gì?',
     'Dấu hiệu cảnh báo nguy hiểm trong thai kỳ cần đi viện ngay?',
     'Cách đếm và theo dõi cử động thai máy tại nhà?',
@@ -169,14 +171,17 @@ class _RagChatScreenState extends State<RagChatScreen> {
 
   void _persistCurrentSession() {
     if (_messages.isEmpty) return;
-    final firstUserMsg =
-        _messages.firstWhere((m) => m.isUser, orElse: () => _messages.first);
+    final firstUserMsg = _messages.firstWhere(
+      (m) => m.isUser,
+      orElse: () => _messages.first,
+    );
     final title = firstUserMsg.text.length > 40
         ? '${firstUserMsg.text.substring(0, 37)}...'
         : firstUserMsg.text;
 
-    final existingIndex =
-        _sessions.indexWhere((s) => s.id == _currentSessionId);
+    final existingIndex = _sessions.indexWhere(
+      (s) => s.id == _currentSessionId,
+    );
     final session = _ChatSession(
       id: _currentSessionId,
       title: title,
@@ -286,10 +291,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
     // 1. Prioritize direct Python FastAPI AI RAG Service (PGVector + Gemini + Citations)
     final historyPayload = _messages
         .take(_messages.length - 1)
-        .map((m) => {
-              'role': m.isUser ? 'user' : 'assistant',
-              'content': m.text,
-            })
+        .map(
+          (m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text},
+        )
         .toList();
 
     for (final base in _pythonCandidates) {
@@ -319,7 +323,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
               if (s is Map && s['title'] != null) {
                 final title = s['title'].toString().trim();
                 final sec = s['section']?.toString().trim();
-                final formatted = (sec != null &&
+                final formatted =
+                    (sec != null &&
                         sec.isNotEmpty &&
                         sec.toLowerCase() != title.toLowerCase())
                     ? '$title ($sec)'
@@ -345,12 +350,11 @@ class _RagChatScreenState extends State<RagChatScreen> {
     // 2. Fallback to Spring Boot /api/v1/rag/answer if Python service was unreachable
     if (answerText.isEmpty) {
       try {
-        final data = await apiPost('/api/v1/rag/answer', {
-          'query': question,
-        });
+        final data = await apiPost('/api/v1/rag/answer', {'query': question});
 
-        final resData =
-            (data is Map && data.containsKey('data')) ? data['data'] : data;
+        final resData = (data is Map && data.containsKey('data'))
+            ? data['data']
+            : data;
 
         if (resData is Map) {
           answerText = resData['answer']?.toString() ?? '';
@@ -461,7 +465,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
                             ? 'Đồng hành cùng Mẹ bầu • 24/7'
                             : 'Hỗ trợ Gia đình chăm sóc mẹ & bé',
                         style: const TextStyle(
-                            fontSize: 11, color: Colors.white70),
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
@@ -488,13 +494,16 @@ class _RagChatScreenState extends State<RagChatScreen> {
               context: context,
               builder: (_) => AlertDialog(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 title: const Row(
                   children: [
                     Icon(Icons.shield_outlined, color: _primary),
                     SizedBox(width: 8),
-                    Text('Về Trợ lý AI CareBridge',
-                        style: TextStyle(fontSize: 16)),
+                    Text(
+                      'Về Trợ lý AI CareBridge',
+                      style: TextStyle(fontSize: 16),
+                    ),
                   ],
                 ),
                 content: const Text(
@@ -504,8 +513,10 @@ class _RagChatScreenState extends State<RagChatScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Đã hiểu',
-                        style: TextStyle(color: _primary)),
+                    child: const Text(
+                      'Đã hiểu',
+                      style: TextStyle(color: _primary),
+                    ),
                   ),
                 ],
               ),
@@ -607,8 +618,11 @@ class _HistoryBottomSheet extends StatelessWidget {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.history_rounded,
-                        color: Color(0xFFC98C7B), size: 22),
+                    Icon(
+                      Icons.history_rounded,
+                      color: Color(0xFFC98C7B),
+                      size: 22,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Lịch sử trò chuyện AI',
@@ -622,17 +636,23 @@ class _HistoryBottomSheet extends StatelessWidget {
                 ),
                 if (sessions.isNotEmpty)
                   TextButton.icon(
-                    icon: const Icon(Icons.delete_sweep,
-                        size: 18, color: Colors.redAccent),
-                    label: const Text('Xóa tất cả',
-                        style: TextStyle(fontSize: 12, color: Colors.redAccent)),
+                    icon: const Icon(
+                      Icons.delete_sweep,
+                      size: 18,
+                      color: Colors.redAccent,
+                    ),
+                    label: const Text(
+                      'Xóa tất cả',
+                      style: TextStyle(fontSize: 12, color: Colors.redAccent),
+                    ),
                     onPressed: () {
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
                           title: const Text('Xóa tất cả lịch sử?'),
                           content: const Text(
-                              'Toàn bộ các đoạn hội thoại AI đã lưu sẽ bị xóa vĩnh viễn.'),
+                            'Toàn bộ các đoạn hội thoại AI đã lưu sẽ bị xóa vĩnh viễn.',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(),
@@ -643,8 +663,10 @@ class _HistoryBottomSheet extends StatelessWidget {
                                 Navigator.of(context).pop();
                                 onClearAll();
                               },
-                              child: const Text('Xóa hết',
-                                  style: TextStyle(color: Colors.red)),
+                              child: const Text(
+                                'Xóa hết',
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ),
                           ],
                         ),
@@ -661,13 +683,18 @@ class _HistoryBottomSheet extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.chat_bubble_outline,
-                        size: 48, color: Colors.grey.shade400),
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       'Chưa có lịch sử trò chuyện nào',
                       style: TextStyle(
-                          color: Colors.grey.shade600, fontSize: 14),
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -702,18 +729,25 @@ class _HistoryBottomSheet extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight:
-                            isCurrent ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: isCurrent
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                         color: const Color(0xFF2D2421),
                       ),
                     ),
                     subtitle: Text(
                       '${_formatSessionDate(s.updatedAt)} • ${s.messages.length} tin nhắn',
-                      style:
-                          TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                      icon: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey,
+                      ),
                       tooltip: 'Xóa đoạn chat này',
                       onPressed: () => onDeleteSession(s.id),
                     ),
@@ -732,10 +766,7 @@ class _WelcomeView extends StatelessWidget {
   final List<String> quickPrompts;
   final ValueChanged<String> onPromptTap;
 
-  const _WelcomeView({
-    required this.quickPrompts,
-    required this.onPromptTap,
-  });
+  const _WelcomeView({required this.quickPrompts, required this.onPromptTap});
 
   @override
   Widget build(BuildContext context) {
@@ -801,8 +832,10 @@ class _WelcomeView extends StatelessWidget {
                   backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF5A463F),
                   alignment: Alignment.centerLeft,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   side: BorderSide(color: Colors.grey.shade300),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -811,18 +844,26 @@ class _WelcomeView extends StatelessWidget {
                 onPressed: () => onPromptTap(prompt),
                 child: Row(
                   children: [
-                    const Icon(Icons.chat_bubble_outline,
-                        size: 16, color: Color(0xFFC98C7B)),
+                    const Icon(
+                      Icons.chat_bubble_outline,
+                      size: 16,
+                      color: Color(0xFFC98C7B),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         prompt,
                         style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w500),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                    const Icon(Icons.chevron_right,
-                        size: 18, color: Colors.grey),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
                   ],
                 ),
               ),
@@ -958,9 +999,7 @@ class _MessageBubble extends StatelessWidget {
                     fontSize: 14,
                   ),
                 ),
-                Expanded(
-                  child: _buildInlineSpans(content, isUser),
-                ),
+                Expanded(child: _buildInlineSpans(content, isUser)),
               ],
             ),
           ),
@@ -987,9 +1026,7 @@ class _MessageBubble extends StatelessWidget {
                     fontSize: 13.5,
                   ),
                 ),
-                Expanded(
-                  child: _buildInlineSpans(content, isUser),
-                ),
+                Expanded(child: _buildInlineSpans(content, isUser)),
               ],
             ),
           ),
@@ -1037,80 +1074,92 @@ class _MessageBubble extends StatelessWidget {
   Widget _buildInlineSpans(String text, bool isUser) {
     final spans = <TextSpan>[];
     final regex = RegExp(
-        r'(\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|([^*`]+))');
+      r'(\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|([^*`]+))',
+    );
     final matches = regex.allMatches(text);
 
     if (matches.isEmpty) {
-      spans.add(TextSpan(
-        text: text,
-        style: TextStyle(
-          color: isUser ? Colors.white : const Color(0xFF2D2421),
-          fontSize: 13.5,
-          height: 1.45,
+      spans.add(
+        TextSpan(
+          text: text,
+          style: TextStyle(
+            color: isUser ? Colors.white : const Color(0xFF2D2421),
+            fontSize: 13.5,
+            height: 1.45,
+          ),
         ),
-      ));
+      );
     } else {
       for (final m in matches) {
         if (m.group(2) != null) {
           // ***bold italic***
-          spans.add(TextSpan(
-            text: m.group(2),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontStyle: FontStyle.italic,
-              color: isUser ? Colors.white : const Color(0xFF2D2421),
-              fontSize: 13.5,
+          spans.add(
+            TextSpan(
+              text: m.group(2),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontStyle: FontStyle.italic,
+                color: isUser ? Colors.white : const Color(0xFF2D2421),
+                fontSize: 13.5,
+              ),
             ),
-          ));
+          );
         } else if (m.group(3) != null) {
           // **bold**
-          spans.add(TextSpan(
-            text: m.group(3),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isUser ? Colors.white : const Color(0xFF2D2421),
-              fontSize: 13.5,
+          spans.add(
+            TextSpan(
+              text: m.group(3),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isUser ? Colors.white : const Color(0xFF2D2421),
+                fontSize: 13.5,
+              ),
             ),
-          ));
+          );
         } else if (m.group(4) != null) {
           // *italic*
-          spans.add(TextSpan(
-            text: m.group(4),
-            style: TextStyle(
-              fontStyle: FontStyle.italic,
-              color: isUser ? Colors.white70 : const Color(0xFF5A463F),
-              fontSize: 13.5,
+          spans.add(
+            TextSpan(
+              text: m.group(4),
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: isUser ? Colors.white70 : const Color(0xFF5A463F),
+                fontSize: 13.5,
+              ),
             ),
-          ));
+          );
         } else if (m.group(5) != null) {
           // `code`
-          spans.add(TextSpan(
-            text: m.group(5),
-            style: TextStyle(
-              fontFamily: 'monospace',
-              backgroundColor:
-                  isUser ? Colors.white24 : const Color(0xFFF0EAE5),
-              color: isUser ? Colors.white : const Color(0xFFC98C7B),
-              fontSize: 12.5,
+          spans.add(
+            TextSpan(
+              text: m.group(5),
+              style: TextStyle(
+                fontFamily: 'monospace',
+                backgroundColor: isUser
+                    ? Colors.white24
+                    : const Color(0xFFF0EAE5),
+                color: isUser ? Colors.white : const Color(0xFFC98C7B),
+                fontSize: 12.5,
+              ),
             ),
-          ));
+          );
         } else if (m.group(6) != null) {
           // normal text
-          spans.add(TextSpan(
-            text: m.group(6),
-            style: TextStyle(
-              color: isUser ? Colors.white : const Color(0xFF2D2421),
-              fontSize: 13.5,
-              height: 1.45,
+          spans.add(
+            TextSpan(
+              text: m.group(6),
+              style: TextStyle(
+                color: isUser ? Colors.white : const Color(0xFF2D2421),
+                fontSize: 13.5,
+                height: 1.45,
+              ),
             ),
-          ));
+          );
         }
       }
     }
 
-    return RichText(
-      text: TextSpan(children: spans),
-    );
+    return RichText(text: TextSpan(children: spans));
   }
 
   @override
@@ -1119,12 +1168,14 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
-        crossAxisAlignment:
-            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!isUser) ...[
@@ -1144,8 +1195,10 @@ class _MessageBubble extends StatelessWidget {
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.82,
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 15,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: isUser ? const Color(0xFFC98C7B) : Colors.white,
                     borderRadius: BorderRadius.only(
@@ -1180,8 +1233,11 @@ class _MessageBubble extends StatelessWidget {
                             children: [
                               const Row(
                                 children: [
-                                  Icon(Icons.menu_book,
-                                      size: 13, color: Color(0xFFC98C7B)),
+                                  Icon(
+                                    Icons.menu_book,
+                                    size: 13,
+                                    color: Color(0xFFC98C7B),
+                                  ),
                                   SizedBox(width: 4),
                                   Text(
                                     'Nguồn cẩm nang tham khảo:',
@@ -1214,7 +1270,9 @@ class _MessageBubble extends StatelessWidget {
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF3E0),
                             borderRadius: BorderRadius.circular(8),
@@ -1223,8 +1281,11 @@ class _MessageBubble extends StatelessWidget {
                           child: const Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.info_outline,
-                                  size: 14, color: Color(0xFFE65100)),
+                              Icon(
+                                Icons.info_outline,
+                                size: 14,
+                                color: Color(0xFFE65100),
+                              ),
                               SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -1272,7 +1333,8 @@ class _MessageBubble extends StatelessWidget {
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Color(0xFFDECFC8)),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         onPressed: () => onFollowupTap(f),
                       ),
                     )
@@ -1412,8 +1474,11 @@ class _InputBar extends StatelessWidget {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Icon(Icons.arrow_upward,
-                        color: Colors.white, size: 22),
+                    : const Icon(
+                        Icons.arrow_upward,
+                        color: Colors.white,
+                        size: 22,
+                      ),
               ),
             ),
           ],
