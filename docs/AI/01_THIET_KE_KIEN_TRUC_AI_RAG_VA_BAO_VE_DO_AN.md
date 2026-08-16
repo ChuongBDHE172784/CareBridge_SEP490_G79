@@ -2,7 +2,7 @@
 
 > **Dự án:** CareBridge (SEP490 - Capstone Project)  
 > **Phân hệ:** `CareBridgeAITriageService` (Hệ thống AI RAG & Sàng lọc Chỉ số Sinh hiệu Mẹ Bầu)  
-> **Mục đích tài liệu:** Cung cấp toàn bộ thiết kế kiến trúc, giải thích chi tiết kỹ thuật RAG, luồng logic hoạt động, thuật toán vector, cơ chế hội thoại đa lượt, và bộ câu hỏi - đáp chuyên sâu phục vụ bảo vệ trước **Hội đồng Chấm Đồ án Tốt nghiệp**.
+> **Mục đích tài liệu:** Cung cấp toàn bộ thiết kế kiến trúc, giải thích chi tiết kỹ thuật RAG, so sánh các thuật toán chunking, luồng logic hoạt động, thuật toán vector, cơ chế hội thoại đa lượt, và bộ câu hỏi - đáp chuyên sâu phục vụ bảo vệ trước **Hội đồng Chấm Đồ án Tốt nghiệp**.
 
 ---
 
@@ -14,7 +14,7 @@
 5. [Luồng Logic Hoạt động theo Workflow Hệ thống](#5-luồng-logic-hoạt-động-theo-workflow-hệ-thống)
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt (Multi-turn Context & Query Expansion)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#7-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-8. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A)](#8-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa)
+8. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 9 Câu Hỏi Chuyên Sâu)](#8-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---9-câu-hỏi-chuyên-sâu)
 9. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#9-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -45,9 +45,10 @@
 
 ```mermaid
 flowchart TB
-    subgraph INGESTION["1. INGESTION PIPELINE (Xử lý Tri thức Y tế)"]
-        DOCS["Tài liệu Y tế Chính thống<br/>(PDF, DOCX, Markdown, TXT)"] --> CHUNKER["Document Chunker<br/>(RecursiveCharacterTextSplitter)<br/>Chunk: 900 chars | Overlap: 180 chars"]
-        CHUNKER --> EMBED_GEN["Gemini Embedding Model<br/>(Neural Vector 768-dim)"]
+    subgraph INGESTION["1. INGESTION PIPELINE (Xử lý Tri thức Đa Định dạng)"]
+        DOCS["Tài liệu Y tế Đa dạng<br/>(PDF, DOCX, Markdown, TXT)"] --> CHUNKER["Document Chunker<br/>(Recursive Hierarchical Splitting)<br/>Chunk: 900 chars | Overlap: 180 chars"]
+        CHUNKER --> SEC_EXT["Smart Section Extractor<br/>(Tự bóc tách Heading/Điều khoản)"]
+        SEC_EXT --> EMBED_GEN["Gemini Embedding Model<br/>(Neural Vector 768-dim)"]
         EMBED_GEN --> PG_VECTOR[("PostgreSQL + pgvector<br/>maternal_knowledge_chunks<br/>(Vector 768-dim, HNSW Index)")]
     end
 
@@ -60,14 +61,14 @@ flowchart TB
     end
 
     subgraph CHAT_FLOW["3. WORKFLOW AI NURSE ASSISTANT (Bước 10)"]
-        USER_MSG["Mẹ bầu đặt câu hỏi:<br/>'Mang thai 3 tháng đầu cần uống vi chất gì?'"] --> RAG_SVC["RAG Chat Service"]
-        RAG_SVC --> Q_EXPAND["Semantic Query Expansion<br/>(Tổng hợp ngữ cảnh 4-6 tin gần nhất)"]
+        USER_MSG["Mẹ bầu đặt câu hỏi bất kỳ:<br/>'Mang thai 3 tháng đầu cần uống vi chất gì?'"] --> RAG_SVC["RAG Chat Service"]
+        RAG_SVC --> Q_EXPAND["Semantic Query Expansion<br/>(Tổng hợp triệu chứng 4-6 tin gần nhất)"]
         Q_EXPAND --> Q_EMBED["Embed Query Vector (768-dim)"]
         Q_EMBED --> V_SEARCH["Cosine Distance Search (<=>)<br/>Top K=4 chunks + Metadata Filter (Stage)"]
         PG_VECTOR -.-> V_SEARCH
         V_SEARCH --> PROMPT_BUILD["Prompt Builder<br/>• Medical System Instruction<br/>• Multi-turn History<br/>• User Query<br/>• Retrieved Contexts"]
         PROMPT_BUILD --> GEMINI_LLM["LLM: Gemini Flash-Lite / 3.7 Flash<br/>(Auto Model Fallback)"]
-        GEMINI_LLM --> FINAL_RESP["Response hoàn chỉnh:<br/>• Lời giải đáp ân cần, khoa học<br/>• Trích dẫn nguồn (Citations)<br/>• Gợi ý câu hỏi tiếp theo (Follow-ups)<br/>• Disclaimer Y tế bắt buộc"]
+        GEMINI_LLM --> FINAL_RESP["Response hoàn chỉnh:<br/>• Lời giải đáp ân cần, khoa học<br/>• Trích dẫn nguồn (Citations & Section)<br/>• Gợi ý câu hỏi tiếp theo (Follow-ups)<br/>• Disclaimer Y tế bắt buộc"]
     end
 ```
 
@@ -86,20 +87,40 @@ flowchart TB
 
 ## 3. Kỹ thuật Data Pipeline: Ingestion, Chunking & Embeddings
 
-### 3.1. Kỹ thuật Phân đoạn Văn bản (Text Chunking)
+### 3.1. Kỹ thuật Phân đoạn Văn bản (Recursive Hierarchical Text Splitting)
 * **Thuật toán sử dụng:** `RecursiveCharacterTextSplitter`.
-* **Cơ chế:** Phân tách phân cấp theo danh sách ký tự ưu tiên `["\n\n", "\n", ". ", " ", ""]` nhằm bảo toàn toàn vẹn một ý niệm y khoa hoàn chỉnh.
+* **Cơ chế phân cấp:** Tách phân cấp theo danh sách ký tự ưu tiên `["\n## ", "\n### ", "\n#### ", "\n\n", "\n", ". ", " "]`.
+  1. *Cấp 1:* Ưu tiên tách theo tiêu đề đề mục lớn (`\n## `, `\n### `) để giữ nguyên vẹn một ý niệm y khoa.
+  2. *Cấp 2:* Nếu mục dài > 900 ký tự, tách theo từng đoạn văn (`\n\n`).
+  3. *Cấp 3:* Nếu đoạn văn vẫn quá dài, tách theo dấu chấm kết câu (`. `).
+  4. *Cấp 4:* Tách theo dấu cách giữa các từ (`" "`), không bao giờ chém ngang một từ ngữ y khoa.
 * **Tham số tối ưu hóa:**
   - `chunk_size = 900` ký tự (~150 - 200 từ tiếng Việt): Kích thước vàng ôm trọn một nội dung y khoa (Triệu chứng + Cơ chế + Hướng xử trí), tránh tình trạng vector bị loãng ngữ nghĩa.
-  - `chunk_overlap = 180` ký tự (20% overlap): Đảm bảo các câu nằm ở ranh giới giữa 2 chunk không bị đứt đoạn ngữ cảnh, giúp việc truy xuất vector luôn liền mạch.
+  - `chunk_overlap = 180` ký tự (20% overlap): Đảm bảo các câu nằm ở ranh giới giữa 2 chunk được gối đầu liền mạch.
 
-### 3.2. Làm giàu Siêu dữ liệu (Metadata Enrichment)
-Mỗi đoạn văn bản sau khi cắt khúc được gán siêu dữ liệu đa chiều:
-- `title`: Tên tài liệu cẩm nang gốc.
-- `stage`: Giai đoạn áp dụng (`PRECONCEPTION`, `PREGNANCY`, `POSTPARTUM`, `INFANT`, `TODDLER`, `ALL`).
-- `topic`: Chủ đề y khoa (`DANGER_SIGNS`, `NUTRITION`, `HEALTH_MONITORING`, `POSTPARTUM_CARE`...).
-- `source`: Cơ quan/Bệnh viện phát hành (Bộ Y Tế, WHO, Bệnh viện Từ Dũ, Viện Dinh Dưỡng).
-- `section`: Tên chương mục trong tài liệu.
+### 3.2. Thuật toán Smart Section Extraction (Tự động Bóc tách Tiêu đề Đề mục)
+Nhằm đảm bảo dữ liệu không bao giờ bị `NULL` và phần trích dẫn nguồn (Citations) luôn chỉ rõ tên chương mục cụ thể, hệ thống tích hợp bộ soi dòng thông minh:
+* Tự động nhận diện tiêu đề Markdown (`#`, `##`, `###`).
+* Tự động nhận diện số thứ tự điều khoản văn bản pháp luật (*"Điều 3:..."*, *"Bước 4: Tiệt khuẩn..."*, *"Chương IV: Cấp cứu sản khoa"*).
+* Tự động nhận diện vị trí trang PDF (*"[Trang X]"*).
+* Gán trực tiếp vào cột `section` của từng chunk tương ứng trong CSDL.
+
+### 3.3. So sánh 5 Kỹ thuật Chunking trong Thế giới AI RAG
+
+| Kỹ thuật Chunking | Nguyên lý | Ưu điểm | Nhược điểm | Đánh giá áp dụng |
+| :--- | :--- | :--- | :--- | :--- |
+| **Fixed-size Chunking** | Cắt cứng theo số ký tự (500, 1000). | Nhanh, đơn giản. | Rất dễ cắt đôi một từ ngữ hoặc ngắt giữa chừng câu cảnh báo cấp cứu. | ❌ Thô sơ, không an toàn trong Y tế. |
+| **Sentence Chunking** | Tách theo từng câu riêng biệt sau dấu chấm. | Câu văn hoàn chỉnh. | Từng câu đơn lẻ bị thiếu ngữ cảnh tổng thể (đại từ không rõ nghĩa). | ❌ Quá vụn vặt. |
+| **Recursive Hierarchical** *(CareBridge chọn)* | Cắt đệ quy phân cấp: `Tiêu đề` $\rightarrow$ `Đoạn văn` $\rightarrow$ `Câu` $\rightarrow$ `Từ` kèm 20% gối đầu. | **Bảo toàn cấu trúc cẩm nang**, không cắt vụn từ ngữ, tốc độ xử lý tức thì, chi phí = 0. | Cần văn bản có cấu trúc phân đoạn rõ ràng. | ⭐ **Chuẩn mực công nghiệp tối ưu nhất cho Y tế.** |
+| **Semantic Chunking** | Tính khoảng cách góc Vector giữa các câu liên tiếp để tìm điểm chuyển ý. | Điểm ngắt tự nhiên theo mạch tư duy. | Tốn nhiều lượt gọi API Embedding (chậm, dễ chạm quota). | ⚠️ Phù hợp khi có server GPU riêng. |
+| **Agentic Chunking** | Dùng LLM đọc toàn bộ sách và tự chia chunk. | Hiểu sâu ngữ cảnh. | Tốn kém chi phí token rất lớn, tốc độ nạp chậm với tài liệu hàng trăm trang. | ⚠️ Tốn kém chi phí vận hành. |
+
+### 3.4. Tính Linh hoạt Định dạng (Format-Agnostic Ingestion)
+Hệ thống xử lý mượt mà 4 định dạng dữ liệu đầu vào mà **không bắt buộc phải có cấu trúc cố định**:
+1. **Markdown (`.md`):** Tự động đọc YAML Frontmatter nếu có, hoặc tự động sinh nếu không có.
+2. **Word (`.docx`):** Dùng `python-docx` đọc trực tiếp file hành chính/văn bản y tế (ví dụ: `Quyết-định-1359-QĐ-BYT.docx` 159KB được bóc tách 244 chunks mượt mà trong 2 giây).
+3. **PDF (`.pdf`):** Dùng `pypdf` trích xuất text từng trang kèm nhãn `[Trang X]`.
+4. **Văn bản thô (`.txt`):** Đọc text và làm sạch định dạng tự động.
 
 ---
 
@@ -115,15 +136,15 @@ Hệ thống sử dụng toán tử khoảng cách Cosine Distance (`<=>`) trong
 $$\text{Cosine Similarity}(\vec{u}, \vec{v}) = \frac{\vec{u} \cdot \vec{v}}{\|\vec{u}\| \|\vec{v}\|} = \frac{\sum_{i=1}^{768} u_i v_i}{\sqrt{\sum_{i=1}^{768} u_i^2} \sqrt{\sum_{i=1}^{768} v_i^2}}$$
 - $\text{Cosine Distance} = 1 - \text{Cosine Similarity}$. Khoảng cách càng nhỏ (gần 0), hai đoạn văn bản càng tương đồng về ngữ nghĩa y khoa.
 
-### 4.3. Cấu trúc bảng CSDL trong PostgreSQL:
+### 4.3. Cấu trúc bảng CSDL `maternal_knowledge_chunks` (Enterprise RAG Schema):
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE maternal_knowledge_chunks (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
-    stage VARCHAR(50) NOT NULL,
-    topic VARCHAR(100) NOT NULL,
+    stage VARCHAR(50) NOT NULL DEFAULT 'ALL',
+    topic VARCHAR(100) NOT NULL DEFAULT 'GENERAL',
     source VARCHAR(255) NOT NULL,
     section VARCHAR(255),
     content TEXT NOT NULL,
@@ -137,6 +158,18 @@ CREATE INDEX idx_maternal_chunks_embedding_hnsw
 ON maternal_knowledge_chunks 
 USING hnsw (embedding vector_cosine_ops);
 ```
+
+#### Giải thích chi tiết các trường dữ liệu:
+* **`id`:** Định danh duy nhất cho từng đoạn tri thức.
+* **`title`:** Tên tài liệu / Tiêu đề cẩm nang.
+* **`stage`:** Phân loại giai đoạn (`PREGNANCY`, `POSTPARTUM`, `ALL`) phục vụ **Metadata Filtering**.
+* **`topic`:** Chủ đề y khoa linh hoạt (`DANGER_SIGNS`, `NUTRITION`, `HEALTH_MONITORING`, `GENERAL`...).
+* **`source`:** Cơ quan ban hành (*Bộ Y Tế, WHO, BV Từ Dũ*) để trích dẫn minh bạch.
+* **`section`:** Chương/Mục/Tiểu mục cụ thể của đoạn văn bản (được bóc tách tự động).
+* **`content`:** Nội dung văn bản tiếng Việt đưa vào Context cho Gemini.
+* **`chunk_index`:** Vị trí thứ tự của đoạn trong tài liệu gốc.
+* **`embedding`:** Vector 768 chiều dùng cho thuật toán Cosine Distance.
+* **`created_at`:** Thời gian nạp tri thức.
 
 ---
 
@@ -162,7 +195,7 @@ Khi mẹ bầu nhập chỉ số theo dõi hàng ngày:
 Khi mẹ bầu gửi câu hỏi thảo luận:
 1. **Semantic Search:** Embed câu hỏi thành vector 768 chiều $\rightarrow$ Truy vấn pgvector lấy Top $K=4$ đoạn văn bản có điểm số Cosine cao nhất, có lọc theo `stage` (ví dụ mẹ đang mang thai thì lọc tài liệu `PREGNANCY`).
 2. **Context Injection:** Đưa 4 đoạn tài liệu vào System Prompt theo khuôn mẫu nghiêm ngặt.
-3. **Generative Inference:** Gemini Flash sinh câu trả lời mượt mà, định dạng rõ ràng, trả kèm `sources` (trích dẫn) và `suggested_followups` (gợi ý 3 câu hỏi tiếp theo để mẹ dễ dàng tương tác).
+3. **Generative Inference:** Gemini Flash sinh câu trả lời mượt mà, định dạng rõ ràng, trả kèm `sources` (trích dẫn chi tiết mục) và `suggested_followups` (gợi ý 3 câu hỏi tiếp theo để mẹ dễ dàng tương tác).
 
 ---
 
@@ -203,7 +236,7 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-## 8. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A)
+## 8. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 9 Câu Hỏi Chuyên Sâu)
 
 ### Câu 1: "AI RAG em hiểu là gì và vì sao dự án y tế cho mẹ bầu lại chọn RAG thay vì Fine-tuning mô hình?"
 * **Trả lời:**
@@ -224,7 +257,16 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-### Câu 3: "Em đang dùng loại Vector nào? Tại sao lại chọn pgvector trên PostgreSQL mà không dùng Pinecone hay ChromaDB?"
+### Câu 3: "So sánh kỹ thuật Recursive Hierarchical Chunking của em với Semantic Chunking và Agentic Chunking?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô:
+  > - **Semantic Chunking** ngắt đoạn theo biến thiên khoảng cách vector giữa các câu liên tiếp. Tuy nhiên kỹ thuật này tốn quá nhiều lượt gọi API Embeddings (khiến tốc độ nạp tài liệu chậm và dễ chạm giới hạn quota) và sinh ra kích thước chunk không đều.
+  > - **Agentic Chunking** dùng LLM đọc toàn bộ văn bản để tự chia đoạn, rất thông minh nhưng chi phí token cực lớn khi nạp tài liệu hàng trăm trang.
+  > - **Recursive Hierarchical Chunking** (LangChain) mà CareBridge lựa chọn là giải pháp cân bằng tối ưu nhất: Cắt theo phân cấp `Đề mục Markdown` $\rightarrow$ `Đoạn văn` $\rightarrow$ `Dấu chấm kết câu` $\rightarrow$ `Dấu cách từ`. Kỹ thuật này bảo toàn 100% cấu trúc y khoa, không bao giờ ngắt vụn từ ngữ, tốc độ xử lý tức thì và chi phí vận hành bằng 0."
+
+---
+
+### Câu 4: "Em đang dùng loại Vector nào? Tại sao lại chọn pgvector trên PostgreSQL mà không dùng Pinecone hay ChromaDB?"
 * **Trả lời:**
   > "Thưa Thầy/Cô:
   > 1. Hệ thống đang sử dụng **Neural Vector (Dense Vector)** 768 chiều sinh ra bởi mô hình mạng nơ-ron sâu Transformer (`gemini-embedding-001`), giúp nắm bắt ngữ nghĩa sâu của người dùng thay vì so khớp từ khóa rời rạc.
@@ -234,14 +276,24 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-### Câu 4: "Khi mẹ bầu chat nhiều câu liên tục (ví dụ: 'Nó có nguy hiểm không?'), làm sao AI hiểu 'Nó' là triệu chứng gì để tra cứu tài liệu chính xác?"
+### Câu 5: "Khi mẹ bầu chat nhiều câu liên tục (ví dụ: 'Nó có nguy hiểm không?'), làm sao AI hiểu 'Nó' là triệu chứng gì để tra cứu tài liệu chính xác?"
 * **Trả lời:**
   > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng kỹ thuật **Semantic Query Expansion kết hợp Cửa sổ trượt (Sliding Window)**:
   > Khi mẹ hỏi câu phụ như 'Nó có nguy hiểm không?', hệ thống sẽ tự động lấy các triệu chứng mẹ đã kể ở 4-6 tin nhắn trước đó (ví dụ 'đau đầu, phù chân tuần 32') để ghép thành một Query tìm kiếm đầy đủ ngữ cảnh gửi vào pgvector. Đồng thời, toàn bộ đoạn hội thoại gần nhất được gửi vào Prompt của Gemini Flash giúp câu trả lời liền mạch và thông minh."
 
 ---
 
-### Câu 5: "Làm thế nào để đảm bảo hệ thống không tự chẩn đoán bệnh bừa bãi hay gây nguy hiểm cho người dùng?"
+### Câu 6: "Hệ thống có bắt buộc tài liệu phải theo khuôn mẫu cố định nào không? Nếu nạp một file PDF hay Word 100 trang của Bộ Y Tế thì sao?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống hoàn toàn **không ép buộc tài liệu theo bất kỳ khuôn mẫu cố định nào**. 
+  > Hệ thống hỗ trợ đa định dạng (PDF, DOCX, Markdown, TXT) và tự động nhận diện thông minh:
+  > - Khi nạp file Word (`.docx`) hoặc PDF của Bộ Y Tế, thư viện `python-docx` và `pypdf` sẽ đọc toàn bộ nội dung.
+  > - Thuật toán **Smart Section Extractor** tự động bóc tách các điều khoản (*'Điều 3:...'*, *'Bước 4: Tiệt khuẩn...'*) và gán vào cột `section`.
+  > - Các trường siêu dữ liệu (`stage`, `topic`) nếu không có sẵn sẽ tự động gán mặc định để phục vụ lọc dữ liệu. Ví dụ thực tế: Chúng em đã nạp trực tiếp file *Quyết định 1359 của Bộ Y Tế (159KB)* và hệ thống tự động bóc tách thành 244 đoạn tri thức chuẩn chỉ trong 2 giây."
+
+---
+
+### Câu 7: "Làm thế nào để đảm bảo hệ thống không tự chẩn đoán bệnh bừa bãi hay gây nguy hiểm cho người dùng?"
 * **Trả lời:**
   > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng cơ chế **Phòng vệ 3 Lớp (Three-Tier Safety Guardrails)**:
   > 1. **Lớp 1 - Hard Clinical Rule Gates:** Các ngưỡng sinh hiệu nguy kịch (Huyết áp $\ge 140/90$ kèm triệu chứng, sốt $\ge 38.5^\circ C$, thai ngừng máy $\ge 2$ giờ) được kiểm tra bằng code deterministic trước khi qua AI. Nếu chạm ngưỡng, hệ thống lập tức kích hoạt `CRITICAL_EMERGENCY` mà không để LLM quyết định.
@@ -250,7 +302,7 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-### Câu 6: "Nếu một cuốn cẩm nang y tế bị cũ hoặc sai lệch, làm sao để xóa triệt để để AI không trả lời sai?"
+### Câu 8: "Nếu một cuốn cẩm nang y tế bị cũ hoặc sai lệch, làm sao để xóa triệt để để AI không trả lời sai?"
 * **Trả lời:**
   > "Thưa Thầy/Cô, hệ thống đã cung cấp API quản lý vòng đời dữ liệu `DELETE /api/v1/documents/by-title`. Khi Quản trị viên nhập tên tài liệu cần xóa, hệ thống sẽ thực hiện đồng thời 2 việc:
   > 1. Xóa toàn bộ các dòng vector tương ứng trong bảng `maternal_knowledge_chunks` của CSDL PostgreSQL.
@@ -259,7 +311,7 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-### Câu 7: "Nếu mạng bị mất hoặc API Gemini bị nghẽn (503/429), hệ thống của em có bị chết (crash) không?"
+### Câu 9: "Nếu mạng bị mất hoặc API Gemini bị nghẽn (503/429), hệ thống của em có bị chết (crash) không?"
 * **Trả lời:**
   > "Thưa Thầy/Cô, hệ thống hoàn toàn **không bị crash** nhờ 2 cơ chế:
   > 1. **Multi-Model Auto Fallback:** Trong `GeminiClient`, nếu model chính gặp sự cố, hệ thống sẽ tự động thử lần lượt các model dự phòng (`gemini-flash-lite-latest` $\rightarrow$ `gemini-2.5-flash` $\rightarrow$ `gemini-flash-latest`).
