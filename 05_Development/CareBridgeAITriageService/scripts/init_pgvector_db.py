@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
+from pathlib import Path
+
+# Add project root to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from sqlalchemy import text
 from app.core.database import engine, Base
 from app.models.db_models import MaternalKnowledgeChunk
