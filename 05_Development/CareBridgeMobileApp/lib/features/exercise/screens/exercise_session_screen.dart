@@ -196,6 +196,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     await _startCameraSource();
   }
 
+  /// [BƯỚC 1: Khởi động đường truyền Stream dữ liệu tư thế lên Backend]
+  /// Sử dụng PostureEventStreamer để điều phối gửi mốc cơ thể (Landmarks) với tần suất tối đa 10 req/s,
+  /// tự động bỏ qua (drop) các frame cũ bị chậm để tránh tắc nghẽn mạng.
   void _startPostureTransport(Stream<Map<String, dynamic>> frames) {
     final streamer = PostureEventStreamer(
       send: (eventTimeMs, landmarks) =>
@@ -214,10 +217,14 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       },
     )..start();
     _postureStreamer = streamer;
+
+    // Lắng nghe từng frame ảnh từ Camera MediaPipe
     _postureFramesSubscription = frames.listen((rawFrame) {
       if (!mounted || _isPaused || _isCompleting) return;
       final landmarks = _parseLandmarks(rawFrame);
       if (landmarks.isEmpty) return;
+
+      // Phân tích nhanh cục bộ các chỉ số góc khớp để vẽ khung xương thời gian thực
       final metrics = _feedbackAnalyzer.analyze(landmarks);
       if (!mounted || _isPaused || _isCompleting) return;
       _latestFeedbackMetrics = metrics;
@@ -225,12 +232,15 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
           _hasValidMetricsFrame || metrics.hasVisibleLandmarks;
       final now = DateTime.now();
 
+      // Giới hạn tần suất cập nhật UI cục bộ mỗi 100ms
       final lastUiUpdate = _lastMetricsUiUpdateAt;
       if (lastUiUpdate == null ||
           now.difference(lastUiUpdate) >= const Duration(milliseconds: 100)) {
         _lastMetricsUiUpdateAt = now;
         setState(() {});
       }
+
+      // Đẩy mốc cơ thể vào hàng đợi gửi Backend
       streamer.push(
         eventTimeMs: DateTime.now().millisecondsSinceEpoch,
         landmarks: landmarks,
@@ -238,6 +248,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     });
   }
 
+  /// Phân tích mốc tọa độ chuẩn hóa MediaPipe từ JSON của camera
   Map<String, PostureLandmark> _parseLandmarks(Map<String, dynamic> rawFrame) {
     final parsed = <String, PostureLandmark>{};
     for (final entry in rawFrame.entries) {
@@ -246,18 +257,20 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       try {
         parsed[entry.key] = PostureLandmark.fromPoseJson(value);
       } on FormatException {
-        // A partial pose is ignored; the sidecar only receives valid points.
+        // Bỏ qua mốc không hợp lệ / không nhận diện được
       }
     }
     return parsed;
   }
 
+  /// [BƯỚC 5: Hứng phản hồi từ Backend & Cập nhật State giao diện/Giọng nói]
   void _applyPostureFeedback(PostureFeedback feedback) {
     if (!mounted || _isPaused || _isCompleting) return;
     final severity = feedback.severity.toUpperCase();
     final code = feedback.postureCode.toUpperCase();
     _feedbackAnalyzer.applyFeedback(feedback);
 
+    // Xác định tư thế có đang đúng chuẩn hay không
     final isGood = code == 'C' ||
         code.endsWith('/C') ||
         code.contains('GOOD_FORM') ||
@@ -265,11 +278,13 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
         code == 'UP' ||
         code == 'DOWN';
 
+    // Cảnh báo nếu mức độ nghiêm trọng là WARNING / CRITICAL
     final isWarning = !isGood &&
         (severity == 'CRITICAL' ||
             (severity == 'WARNING' && !code.contains('MODEL_UNAVAILABLE')) ||
             _feedbackAnalyzer.hasFeedbackError);
 
+    // Cập nhật màu viền camera (Đỏ nếu sai tư thế, Xanh nếu đúng)
     _cameraSource?.setFeedbackError(isWarning);
     final feedbackText = feedback.feedbackText?.trim();
 
@@ -277,12 +292,13 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
         ? feedbackText!
         : (isWarning ? 'Tư thế chưa chuẩn, hãy điều chỉnh' : 'Tư thế tốt');
 
+    // Cập nhật State UI
     setState(() {
       _postureGood = !isWarning;
       _postureStatus = statusText;
     });
 
-    // ONLY speak via TTS when there is an actual posture error/warning!
+    // Phát âm thanh hướng dẫn bằng giọng nói (TTS) tiếng Việt nếu có cảnh báo lỗi tư thế
     if (isWarning && feedbackText != null && feedbackText.isNotEmpty) {
       unawaited(_voiceFeedbackAnnouncer.announce(feedbackText));
     }

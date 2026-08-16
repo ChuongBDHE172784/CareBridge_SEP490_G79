@@ -61,12 +61,13 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
     @Transactional
     public StartSessionResponse startSession(
             UUID exerciseId, StartSessionRequest request, UUID userId) {
-        // 1. Exercise must exist and be PUBLISHED.
+        // [BƯỚC 1 & 2: Validate nghiệp vụ & Điều kiện an toàn trước tập]
+        // 1. Kiểm tra bài tập tồn tại và đang ở trạng thái PUBLISHED
         PregnancyExercise exercise = exerciseRepository
                 .findByExerciseIdAndStatus(exerciseId, ExerciseStatus.PUBLISHED)
                 .orElseThrow(ExerciseNotFoundException::notFound);
 
-        // 2. Safety check must belong to user, match exercise, and be CLEARED.
+        // 2. Kiểm tra phiếu khảo sát an toàn (Pre-Exercise Safety Check): Bắt buộc thuộc về user này, đúng bài tập và có kết quả CLEARED
         ExerciseSafetyCheck safetyCheck = safetyCheckRepository
                 .findById(request.getSafetyCheckId())
                 .orElseThrow(SafetyCheckNotClearedException::new);
@@ -76,13 +77,10 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
             throw new SafetyCheckNotClearedException();
         }
 
-        // 3. Repeated starts are idempotent for the same user/exercise/day.
+        // 3. Tính chất lũy thừa (Idempotency): Khóa hàng user để chống race condition khi click đúp, tái sử dụng phiên tập đang mở trong ngày
         OffsetDateTime dayStart = OffsetDateTime.now(ZoneOffset.UTC)
                 .truncatedTo(ChronoUnit.DAYS);
         OffsetDateTime dayEnd = dayStart.plusDays(1);
-        // Serialize starts for this authenticated user across application instances. The user
-        // row is an existing lock anchor, so this closes the check-then-insert race without a
-        // schema change or an in-memory-only lock.
         userRepository.findByIdForUpdate(userId);
         Optional<ExerciseSession> activeSession = sessionRepository
                 .findFirstByExerciseIdAndUserIdAndSessionStatusInAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtAscExerciseSessionIdAsc(
@@ -95,7 +93,7 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
         ExerciseCareContextResolver.CareContext careContext = careContextResolver.resolve(
                 userId, request.getJourneyId());
 
-        // 4. Build the new IN_PROGRESS session.
+        // [BƯỚC 4: Tạo mới và lưu trữ ExerciseSession với trạng thái IN_PROGRESS]
         OffsetDateTime now = OffsetDateTime.now();
         ExerciseSession session = ExerciseSession.builder()
                 .exerciseSessionId(UUID.randomUUID())
@@ -118,13 +116,13 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
     @Override
     @Transactional
     public SessionStateResponse pauseSession(UUID sessionId, UUID userId) {
+        // [Tạm dừng phiên tập]: Đổi trạng thái sang PAUSED, cập nhật updatedAt làm mốc tính thời gian tạm dừng
         ExerciseSession session = loadOwnedSession(sessionId, userId);
         if (session.getSessionStatus() != SessionStatus.IN_PROGRESS) {
             throw InvalidSessionStateException.alreadyPaused();
         }
         session.setSessionStatus(SessionStatus.PAUSED);
         session.setWarningCount(nullSafe(session.getWarningCount()) + 1);
-        // updatedAt marks the pause-start timestamp used when resuming.
         session.setUpdatedAt(OffsetDateTime.now());
         ExerciseSession saved = sessionRepository.save(session);
         return sessionMapper.toStateResponse(saved);
@@ -133,6 +131,7 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
     @Override
     @Transactional
     public SessionStateResponse resumeSession(UUID sessionId, UUID userId) {
+        // [Tiếp tục phiên tập]: Tính số giây đã tạm dừng và cộng dồn vào pausedSeconds, chuyển trạng thái về IN_PROGRESS
         ExerciseSession session = loadOwnedSession(sessionId, userId);
         if (session.getSessionStatus() != SessionStatus.PAUSED) {
             throw InvalidSessionStateException.notPaused();
@@ -152,6 +151,7 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
     @Override
     @Transactional
     public SessionResultResponse completeSession(UUID sessionId, UUID userId) {
+        // [BƯỚC 1: Validate quyền & trạng thái kết thúc]
         ExerciseSession session = loadOwnedSession(sessionId, userId);
         if (session.getSessionStatus() != SessionStatus.IN_PROGRESS
                 && session.getSessionStatus() != SessionStatus.PAUSED) {
@@ -162,6 +162,11 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
                 .findById(session.getExerciseId())
                 .orElseThrow(ExerciseNotFoundException::notFound);
 
+        // [BƯỚC 3: Tính toán tổng kết bài tập]
+        // - Thời lượng thực tập (đã trừ thời gian tạm dừng pausedSeconds)
+        // - Tỷ lệ hoàn thành % (completionPercent)
+        // - Điểm tư thế trung bình (postureScore tính từ các sự kiện posture_feedback_events)
+        // - Tổng hợp JSON tóm tắt các cảnh báo, điểm sáng và số lần lặp (repetitions)
         OffsetDateTime endedAt = OffsetDateTime.now();
         long elapsed = ChronoUnit.SECONDS.between(session.getStartedAt(), endedAt);
         long actualDurationSeconds = Math.max(elapsed - nullSafe(session.getPausedSeconds()), 0L);
@@ -171,6 +176,7 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
         BigDecimal postureScore = computePostureScore(sessionId);
         String summaryJson = buildSummaryJson(sessionId);
 
+        // [BƯỚC 4: Lưu kết quả hoàn thành vào Database]
         session.setEndedAt(endedAt);
         session.setSessionStatus(SessionStatus.COMPLETED);
         session.setCompletionPercent(completionPercent);
@@ -179,7 +185,7 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
         session.setUpdatedAt(OffsetDateTime.now());
 
         ExerciseSession saved = sessionRepository.save(session);
-        // The summary has captured everything the in-memory posture state was for.
+        // Xóa bộ nhớ đệm trạng thái tracking trong RAM của phiên tập
         sessionTracker.clear(sessionId);
         return sessionMapper.toResultResponse(saved, exercise.getTitle());
     }

@@ -14,7 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-/** Selects the startup-configured candidate authority and isolates each materialization attempt. */
+/**
+ * Service đảm bảo tự động phân phối các đầu việc (Checklist Tasks) đủ điều kiện cho người dùng.
+ * Quét các template đã duyệt (Approved Templates) khớp với giai đoạn hiện tại của Mẹ/Bé và gọi ChecklistDistributionService.
+ */
 @Service
 public class EnsureEligibleChecklistAssignmentsService {
 
@@ -30,11 +33,20 @@ public class EnsureEligibleChecklistAssignmentsService {
         this.executor = executor;
     }
 
+    /**
+     * Đảm bảo và kích hoạt phân phối các việc cần làm đủ điều kiện cho người dùng tại ngày chỉ định.
+     *
+     * @param actorUserId ID người dùng (Mẹ)
+     * @param effectiveDate Ngày hiệu lực xét duyệt
+     * @param timezone Múi giờ người dùng
+     * @param correlationId Mã truy vết luồng
+     */
     public void ensureEligibleAssignments(
             UUID actorUserId,
             LocalDate effectiveDate,
             ZoneId timezone,
             UUID correlationId) {
+        // Tải danh sách các ứng viên ChecklistDistributionCommand đủ điều kiện từ DB và thực thi phân phối cô lập từng đợt
         source.loadCandidatesForActor(actorUserId, effectiveDate, timezone, correlationId).stream()
                 .sorted(Comparator.comparing(EnsureEligibleChecklistAssignmentsService::signature))
                 .forEach(candidate -> executeIsolated(candidate, correlationId));

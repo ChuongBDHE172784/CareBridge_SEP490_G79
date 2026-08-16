@@ -183,14 +183,20 @@ class JourneyService {
     await _storage.delete(key: _legacyOptimisticDashboardKey);
   }
 
+  /// [BƯỚC 1: GỬI REQUEST TẠO MỚI HÀNH TRÌNH & THIẾT LẬP TUỔI THAI]
+  /// Gửi dữ liệu ngày kinh cuối (LMP) hoặc ngày dự sinh (EDD) lên API backend `POST /api/v1/journeys`.
+  /// Sau khi tạo thành công, tiến hành ghi đè cache lạc quan (Optimistic Cache) để UI lập tức hiển thị tuần thai.
   Future<CreateJourneyResponse> createJourney(
     CreateJourneyRequest request,
   ) async {
     final requestUserId = _currentUserIdProvider();
+    // Gửi POST request kèm Header Contract Version 2 (XOR LMP/EDD)
     final data = await _apiPost('/api/v1/journeys', request.toJson());
     final body = data['data'] as Map<String, dynamic>;
     final response = CreateJourneyResponse.fromJson(body);
     _ensureRequestUserCurrent(requestUserId, 'journey create');
+    
+    // Đồng bộ và lưu dữ liệu tuổi thai tính toán từ server vào bộ nhớ Secure Storage
     await _reconcileAfterCommit('journey create', () async {
       if (request.journeyType.isMaternalLifecycle) {
         final fallback = _scopedOptimisticDashboard;
@@ -234,10 +240,13 @@ class JourneyService {
     return response;
   }
 
-  // UC-24: Get dashboard data for Home and Journey screens
+  /// [BƯỚC 1: LẤY THÔNG TIN DASHBOARD & TÍNH TOÁN TUẦN THAI HIỆN HÀNH]
+  /// Gọi endpoint `GET /api/v1/journeys/me/dashboard` để lấy tuổi thai chuẩn hóa từ server,
+  /// tự động đối soát (reconciliation) với cache cục bộ và giải quyết trường hợp ngoại tuyến (offline fallback).
   Future<JourneyDashboard> getDashboard() async {
     final requestUserId = AuthState.instance.userId;
     try {
+      // Gửi GET request lấy dữ liệu dashboard cá nhân của Mẹ
       final data = await apiGet('/api/v1/journeys/me/dashboard');
       if (!_isCurrentUser(requestUserId)) {
         throw StateError(
@@ -250,11 +259,13 @@ class JourneyService {
       final fallback =
           _scopedOptimisticDashboard ?? await _readOptimisticDashboard();
 
+      // Kiểm tra tính tương thích giữa dữ liệu server trả về và cache lạc quan
       if (fallback != null &&
           _dashboardMatchesOptimistic(dashboard, fallback)) {
         _optimisticDashboardPendingSync = false;
       }
 
+      // Nếu không có hành trình hoạt động, dọn dẹp cache
       if (!dashboard.hasActiveJourney &&
           fallback != null &&
           !_optimisticDashboardPendingSync) {
@@ -262,6 +273,7 @@ class JourneyService {
         return dashboard;
       }
 
+      // Trộn dữ liệu nếu cache lạc quan đang chứa bản cập nhật mới hơn
       if (_shouldUseOptimisticDashboard(dashboard, fallback)) {
         return _mergeDashboard(
           dashboard,
@@ -270,6 +282,7 @@ class JourneyService {
         );
       }
 
+      // Lưu trữ dashboard hợp lệ vào Secure Storage
       if (dashboard.hasActiveJourney) {
         await _saveOptimisticDashboard(
           dashboard,
@@ -389,12 +402,15 @@ class JourneyService {
     return result;
   }
 
-  // UC-23: Update Journey
+  /// [BƯỚC 1: GỬI REQUEST CẬP NHẬT NGÀY THAI KỲ LÊN BACKEND]
+  /// Gọi `PUT /api/v1/journeys/{journeyId}` để điều chỉnh ngày kinh cuối (LMP) hoặc ngày dự sinh (EDD).
+  /// Nhận kết quả tuần thai mới được tính toán lại từ server và đồng bộ vào bộ nhớ tạm.
   Future<void> updateJourney(
     String journeyId,
     UpdateJourneyRequest request,
   ) async {
     final requestUserId = _currentUserIdProvider();
+    // Gửi PUT request kèm Header Contract Version 2
     final data = await _apiPut('/api/v1/journeys/$journeyId', request.toJson());
     _ensureRequestUserCurrent(requestUserId, 'journey update');
     await _reconcileAfterCommit('journey update', () async {
@@ -420,6 +436,7 @@ class JourneyService {
               requestEstimatedDueDate: _parseDate(request.estimatedDueDate),
               fallbackValue: fallback?.lastMenstrualDate,
             );
+        // Lưu trữ dữ liệu tuổi thai cập nhật mới vào Secure Storage
         await _dashboardCacheWriter(
           JourneyDashboard(
             journeyId:

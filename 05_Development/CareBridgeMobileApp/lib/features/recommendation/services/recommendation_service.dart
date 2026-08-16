@@ -121,6 +121,9 @@ class RecommendationService {
     );
   }
 
+  /// Gọi API lấy danh sách bài viết gợi ý theo tuần thai và hồ sơ cá nhân hóa.
+  /// Endpoint: `GET /api/v1/recommendations/content`
+  /// Params: `limit` (số lượng bài viết cần lấy), `careGroupId` (nếu xem theo nhóm gia đình)
   Future<RecommendationContentResponse> getContent({
     int limit = 3,
     String? careGroupId,
@@ -130,11 +133,13 @@ class RecommendationService {
     if (careGroupId != null && careGroupId.isNotEmpty) {
       queryParams['careGroupId'] = careGroupId;
     }
+    // Gửi request HTTP GET kèm tham số phân trang / giới hạn
     final response = await apiGet(
       '/api/v1/recommendations/content',
       queryParams: queryParams,
     );
     _ensureCurrent(expectedUser);
+    // Parse JSON data sang RecommendationContentResponse DTO
     return RecommendationContentResponse.fromJson(
       (response['data'] as Map).cast<String, dynamic>(),
     );

@@ -146,9 +146,10 @@ class SystemExerciseVoiceFeedback implements ExerciseVoiceFeedback {
   }
 }
 
-/// Applies a small global throttle plus a longer exact-message dedupe window.
-/// This prevents a high-frequency posture stream from continuously restarting
-/// the same spoken warning.
+/// Bộ điều phối phát giọng nói hướng dẫn (TTS Announcer):
+/// Áp dụng cơ chế điều tiết (Throttle 2s) và chống lặp cùng câu nói (Dedupe window 8s).
+/// Mục đích UX & Y tế: Tránh việc máy liên tục nói đè hoặc lặp đi lặp lại một câu cảnh báo
+/// khi mẹ bầu đang trong quá trình điều chỉnh tư thế.
 class ExerciseVoiceFeedbackAnnouncer {
   ExerciseVoiceFeedbackAnnouncer({
     required ExerciseVoiceFeedback voice,
@@ -167,30 +168,31 @@ class ExerciseVoiceFeedbackAnnouncer {
   final Map<String, DateTime> _lastMessageAt = <String, DateTime>{};
   bool _disposed = false;
 
+  /// Đọc câu hướng dẫn nhắc nhở tư thế qua loa/tai nghe
   Future<void> announce(String message) async {
     final normalized = message.trim();
     if (_disposed || normalized.isEmpty) return;
 
     final now = _now();
     final lastAnnouncementAt = _lastAnnouncementAt;
+    // Kiểm tra khoảng cách tối thiểu giữa 2 lần phát âm thanh (tránh nói chen ngang)
     if (lastAnnouncementAt != null &&
         now.difference(lastAnnouncementAt) < minimumInterval) {
       return;
     }
+    // Kiểm tra thời gian lặp lại của cùng 1 nội dung cảnh báo (tối thiểu 8s)
     final lastSameMessageAt = _lastMessageAt[normalized];
     if (lastSameMessageAt != null &&
         now.difference(lastSameMessageAt) < repeatInterval) {
       return;
     }
 
-    // Reserve the window before awaiting the platform so concurrent feedback
-    // events cannot race through the throttle.
     _lastAnnouncementAt = now;
     _lastMessageAt[normalized] = now;
     try {
       await _voice.speak(normalized);
     } catch (_) {
-      // The caller already rendered the visual warning.
+      // Nếu thiết bị không phát được TTS thì giao diện hình ảnh vẫn hiển thị bình thường
     }
   }
 
