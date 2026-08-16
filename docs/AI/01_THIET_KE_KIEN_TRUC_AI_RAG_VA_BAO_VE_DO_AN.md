@@ -207,14 +207,38 @@ Nhờ cơ chế này, tài liệu chuyên khảo về *Dinh dưỡng thai kỳ* 
 
 Bám sát sơ đồ thiết kế hệ thống tại [docs/mainworkflow-Trang-3.drawio.png](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/docs/mainworkflow-Trang-3.drawio.png):
 
-### 5.1. Luồng Sàng lọc Chỉ số Sức khỏe (Bước 7 ➔ 8 ➔ 9)
-Khi mẹ bầu nhập chỉ số theo dõi hàng ngày:
-1. **Tiếp nhận tham số:** Huyết áp ($SBP/DBP$), Đường huyết ($Glucose$), Thân nhiệt ($Temp$), Số lần cử động thai ($Kicks$), Tuần thai, và triệu chứng chủ quan.
-2. **Kiểm tra Ngưỡng An toàn Lâm sàng (Clinical Gates):**
+### 5.1. Luồng Sàng lọc Chỉ số Sức khỏe & Sinh hiệu Lâm sàng (Bước 7 ➔ 8 ➔ 9)
+
+Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe dựa trên hướng dẫn chuyên môn của **Bộ Y tế Việt Nam** và **Tổ chức Y tế Thế giới (WHO)**.
+
+#### A. Danh mục 7 Chỉ số Sức khỏe Chuẩn hóa của Mẹ (Maternal Health Metrics):
+1. **Chỉ số khối cơ thể (BMI / Cân nặng & Chiều cao):** Đơn vị $kg/m^2$ — Giám sát mức tăng cân theo từng tam cá nguyệt.
+2. **Cử động thai (Fetal Movement Count / Session):** Đơn vị $count / session$ — Theo dõi thai máy từ tuần 28 để phát hiện sớm dấu hiệu suy thai.
+3. **Huyết áp (Blood Pressure - $SBP / DBP$):** Đơn vị $mmHg$ — Sàng lọc cao huyết áp thai kỳ và Tiền sản giật.
+4. **Lượng nước uống (Hydration):** Đơn vị $ml$ — Theo dõi việc bổ sung nước đầy đủ cho mẹ và tái tạo thể tích tuần hoàn/nước ối.
+5. **Nhịp tim mẹ (Maternal Heart Rate):** Đơn vị $bpm$ — Phát hiện rối loạn nhịp tim, hồi hộp, thiếu máu thai kỳ.
+6. **Điểm sàng lọc trầm cảm EPDS (Edinburgh Postnatal Depression Scale):** Thang điểm $0 - 30$ điểm (10 câu hỏi chuẩn y khoa) — Đánh giá sức khỏe tâm thần, sàng lọc sớm Trầm cảm trước và sau sinh; có cơ chế cờ đỏ an toàn nếu câu hỏi 10 $> 0$.
+7. **Đường huyết (Blood Glucose):** Đơn vị $mg/dL$ hoặc $mmol/L$ — Theo dõi và phòng ngừa Đái tháo đường thai kỳ (ĐTĐTK).
+
+*(Hệ thống kiên quyết loại bỏ chỉ số "Mức độ căng thẳng / Stress" cảm tính chung chung để thay thế bằng thang điểm trầm cảm EPDS chuẩn y tế được quốc tế công nhận).*
+
+---
+
+#### B. Chỉ số Phát triển của Bé (Giai đoạn Sau sinh — UC-31):
+* **Cân nặng bé ($Baby Weight$):** Đơn vị $kg$.
+* **Chiều dài lúc sinh / Chiều cao bé ($Baby Length$):** Đơn vị $cm$.
+* *So sánh đối chiếu trực tiếp với biểu đồ chuẩn tăng trưởng của WHO ($Z-Score$).*
+
+---
+
+#### C. Quy tắc Kiểm tra Ngưỡng An toàn Lâm sàng (Clinical Safety Gates):
+Khi mẹ bầu nhập chỉ số theo dõi hàng ngày (hoặc nhập triệu chứng):
+1. **Tiếp nhận tham số:** Huyết áp ($SBP/DBP$), Đường huyết ($Glucose$), Cử động thai ($Kicks$), Tuần thai, và các triệu chứng lâm sàng.
+2. **Kiểm tra Ngưỡng Lâm sàng:**
    - *Cơn tăng huyết áp khẩn cấp:* $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg.
    - *Nghi ngờ Tiền sản giật:* $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg kèm theo $\ge 1$ triệu chứng (đau đầu dữ dội, hoa mắt, nhìn mờ, phù mặt, đau thượng vị).
    - *Mất cử động thai:* Tuần thai $\ge 28$ nhưng thai cử động $< 4$ lần trong 2 giờ hoặc $0$ lần cử động.
-   - *Sốt cao thai kỳ:* Thân nhiệt $\ge 38.5^\circ C$.
+   - *Triệu chứng Sốt cao thai kỳ:* Có báo cáo sốt cao $\ge 38.5^\circ C$.
    - *Dấu hiệu xuất huyết / Rỉ ối:* Có triệu chứng ra máu âm đạo tươi hoặc vỡ ối.
 3. **Phân loại Kết quả:**
    - **`CRITICAL_EMERGENCY`:** Trả về `emergency_mode = True`, đưa ra chỉ dẫn cấp cứu 115, tự động kích hoạt tính năng định vị Bệnh viện Sản khoa gần nhất trên Mobile App.

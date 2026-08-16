@@ -40,9 +40,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
   static const _fallbackMetricOptions = [
     _MetricOption(
       apiValue: 'BMI',
-      label: 'Chỉ số BMI',
+      label: 'Chỉ số khối cơ thể (BMI)',
       unit: 'kg/m²',
       icon: Icons.monitor_weight_outlined,
+    ),
+    _MetricOption(
+      apiValue: 'FETAL_MOVEMENT_SESSION',
+      label: 'Cử động thai',
+      unit: 'count',
+      icon: Icons.child_friendly_rounded,
     ),
     _MetricOption(
       apiValue: 'BLOOD_PRESSURE',
@@ -51,28 +57,28 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       icon: Icons.favorite_border_rounded,
     ),
     _MetricOption(
-      apiValue: 'BLOOD_GLUCOSE',
-      label: 'Đường huyết',
-      unit: 'mg/dL',
-      icon: Icons.water_drop_outlined,
+      apiValue: 'HYDRATION',
+      label: 'Lượng nước uống',
+      unit: 'ml',
+      icon: Icons.local_drink_outlined,
     ),
     _MetricOption(
       apiValue: 'MATERNAL_HEART_RATE',
-      label: 'Nhịp tim',
+      label: 'Nhịp tim mẹ',
       unit: 'bpm',
       icon: Icons.monitor_heart_outlined,
     ),
     _MetricOption(
-      apiValue: 'STRESS',
-      label: 'Stress',
+      apiValue: 'EPDS_SCORE',
+      label: 'Điểm sàng lọc trầm cảm EPDS',
       unit: 'điểm',
-      icon: Icons.psychology_alt_outlined,
+      icon: Icons.psychology_outlined,
     ),
     _MetricOption(
-      apiValue: 'FETAL_MOVEMENT_SESSION',
-      label: 'Cử động thai',
-      unit: 'count',
-      icon: Icons.child_friendly_rounded,
+      apiValue: 'BLOOD_GLUCOSE',
+      label: 'Đường huyết',
+      unit: 'mg/dL',
+      icon: Icons.water_drop_outlined,
     ),
   ];
 
@@ -109,7 +115,6 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
       ));
     });
   }
@@ -119,7 +124,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       final capabilities = await _service.getCapabilities(widget.journeyId);
       if (!mounted) return;
       final options = capabilities
-          .where((capability) => capability.manualEntrySupported)
+          .where((capability) =>
+              capability.manualEntrySupported &&
+              capability.metricCode != 'STRESS')
           .map(_optionFromCapability)
           .toList();
       final resolvedOptions = options.isEmpty
@@ -156,7 +163,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       (option) => option.apiValue == code,
       orElse: () => const _MetricOption(
         apiValue: 'BMI',
-        label: 'Chỉ số BMI',
+        label: 'Chỉ số khối cơ thể (BMI)',
         unit: 'kg/m²',
         icon: Icons.monitor_weight_outlined,
       ),
@@ -184,8 +191,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       case 'HEART_RATE':
       case 'MATERNAL_HEART_RATE':
         return 'MATERNAL_HEART_RATE';
-      case 'STRESS':
-        return 'STRESS';
+      case 'HYDRATION':
+        return 'HYDRATION';
+      case 'EPDS':
+      case 'EPDS_SCORE':
+        return 'EPDS_SCORE';
+      case 'BLOOD_SUGAR':
+      case 'BLOOD_GLUCOSE':
+        return 'BLOOD_GLUCOSE';
+      case 'BMI':
       default:
         return value ?? 'BMI';
     }

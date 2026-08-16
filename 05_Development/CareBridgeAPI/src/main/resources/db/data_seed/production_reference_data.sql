@@ -256,7 +256,7 @@ VALUES (
         'Mức độ căng thẳng',
         'POINT',
         'MOTHER',
-        true,
+        false,
         false,
         'score',
         '["score"]'::jsonb,
