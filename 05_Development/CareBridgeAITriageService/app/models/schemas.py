@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -95,7 +95,7 @@ class RagChatResponse(BaseModel):
 
 
 # ============================================================================
-# 3. Document Ingestion Pipeline
+# 3. Document Ingestion & Knowledge Management
 # ============================================================================
 
 class DocumentChunkDTO(BaseModel):
@@ -133,8 +133,81 @@ class BatchIngestResponse(BaseModel):
     errors: List[str] = Field(default_factory=list)
 
 
+class ChunkDetailItem(BaseModel):
+    id: Optional[int] = None
+    title: str
+    stage: str
+    topic: str
+    source: str
+    section: Optional[str] = None
+    snippet: str
+    content_length: int
+    chunk_index: int
+
+
+class KnowledgeListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: List[ChunkDetailItem]
+
+
+class KnowledgeStatsResponse(BaseModel):
+    total_chunks: int
+    total_documents: int
+    stage_distribution: Dict[str, int]
+    topic_distribution: Dict[str, int]
+    files_in_disk: List[str]
+
+
+class VectorSearchTestRequest(BaseModel):
+    query: str = Field(description="Câu hỏi hoặc triệu chứng cần tìm kiếm trong CSDL vector")
+    stage: Optional[MaternalStage] = Field(default=None, description="Lọc theo giai đoạn (Tùy chọn)")
+    top_k: int = Field(default=4, ge=1, le=20, description="Số lượng đoạn tài liệu cần lấy")
+
+
+class VectorSearchTestResponse(BaseModel):
+    query: str
+    total_retrieved: int
+    results: List[SourceCitation]
+
+
 # ============================================================================
-# 4. Health & System Status
+# 4. Prompt Engineering & Simulation Testing
+# ============================================================================
+
+class CustomPromptTestRequest(BaseModel):
+    user_message: str
+    system_instruction: Optional[str] = Field(default=None, description="System prompt tùy chỉnh để thử nghiệm")
+    temperature: Optional[float] = Field(default=0.3, ge=0.0, le=1.0)
+    model: Optional[str] = Field(default=None, description="Model muốn thử (gemini-flash-lite-latest, gemini-2.5-flash, gemini-3.7-flash)")
+
+
+class CustomPromptTestResponse(BaseModel):
+    model_used: str
+    temperature: float
+    answer: str
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BatchSimulationCase(BaseModel):
+    case_name: str
+    metrics: HealthMetricsLogRequest
+    expected_status: TriageRiskStatus
+    actual_status: Optional[TriageRiskStatus] = None
+    passed: Optional[bool] = None
+    headline: Optional[str] = None
+
+
+class BatchSimulationResponse(BaseModel):
+    total_cases: int
+    passed_cases: int
+    all_passed: bool
+    results: List[BatchSimulationCase]
+
+
+# ============================================================================
+# 5. Health & System Status
 # ============================================================================
 
 class SystemHealthResponse(BaseModel):
