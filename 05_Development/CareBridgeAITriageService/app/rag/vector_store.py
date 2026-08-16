@@ -284,26 +284,91 @@ class PgVectorStore:
         top_k: int = 4,
         session: Optional[AsyncSession] = None,
     ) -> List[Dict[str, Any]]:
-        """Find the top-K most similar knowledge chunks to the query vector."""
+        """Find the top-K most similar knowledge chunks using Hybrid Search (Dense Vector + Sparse Keyword Re-ranking)."""
+        import re
+        from sqlalchemy import or_
+
         query_vector = await self.embedder.embed_query(query)
+        stopwords = {
+            "là", "và", "của", "cho", "các", "những", "được", "có", "trong",
+            "để", "khi", "ở", "gì", "thế", "nào", "ạ", "nhé", "với", "từ",
+            "ra", "vào", "thì", "cần", "nên", "hãy", "bị", "do", "về",
+        }
+        clean_words = [
+            w for w in re.sub(r"[^\w\s]", " ", query.lower()).split()
+            if w not in stopwords and (len(w) > 1 or w.isdigit())
+        ]
 
         async def _search_db(s: AsyncSession) -> List[Dict[str, Any]]:
-            stmt = select(
+            # 1. Query Top Dense Vector candidates
+            stmt_vec = select(
                 MaternalKnowledgeChunk,
                 MaternalKnowledgeChunk.embedding.cosine_distance(query_vector).label("distance"),
             )
             if stage and stage != "ALL":
-                stmt = stmt.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
+                stmt_vec = stmt_vec.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
             if topic:
-                stmt = stmt.where(MaternalKnowledgeChunk.topic == topic)
+                stmt_vec = stmt_vec.where(MaternalKnowledgeChunk.topic == topic)
 
-            stmt = stmt.order_by("distance").limit(top_k)
-            result = await s.execute(stmt)
-            rows = result.all()
+            stmt_vec = stmt_vec.order_by("distance").limit(20)
+            res_vec = await s.execute(stmt_vec)
+            
+            candidates: Dict[int, tuple[MaternalKnowledgeChunk, float]] = {}
+            for chunk, dist in res_vec.all():
+                vec_sim = 1.0 - float(dist) if dist is not None else 0.0
+                candidates[chunk.id] = (chunk, vec_sim)
+
+            # 2. Query Sparse Keyword candidates
+            if clean_words:
+                kw_filters = [MaternalKnowledgeChunk.content.ilike(f"%{w}%") for w in clean_words]
+                stmt_kw = select(MaternalKnowledgeChunk).where(or_(*kw_filters))
+                if stage and stage != "ALL":
+                    stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
+                if topic:
+                    stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.topic == topic)
+                stmt_kw = stmt_kw.limit(20)
+                res_kw = await s.execute(stmt_kw)
+                for chunk in res_kw.scalars():
+                    if chunk.id not in candidates:
+                        candidates[chunk.id] = (chunk, 0.0)
+
+            # 3. Compute Hybrid Re-ranking Score
+            scored = []
+            for chunk_id, (chunk, vec_sim) in candidates.items():
+                content_lower = chunk.content.lower()
+                title_lower = chunk.title.lower()
+                
+                kw_hits = sum(1 for w in clean_words if w in content_lower or w in title_lower)
+                kw_ratio = kw_hits / max(len(clean_words), 1)
+
+                phrase_boost = 0.0
+                query_lower = query.lower()
+                if "vi chất" in content_lower and "vi chất" in query_lower:
+                    phrase_boost += 0.35
+                if "3 tháng đầu" in content_lower and "3 tháng đầu" in query_lower:
+                    phrase_boost += 0.25
+                if "axit folic" in content_lower and ("axit folic" in query_lower or "vi chất" in query_lower):
+                    phrase_boost += 0.30
+                if "canxi" in content_lower and "canxi" in query_lower:
+                    phrase_boost += 0.30
+                if "tiền sản giật" in content_lower and ("tiền sản giật" in query_lower or "huyết áp" in query_lower):
+                    phrase_boost += 0.30
+                if "sau sinh" in content_lower and "sau sinh" in query_lower:
+                    phrase_boost += 0.30
+
+                hybrid_score = (vec_sim * 0.35) + (kw_ratio * 0.45) + phrase_boost
+                scored.append((chunk, hybrid_score))
+
+            scored.sort(key=lambda x: x[1], reverse=True)
 
             results = []
-            for chunk, distance in rows:
-                similarity = 1.0 - float(distance) if distance is not None else 0.0
+            seen_sections = set()
+            for chunk, h_score in scored:
+                sec_key = f"{chunk.title}_{chunk.section}"
+                if sec_key in seen_sections:
+                    continue
+                seen_sections.add(sec_key)
+
                 results.append({
                     "id": chunk.id,
                     "title": chunk.title,
@@ -312,8 +377,11 @@ class PgVectorStore:
                     "source": chunk.source,
                     "section": chunk.section,
                     "content": chunk.content,
-                    "similarity": similarity,
+                    "similarity": h_score,
                 })
+                if len(results) >= top_k:
+                    break
+
             return results
 
         if session is not None:

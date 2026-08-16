@@ -76,4 +76,9 @@ HÃY TRẢ LỜI:
 2. Trích dẫn rõ ràng cẩm nang / nguồn tham khảo (nếu có trong tài liệu trên).
 3. Đưa ra lời khuyên chăm sóc tại nhà khoa học (chế độ ăn, nghỉ ngơi, tư thế nằm...).
 4. Nêu rõ các dấu hiệu cảnh báo cần đi khám Bác sĩ ngay nếu có chuyển biến xấu.
+5. GỢI Ý CÂU HỎI TIẾP THEO (BẮT BUỘC): Ở cuối cùng của câu trả lời, hãy tạo đúng 3 câu hỏi ngắn gọn (dưới 12 từ) có tính liên kết cao mà mẹ bầu hoặc người nhà có thể muốn hỏi tiếp dựa trên những gì bạn vừa giải thích. Đặt 3 câu hỏi này sau thẻ `[GỢI Ý CÂU HỎI]:` theo định dạng:
+[GỢI Ý CÂU HỎI]:
+- Gợi ý câu hỏi 1?
+- Gợi ý câu hỏi 2?
+- Gợi ý câu hỏi 3?
 """.strip()
