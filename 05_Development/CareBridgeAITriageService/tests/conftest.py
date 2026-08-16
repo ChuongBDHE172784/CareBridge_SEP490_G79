@@ -1,24 +1,17 @@
+"""Pytest configuration and shared fixtures for CareBridge AI RAG."""
+
+import sys
+from pathlib import Path
 import pytest
 
-from app import evidence_registry_client
-from app.evidence_registry_client import ApprovedEvidenceSource
+# Ensure app package is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 @pytest.fixture(autouse=True)
-def approved_evidence_registry(monkeypatch):
-    """Unit tests emulate Spring's DB registry; production has no static allowlist."""
-    sources = (
-        ApprovedEvidenceSource("who", "who.int", "https://www.who.int", "WHO", ("PRECONCEPTION", "PREGNANCY", "INFANT", "TODDLER")),
-        ApprovedEvidenceSource("moh", "moh.gov.vn", "https://moh.gov.vn", "Bo Y te Viet Nam", ("PRECONCEPTION", "PREGNANCY", "INFANT", "TODDLER")),
-        ApprovedEvidenceSource("mch", "mch.moh.gov.vn", "https://mch.moh.gov.vn", "Bo Y te Viet Nam", ("PRECONCEPTION", "PREGNANCY", "INFANT", "TODDLER")),
-        ApprovedEvidenceSource("cdc", "cdc.gov", "https://www.cdc.gov", "CDC", ("PRECONCEPTION", "PREGNANCY", "INFANT", "TODDLER")),
-        ApprovedEvidenceSource("unicef", "unicef.org", "https://www.unicef.org", "UNICEF", ("PRECONCEPTION", "PREGNANCY", "INFANT", "TODDLER")),
-        ApprovedEvidenceSource("nhitw", "benhviennhitrunguong.gov.vn", "https://benhviennhitrunguong.gov.vn", "Benh vien Nhi Trung uong", ("INFANT", "TODDLER")),
-        ApprovedEvidenceSource("nd1", "nhidong.org.vn", "https://nhidong.org.vn", "Benh vien Nhi Dong", ("INFANT", "TODDLER")),
-        ApprovedEvidenceSource("ndtp", "bvndtp.org.vn", "https://bvndtp.org.vn", "Benh vien Nhi Dong Thanh pho", ("INFANT", "TODDLER")),
-    )
-
-    def approved(stage):
-        return tuple(source for source in sources if stage.upper() in source.applicable_stages)
-
-    monkeypatch.setattr(evidence_registry_client, "approved_sources_for_stage", approved)
+def setup_test_environment(monkeypatch):
+    """Set test environment variables."""
+    monkeypatch.setenv("GEMINI_ENABLED", "true")
+    monkeypatch.setenv("AI_TRIAGE_INTERNAL_API_KEY", "carebridge")

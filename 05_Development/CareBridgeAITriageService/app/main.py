@@ -1,98 +1,61 @@
-"""CareBridge canonical deterministic triage transport.
+"""CareBridge AI Maternal RAG & Health Metrics Screening Service."""
 
-Only the Java authority boundary may call the mutation endpoint.  The former child/intake
-endpoints were removed after the mobile application cut over to the canonical session API; keeping
-them here would leave a second clinical decision graph reachable at runtime.
-"""
+from __future__ import annotations
 
-from fastapi import Depends, FastAPI
-from fastapi.responses import JSONResponse
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import GEMINI_SETTINGS
-from app.gemini_client import get_gemini_client
-from app.rules.registry import get_registry
-from app.schemas import EmergencySupportRequest, EmergencySupportResponse
-from app.services.emergency_support_service import (
-    build_response as build_emergency_response,
+from app.api.health import router as health_router
+from app.api.v1.chat import router as chat_router
+from app.api.v1.documents import router as documents_router
+from app.api.v1.metrics import router as metrics_router
+from app.config import SERVER_SETTINGS
+from app.services.ingestion_service import get_ingestion_service
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-from app.triage.api import (
-    TriageTurnRequest,
-    TriageTurnResponse,
-    execute_turn,
-    require_internal_key,
-)
+logger = logging.getLogger(__name__)
 
 
-app = FastAPI(title="CareBridge AI Triage Service", version="1.0.0")
-
-
-@app.post(
-    "/internal/triage/turn",
-    response_model=TriageTurnResponse,
-    dependencies=[Depends(require_internal_key)],
-    include_in_schema=False,
-)
-def triage_turn(request: TriageTurnRequest) -> TriageTurnResponse:
-    """Execute one canonical deterministic triage turn."""
-
-    return execute_turn(request)
-
-
-@app.post(
-    "/internal/emergency/support",
-    response_model=EmergencySupportResponse,
-    dependencies=[Depends(require_internal_key)],
-    tags=["emergency"],
-)
-def emergency_support(request: EmergencySupportRequest) -> EmergencySupportResponse:
-    """Return the emergency package: verified hotlines first, facilities where available."""
-
-    return build_emergency_response(request)
-
-
-@app.get("/health")
-def health() -> JSONResponse:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle events."""
+    logger.info("Initializing CareBridge AI Maternal RAG Service...")
+    # Preload local knowledge documents into in-memory vector cache on startup
     try:
-        client = get_gemini_client()
-    except Exception:
-        # Gemini augments fact extraction but is not part of deterministic readiness.
-        client = None
-    try:
-        _run_deterministic_readiness_probe()
-        deterministic_ready = True
-    except Exception:
-        # Do not expose rules, clinical inputs, or exception details from this public probe.
-        deterministic_ready = False
-    payload = {
-        "status": "UP" if deterministic_ready else "DOWN",
-        "readiness": "READY" if deterministic_ready else "NOT_READY",
-        "deterministicEngine": {
-            "ready": deterministic_ready,
-            "probe": "CANONICAL_RED_PRECEDENCE",
-        },
-        "geminiEnabled": GEMINI_SETTINGS.enabled,
-        "geminiConfigured": bool(GEMINI_SETTINGS.api_key),
-        "geminiReachable": client.reachable if client is not None else False,
-        "model": GEMINI_SETTINGS.model,
-    }
-    return JSONResponse(status_code=200 if deterministic_ready else 503, content=payload)
-
-
-def _run_deterministic_readiness_probe() -> None:
-    registry = get_registry()
-    result = execute_turn(
-        TriageTurnRequest(
-            sessionId="10000000-0000-0000-0000-000000000001",
-            stateVersion=0,
-            expectedStateVersion=0,
-            requestId="readiness_request_1",
-            messageId="readiness_message_1",
-            latestUserMessage="Tôi đang co giật",
-            selectedTarget="MOTHER",
-            journeyContext={"stage": "PREGNANCY"},
-            expectedRulesetHash=registry.ruleset_sha256,
+        service = get_ingestion_service()
+        result = await service.ingest_directory()
+        logger.info(
+            f"Startup knowledge preload completed: {result.total_chunks_created} chunks from {result.total_files_processed} files."
         )
-    )
-    state = result.state
-    if state.get("triageOutcome") != "RED" or not state.get("stopConversation"):
-        raise RuntimeError("deterministic RED precedence probe failed")
+    except Exception as e:
+        logger.warning(f"Startup knowledge preload notice: {e}")
+    yield
+    logger.info("Shutting down CareBridge AI Maternal RAG Service.")
+
+
+app = FastAPI(
+    title="CareBridge AI Maternal Health RAG & Triage Service",
+    description="Hệ thống AI RAG & Sàng lọc Chỉ số Sức khỏe Mẹ bầu sử dụng Gemini 3.7 Flash và pgvector",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register API Routers
+app.include_router(health_router)
+app.include_router(metrics_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
+app.include_router(documents_router, prefix="/api/v1")
