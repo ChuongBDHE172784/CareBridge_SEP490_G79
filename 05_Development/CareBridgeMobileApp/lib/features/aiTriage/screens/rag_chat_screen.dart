@@ -93,7 +93,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
   static const _primaryDark = Color(0xFFA86F60);
   static const _surface = Color(0xFFFDFBF9);
   static const _bg = Color(0xFFF6F1EC);
-  static const _storage = FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
@@ -135,11 +137,22 @@ class _RagChatScreenState extends State<RagChatScreen> {
       final raw = await _storage.read(key: _storageKey);
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw) as List<dynamic>;
-        setState(() {
-          _sessions = decoded
-              .map((e) => _ChatSession.fromJson(e as Map<String, dynamic>))
-              .toList();
-        });
+        final loadedSessions = decoded
+            .map((e) => _ChatSession.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (mounted) {
+          setState(() {
+            _sessions = loadedSessions;
+            // Tự động tải lại phiên trò chuyện gần nhất nếu màn hình đang trống
+            if (_messages.isEmpty && _sessions.isNotEmpty) {
+              final latest = _sessions.first;
+              _currentSessionId = latest.id;
+              _messages.clear();
+              _messages.addAll(latest.messages);
+            }
+          });
+          _scrollToBottom();
+        }
       }
     } catch (_) {}
     if (mounted) {
@@ -304,9 +317,16 @@ class _RagChatScreenState extends State<RagChatScreen> {
           if (decoded['sources'] is List) {
             for (final s in decoded['sources']) {
               if (s is Map && s['title'] != null) {
-                final title = s['title'].toString();
-                final sec = s['section']?.toString();
-                sourcesList.add(sec != null ? '$title ($sec)' : title);
+                final title = s['title'].toString().trim();
+                final sec = s['section']?.toString().trim();
+                final formatted = (sec != null &&
+                        sec.isNotEmpty &&
+                        sec.toLowerCase() != title.toLowerCase())
+                    ? '$title ($sec)'
+                    : title;
+                if (!sourcesList.contains(formatted)) {
+                  sourcesList.add(formatted);
+                }
               }
             }
           }

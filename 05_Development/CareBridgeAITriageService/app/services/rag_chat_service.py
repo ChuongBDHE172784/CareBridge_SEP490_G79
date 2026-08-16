@@ -111,13 +111,30 @@ class RagChatService:
         elif not dynamic_followups:
             dynamic_followups = self._generate_fallback_followups(has_critical_warning)
 
-        # 8. Format Source Citations (Relevance Filter + Deduplication)
+        # 8. Format Source Citations (Relevance Filter + Smart Deduplication)
         citations: List[SourceCitation] = []
         seen_keys = set()
+        seen_titles_with_specific_sections = set()
+
+        # First pass: identify titles that already have specific detailed sub-sections
         for doc in valid_chunks:
-            title = doc.get("title", "Cẩm nang y tế")
-            section = doc.get("section")
-            key = f"{title}_{section}"
+            t = doc.get("title", "Cẩm nang y tế").strip()
+            s = (doc.get("section") or "").strip()
+            if s and s.lower() != t.lower():
+                seen_titles_with_specific_sections.add(t.lower())
+
+        for doc in valid_chunks:
+            title = doc.get("title", "Cẩm nang y tế").strip()
+            section = (doc.get("section") or "").strip() or None
+
+            # If section is identical to title, avoid repeating "(Title)"
+            if section and section.lower() == title.lower():
+                # If we already cite specific sections of this document, skip the generic root title chunk
+                if title.lower() in seen_titles_with_specific_sections:
+                    continue
+                section = None
+
+            key = f"{title.lower()}_{section.lower() if section else ''}"
             if key in seen_keys:
                 continue
             seen_keys.add(key)
