@@ -32,20 +32,34 @@ class RagChatService:
         request: RagChatRequest,
         session: AsyncSession | None = None,
     ) -> RagChatResponse:
-        """Process user message, retrieve relevant medical chunks, and generate grounded answer via Gemini 3.7."""
-        # 1. Semantic Search across Maternal Knowledge pgvector
+        """Process user message, retrieve relevant medical chunks, and generate grounded answer via Gemini Flash."""
+        # 1. Build Context-Aware Vector Search Query
+        # If user refers to previous context (e.g., "nó có nguy hiểm không?"), merge with recent symptoms
+        search_query = request.message
+        if request.conversation_history:
+            recent_user_turns = [
+                msg.content
+                for msg in request.conversation_history[-4:]
+                if msg.role.lower() in ("user", "human")
+            ]
+            if recent_user_turns:
+                # Merge recent user mentions with current message for richer vector recall
+                search_query = f"{' '.join(recent_user_turns)} {request.message}"
+
+        # 2. Semantic Search across Maternal Knowledge pgvector
         stage_filter = request.stage.value if request.stage else "PREGNANCY"
         retrieved_chunks = await self.vector_store.similarity_search(
-            query=request.message,
+            query=search_query,
             stage=stage_filter,
             top_k=4,
             session=session,
         )
 
-        # 2. Check for Critical Emergency Flags in the user's message
-        has_critical_warning = self._detect_emergency_intent(request.message)
+        # 3. Check for Critical Emergency Flags in the user's message & recent turns
+        combined_text = f"{search_query} {request.message}"
+        has_critical_warning = self._detect_emergency_intent(combined_text)
 
-        # 3. Format Recent Metrics Context if provided
+        # 4. Format Recent Metrics Context if provided
         recent_metrics_summary = None
         if request.recent_metrics:
             m = request.recent_metrics
@@ -62,22 +76,28 @@ class RagChatService:
                 parts.append(f"Triệu chứng: {', '.join(m.symptoms)}")
             recent_metrics_summary = ", ".join(parts)
 
-        # 4. Build Grounded Prompt for Gemini 3.7
+        # 5. Build Grounded Prompt with Conversation History for Gemini Flash
+        history_dicts = [
+            {"role": msg.role, "content": msg.content}
+            for msg in request.conversation_history
+        ] if request.conversation_history else None
+
         prompt = build_rag_chat_prompt(
             user_message=request.message,
             context_chunks=retrieved_chunks,
             stage=stage_filter,
             gestational_age_weeks=request.gestational_age_weeks,
             recent_metrics_summary=recent_metrics_summary,
+            conversation_history=history_dicts,
         )
 
-        # 5. Call Gemini 3.7 Flash Generator
+        # 6. Call Gemini Flash Generator
         raw_answer = await self.gemini.generate_response(
             prompt=prompt,
             system_instruction=NURSE_ASSISTANT_SYSTEM_PROMPT,
         )
 
-        # 6. Format Source Citations
+        # 7. Format Source Citations
         citations: List[SourceCitation] = []
         for doc in retrieved_chunks:
             citations.append(
@@ -90,7 +110,7 @@ class RagChatService:
                 )
             )
 
-        # 7. Generate Dynamic Follow-up Suggestions
+        # 8. Generate Dynamic Follow-up Suggestions
         followups = self._generate_followups(request.message, stage_filter, has_critical_warning)
 
         return RagChatResponse(

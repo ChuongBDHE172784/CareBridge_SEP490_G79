@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Dict, List, Optional
+
 NURSE_ASSISTANT_SYSTEM_PROMPT = """
 Bạn là "CareBridge AI Nurse Assistant" — Trợ lý Điều dưỡng Y tế ảo chuyên chăm sóc sức khỏe Mẹ bầu và Trẻ sơ sinh.
 
@@ -31,8 +33,9 @@ def build_rag_chat_prompt(
     stage: str,
     gestational_age_weeks: int | None = None,
     recent_metrics_summary: str | None = None,
+    conversation_history: list[dict] | None = None,
 ) -> str:
-    """Build grounded context prompt for Gemini 3.7 Flash."""
+    """Build grounded context prompt with multi-turn conversation memory for Gemini Flash."""
     context_text = "\n\n".join(
         [
             f"--- TÀI LIỆU {i+1}: {chunk.get('title', 'Cẩm nang')} (Nguồn: {chunk.get('source', 'Y tế')}, Mục: {chunk.get('section', 'Tổng quát')}) ---\n"
@@ -47,18 +50,29 @@ def build_rag_chat_prompt(
 
     metrics_info = f"\nChỉ số sinh hiệu gần nhất của mẹ: {recent_metrics_summary}" if recent_metrics_summary else ""
 
+    # Format multi-turn conversation history (Sliding window: Last 6 turns)
+    history_text = ""
+    if conversation_history:
+        recent_turns = conversation_history[-6:]  # Keep last 6 messages
+        history_lines = []
+        for msg in recent_turns:
+            role_label = "Mẹ bầu" if msg.get("role") in ("user", "human") else "AI Nurse"
+            history_lines.append(f"- {role_label}: \"{msg.get('content', '')}\"")
+        if history_lines:
+            history_text = "\n[LỊCH SỬ TRAO ĐỔI GẦN ĐÂY GIỮA MẸ VÀ AI NURSE]:\n" + "\n".join(history_lines) + "\n"
+
     return f"""
 THÔNG TIN NGƯỜI DÙNG:
 - {stage_info}{metrics_info}
-
+{history_text}
 [TÀI LIỆU CẨM NANG THAM KHẢO ĐƯỢC TRÍCH XUẤT]:
 {context_text if context_text else "Không có tài liệu trực tiếp. Hãy trả lời dựa trên kiến thức chăm sóc tổng quát an toàn và khuyên mẹ gặp Bác sĩ."}
 
-CÂU HỎI / CHIA SẺ CỦA MẸ BẦU:
+CÂU HỎI / CHIA SẺ MỚI NHẤT CỦA MẸ BẦU:
 "{user_message}"
 
 HÃY TRẢ LỜI:
-1. Trả lời cặn kẽ, ân cần, giải thích nguyên nhân sinh lý hoặc dấu hiệu cần lưu ý dựa trên tài liệu tham khảo.
+1. Trả lời cặn kẽ, ân cần, gắn kết logic với các câu hỏi trước đó trong đoạn hội thoại (nếu có).
 2. Trích dẫn rõ ràng cẩm nang / nguồn tham khảo (nếu có trong tài liệu trên).
 3. Đưa ra lời khuyên chăm sóc tại nhà khoa học (chế độ ăn, nghỉ ngơi, tư thế nằm...).
 4. Nêu rõ các dấu hiệu cảnh báo cần đi khám Bác sĩ ngay nếu có chuyển biến xấu.
