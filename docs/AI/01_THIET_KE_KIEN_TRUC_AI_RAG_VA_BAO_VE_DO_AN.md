@@ -15,7 +15,7 @@
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt & Gợi ý Động (Multi-turn Context & Dynamic Follow-ups)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)](#7-kiến-trúc-giao-diện-ai-nurse-trên-ứng-dụng-di-động-mobile-app-ui--state)
 8. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#8-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 18 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---18-câu-hỏi-chuyên-sâu)
+9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 24 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---24-câu-hỏi-chuyên-sâu)
 10. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#10-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -223,6 +223,19 @@ Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe d�
 
 *(Hệ thống kiên quyết loại bỏ chỉ số "Mức độ căng thẳng / Stress" cảm tính chung chung để thay thế bằng thang điểm trầm cảm EPDS chuẩn y tế được quốc tế công nhận).*
 
+#### Bảng Quy chuẩn Lâm sàng Chi tiết, Ngưỡng Sàng lọc & Cơ sở Y khoa (Bộ Y Tế / ACOG / WHO / FIGO / RCOG):
+
+| Chỉ số Sinh hiệu | Ngưỡng An toàn (`NORMAL`) | Ngưỡng Lưu ý (`ANOMALY_MONITOR`) | Ngưỡng Nguy cấp Cấp cứu (`CRITICAL_EMERGENCY`) | Cơ sở Quy chuẩn Y khoa Trích dẫn |
+| :--- | :--- | :--- | :--- | :--- |
+| **Huyết áp ($SBP / DBP$)** | $SBP < 130$ và $DBP < 85$ mmHg | • Tiền tăng huyết áp: $SBP 130-139$ hoặc $DBP 85-89$ mmHg<br/>• Tăng HA độ 1 không kèm triệu chứng: $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg | • **Cơn tăng HA kịch phát:** $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg<br/>• $SBP \ge 140$ hoặc $DBP \ge 90$ kèm triệu chứng báo động (đau đầu/hoa mắt/đau thượng vị) $\rightarrow$ **Tiền sản giật** | • **ACOG Practice Bulletin No. 222** (Gestational Hypertension & Preeclampsia)<br/>• **Quyết định 4163/QĐ-BYT** (Hướng dẫn chẩn đoán & điều trị Tiền sản giật) |
+| **Thân nhiệt (`TEMPERATURE`)** | $36.0^\circ C - 37.4^\circ C$ | • Sốt nhẹ thai kỳ: $37.5^\circ C - 38.4^\circ C$<br/>• Hạ thân nhiệt: $< 35.5^\circ C$ | • **Mang thai (`PREGNANCY`):** $\ge 38.5^\circ C$ (hoặc $\ge 38.0^\circ C$ kèm rỉ ối, đau bụng) $\rightarrow$ Nguy cơ Nhiễm trùng ối (*Chorioamnionitis*)<br/>• **Hậu sản (`POSTPARTUM`):** $\ge 38.0^\circ C \rightarrow$ Nhiễm trùng hậu sản (*Puerperal Sepsis*), Viêm nội mạc tử cung | • **WHO Guidelines on Maternal Sepsis**<br/>• **Quyết định 1359/QĐ-BYT** (Chăm sóc sản phụ và sơ sinh thiết yếu) |
+| **Đường huyết ($Glucose$)** | • Lúc đói: $< 5.1$ mmol/L ($< 92$ mg/dL)<br/>• Sau ăn 1-2h: $< 8.5$ mmol/L ($< 153$ mg/dL) | • Hạ đường huyết: $< 3.5$ mmol/L ($< 63$ mg/dL)<br/>• Đói tăng nhẹ: $5.1 - 6.9$ mmol/L<br/>• Sau ăn tăng: $8.5 - 11.0$ mmol/L | • Đói $\ge 7.0$ mmol/L hoặc Sau ăn $\ge 11.1$ mmol/L (kèm triệu chứng lú lẫn, khát nhiều, sụt cân cấp) | • **IADPSG / FIGO Guidelines on Gestational Diabetes**<br/>• **Quyết định 3494/QĐ-BYT** (Hướng dẫn Quốc gia về Sàng lọc & Quản lý ĐTĐ Thai kỳ) |
+| **Cử động thai ($Kicks$)** | $\ge 4$ lần / $2$ giờ (từ tuần thai thứ 28) | $4 - 9$ lần / $4$ giờ (giảm nhẹ) | • **Mất cử động thai:** $0$ lần / $2$ giờ<br/>• Thai đạp yếu: $< 4$ lần / $2$ giờ sau tuần 28 $\rightarrow$ Nguy cơ **Suy thai cấp** | • **ACOG Committee Opinion No. 828** (Management of Decreased Fetal Movement)<br/>• **RCOG Green-top Guideline No. 57** |
+| **Trầm cảm EPDS ($0-30$)** | $0 - 9$ điểm | $10 - 30$ điểm (Nguy cơ Trầm cảm thai kỳ/hậu sản, cần trao đổi AI Nurse và chuyên gia tâm lý) | **Câu hỏi số 10 $> 0$** (Xuất hiện ý nghĩ tự gây hại/tự sát) $\rightarrow$ Báo động đỏ cấp cứu tâm thần | • **Edinburgh Postnatal Depression Scale (EPDS)** - Cox et al. (Chuẩn hóa quốc tế)<br/>• Bộ tiêu chí Sức khỏe Tâm thần Sản phụ WHO |
+| **Chỉ số BMI ($kg/m^2$)** | $18.5 - 24.9$ kg/m² | • Thiếu cân: $< 18.5$<br/>• Thừa cân: $25.0 - 29.9$<br/>• Béo phì thai kỳ: $30.0 - 39.9$ kg/m² | • **Béo phì độ III rất nặng:** $\ge 40.0$ kg/m² (Nguy cơ cao thuyên tắc huyết khối và tiền sản giật nặng) | • **IOM (Institute of Medicine)** Weight Gain During Pregnancy Guidelines<br/>• **WHO BMI Classification for Asian Population** |
+| **Độ bão hòa Oxy ($SpO_2$)** | $96\% - 100\%$ | $95\%$ | $< 95\%$ $\rightarrow$ Suy hô hấp thai kỳ / Thiếu oxy mô cấp | • Chuẩn Hồi sức Cấp cứu Sản khoa Quốc tế |
+| **Nhịp tim mẹ ($Pulse$)** | $60 - 100$ bpm | • Nhịp nhanh: $101 - 120$ bpm<br/>• Nhịp chậm: $50 - 59$ bpm | $> 120$ bpm hoặc $< 50$ bpm kèm choáng ngất $\rightarrow$ Rối loạn huyết động cấp | • Hướng dẫn Khám Tim mạch Sản khoa ESC |
+
 ---
 
 #### B. Chỉ số Phát triển của Bé (Giai đoạn Sau sinh — UC-31):
@@ -372,26 +385,29 @@ Khi mẹ bầu trò chuyện qua lại nhiều lượt, một bài toán kinh đ
 * **Giải pháp Hiện đại của CareBridge:**
   1. Trong System Prompt, sau khi Gemini tổng hợp câu trả lời dựa trên cẩm nang y tế, Gemini được yêu cầu: *Dựa trên chính nội dung vừa giải thích, tự động suy luận ra 3 câu hỏi ngắn gọn mà mẹ bầu có khả năng cao muốn tìm hiểu tiếp theo nhất*.
   2. Gemini xuất 3 câu hỏi sau thẻ `[GỢI Ý CÂU HỎI]:`.
-  3. Hàm `_extract_dynamic_followups` ở backend bóc tách dữ liệu sạch và trả về trường `suggested_followups` trong JSON response.
-  4. Trên Mobile App, các câu hỏi này được render thành các **ActionChips** giúp người dùng chỉ cần chạm 1 chạm là gửi tiếp câu hỏi mà không cần gõ phím.
+  3. Hàm `_extract_llm_flags_and_followups` ở backend bóc tách dữ liệu sạch và trả về trường `suggested_followups` trong JSON response.
+  4. Trên Mobile App, các câu hỏi này được render thành các **Thẻ gợi ý câu hỏi linh hoạt đa dòng (Multi-line Responsive Suggestion Cards)** với `softWrap: true`, full-width, icon điều hướng và hiệu ứng `InkWell`, giúp câu hỏi dài tự động ngắt dòng mượt mà và người dùng chỉ cần 1 chạm là gửi tiếp câu hỏi mà không cần gõ phím.
 
-### 6.4. Tầng Phòng vệ Cấp cứu Xác định (Deterministic Clinical Red-flag Guardrail)
-* **Nguyên tắc:** Dù RAG tạo sinh thông minh đến đâu, trong Y tế **tuyệt đối không được phó mặc tính mạng bệnh nhân 100% cho xác suất của LLM**.
-* **Cơ chế:** Hệ thống chạy song song một hàm kiểm tra cờ đỏ `_detect_emergency_intent`. Nếu phát hiện các dấu hiệu tối cấp cứu (*ra máu âm đạo, vỡ ối, co giật, đau bụng quặn dữ dội, sốt cao $\ge 39^\circ C$, thai ngừng máy*):
-  - Lập tức kích hoạt `has_critical_warning = True`.
-  - Tự động ưu tiên đưa các nút gợi ý cấp cứu (*"Gọi cấp cứu 115 ngay?", "Bệnh viện phụ sản gần nhất?"*).
-  - Kích hoạt giao diện cảnh báo nguy hiểm trên Mobile App để bảo vệ an toàn thai phụ.
+### 6.4. Tầng Phòng vệ Lâm sàng & Quyết định Ngữ nghĩa Thuần AI (Pure AI Semantic Decision & Objective Clinical Guardrail)
+* **Nguyên tắc:** Dù RAG tạo sinh thông minh đến đâu, trong Y tế **tuyệt đối không được phó mặc tính mạng bệnh nhân 100% cho xác suất của LLM**, đồng thời **không được dùng danh sách từ khóa chuỗi tĩnh dễ gãy**.
+* **Cơ chế 2 Lớp Độc lập:**
+  1. **Lớp 1 — LLM Semantic Decision Tagging:** Gemini Flash tự phân tích toàn diện ngữ nghĩa, bệnh sử và sắc thái diễn đạt của thai phụ để gắn 2 cờ quyết định lâm sàng:
+     - `[CRITICAL_WARNING]: YES / NO` $\rightarrow$ Đánh giá tình huống có phải dấu hiệu cấp cứu nguy hiểm (ra máu tươi, vỡ ối, co giật, đau bụng quặn dữ dội, sốt cao $\ge 38.5^\circ C$, thai ngừng cử động $\ge 2$ giờ ở tuần $\ge 28$).
+     - `[NEED_EXPERT_CONSULTATION]: YES / NO` $\rightarrow$ Đánh giá người dùng đang có triệu chứng bất thường cần bác sĩ khám trực tiếp hay chỉ đang tìm hiểu kiến thức thông thường.
+  2. **Lớp 2 — Deterministic Objective Metric Guardrail:** Kiểm tra các ngưỡng số đo sinh tồn khách quan từ bản ghi chỉ số sinh hiệu đã lưu (Huyết áp $\ge 140/90$ mmHg, Thân nhiệt $\ge 38.5^\circ C$, Đường huyết $\ge 7.8$ mmol/L, Điểm trầm cảm EPDS $\ge 10$, Cử động thai $< 4$ lần/2h) theo đúng quy chuẩn ACOG/WHO.
 
 ---
 
 ## 7. Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)
 
-### 7.1. Bộ Phân tích & Định dạng Markdown Toàn diện (Rich-Text Markdown Parser)
-* Các mô hình LLM hiện đại luôn trả về định dạng Markdown phong phú (`#` headings, `**` bold, `*` italic, `1.` numbered list, `•` bullet list, `---` divider).
-* Để loại bỏ hoàn toàn tình trạng bị lộ dấu `***` hay định dạng thô, Mobile App tích hợp bộ Tokenizer Regex chuyên sâu:
-  - Nhận diện và render các cấp tiêu đề Heading với cỡ chữ lớn và in đậm trang nhã.
-  - Phân tách nội dung in đậm, in nghiêng, và mã code bằng `TextSpan` đa phong cách.
-  - Tự động thụt lề chuẩn mực cho danh sách có thứ tự và danh sách gạch đầu dòng màu cam đất nung (`#C98C7B`).
+### 7.1. Bộ Phân tích Định dạng & Khử LaTeX Toán học (Rich-Text Markdown & LaTeX Sanitizer)
+* **Bộ làm sạch ký tự toán học LaTeX (LaTeX & Math Normalizer):**
+  - Các tài liệu y khoa và mô hình LLM khi so sánh ngưỡng đo thường xuất cú pháp toán LaTeX như `$\ge 140$`, `$\le 5.1$`, `$^\circ C$`.
+  - Hệ thống triển khai bộ lọc chuẩn hóa đa tầng (`_clean_latex_and_math_artifacts` ở Backend và `_sanitizeMathAndLatex` ở Mobile) tự động chuyển đổi toàn bộ về ký tự Unicode tự nhiên: **`≥ 140`**, **`≤ 5.1`**, **`38.5°C`**, **`≈ 10`**, **`± 2`**.
+* **Bộ Tokenizer Regex Markdown chuyên sâu:**
+  - Nhận diện và render các cấp tiêu đề Heading (`#`, `##`, `###`, `####`) với cỡ chữ lớn và in đậm trang nhã.
+  - Phân tách nội dung in đậm (`**bold**`), in nghiêng (`*italic*`), và mã code (`` `code` ``) bằng `TextSpan` đa phong cách.
+  - Tự động thụt lề chuẩn mực cho danh sách có thứ tự (`1.`) và danh sách gạch đầu dòng (`•`, `-`) màu cam đất nung (`#C98C7B`).
 
 ### 7.2. Quản lý Đa Phiên Chat & Lưu trữ Cục bộ Bảo mật (Multi-Session & Encrypted Storage)
 * **Tạo phiên mới (`+` New Session):** Cho phép mẹ bầu bắt đầu chủ đề thảo luận mới bất kỳ lúc nào, lưu trữ độc lập các cuộc trò chuyện trước đó.
@@ -432,6 +448,18 @@ Khi mẹ bầu trò chuyện qua lại nhiều lượt, một bài toán kinh đ
      - Subtitle AppBar: `Đồng hành Hậu sản & Chăm bé • 24/7`.
      - Quick Prompts: Chăm sóc vết mổ/tầng sinh môn, kỹ thuật kích sữa và thông tắc tia sữa, sàng lọc trầm cảm sau sinh (EPDS), lịch tiêm chủng và biểu đồ tăng trưởng chuẩn WHO cho bé.
      - Payload RAG: Truyền `stage: POSTPARTUM` để truy xuất cẩm nang chăm sóc sơ sinh thiết yếu sớm (EENC) và phục hồi hậu sản.
+
+### 7.6. Phân tách Ngữ cảnh Vai trò Người dùng (Role-Based Context Adaptation: MOTHER vs FAMILY)
+* **Bản chất nghiệp vụ:** Trong hệ thống CareBridge, chỉ có người dùng vai trò **`MOTHER`** (Mẹ bầu) mới có tuần thai thực tế, có các bản ghi sinh hiệu cá nhân (huyết áp, thân nhiệt, cử động thai) và hoàn thành bảng khảo sát bệnh nền Onboarding. Người dùng vai trò **`FAMILY`** (Chồng, Bố mẹ, Người thân) không mang thai và không có các chỉ số này.
+* **Cơ chế Thích ứng 2 Chiều:**
+  1. **Khi người dùng là `MOTHER`:**
+     - Tự động đính kèm `gestational_age_weeks` (tuần thai), `survey_profile` (tiền sử y tế từ survey) và `recent_metrics` (chỉ số sinh hiệu gần nhất) vào prompt gửi lên LLM.
+     - AI Nurse xưng hô ân cần, tư vấn cá nhân hóa trực diện: *"Chào mẹ ở tuần thai thứ 28..."*.
+  2. **Khi người dùng là `FAMILY`:**
+     - **Tuyệt đối KHÔNG đính kèm** tuần thai, survey hay chỉ số sinh hiệu cá nhân của người thân (tránh việc AI hiểu lầm người thân là thai phụ).
+     - Header AppBar hiển thị: `Hỗ trợ Gia đình chăm sóc mẹ & bé`.
+     - Quick Prompts tự động chuyển sang góc nhìn người thân: *"Món ăn bồi bổ tốt nhất cho vợ mang thai?", "Cách massage giúp mẹ giảm đau lưng?", "Dấu hiệu nguy hiểm của mẹ mà gia đình cần đưa đi viện ngay?"*.
+     - AI Nurse tư vấn từ góc độ **Cố vấn Chăm sóc Gia đình**: hướng dẫn người thân cách nấu nướng dinh dưỡng, san sẻ việc nhà, động viên tinh thần và chuẩn bị vật dụng hỗ trợ mẹ và bé.
 
 ---
 
@@ -510,14 +538,15 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 ### Câu 7: "Làm sao hệ thống đưa ra được các nút gợi ý câu hỏi tiếp theo cho mẹ bầu? Có phải em đang gán cứng bằng từ khóa (Rule-based) không?"
 * **Trả lời:**
   > "Thưa Thầy/Cô, hệ thống sử dụng cơ chế **LLM-Native Dynamic Follow-up Generation (Sinh động hoàn toàn từ Gemini)**:
-  > Chúng em không dùng `if/else` từ khóa vì từ khóa bị giới hạn và không bao quát được thực tế y khoa. Thay vào đó, sau khi Gemini tạo xong câu trả lời dựa trên cẩm nang y tế, mô hình sẽ tự động suy luận ra đúng 3 câu hỏi liên kết chặt chẽ nhất với câu trả lời đó. Backend bóc tách 3 câu hỏi này và đẩy về Mobile App để render thành các nút ActionChip, giúp mẹ bầu tiếp tục hỏi đáp chỉ với một cú chạm."
+  > Chúng em tuyệt đối **không dùng if/else từ khóa** vì từ khóa bị giới hạn và không bao quát được thực tế y khoa. Thay vào đó, sau khi Gemini tạo xong câu trả lời dựa trên cẩm nang y tế, mô hình sẽ tự động suy luận ra đúng 3 câu hỏi liên kết chặt chẽ nhất với câu trả lời đó dưới thẻ `[GỢI Ý CÂU HỎI]:`. Backend bóc tách 3 câu hỏi này và đẩy về Mobile App để render thành các **Thẻ gợi ý đa dòng linh hoạt (Multi-line Suggestion Cards)** với tính năng tự động ngắt dòng (`softWrap: true`), giúp mẹ bầu tiếp tục hỏi đáp chỉ với một cú chạm mà không lo bị tràn hay cắt cụt chữ."
 
 ---
 
-### Câu 8: "Tại sao trong code xử lý vẫn có danh sách từ khóa dấu hiệu nguy hiểm (ra máu, vỡ ối, co giật...)? Có mâu thuẫn với việc dùng AI không?"
+### Câu 8: "Hệ thống có bị hardcode danh sách từ khóa (ra máu, vỡ ối, co giật...) trong code xử lý AI không?"
 * **Trả lời:**
-  > "Thưa Thầy/Cô, việc này hoàn toàn không mâu thuẫn mà là nguyên tắc **Clinical Safety Guardrail (Hàng rào an toàn y tế xác định)** bắt buộc trong các hệ thống y tế chuẩn mực:
-  > Dù AI có thông minh đến đâu, việc suy luận của LLM vẫn mang tính xác suất (Probabilistic). Đối với các dấu hiệu đe dọa trực tiếp tính mạng mẹ và bé (như xuất huyết âm đạo ồ ạt, vỡ ối sớm, co giật tiền sản giật), hệ thống phải có một tầng Deterministic Guardrail độc lập để ngay lập tức kích hoạt cảnh báo đỏ và hướng dẫn cấp cứu 115, không được phép phó mặc rủi ro cho mô hình ngôn ngữ."
+  > "Thưa Thầy/Cô, hệ thống **hoàn toàn không hardcode danh sách từ khóa trong tầng AI**:
+  > 1. **Nhận định lâm sàng thuần AI (Pure Semantic Reasoning):** Mô hình Gemini Flash được cấp System Instruction chuyên khoa để tự đọc hiểu toàn diện ngữ cảnh và gắn cờ `[CRITICAL_WARNING]: YES/NO` và `[NEED_EXPERT_CONSULTATION]: YES/NO` dựa trên suy luận y khoa, không phụ thuộc vào chuỗi từ khóa.
+  > 2. **Tầng Phòng vệ Số liệu Khách quan (Objective Metric Guardrail):** Hệ thống chỉ duy trì kiểm tra các ngưỡng số đo sinh hiệu thực tế (Huyết áp $\ge 140/90$ mmHg, Thân nhiệt $\ge 38.5^\circ C$, EPDS $\ge 10$) theo chuẩn ACOG/WHO từ bản ghi đo của người dùng để đảm bảo an toàn tuyệt đối, chứ không can thiệp bằng lọc chuỗi văn bản."
 
 ---
 
@@ -671,20 +700,68 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ### Câu 20: "Cơ chế phát hiện dấu hiệu bất thường và quyết định 'Cần tham vấn Chuyên gia' (Need Expert Consultation) có phải là hardcode / if-else từ khóa không? Hệ thống làm thế nào để vừa linh hoạt vừa đảm bảo an toàn y tế tuyệt đối?"
 * **Trả lời:**
-  > "Thưa Thầy/Cô, hệ thống **hoàn toàn không sử dụng hardcode hay quy tắc if-else từ khóa tĩnh thô sơ**. Thay vào đó, CareBridge áp dụng mô hình **Hybrid: LLM Semantic Reasoning kết hợp Clinical Safety Guardrails** chuẩn y khoa hiện đại:
+  > "Thưa Thầy/Cô, hệ thống **hoàn toàn không sử dụng hardcode hay quy tắc if-else từ khóa tĩnh thô sơ**. Thay vào đó, CareBridge áp dụng mô hình **Hybrid: Pure LLM Semantic Reasoning kết hợp Clinical Safety Guardrails** chuẩn y khoa hiện đại:
   > 
   > 1. **Mô hình Suy luận Ngữ nghĩa Tự nhiên (LLM Semantic Reasoning):**
-  >    - Nhờ kỹ thuật **LLM Semantic Tagging** trên mô hình `gemini-flash-lite-latest`, AI tự động đọc hiểu toàn bộ văn cảnh trao đổi, cảm xúc và mô tả lâm sàng của người bệnh (kể cả khi thai phụ dùng ngôn ngữ dân gian, tiếng lóng hay lỗi chính tả như *'đầu đau như búa bổ'*, *'mắt nhìn một thành hai'*, *'người cứ bồng bềnh'*, hay gõ huyết áp bất kỳ *'145/95'*, *'138/88'*...).
-  >    - Trong System Prompt, mô hình được giao vai trò điều dưỡng chuyên khoa và tự động đánh giá để xuất thẻ quyết định lâm sàng: `[NEED_EXPERT_CONSULTATION]: YES / NO` một cách tự nhiên mà không phụ thuộc vào bất kỳ danh sách từ khóa cố định nào.
+  >    - Nhờ kỹ thuật **LLM Semantic Tagging** trên mô hình `gemini-flash-lite-latest`, AI tự động đọc hiểu toàn bộ văn cảnh trao đổi, cảm xúc và mô tả lâm sàng của người bệnh (kể cả khi thai phụ dùng ngôn ngữ dân gian, tiếng lóng hay lỗi chính tả như *'đầu đau như búa bổ'*, *'mắt nhìn một thành hai'*, *'người cứ bồng bềnh'*...).
+  >    - Trong System Prompt, mô hình được giao vai trò điều dưỡng chuyên khoa và tự động đánh giá để xuất thẻ quyết định lâm sàng: `[NEED_EXPERT_CONSULTATION]: YES / NO` và `[CRITICAL_WARNING]: YES / NO` một cách tự nhiên mà không phụ thuộc vào bất kỳ danh sách từ khóa cố định nào.
   > 
   > 2. **Tầng Bảo vệ An toàn Lâm sàng Đa lớp (Clinical Safety Guardrails):**
   >    - Trong y tế số, một hệ thống AI nghiêm túc không thể phó mặc 100% cho xác suất ngẫu nhiên của LLM. CareBridge bổ sung lớp **Deterministic Clinical Guardrail**:
-  >      - **Huyết áp thực nghiệm:** Quét nhận diện thông số sinh hiệu ($SBP \ge 135$ hoặc $DBP \ge 85$ mmHg theo ACOG).
-  >      - **Chỉ số sinh tồn:** Sốt $\ge 37.8^\circ C$, thai ít đạp $< 4$ lần/2h, hoặc thang trầm cảm EPDS $\ge 10$.
-  >      - **Semantic Output Inspection:** Quét chính câu trả lời của AI, nếu AI đưa ra khuyến cáo khẩn (*'cần đến ngay cơ sở y tế'*, *'liên hệ bác sĩ sản khoa'*...) thì cờ tham vấn chuyên gia sẽ tự động kích hoạt bảo vệ thai phụ.
+  >      - **Huyết áp thực nghiệm:** Quét nhận diện thông số sinh hiệu ($SBP \ge 140$ hoặc $DBP \ge 90$ mmHg theo ACOG).
+  >      - **Chỉ số sinh tồn:** Sốt $\ge 38.5^\circ C$, thai ít đạp $< 4$ lần/2h, hoặc thang trầm cảm EPDS $\ge 10$.
   > 
   > 3. **Tầng Dual-Safety Client-Side Fallback trên Mobile:**
-  >    - Ứng dụng di động tự động đồng bộ cờ cảnh báo để kích hoạt Modal Bước 11 và Bước 12A ngay lập tức sau 700ms, đảm bảo trải nghiệm tức thì và ngăn ngừa triệt để rủi ro chậm trễ do mạng."
+  >    - Ứng dụng di động tự động đồng bộ cờ cảnh báo để kích hoạt Modal Bước 11 và Bước 12A ngay lập tức, đảm bảo trải nghiệm tức thì và ngăn ngừa triệt để rủi ro chậm trễ do mạng."
+
+---
+
+### Câu 21: "Tại sao khi LLM sinh ký tự toán học LaTeX ($\ge, \le, ^\circ C$), hệ thống của em không bị lỗi hiển thị ký tự lạ trên ứng dụng di động?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, trong các tài liệu y khoa và phản hồi của LLM, các ký hiệu so sánh chỉ số thường bị xuất dạng cú pháp LaTeX như `$\ge 140$`, `$\le 5.1$`, `$^\circ C$`. Nếu render thô trên Mobile, giao diện sẽ xuất hiện các dấu `$`, `\ge` gây khó chịu và giảm tính chuyên nghiệp của sản phẩm y tế.
+  > 
+  > CareBridge giải quyết triệt để vấn đề này qua **Cơ chế Khử LaTeX & Chuẩn hóa Unicode 3 Lớp (Three-tier LaTeX Sanitization & Unicode Normalization)**:
+  > 1. **Lớp 1 (Data Ingestion Sanitization):** Toàn bộ kho tài liệu cẩm nang Markdown thô được rà soát và chuyển đổi sang ký tự Unicode chuẩn (`≥`, `≤`, `°C`).
+  > 2. **Lớp 2 (Backend Output Sanitizer):** Trong `RagChatService`, hàm `_clean_latex_and_math_artifacts` dùng Regex chuyên dụng quét và thay thế tức thì mọi biểu thức LaTeX toán học trước khi đóng gói JSON Response.
+  > 3. **Lớp 3 (Client-side Markdown Tokenizer):** Trên Flutter Mobile App, hàm `_sanitizeMathAndLatex` đóng vai trò phòng vệ cuối cùng, đảm bảo văn bản y tế hiển thị luôn sắc nét, chuẩn Unicode và trực quan cho mẹ bầu."
+
+---
+
+### Câu 22: "Tại sao các nút gợi ý câu hỏi tiếp theo trên ứng dụng di động lại dùng danh sách thẻ đa dòng (Multi-line Suggestion Cards) thay vì ActionChip thông thường?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, ban đầu khi dùng `ActionChip` trong `Wrap`, nếu câu hỏi gợi ý của AI dài (ví dụ: *'Cần làm xét nghiệm Triple Test và Double Test ở tuần thai thứ mấy?'*), chữ sẽ bị cắt cụt (truncated) hoặc tràn ra ngoài màn hình điện thoại (overflow), khiến thai phụ không đọc hết được nội dung gợi ý.
+  > 
+  > CareBridge đã nâng cấp sang **Thẻ gợi ý câu hỏi linh hoạt đa dòng (Multi-line Responsive Suggestion Cards)**:
+  > - Sử dụng thẻ full-width với hiệu ứng `softWrap: true` và `Expanded`, tự động co giãn và xuống dòng mượt mà theo độ dài câu chữ.
+  > - Tích hợp icon bong bóng thoại định hướng, biểu tượng mũi tên dẫn đường và hiệu ứng chạm `InkWell` 1 chạm gửi ngay, mang lại trải nghiệm tương tác trực quan, cao cấp và thân thiện nhất cho thai phụ."
+
+---
+
+### Câu 23: "Khi người dùng trao đổi bình thường với AI Nurse (không phải từ cảnh báo sinh hiệu), hệ thống có tự động đính kèm tuần thai, tiền sử survey và chỉ số sinh hiệu không? Cơ chế này áp dụng cho role nào?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng cơ chế **Phân tách Ngữ cảnh Vai trò Người dùng (Role-Based Context Attachment)** chuẩn y khoa:
+  > 
+  > 1. **Đối với Role `MOTHER` (Mẹ bầu):**
+  >    - Kể cả khi mẹ vào chat tự do câu hỏi bình thường (*'Hôm nay em thấy mệt, em nên ăn gì?'*), Mobile App tự động đồng bộ và đính kèm `gestational_age_weeks` (tuần thai), `survey_profile` (tiền sử bệnh lý từ survey Onboarding) và `recent_metrics` (chỉ số sinh hiệu gần nhất) vào payload gửi lên Backend.
+  >    - Nhờ vậy, AI Nurse tự động cá nhân hóa câu trả lời: *"Chào mẹ ở tuần thai 24, với tiền sử huyết áp nhẹ, mẹ nên bổ sung..."* mà mẹ không phải gõ nhắc lại tuần thai trong từng câu hỏi.
+  > 
+  > 2. **Đối với Role `FAMILY` (Người thân / Chồng):**
+  >    - Người thân không mang thai, không có tuần thai cá nhân hay survey thai sản. Do đó, hệ thống **tuyệt đối KHÔNG đính kèm** các trường này vào prompt để tránh việc AI hiểu lầm người thân là thai phụ.
+  >    - Thay vào đó, AI Nurse tự động chuyển sang vai trò **Cố vấn Chăm sóc Gia đình**: tư vấn cách nấu nướng bồi bổ, cách massage giảm đau lưng cho vợ, hỗ trợ việc nhà, động viên tâm lý và hướng dẫn người thân cách nhận diện dấu hiệu nguy hiểm để đưa mẹ đi bệnh viện kịp thời."
+
+---
+
+### Câu 24: "Các ngưỡng phân loại chỉ số sinh hiệu (Huyết áp, Thân nhiệt, Đường huyết, Thai máy...) của hệ thống lấy từ đâu? Có bằng chứng y khoa xác thực không hay do nhóm tự quy định?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, toàn bộ các ngưỡng sàng lọc lâm sàng trong hệ thống CareBridge được xây dựng **100% dựa trên Hướng dẫn Chuyên môn Quốc gia của Bộ Y Tế Việt Nam và các Hiệp hội Sản phụ khoa uy tín nhất thế giới**, tuyệt đối không do nhóm tự ý đặt ra:
+  > 
+  > 1. **Huyết áp & Tiền sản giật ($SBP \ge 140/90$ và $\ge 160/110$ mmHg):** Căn cứ theo **ACOG Practice Bulletin No. 222** và **Quyết định 4163/QĐ-BYT** của Bộ Y Tế về chẩn đoán & điều trị Tiền sản giật.
+  > 2. **Thân nhiệt & Sốt Sản khoa ($T \ge 38.5^\circ C$ thai kỳ, $\ge 38.0^\circ C$ hậu sản):** Căn cứ theo **WHO Guidelines on Maternal Sepsis** và **Quyết định 1359/QĐ-BYT** về Chăm sóc sản phụ và sơ sinh thiết yếu nhằm phát hiện sớm Nhiễm trùng ối (*Chorioamnionitis*) và Nhiễm trùng hậu sản (*Puerperal Sepsis*).
+  > 3. **Đường huyết Thai kỳ ($< 5.1$ mmol/L lúc đói, $< 8.5$ mmol/L sau ăn 1-2h):** Căn cứ theo **Hướng dẫn Quốc gia của Bộ Y Tế (Quyết định 3494/QĐ-BYT)** và khuyến cáo của Hiệp hội Đái tháo đường & Thai kỳ Quốc tế **IADPSG / FIGO**.
+  > 4. **Cử động Thai máy ($\ge 4$ lần/2h từ tuần 28):** Căn cứ theo **ACOG Committee Opinion No. 828** và Hướng dẫn **RCOG Green-top Guideline No. 57** của Hoàng gia Anh về quản lý giảm cử động thai để phòng ngừa suy thai cấp.
+  > 5. **Sàng lọc Trầm cảm EPDS ($0 - 30$ điểm):** Căn cứ thang đo chuẩn hóa quốc tế **Edinburgh Postnatal Depression Scale (Cox et al.)** và tiêu chuẩn sức khỏe tâm thần bà mẹ của WHO.
+  > 
+  > Nhờ các căn cứ y khoa chính thống này, hệ thống đảm bảo tính pháp lý, độ tin cậy và an toàn lâm sàng tuyệt đối khi triển khai thực tế."
 
 ---
 
