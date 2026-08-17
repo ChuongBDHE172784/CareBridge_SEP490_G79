@@ -9,6 +9,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Clean up NO_PROXY/no_proxy to avoid httpx IPv6 ::1 parsing bug (Invalid port: ':1')
+for var in ("NO_PROXY", "no_proxy"):
+    if var in os.environ and "::" in os.environ[var]:
+        cleaned = [p.strip() for p in os.environ[var].split(",") if "::" not in p]
+        os.environ[var] = ",".join(cleaned)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 RAW_DOCS_DIR = DATA_DIR / "raw_documents"
