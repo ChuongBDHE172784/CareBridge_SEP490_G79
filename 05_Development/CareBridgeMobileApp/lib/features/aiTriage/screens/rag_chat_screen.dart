@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:universal_io/io.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../directChat/services/direct_chat_service.dart';
+import '../../recommendation/models/recommendation_questionnaire.dart';
 
 class _Message {
   final String text;
@@ -120,6 +122,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
   Map<String, dynamic>? _attachedContext;
   String? _journeyType;
   int? _pregnancyWeek;
+  Map<String, dynamic>? _surveyProfile;
+  Map<String, dynamic>? _surveyDerived;
+  String? _surveyStatus;
 
   String get _effectiveStage {
     final jt = _journeyType ??
@@ -211,6 +216,29 @@ class _RagChatScreenState extends State<RagChatScreen> {
                 (week is int) ? week : int.tryParse(week.toString());
           }
         });
+      }
+    } catch (_) {}
+
+    try {
+      final profileRes = await apiGet('/api/v1/recommendations/profile');
+      if (profileRes is Map && mounted) {
+        final data = (profileRes['data'] is Map)
+            ? profileRes['data']
+            : profileRes;
+        final profile = (data['profile'] is Map)
+            ? Map<String, dynamic>.from(data['profile'] as Map)
+            : null;
+        final derived = (data['derived'] is Map)
+            ? Map<String, dynamic>.from(data['derived'] as Map)
+            : null;
+        final status = data['status'] as String?;
+        if (mounted) {
+          setState(() {
+            _surveyProfile = profile;
+            _surveyDerived = derived;
+            _surveyStatus = status;
+          });
+        }
       }
     } catch (_) {}
   }
@@ -539,18 +567,40 @@ class _RagChatScreenState extends State<RagChatScreen> {
 
   void _openAttachmentDetailsModal() {
     if (_attachedContext == null) return;
+    final fullContextData = Map<String, dynamic>.from(_attachedContext!);
+    if (fullContextData['surveyProfile'] == null && _surveyProfile != null) {
+      fullContextData['surveyProfile'] = _surveyProfile;
+      fullContextData['surveyDerived'] = _surveyDerived;
+      fullContextData['surveyStatus'] = _surveyStatus;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _AttachedHealthContextBottomSheet(
-        contextData: _attachedContext!,
+        contextData: fullContextData,
         onRemoveAttachment: () {
           Navigator.of(ctx).pop();
           setState(() => _attachedContext = null);
         },
       ),
     );
+  }
+
+  Future<void> _navigateToDoctorOrExperts() async {
+    try {
+      final conversations =
+          await DirectChatService.instance.listMyConversations();
+      if (!mounted) return;
+      if (conversations.isNotEmpty) {
+        context.push('/direct-chats');
+      } else {
+        context.push('/experts');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      context.push('/experts');
+    }
   }
 
   /// Bước 11 trong Workflow: Khuyến nghị tham vấn Chuyên gia Y tế (Need Expert Consultation)
@@ -671,7 +721,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(dialogCtx).pop();
-                    context.push('/experts');
+                    _navigateToDoctorOrExperts();
                   },
                 ),
               ),
@@ -818,7 +868,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(dialogCtx).pop();
-                    context.push('/experts');
+                    _navigateToDoctorOrExperts();
                   },
                 ),
               ),
@@ -1738,22 +1788,10 @@ class _MessageBubble extends StatelessWidget {
                 : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!isUser) ...[
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: const Color(0xFFC98C7B),
-                  child: const Icon(
-                    Icons.support_agent,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
               Flexible(
                 child: Container(
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.82,
+                    maxWidth: MediaQuery.of(context).size.width * 0.88,
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 15,
@@ -1941,7 +1979,7 @@ class _MessageBubble extends StatelessWidget {
           if (!isUser && message.followups.isNotEmpty) ...[
             const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.only(left: 40),
+              padding: const EdgeInsets.only(left: 2, top: 2),
               child: Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -1976,12 +2014,6 @@ class _TypingIndicator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: Color(0xFFC98C7B),
-            child: Icon(Icons.support_agent, size: 18, color: Colors.white),
-          ),
-          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -2145,6 +2177,15 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       return 'Tam cá nguyệt 3 (3 tháng cuối)';
     }
 
+    final rawSurveyProfile = contextData['surveyProfile'];
+    final surveyProfile = (rawSurveyProfile is Map)
+        ? Map<String, dynamic>.from(rawSurveyProfile)
+        : null;
+    final rawSurveyDerived = contextData['surveyDerived'];
+    final surveyDerived = (rawSurveyDerived is Map)
+        ? Map<String, dynamic>.from(rawSurveyDerived)
+        : null;
+    final surveyStatus = contextData['surveyStatus'] as String?;
     String formatSurveyLabel(String raw) {
       switch (raw) {
         case 'PRIOR_PREECLAMPSIA':
@@ -2181,6 +2222,256 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
           return raw;
       }
     }
+
+    String translateCode(String code) {
+      if (RecommendationQuestionnaire.labels.containsKey(code)) {
+        return RecommendationQuestionnaire.labels[code]!;
+      }
+      return formatSurveyLabel(code);
+    }
+
+    Widget buildCategoryBlock({
+      required IconData icon,
+      required String title,
+      required List<String> items,
+      Color iconColor = const Color(0xFF845143),
+      Color badgeBg = const Color(0xFFFAF1ED),
+      Color badgeBorder = const Color(0xFFD6C2BD),
+      Color badgeText = const Color(0xFF845143),
+    }) {
+      if (items.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 15, color: iconColor),
+                const SizedBox(width: 6),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF555555),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: items.map((text) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: badgeBorder),
+                  ),
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: badgeText,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bmiItems = <String>[];
+    final reproItems = <String>[];
+    final conditionItems = <String>[];
+    final lifestyleItems = <String>[];
+    final nutritionItems = <String>[];
+    final vaccinationItems = <String>[];
+    final medicationItems = <String>[];
+    final sexualHealthItems = <String>[];
+
+    if (surveyProfile != null) {
+      // 1. BMI & Age
+      final bmi = surveyProfile['bmi'] as Map?;
+      final age = surveyProfile['age'] as Map?;
+      if (bmi != null) {
+        if (bmi['heightCm'] != null) {
+          bmiItems.add('Chiều cao: ${bmi['heightCm']} cm');
+        }
+        if (bmi['weightKg'] != null) {
+          final ctx = bmi['weightContext'] == 'PRE_PREGNANCY'
+              ? ' (Trước mang thai)'
+              : '';
+          bmiItems.add('Cân nặng: ${bmi['weightKg']} kg$ctx');
+        }
+        final cat = surveyDerived?['bmiCategory'] ?? bmi['bmiCategory'];
+        if (cat != null) {
+          bmiItems.add('Thể trạng: ${translateCode(cat.toString())}');
+        }
+        if (bmi['calculatedBmi'] != null) {
+          bmiItems.add('BMI: ${bmi['calculatedBmi']}');
+        }
+      }
+      if (age != null) {
+        final ageGroup = age['ageGroup']?.toString();
+        if (ageGroup != null) {
+          bmiItems.add('Nhóm tuổi: ${translateCode(ageGroup)}');
+        } else if (age['dateOfBirth'] != null) {
+          bmiItems.add('Ngày sinh: ${age['dateOfBirth']}');
+        }
+      }
+
+      // 2. Reproductive History
+      final repro = surveyProfile['reproductiveHistory'] as Map?;
+      if (repro?['conditionCodes'] is List) {
+        for (final c in repro!['conditionCodes']) {
+          final s = c.toString();
+          if (s != 'NONE_KNOWN' && s != 'NO_LISTED_REPRODUCTIVE_HISTORY') {
+            reproItems.add(translateCode(s));
+          }
+        }
+      }
+
+      // 3. Underlying conditions
+      final underlying = surveyProfile['underlyingConditions'] as Map?;
+      if (underlying?['conditionCodes'] is List) {
+        for (final c in underlying!['conditionCodes']) {
+          final s = c.toString();
+          if (s != 'NONE_KNOWN') {
+            conditionItems.add(translateCode(s));
+          }
+        }
+      }
+
+      // 4. Lifestyle
+      final lifestyle = surveyProfile['lifestyle'] as Map?;
+      if (lifestyle != null) {
+        final smoking = lifestyle['smoking'] is Map
+            ? lifestyle['smoking']['answer']
+            : lifestyle['smokingStatus'];
+        if (smoking != null &&
+            smoking != 'NEVER' &&
+            smoking != 'UNKNOWN' &&
+            smoking != 'NONE') {
+          lifestyleItems.add('Hút thuốc: ${translateCode(smoking.toString())}');
+        }
+        final alcohol = lifestyle['alcohol'] is Map
+            ? lifestyle['alcohol']['answer']
+            : lifestyle['alcoholUse'];
+        if (alcohol != null && alcohol != 'NONE' && alcohol != 'UNKNOWN') {
+          lifestyleItems.add('Rượu bia: ${translateCode(alcohol.toString())}');
+        }
+        final activity = lifestyle['physicalActivity'] is Map
+            ? lifestyle['physicalActivity']['answer']
+            : lifestyle['physicalActivityLevel'];
+        if (activity != null && activity != 'UNKNOWN') {
+          lifestyleItems.add('Vận động: ${translateCode(activity.toString())}');
+        }
+        final sleep = lifestyle['sleep'] is Map
+            ? lifestyle['sleep']['answer']
+            : lifestyle['sleepConcern'];
+        if (sleep != null && sleep == 'CONCERN') {
+          lifestyleItems.add('Có lo lắng về giấc ngủ');
+        }
+        if (lifestyle['flags'] is List) {
+          for (final f in lifestyle['flags']) {
+            if (f != 'NONE_KNOWN_LIFESTYLE') {
+              lifestyleItems.add(translateCode(f.toString()));
+            }
+          }
+        }
+      }
+
+      // 5. Nutrition
+      final nutrition = surveyProfile['nutrition'] as Map?;
+      if (nutrition?['conditionCodes'] is List) {
+        for (final c in nutrition!['conditionCodes']) {
+          final s = c.toString();
+          if (s != 'NO_CURRENT_CONCERN') {
+            nutritionItems.add(translateCode(s));
+          }
+        }
+      }
+
+      // 6. Vaccination
+      final vaccination = surveyProfile['vaccination'] as Map?;
+      if (vaccination != null) {
+        if (vaccination['flags'] is List) {
+          for (final f in vaccination['flags']) {
+            if (f != 'NONE_KNOWN_VACCINATION') {
+              vaccinationItems.add(translateCode(f.toString()));
+            }
+          }
+        }
+        if (vaccination['answers'] is List) {
+          for (final a in vaccination['answers']) {
+            if (a is Map &&
+                a['code'] != null &&
+                a['status'] != null &&
+                a['state'] == 'KNOWN') {
+              vaccinationItems.add(
+                '${translateCode(a['code'].toString())}: ${translateCode(a['status'].toString())}',
+              );
+            }
+          }
+        }
+      }
+
+      // 7. Medications
+      final meds = surveyProfile['currentMedications'] as Map?;
+      if (meds?['conditionCodes'] is List) {
+        for (final m in meds!['conditionCodes']) {
+          final s = m.toString();
+          if (s != 'NONE_KNOWN_MEDICATION') {
+            medicationItems.add(translateCode(s));
+          }
+        }
+      }
+
+      // 8. Sexual Health & STI
+      final sexHealth = surveyProfile['sexualHealth'] as Map?;
+      if (sexHealth?['conditionCodes'] is List) {
+        for (final s in sexHealth!['conditionCodes']) {
+          final code = s.toString();
+          if (code != 'NO_CURRENT_INFORMATION_NEED') {
+            sexualHealthItems.add(translateCode(code));
+          }
+        }
+      }
+      final sti = surveyProfile['sti'] as Map?;
+      if (sti != null &&
+          sti['status'] != null &&
+          sti['status'] != 'NO_KNOWN_HISTORY') {
+        sexualHealthItems.add(
+          'STIs: ${translateCode(sti['status'].toString())}',
+        );
+      }
+    }
+
+    // Merge fallback surveyRisks if surveyProfile was null
+    if (surveyProfile == null && surveyRisks.isNotEmpty) {
+      for (final r in surveyRisks) {
+        conditionItems.add(translateCode(r));
+      }
+    }
+
+    final hasAnySurveyData = bmiItems.isNotEmpty ||
+        reproItems.isNotEmpty ||
+        conditionItems.isNotEmpty ||
+        lifestyleItems.isNotEmpty ||
+        nutritionItems.isNotEmpty ||
+        vaccinationItems.isNotEmpty ||
+        medicationItems.isNotEmpty ||
+        sexualHealthItems.isNotEmpty;
 
     final maxHeight = MediaQuery.of(context).size.height * 0.82;
     return Container(
@@ -2505,7 +2796,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                     const SizedBox(height: 16),
                   ],
 
-                  // Tiền sử / Bệnh nền (Survey)
+                  // Tiền sử & Khảo sát cá nhân hóa (Survey)
                   const Text(
                     'Tiền sử & Bệnh nền (từ Khảo sát Onboarding)',
                     style: TextStyle(
@@ -2515,42 +2806,100 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if (surveyRisks.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: surveyRisks.map((r) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                  if (hasAnySurveyData) ...[
+                    buildCategoryBlock(
+                      icon: Icons.accessibility_new_rounded,
+                      title: 'Thể trạng & Chỉ số nhân trắc',
+                      items: bmiItems,
+                      badgeBg: const Color(0xFFF3E5F5),
+                      badgeBorder: const Color(0xFFE1BEE7),
+                      badgeText: const Color(0xFF6A1B9A),
+                    ),
+                    buildCategoryBlock(
+                      icon: Icons.pregnant_woman_rounded,
+                      title: 'Tiền sử sản khoa',
+                      items: reproItems,
+                      badgeBg: const Color(0xFFFFF3E0),
+                      badgeBorder: const Color(0xFFFFCC80),
+                      badgeText: const Color(0xFFE65100),
+                    ),
+                    buildCategoryBlock(
+                      icon: Icons.medical_services_outlined,
+                      title: 'Bệnh lý nền & Mạn tính',
+                      items: conditionItems,
+                      badgeBg: const Color(0xFFFFEBEE),
+                      badgeBorder: const Color(0xFFFFCDD2),
+                      badgeText: const Color(0xFFC62828),
+                    ),
+                    buildCategoryBlock(
+                      icon: Icons.self_improvement_rounded,
+                      title: 'Lối sống & Thói quen',
+                      items: lifestyleItems,
+                      badgeBg: const Color(0xFFE8F5E9),
+                      badgeBorder: const Color(0xFFC8E6C9),
+                      badgeText: const Color(0xFF2E7D32),
+                    ),
+                    buildCategoryBlock(
+                      icon: Icons.restaurant_rounded,
+                      title: 'Dinh dưỡng & Vi chất',
+                      items: nutritionItems,
+                      badgeBg: const Color(0xFFFFFDE7),
+                      badgeBorder: const Color(0xFFFFF59D),
+                      badgeText: const Color(0xFFF57F17),
+                    ),
+                    buildCategoryBlock(
+                      icon: Icons.vaccines_rounded,
+                      title: 'Tiêm chủng & Miễn dịch',
+                      items: vaccinationItems,
+                      badgeBg: const Color(0xFFE0F7FA),
+                      badgeBorder: const Color(0xFFB2EBF2),
+                      badgeText: const Color(0xFF00838F),
+                    ),
+                    buildCategoryBlock(
+                      icon: Icons.medication_rounded,
+                      title: 'Thuốc đang sử dụng',
+                      items: medicationItems,
+                      badgeBg: const Color(0xFFEDE7F6),
+                      badgeBorder: const Color(0xFFD1C4E9),
+                      badgeText: const Color(0xFF4527A0),
+                    ),
+                    buildCategoryBlock(
+                      icon: Icons.favorite_border_rounded,
+                      title: 'Sức khỏe sinh sản & STIs',
+                      items: sexualHealthItems,
+                      badgeBg: const Color(0xFFFCE4EC),
+                      badgeBorder: const Color(0xFFF8BBD0),
+                      badgeText: const Color(0xFFAD1457),
+                    ),
+                  ] else if (surveyStatus == 'NOT_STARTED')
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFBF4EE),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE8DFD8)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.assignment_outlined,
+                            size: 18,
+                            color: Color(0xFF845143),
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFAF1ED),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFD6C2BD)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.medical_services_outlined,
-                                size: 14,
-                                color: Color(0xFF845143),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Chưa có dữ liệu khảo sát cá nhân hóa • Bạn có thể thực hiện khảo sát tại phần Cài đặt / Khảo sát để AI hỗ trợ chính xác hơn',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6B4F46),
+                                fontWeight: FontWeight.w500,
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                formatSurveyLabel(r),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF845143),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        );
-                      }).toList(),
+                        ],
+                      ),
                     )
                   else
                     Container(

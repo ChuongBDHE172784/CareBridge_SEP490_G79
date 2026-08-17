@@ -3,6 +3,7 @@ class ExpertDirectoryItem {
   final String? displayName;
   final String? professionalTitle;
   final String? specialty;
+  final String? workplace;
   final double? ratingAvg;
   final int? experienceYears;
   final String? avatarUrl;
@@ -14,6 +15,7 @@ class ExpertDirectoryItem {
     this.displayName,
     this.professionalTitle,
     this.specialty,
+    this.workplace,
     this.ratingAvg,
     this.experienceYears,
     this.avatarUrl,
@@ -32,6 +34,7 @@ class ExpertDirectoryItem {
       displayName: json['displayName'] as String?,
       professionalTitle: json['professionalTitle'] as String?,
       specialty: json['specialty'] as String?,
+      workplace: json['workplace'] as String?,
       ratingAvg: (json['ratingAvg'] as num?)?.toDouble(),
       experienceYears: json['experienceYears'] as int?,
       avatarUrl: json['avatarUrl'] as String?,

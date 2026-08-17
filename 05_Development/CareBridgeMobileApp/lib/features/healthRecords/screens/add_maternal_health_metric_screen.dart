@@ -79,6 +79,9 @@ class _AddMaternalHealthMetricScreenState
 
   String? _journeyType;
   int? _journeyGestationalWeeks;
+  Map<String, dynamic>? _surveyProfile;
+  Map<String, dynamic>? _surveyDerived;
+  String? _surveyStatus;
   List<String> _surveyRiskConditions = [];
   MetricDataPoint? _latestBp;
   MetricDataPoint? _latestBmi;
@@ -175,9 +178,15 @@ class _AddMaternalHealthMetricScreenState
         final data = (profileRes['data'] is Map)
             ? profileRes['data']
             : profileRes;
-        final profile = data['profile'] ?? data;
+        final profile = (data['profile'] is Map)
+            ? Map<String, dynamic>.from(data['profile'] as Map)
+            : null;
+        final derived = (data['derived'] is Map)
+            ? Map<String, dynamic>.from(data['derived'] as Map)
+            : null;
+        final status = data['status'] as String?;
         final conditions = <String>[];
-        if (profile is Map) {
+        if (profile != null) {
           if (profile['underlyingConditions'] is Map &&
               profile['underlyingConditions']['conditionCodes'] is List) {
             conditions.addAll(
@@ -195,8 +204,11 @@ class _AddMaternalHealthMetricScreenState
             );
           }
         }
-        if (conditions.isNotEmpty && mounted) {
+        if (mounted) {
           setState(() {
+            _surveyProfile = profile;
+            _surveyDerived = derived;
+            _surveyStatus = status;
             _surveyRiskConditions = conditions;
           });
         }
@@ -1347,6 +1359,9 @@ class _AddMaternalHealthMetricScreenState
                               : 'PREGNANCY'),
                       'riskFactors': riskFactors,
                       'latestVitals': vitalsMap,
+                      'surveyProfile': _surveyProfile,
+                      'surveyDerived': _surveyDerived,
+                      'surveyStatus': _surveyStatus,
                       'surveyRiskConditions': _surveyRiskConditions,
                       'note': _noteCtrl.text.trim(),
                     },

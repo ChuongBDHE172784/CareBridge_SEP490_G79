@@ -31,6 +31,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   String? _selectedSpecialty;
   List<String> _specialties = const [];
   late String? _accountId;
+  Set<String> _activeConversationExpertIds = const {};
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     if (!mounted) return;
     setState(() {
       _experts = const [];
+      _activeConversationExpertIds = const {};
       _loading = false;
       _loadingMore = false;
       _loadMoreFailed = false;
@@ -84,6 +86,23 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     );
   }
 
+  Future<void> _loadActiveConversations() async {
+    try {
+      final conversations =
+          await DirectChatService.instance.listMyConversations();
+      if (!mounted) return;
+      final ids = conversations
+          .map((c) => c.counterpartUserId)
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      setState(() {
+        _activeConversationExpertIds = ids;
+      });
+    } catch (_) {
+      // Fallback an toàn nếu chưa đăng nhập hoặc gặp lỗi mạng
+    }
+  }
+
   Future<void> _load({required bool reset}) async {
     final generation = ++_requestGeneration;
     final requestAccountId = AuthState.instance.userId;
@@ -95,6 +114,9 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
       _error = null;
       _loadMoreFailed = false;
     });
+    if (reset) {
+      unawaited(_loadActiveConversations());
+    }
     try {
       final page = await DirectChatService.instance.getExpertDirectory(
         q: query,
@@ -583,6 +605,8 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     final title =
         expert.displayName ?? expert.professionalTitle ?? 'Chuyên gia Y tế';
     final isApproved = expert.verificationStatus == 'APPROVED';
+    final hasActiveChat =
+        _activeConversationExpertIds.contains(expert.expertProfileId);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -684,27 +708,94 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                               ),
                             ],
                           ),
-                          if (expert.specialty != null &&
-                              expert.specialty!.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                expert.specialty!,
-                                style: const TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _primary,
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (expert.specialty != null &&
+                                  expert.specialty!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    expert.specialty!,
+                                    style: const TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: _primary,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              if (hasActiveChat)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8F5E9),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: const Color(0xFFA5D6A7),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.chat_bubble_outline_rounded,
+                                        size: 11,
+                                        color: Color(0xFF2E7D32),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Đang trò chuyện',
+                                        style: TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF2E7D32),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (expert.workplace != null &&
+                              expert.workplace!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.local_hospital_outlined,
+                                  size: 13,
+                                  color: _onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    expert.workplace!,
+                                    style: const TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 12,
+                                      color: _onSurfaceVariant,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                           const SizedBox(height: 6),

@@ -76,34 +76,78 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
  // ADR-MEDI-001 mục 1-2 — real pagination (Pageable actually applied, unlike
  // findVerifiedPublic/findVerifiedBySpecialty above) + optional case-insensitive text search
  // across canonical users.full_name / professional_title / workplace.
- @Query(value = """
-     SELECT u.* FROM users u
-     WHERE u.role = 'EXPERT'
-       AND u.verification_status = 'APPROVED'
-       AND u.trust_status = 'ACTIVE'
-       AND u.enabled = true AND u.locked = false
-       AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
-            OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
-       AND (:specialty IS NULL OR u.specialty = :specialty)
-       AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
-                       OR LOWER(u.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
-                       OR LOWER(u.workplace) LIKE LOWER(CONCAT('%', :q, '%')))
-     ORDER BY u.rating_avg DESC NULLS LAST, u.user_id ASC
-     """,
-     countQuery = """
-     SELECT COUNT(*) FROM users u
-     WHERE u.role = 'EXPERT'
-       AND u.verification_status = 'APPROVED'
-       AND u.trust_status = 'ACTIVE'
-       AND u.enabled = true AND u.locked = false
-       AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
-            OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
-       AND (:specialty IS NULL OR u.specialty = :specialty)
-       AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
-                       OR LOWER(u.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
-                       OR LOWER(u.workplace) LIKE LOWER(CONCAT('%', :q, '%')))
-     """,
-     nativeQuery = true)
+  @Query(value = """
+      SELECT u.* FROM users u
+      WHERE u.role = 'EXPERT'
+        AND u.verification_status = 'APPROVED'
+        AND u.trust_status = 'ACTIVE'
+        AND u.enabled = true AND u.locked = false
+        AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+             OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
+        AND (CAST(:specialty AS text) IS NULL 
+             OR LOWER(u.specialty) = LOWER(CAST(:specialty AS text))
+             OR EXISTS (
+                 SELECT 1 FROM professional_specialties ps
+                 JOIN specialties s ON s.specialty_id = ps.specialty_id
+                 WHERE ps.professional_profile_id = u.user_id
+                   AND s.is_active = true
+                   AND (LOWER(s.code) = LOWER(CAST(:specialty AS text))
+                        OR LOWER(s.name) = LOWER(CAST(:specialty AS text)))))
+        AND (CAST(:q AS text) IS NULL 
+             OR LOWER(COALESCE(u.full_name, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.display_name, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.professional_title, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.workplace, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.specialty, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR EXISTS (
+                 SELECT 1 FROM care_facilities cf
+                 WHERE cf.facility_id = u.facility_id
+                   AND LOWER(cf.name) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))
+             OR EXISTS (
+                 SELECT 1 FROM professional_specialties ps2
+                 JOIN specialties s2 ON s2.specialty_id = ps2.specialty_id
+                 WHERE ps2.professional_profile_id = u.user_id
+                   AND s2.is_active = true
+                   AND (LOWER(s2.code) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+                        OR LOWER(s2.name) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))))
+      ORDER BY u.rating_avg DESC NULLS LAST, u.user_id ASC
+      """,
+      countQuery = """
+      SELECT COUNT(*) FROM users u
+      WHERE u.role = 'EXPERT'
+        AND u.verification_status = 'APPROVED'
+        AND u.trust_status = 'ACTIVE'
+        AND u.enabled = true AND u.locked = false
+        AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+             OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
+        AND (CAST(:specialty AS text) IS NULL 
+             OR LOWER(u.specialty) = LOWER(CAST(:specialty AS text))
+             OR EXISTS (
+                 SELECT 1 FROM professional_specialties ps
+                 JOIN specialties s ON s.specialty_id = ps.specialty_id
+                 WHERE ps.professional_profile_id = u.user_id
+                   AND s.is_active = true
+                   AND (LOWER(s.code) = LOWER(CAST(:specialty AS text))
+                        OR LOWER(s.name) = LOWER(CAST(:specialty AS text)))))
+        AND (CAST(:q AS text) IS NULL 
+             OR LOWER(COALESCE(u.full_name, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.display_name, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.professional_title, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.workplace, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR LOWER(COALESCE(u.specialty, '')) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+             OR EXISTS (
+                 SELECT 1 FROM care_facilities cf
+                 WHERE cf.facility_id = u.facility_id
+                   AND LOWER(cf.name) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))
+             OR EXISTS (
+                 SELECT 1 FROM professional_specialties ps2
+                 JOIN specialties s2 ON s2.specialty_id = ps2.specialty_id
+                 WHERE ps2.professional_profile_id = u.user_id
+                   AND s2.is_active = true
+                   AND (LOWER(s2.code) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+                        OR LOWER(s2.name) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))))
+      """,
+      nativeQuery = true)
 
  Page<ExpertProfile> searchDirectory(@Param("specialty") String specialty, @Param("q") String q, Pageable pageable);
 
