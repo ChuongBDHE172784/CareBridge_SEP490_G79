@@ -231,19 +231,62 @@ Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe d�
 
 ---
 
-#### C. Quy tắc Kiểm tra Ngưỡng An toàn Lâm sàng (Clinical Safety Gates):
-Khi mẹ bầu nhập chỉ số theo dõi hàng ngày (hoặc nhập triệu chứng):
-1. **Tiếp nhận tham số:** Huyết áp ($SBP/DBP$), Đường huyết ($Glucose$), Cử động thai ($Kicks$), Tuần thai, và các triệu chứng lâm sàng.
-2. **Kiểm tra Ngưỡng Lâm sàng:**
-   - *Cơn tăng huyết áp khẩn cấp:* $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg.
-   - *Nghi ngờ Tiền sản giật:* $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg kèm theo $\ge 1$ triệu chứng (đau đầu dữ dội, hoa mắt, nhìn mờ, phù mặt, đau thượng vị).
-   - *Mất cử động thai:* Tuần thai $\ge 28$ nhưng thai cử động $< 4$ lần trong 2 giờ hoặc $0$ lần cử động.
-   - *Triệu chứng Sốt cao thai kỳ:* Có báo cáo sốt cao $\ge 38.5^\circ C$.
-   - *Dấu hiệu xuất huyết / Rỉ ối:* Có triệu chứng ra máu âm đạo tươi hoặc vỡ ối.
-3. **Phân loại Kết quả:**
-   - **`CRITICAL_EMERGENCY`:** Trả về `emergency_mode = True`, đưa ra chỉ dẫn cấp cứu 115, tự động kích hoạt tính năng định vị Bệnh viện Sản khoa gần nhất trên Mobile App.
-   - **`ANOMALY_MONITOR`:** Chỉ số tiền tăng huyết áp ($130-139/85-89$), ốm nghén, đau lưng nhẹ $\rightarrow$ Hướng dẫn mẹ tiếp tục theo dõi và gợi ý chuyển sang Bước 10 trò chuyện với AI Nurse.
-   - **`NORMAL`:** Các chỉ số nằm trong khoảng sinh lý an toàn.
+#### C. Cơ chế Tổng hợp Đa Ngữ cảnh Tự động (Multi-Source Context Aggregation):
+Khi Mẹ bầu mở màn hình nhập chỉ số sức khỏe ([AddMaternalHealthMetricScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart)), hệ thống không chỉ kiểm tra chỉ số đơn lẻ mà tự động kết hợp 3 nguồn thông tin:
+1. **Dữ liệu Survey Khảo sát Ban đầu (Onboarding Medical Profile):**
+   - Gọi `GET /api/v1/recommendations/profile` (hoặc trích xuất từ `mother_journeys.recommendation_profile_json`).
+   - Tự động bóc tách các mã bệnh lý nền (`underlyingConditions`: `CHRONIC_HYPERTENSION`, `CARDIOVASCULAR_DISEASE`...), tiền sử sản khoa (`reproductiveHistory`: `PRIOR_PREECLAMPSIA`, `PRIOR_GDM`...), và BMI ban đầu.
+2. **Tuần thai Thực tế (Gestational Age):**
+   - Gọi `GET /api/v1/journey/dashboard` để lấy chính xác tuần thai hiện tại (`effectivePregnancyWeek` / `weekNumber`).
+3. **Chỉ số Sức khỏe & Triệu chứng Mẹ vừa nhập:**
+   - Huyết áp tâm thu/tâm trương ($SBP/DBP$), Đường huyết ($Glucose$), Cử động thai ($Kicks$), Cân nặng/Chiều cao, Thân nhiệt, Nhịp tim và ghi chú triệu chứng tự do.
+
+---
+
+#### D. Quy tắc Kiểm tra Ngưỡng Lâm sàng & Thực thi Giao diện 3 Nhánh (End-to-End Workflow):
+Dữ liệu tổng hợp được đóng gói và gửi lên AI Triage Service qua API `POST /api/v1/metrics/evaluate`. Hệ thống phân loại và điều hướng giao diện theo 3 nhánh:
+
+```mermaid
+flowchart TD
+    INPUT["Mẹ nhập Chỉ số<br/>(Huyết áp, Đường huyết, Thai máy, v.v.)"] --> SAVE_DB["Lưu Database PostgreSQL"]
+    SAVE_DB --> AGGREGATE["Tổng hợp Đa Ngữ cảnh:<br/>• Survey bệnh nền & Tiền sử sản khoa<br/>• Tuần thai hiện tại (Journey Dashboard)<br/>• Chỉ số & Triệu chứng vừa nhập"]
+    AGGREGATE --> AI_EVAL["AI Triage Service<br/>(POST /api/v1/metrics/evaluate)"]
+    
+    AI_EVAL --> RISK_CHECK{"Đánh giá Rủi ro"}
+
+    RISK_CHECK -->|CRITICAL_EMERGENCY| RED_BRANCH["🚨 NHÁNH ĐỎ: CẤP CỨU NGUY CẤP<br/>• Modal Cảnh báo Đỏ rực<br/>• Nút 'Mở Bản đồ BV & Cấp cứu'<br/>• Nút 'Gọi 115 ngay'"]
+    RED_BRANCH --> RED_ACTIONS["Kích hoạt EmergencyMapScreen:<br/>1. Còi hú báo động SOS<br/>2. Tự động gửi GPS khẩn cấp tới nhóm Gia đình (Family Alert)<br/>3. Quét Bệnh viện Sản gần nhất & mở dẫn đường TrackAsia"]
+
+    RISK_CHECK -->|ANOMALY_MONITOR| YELLOW_BRANCH["⚠️ NHÁNH VÀNG: BẤT THƯỜNG NHẸ<br/>• Modal Cảnh báo Vàng<br/>• Nút 'Hỏi Trợ lý AI Nurse (Bước 10)'<br/>• Nút 'Đã hiểu & Tiếp tục theo dõi'"]
+    YELLOW_BRANCH --> YELLOW_ACTIONS["Chuyển sang RagChatScreen:<br/>AI Nurse trả lời kèm trích dẫn cẩm nang y tế"]
+
+    RISK_CHECK -->|NORMAL| GREEN_BRANCH["✅ NHÁNH XANH: BÌNH THƯỜNG<br/>• SnackBar xanh thông báo thành công<br/>• Động viên mẹ an tâm"]
+```
+
+1. **🔴 Nhánh ĐỎ — Nguy cơ Cấp cứu Khẩn cấp (`CRITICAL_EMERGENCY`):**
+   - *Ngưỡng kích hoạt:*
+     - $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg (Cơn tăng huyết áp kịch phát).
+     - $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg kèm triệu chứng đau đầu/hoa mắt/nhìn mờ/tiền sử Tiền sản giật (`PRIOR_PREECLAMPSIA`).
+     - Mất cử động thai sau tuần 28 ($0$ lần hoặc $< 4$ lần/2h).
+     - Sốt cao $\ge 38.5^\circ C$, ra máu âm đạo tươi hoặc rỉ/vỡ ối sớm.
+   - *Hành vi Ứng dụng:*
+     - Hiển thị Modal Cảnh báo Nguy cấp Toàn màn hình (`CẢNH BÁO NGUY CẤP Y TẾ`).
+     - **Nút "MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU":** Điều hướng sang [EmergencyMapScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) (`/emergency/map?mode=triage&stage=PREGNANCY`):
+       1. **Bật còi hú SOS**.
+       2. **Tự động gửi vị trí GPS khẩn cấp** tới tài khoản người thân trong nhóm Gia đình (`FamilyAlert` / `EmergencyService`).
+       3. **Quét và định vị các Bệnh viện Chuyên khoa Sản gần nhất** trên bản đồ TrackAsia / Google Maps và mở dẫn đường tức thì.
+     - **Nút "GỌI CẤP CỨU 115 NGAY":** Kích hoạt quay số trực tiếp `tel:115`.
+
+2. **🟡 Nhánh VÀNG — Cần Theo dõi Bất thường (`ANOMALY_MONITOR`):**
+   - *Ngưỡng kích hoạt:* Tiền tăng huyết áp ($130-139/85-89$), Đường huyết lúc đói $\ge 5.1$ mmol/L, cử động thai giảm nhẹ, ốm nghén, đau lưng.
+   - *Hành vi Ứng dụng:*
+     - Hiển thị Modal Cảnh báo Vàng (`LƯU Ý THEO DÕI SỨC KHỎE`).
+     - Liệt kê các nguy cơ AI phát hiện.
+     - **Nút "HỎI TRỢ LÝ AI NURSE (BƯỚC 10)":** Mở ngay [RagChatScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) (`/rag/chat`) kèm nội dung chỉ số đã điền sẵn để AI Nurse giải thích và trích dẫn cẩm nang y tế.
+
+3. **🟢 Nhánh XANH — Chỉ số An toàn (`NORMAL`):**
+   - *Ngưỡng kích hoạt:* Tất cả chỉ số nằm trong giới hạn an toàn.
+   - *Hành vi Ứng dụng:* Hiển thị SnackBar thông báo thành công và động viên mẹ an tâm.
 
 ### 5.2. Luồng AI Nurse Assistant RAG Chat (Bước 10)
 Khi mẹ bầu gửi câu hỏi thảo luận:
@@ -442,6 +485,20 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   > 3. **Bộ lọc Ngưỡng tương đồng & Khử trùng lặp:** Loại bỏ hoàn toàn các nguồn không liên quan ($< 0.05$) và gộp các chunk cùng mục.
   > 
   > Nhờ vậy, câu trả lời của AI và danh sách Cẩm nang trích dẫn (Citations) luôn đạt độ chính xác $100\%$, không bao giờ bị lệch sang các chủ đề không liên quan."
+
+---
+
+### Câu 14: "Làm thế nào hệ thống kết hợp thông tin survey của mẹ với tuần thai và chỉ số sức khỏe để AI ra quyết định điều hướng cấp cứu hoặc chat AI Nurse?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng cơ chế **Multi-Source Context Aggregation (Tổng hợp Đa Ngữ cảnh Y khoa)** trước khi gửi dữ liệu lên AI Triage:
+  > 1. **Thu thập dữ liệu 3 chiều:**
+  >    - *Chiều 1 (Tiền sử & Bệnh nền):* Tự động lấy từ bảng khảo sát ban đầu (`MotherJourney.recommendationProfileJson` qua API `GET /api/v1/recommendations/profile`) các mã rủi ro như `PRIOR_PREECLAMPSIA` (Tiền sử Tiền sản giật), `CHRONIC_HYPERTENSION` (Tăng huyết áp mạn), `PREGESTATIONAL_DIABETES` (Đái tháo đường).
+  >    - *Chiều 2 (Giai đoạn thai kỳ):* Lấy chính xác số tuần thai từ `MotherJourney` (`/api/v1/journey/dashboard`).
+  >    - *Chiều 3 (Dữ liệu tức thời):* Chỉ số sinh hiệu (Huyết áp $SBP/DBP$, Đường huyết, Cử động thai, BMI...) và triệu chứng mẹ vừa nhập trên `AddMaternalHealthMetricScreen`.
+  > 2. **Phân tích Rủi ro & Phản xạ Lâm sàng (Triage Decision):**
+  >    - Nếu huyết áp cao $\ge 140/90$ kèm tiền sử `PRIOR_PREECLAMPSIA` hoặc triệu chứng đau đầu/hoa mắt $\rightarrow$ Phân loại `CRITICAL_EMERGENCY`.
+  >    - **Nhánh ĐỎ:** Ứng dụng hiện Modal Cảnh báo Cấp cứu, cung cấp nút **'MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU'** để chuyển sang `EmergencyMapScreen` (bật còi SOS, tự động gửi định vị GPS khẩn cấp tới Người thân trong nhóm Gia đình, quét danh sách Bệnh viện Sản khoa gần nhất và mở dẫn đường TrackAsia/Google Maps) và nút **'GỌI 115'**.
+  >    - **Nhánh VÀNG (`ANOMALY_MONITOR`):** Hiện Modal Cảnh báo Vàng kèm nút **'HỎI TRỢ LÝ AI NURSE'** để chuyển ngay sang `RagChatScreen` với câu hỏi ngữ cảnh được điền sẵn, giúp mẹ nhận tư vấn cẩm nang kịp thời."
 
 ---
 
