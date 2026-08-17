@@ -850,28 +850,30 @@ class _AddMaternalHealthMetricScreenState
       }
     }
 
+    final hasNoteOrSymptoms =
+        symptoms.isNotEmpty || (note != null && note.trim().isNotEmpty);
+    final glucoseMmol = glucose != null
+        ? (glucose >= 25.0 ? glucose / 18.0182 : glucose)
+        : null;
+
     final isCritical =
         (sbp != null && sbp >= 160) ||
         (dbp != null && dbp >= 110) ||
-        ((sbp != null && sbp >= 140 || dbp != null && dbp >= 90) &&
-            symptoms.any(
-              (s) =>
-                  s.contains('Đau đầu') ||
-                  s.contains('Hoa mắt') ||
-                  s.contains('Tiền sản giật'),
-            )) ||
+        ((sbp != null && sbp >= 140 || (dbp != null && dbp >= 90)) &&
+            hasNoteOrSymptoms) ||
         (kicks != null && kicks == 0 && gestationalAge >= 28) ||
         (temp != null && temp >= 38.5) ||
-        (symptoms.any((s) => s.contains('Ra máu') || s.contains('Vỡ ối')));
+        (heartRate != null && heartRate >= 120);
 
     final isAnomaly =
         (sbp != null && sbp >= 130) ||
         (dbp != null && dbp >= 85) ||
-        (glucose != null && glucose >= 5.1) ||
+        (glucoseMmol != null && glucoseMmol >= 5.1) ||
         (kicks != null && kicks < 4 && gestationalAge >= 28) ||
         (temp != null && (temp >= 37.5 || temp < 35.5)) ||
+        (heartRate != null && (heartRate > 100 || heartRate < 50)) ||
         extraFactors.isNotEmpty ||
-        symptoms.isNotEmpty;
+        hasNoteOrSymptoms;
 
     if (isCritical) {
       return {
@@ -882,9 +884,11 @@ class _AddMaternalHealthMetricScreenState
             'Chỉ số sinh hiệu hoặc triệu chứng của mẹ đang ở ngưỡng báo động cao. Cần kích hoạt chế độ khẩn cấp, liên hệ ngay cơ sở y tế hoặc khoa Cấp cứu Sản gần nhất.',
         'risk_factors': [
           if (sbp != null && sbp >= 160)
-            'Huyết áp rất cao ($sbp/$dbp mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
+            'Huyết áp rất cao ($sbp/${dbp ?? 0} mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
           if (kicks != null && kicks == 0)
             'Mất cử động thai ở tuần thứ $gestationalAge',
+          if (note != null && note.trim().isNotEmpty)
+            'Ghi chú triệu chứng: ${note.trim()}',
           ...extraFactors,
           ...symptoms,
         ],
@@ -900,9 +904,11 @@ class _AddMaternalHealthMetricScreenState
             'Phát hiện yếu tố cần lưu ý trong các chỉ số mẹ vừa nhập. Mẹ nên trao đổi thêm với AI Nurse Assistant để được hướng dẫn chi tiết hoặc đặt lịch khám Bác sĩ.',
         'risk_factors': [
           if (sbp != null && sbp >= 130)
-            'Huyết áp hơi cao ($sbp/$dbp mmHg) so với bình thường',
-          if (glucose != null && glucose >= 5.1)
-            'Đường huyết cao ($glucose mg/dL) cần theo dõi',
+            'Huyết áp hơi cao ($sbp/${dbp ?? 0} mmHg) so với bình thường',
+          if (glucoseMmol != null && glucoseMmol >= 5.1)
+            'Đường huyết lúc đói cao (${glucose!.toStringAsFixed(1)} $_glucoseUnit) cần theo dõi',
+          if (note != null && note.trim().isNotEmpty)
+            'Ghi chú của mẹ: ${note.trim()}',
           ...extraFactors,
           ...symptoms,
         ],

@@ -1785,8 +1785,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         );
       } else if (isHighBp) {
         if (hasAlarmSymptoms) {
+          final noteText = _symptomNoteCtrl.text.trim();
+          final symptomDesc = symptoms.isNotEmpty
+              ? symptoms.join(", ")
+              : (noteText.isNotEmpty ? noteText : 'bất thường');
           extraFactors.add(
-            'Huyết áp cao ($sbp/${dbp ?? 0} mmHg) kèm triệu chứng báo động (${symptoms.join(", ")}) - Nghi ngờ Tiền sản giật',
+            'Huyết áp cao ($sbp/${dbp ?? 0} mmHg) kèm triệu chứng báo động ($symptomDesc) - Nghi ngờ Tiền sản giật',
           );
         } else {
           extraFactors.add(
@@ -1798,6 +1802,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         for (final s in symptoms) {
           extraFactors.add('Triệu chứng ghi nhận: $s');
         }
+      }
+      if (_symptomNoteCtrl.text.trim().isNotEmpty) {
+        extraFactors.add('Ghi chú của mẹ: ${_symptomNoteCtrl.text.trim()}');
       }
       if (bmi != null && bmi >= 30.0) {
         extraFactors.add('Béo phì (BMI: ${bmi.toStringAsFixed(1)} kg/m²)');
