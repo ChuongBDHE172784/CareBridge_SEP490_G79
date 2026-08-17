@@ -194,3 +194,15 @@ Exercise-Correction/
 # so they are named here to stop that happening a third time.
 05_Development/Deployment/carebridge-*.standalone.yml
 carebridge-*.standalone.yml
+
+# Tài liệu nguồn cho RAG và các sơ đồ luồng nghiệp vụ soạn tại máy. Chỉ dùng để
+# tra cứu khi làm việc, không thuộc sản phẩm giao. tailieuRAG/ nặng ~3.3 GB nên
+# một lần `git add .` vô ý là đủ làm repo phình ra không gỡ lại được.
+tailieuRAG/
+tailieuRAG.zip
+docs/README-luong-nghiep-vu.md
+docs/expert-consultation-call-flow.md
+docs/expert-onboarding-web-flow.md
+docs/expert-register-web-flow.md
+docs/expert-verification-flow.md
+docs/trackasia-map-flow.md
