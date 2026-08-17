@@ -69,6 +69,7 @@ class _AddMaternalHealthMetricScreenState
   DateTime _periodEndDate = DateTime.now();
   TimeOfDay _periodEndTime = TimeOfDay.now();
   String _glucoseContext = 'FASTING';
+  String _glucoseUnit = 'mg/dL';
   String _temperatureSite = 'ARMPIT';
   String _completionStatus = 'COMPLETED';
   List<MetricCapability> _capabilities = const [];
@@ -104,6 +105,11 @@ class _AddMaternalHealthMetricScreenState
     }
     return list;
   }
+
+  static const _glucoseUnits = <String, String>{
+    'mg/dL': 'mg/dL (Máy đo đường huyết cá nhân)',
+    'mmol/L': 'mmol/L (Chuẩn xét nghiệm y khoa)',
+  };
 
   static const _glucoseContexts = <String, String>{
     'FASTING': 'Lúc đói',
@@ -334,7 +340,7 @@ class _AddMaternalHealthMetricScreenState
       case 'BLOOD_PRESSURE':
         return 'mmHg';
       case 'BLOOD_GLUCOSE':
-        return 'mg/dL';
+        return _glucoseUnit;
       case 'BMI':
         return 'kg/m²';
       case 'TEMPERATURE':
@@ -589,6 +595,22 @@ class _AddMaternalHealthMetricScreenState
           'Nhập thân nhiệt hợp lệ từ 30.0 đến 45.0 °C, tối đa 1 chữ số thập phân.',
         );
         return;
+      }
+    }
+
+    if (_isGlucose) {
+      final rawGlucose = _primaryCtrl.text.trim();
+      final glucoseVal = double.tryParse(rawGlucose);
+      if (_glucoseUnit == 'mg/dL') {
+        if (glucoseVal == null || glucoseVal < 20.0 || glucoseVal > 600.0) {
+          _showError('Nhập chỉ số đường huyết hợp lệ từ 20 đến 600 mg/dL.');
+          return;
+        }
+      } else {
+        if (glucoseVal == null || glucoseVal < 1.0 || glucoseVal > 35.0) {
+          _showError('Nhập chỉ số đường huyết hợp lệ từ 1.0 đến 35.0 mmol/L.');
+          return;
+        }
       }
     }
 
@@ -1434,6 +1456,17 @@ class _AddMaternalHealthMetricScreenState
                         _buildBmiPreview(_bmiPreview!),
                       ],
                       if (_isGlucose) ...[
+                        const SizedBox(height: 14),
+                        _buildDropdown<String>(
+                          label: 'Đơn vị đo đường huyết',
+                          value: _glucoseUnit,
+                          items: _glucoseUnits,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _glucoseUnit = value);
+                            }
+                          },
+                        ),
                         const SizedBox(height: 14),
                         _buildDropdown<String>(
                           label: 'Bối cảnh đo',

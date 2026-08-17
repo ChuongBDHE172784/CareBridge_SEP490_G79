@@ -44,6 +44,11 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   bool get _isTemperature => widget.metric.metricCode == 'TEMPERATURE' || widget.metric.metricType == MetricType.temperature;
 
   String _glucoseContext = 'FASTING';
+  String _glucoseUnit = 'mg/dL';
+  static const _glucoseUnits = [
+    DropdownMenuItem(value: 'mg/dL', child: Text('mg/dL (Máy đo đường huyết cá nhân)')),
+    DropdownMenuItem(value: 'mmol/L', child: Text('mmol/L (Chuẩn xét nghiệm y khoa)')),
+  ];
   static const _glucoseContexts = [
     DropdownMenuItem(value: 'FASTING', child: Text('Lúc đói')),
     DropdownMenuItem(value: 'PRE_MEAL', child: Text('Trước ăn')),
@@ -88,8 +93,13 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
             : m.valueSecondary!.toStringAsFixed(1);
       }
     }
-    if (_isGlucose && m.context['measurementContext'] != null) {
-      _glucoseContext = m.context['measurementContext'].toString();
+    if (_isGlucose) {
+      if (m.unit == 'mmol/L' || m.unit == 'mg/dL') {
+        _glucoseUnit = m.unit;
+      }
+      if (m.context['measurementContext'] != null) {
+        _glucoseContext = m.context['measurementContext'].toString();
+      }
     }
     if (_isTemperature && m.context['measurementSite'] != null) {
       _temperatureSite = m.context['measurementSite'].toString();
@@ -108,7 +118,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   }
 
   String get _metricTitle => widget.metric.metricType.displayLabel;
-  String get _unit => widget.metric.unit;
+  String get _unit => _isGlucose ? _glucoseUnit : widget.metric.unit;
 
   bool get _isWithinEditWindow {
     final diff = DateTime.now().difference(widget.metric.createdAt);
@@ -187,6 +197,19 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         _showError('Nhập thân nhiệt hợp lệ từ 30.0 đến 45.0 °C.');
         return;
       }
+    } else if (_isGlucose) {
+      primaryVal = double.tryParse(_valuePrimaryCtrl.text.trim());
+      if (_glucoseUnit == 'mg/dL') {
+        if (primaryVal == null || primaryVal < 20.0 || primaryVal > 600.0) {
+          _showError('Nhập chỉ số đường huyết hợp lệ từ 20 đến 600 mg/dL.');
+          return;
+        }
+      } else {
+        if (primaryVal == null || primaryVal < 1.0 || primaryVal > 35.0) {
+          _showError('Nhập chỉ số đường huyết hợp lệ từ 1.0 đến 35.0 mmol/L.');
+          return;
+        }
+      }
     } else {
       primaryVal = double.tryParse(_valuePrimaryCtrl.text.trim());
       if (primaryVal == null) {
@@ -223,6 +246,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         UpdateMetricRequest(
           valueNumeric: primaryVal,
           valueSecondary: secondaryVal,
+          unit: _isGlucose ? _glucoseUnit : widget.metric.unit,
           measuredAt: _resolvedMeasuredAt,
           note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
           context: contextPayload.isEmpty ? null : contextPayload,
@@ -555,6 +579,41 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                 ),
               ],
               if (_isGlucose) ...[
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _glucoseUnits.any((item) => item.value == _glucoseUnit)
+                      ? _glucoseUnit
+                      : 'mg/dL',
+                  decoration: InputDecoration(
+                    labelText: 'Đơn vị đo đường huyết',
+                    labelStyle: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: _onSurfaceVariant,
+                    ),
+                    filled: true,
+                    fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+                    ),
+                  ),
+                  items: _glucoseUnits,
+                  onChanged: enabled
+                      ? (val) {
+                          if (val != null) setState(() => _glucoseUnit = val);
+                        }
+                      : null,
+                ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   value: _glucoseContexts.any((item) => item.value == _glucoseContext)
