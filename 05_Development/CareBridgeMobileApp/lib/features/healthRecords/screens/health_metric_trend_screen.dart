@@ -126,6 +126,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
   MetricDataPoint? _latestEpds;
   MetricDataPoint? _latestHeartRate;
   MetricDataPoint? _latestTemp;
+  String? _journeyType;
   int? _journeyGestationalWeeks;
   List<String> _surveyRiskConditions = [];
 
@@ -298,6 +299,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
             final data = (journeyRes['data'] is Map)
                 ? journeyRes['data']
                 : journeyRes;
+            _journeyType = data['journeyType'] as String?;
             final week =
                 data['pregnancyWeek'] ??
                 data['completedGestationalWeek'] ??
@@ -2198,15 +2200,28 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                     vitalsMap['Thân nhiệt'] =
                         '${_latestTemp!.valueNumeric.toStringAsFixed(1)} °C';
 
+                  final isPrePregnancy = _journeyType == 'PRE_PREGNANCY';
+                  final isPostpartum =
+                      _journeyType == 'POSTPARTUM' || _journeyType == 'BABY_CARE';
+
+                  final promptMessage = isPrePregnancy
+                      ? 'Bức tranh sức khỏe giai đoạn chuẩn bị mang thai của em có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ dinh dưỡng, nghỉ ngơi và theo dõi như thế nào?'
+                      : (isPostpartum
+                          ? 'Bức tranh sức khỏe giai đoạn hậu sản & chăm bé của em có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ phục hồi, dinh dưỡng và chăm sóc như thế nào?'
+                          : 'Bức tranh sức khỏe toàn diện của em ở tuần thai ${_journeyGestationalWeeks ?? 20} có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ dinh dưỡng, nghỉ ngơi và theo dõi như thế nào?');
+
                   context.push(
                     '/rag/chat',
                     extra: {
-                      'prompt':
-                          'Bức tranh sức khỏe toàn diện của em ở tuần thai ${_journeyGestationalWeeks ?? 20} có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ dinh dưỡng, nghỉ ngơi và theo dõi như thế nào?',
+                      'prompt': promptMessage,
                       'attachedContext': {
                         'metricLabel': 'Tổng quan sức khỏe',
                         'displayValue': 'Đánh giá toàn diện',
                         'gestationalAge': _journeyGestationalWeeks ?? 20,
+                        'journeyType': _journeyType,
+                        'stage': isPrePregnancy
+                            ? 'PRECONCEPTION'
+                            : (isPostpartum ? 'POSTPARTUM' : 'PREGNANCY'),
                         'riskFactors': reasons,
                         'latestVitals': vitalsMap,
                         'surveyRiskConditions': _surveyRiskConditions,

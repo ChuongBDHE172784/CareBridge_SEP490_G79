@@ -77,6 +77,7 @@ class _AddMaternalHealthMetricScreenState
   bool _isSaving = false;
   String? _loadError;
 
+  String? _journeyType;
   int? _journeyGestationalWeeks;
   List<String> _surveyRiskConditions = [];
   MetricDataPoint? _latestBp;
@@ -147,6 +148,7 @@ class _AddMaternalHealthMetricScreenState
         final data = (journeyRes['data'] is Map)
             ? journeyRes['data']
             : journeyRes;
+        _journeyType = data['journeyType'] as String?;
         final week =
             data['pregnancyWeek'] ??
             data['completedGestationalWeek'] ??
@@ -1337,6 +1339,12 @@ class _AddMaternalHealthMetricScreenState
                       'metricLabel': metricLabel,
                       'displayValue': displayValue,
                       'gestationalAge': gestationalAge,
+                      'journeyType': _journeyType,
+                      'stage': _journeyType == 'PRE_PREGNANCY'
+                          ? 'PRECONCEPTION'
+                          : (_journeyType == 'POSTPARTUM' || _journeyType == 'BABY_CARE'
+                              ? 'POSTPARTUM'
+                              : 'PREGNANCY'),
                       'riskFactors': riskFactors,
                       'latestVitals': vitalsMap,
                       'surveyRiskConditions': _surveyRiskConditions,

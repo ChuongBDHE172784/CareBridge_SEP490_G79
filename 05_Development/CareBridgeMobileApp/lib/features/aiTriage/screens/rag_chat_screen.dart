@@ -117,23 +117,101 @@ class _RagChatScreenState extends State<RagChatScreen> {
   bool _sending = false;
   bool _loadingHistory = true;
   Map<String, dynamic>? _attachedContext;
+  String? _journeyType;
+  int? _pregnancyWeek;
 
-  final List<String> _quickPrompts = [
-    'Mang thai 3 tháng đầu cần bổ sung vi chất gì?',
-    'Dấu hiệu cảnh báo nguy hiểm trong thai kỳ cần đi viện ngay?',
-    'Cách đếm và theo dõi cử động thai máy tại nhà?',
-    'Hướng dẫn chăm sóc vết mổ và gọi sữa mẹ về sau sinh?',
-  ];
+  String get _effectiveStage {
+    final jt = _journeyType ??
+        _attachedContext?['journeyType'] as String? ??
+        (_attachedContext?['stage'] == 'PRECONCEPTION'
+            ? 'PRE_PREGNANCY'
+            : (_attachedContext?['stage'] == 'POSTPARTUM'
+                ? 'POSTPARTUM'
+                : (_attachedContext?['gestationalAge'] != null ||
+                        _attachedContext?['gestationalWeeks'] != null
+                    ? 'PREGNANCY'
+                    : null)));
+
+    if (jt == 'PRE_PREGNANCY' || jt == 'PRECONCEPTION') {
+      return 'PRECONCEPTION';
+    }
+    if (jt == 'POSTPARTUM' || jt == 'BABY_CARE') {
+      return 'POSTPARTUM';
+    }
+    if (jt == 'PREGNANCY') {
+      return 'PREGNANCY';
+    }
+    return 'ALL';
+  }
+
+  List<String> get _quickPrompts {
+    final stage = _effectiveStage;
+
+    if (stage == 'PRECONCEPTION') {
+      return const [
+        'Bổ sung axit folic & vi chất thế nào trước khi mang thai?',
+        'Cách tính ngày rụng trứng & thời điểm vàng thụ thai?',
+        'Các loại vắc-xin cần tiêm phòng trước khi mang thai?',
+        'Những xét nghiệm tiền hôn nhân & sức khỏe sinh sản quan trọng?',
+      ];
+    }
+
+    if (stage == 'POSTPARTUM') {
+      return const [
+        'Hướng dẫn chăm sóc vết mổ / vết khâu phục hồi sau sinh?',
+        'Cách kích sữa về dồi dào và phòng ngừa tắc tia sữa?',
+        'Dấu hiệu nhận biết trầm cảm sau sinh (EPDS) và cách cân bằng?',
+        'Lịch tiêm chủng và theo dõi tăng trưởng chuẩn WHO cho bé?',
+      ];
+    }
+
+    final weekText = _pregnancyWeek != null ? ' (Tuần $_pregnancyWeek)' : '';
+    return [
+      'Mang thai 3 tháng đầu cần bổ sung vi chất gì?',
+      'Dấu hiệu cảnh báo nguy hiểm trong thai kỳ$weekText cần đi viện ngay?',
+      'Cách đếm và theo dõi cử động thai máy tại nhà?',
+      'Chế độ dinh dưỡng và thực đơn vào con không vào mẹ?',
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
     _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
     _attachedContext = widget.attachedHealthContext;
+    if (_attachedContext != null) {
+      _journeyType = _attachedContext!['journeyType'] as String?;
+      final week = _attachedContext!['gestationalAge'] ??
+          _attachedContext!['gestationalWeeks'];
+      if (week != null) {
+        _pregnancyWeek = (week is int) ? week : int.tryParse(week.toString());
+      }
+    }
     if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
       _inputCtrl.text = widget.initialPrompt!;
     }
     _loadHistoryFromStorage();
+    _loadJourneyContext();
+  }
+
+  Future<void> _loadJourneyContext() async {
+    try {
+      final res = await apiGet('/api/v1/journeys/me/dashboard');
+      if (res is Map && mounted) {
+        final data = (res['data'] is Map) ? res['data'] : res;
+        final type = data['journeyType'] as String?;
+        final week = data['pregnancyWeek'] ??
+            data['completedGestationalWeek'] ??
+            data['effectivePregnancyWeek'];
+        setState(() {
+          if (type != null) _journeyType = type;
+          if (week != null) {
+            _pregnancyWeek =
+                (week is int) ? week : int.tryParse(week.toString());
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -342,7 +420,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
               },
               body: jsonEncode({
                 'message': question,
-                'stage': 'ALL',
+                'stage': _effectiveStage,
                 'conversation_history': historyPayload,
               }),
             )
@@ -513,7 +591,13 @@ class _RagChatScreenState extends State<RagChatScreen> {
                       const SizedBox(width: 5),
                       Text(
                         isMother
-                            ? 'Đồng hành cùng Mẹ bầu • 24/7'
+                            ? (_effectiveStage == 'PRECONCEPTION'
+                                ? 'Đồng hành Chuẩn bị mang thai • 24/7'
+                                : (_effectiveStage == 'POSTPARTUM'
+                                    ? 'Đồng hành Hậu sản & Chăm bé • 24/7'
+                                    : (_pregnancyWeek != null
+                                        ? 'Đồng hành cùng Mẹ bầu (Tuần $_pregnancyWeek) • 24/7'
+                                        : 'Đồng hành cùng Mẹ bầu • 24/7')))
                             : 'Hỗ trợ Gia đình chăm sóc mẹ & bé',
                         style: const TextStyle(
                           fontSize: 11,
@@ -630,28 +714,47 @@ class _RagChatScreenState extends State<RagChatScreen> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  if (_attachedContext!['gestationalAge'] != null ||
-                                      _attachedContext!['gestationalWeeks'] != null) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 1.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFC98C7B),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'Tuần ${_attachedContext!['gestationalAge'] ?? _attachedContext!['gestationalWeeks']}',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
+                                  () {
+                                    final st = _attachedContext!['stage'] ??
+                                        _attachedContext!['journeyType'];
+                                    String? stageTag;
+                                    if (st == 'PRECONCEPTION' ||
+                                        st == 'PRE_PREGNANCY') {
+                                      stageTag = 'Chuẩn bị mang thai';
+                                    } else if (st == 'POSTPARTUM' ||
+                                        st == 'BABY_CARE') {
+                                      stageTag = 'Hậu sản & Chăm bé';
+                                    } else {
+                                      final w = _attachedContext!['gestationalAge'] ??
+                                          _attachedContext!['gestationalWeeks'];
+                                      if (w != null) stageTag = 'Tuần $w';
+                                    }
+
+                                    if (stageTag == null) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(left: 6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 1.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFC98C7B),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          stageTag,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    );
+                                  }(),
                                 ],
                               ),
                               const SizedBox(height: 2),
@@ -1754,57 +1857,157 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  // Tuần thai & Giai đoạn
-                  if (gestationalAge != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFF8F5), Color(0xFFFFF1EC)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE5BDB3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.child_care_rounded,
-                            color: Color(0xFF845143),
-                            size: 28,
+                  // Thông tin Giai đoạn / Tuần thai
+                  () {
+                    final st = contextData['stage'] ?? contextData['journeyType'];
+                    if (st == 'PRECONCEPTION' || st == 'PRE_PREGNANCY') {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF1F8E9), Color(0xFFE8F5E9)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Tuần thai hiện tại: Tuần $gestationalAge',
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF6B3A2D),
-                                  ),
-                                ),
-                                if (getTrimester(gestationalAge).isNotEmpty) ...[
-                                  const SizedBox(height: 2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFC8E6C9)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.spa_rounded,
+                              color: Color(0xFF2E7D32),
+                              size: 28,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    getTrimester(gestationalAge),
-                                    style: const TextStyle(
+                                    'Giai đoạn: Chuẩn bị mang thai',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1B5E20),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Kế hoạch thụ thai, bổ sung vi chất & sàng lọc tiền sản',
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      color: Color(0xFF845143),
+                                      color: Color(0xFF2E7D32),
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
                             ),
+                          ],
+                        ),
+                      );
+                    }
+                    if (st == 'POSTPARTUM' || st == 'BABY_CARE') {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE3F2FD), Color(0xFFEDE7F6)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFBBDEFB)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.child_friendly_rounded,
+                              color: Color(0xFF1565C0),
+                              size: 28,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Giai đoạn: Hậu sản & Chăm sóc bé',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0D47A1),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Phục hồi thể chất, nuôi con bằng sữa mẹ & sức khỏe tinh thần',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF1565C0),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    if (gestationalAge != null) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFF8F5), Color(0xFFFFF1EC)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE5BDB3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.child_care_rounded,
+                              color: Color(0xFF845143),
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tuần thai hiện tại: Tuần $gestationalAge',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF6B3A2D),
+                                    ),
+                                  ),
+                                  if (getTrimester(gestationalAge).isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      getTrimester(gestationalAge),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF845143),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }(),
 
                   // Chỉ số vừa đo
                   if (displayValue.toString().isNotEmpty) ...[
