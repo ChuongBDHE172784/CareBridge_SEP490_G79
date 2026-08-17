@@ -488,6 +488,28 @@ class _RagChatScreenState extends State<RagChatScreen> {
 
     if (!mounted) return;
 
+    final lowerAns = answerText.toLowerCase();
+    final lowerQ = question.toLowerCase();
+    final hasDoctorAdvice = lowerAns.contains('bác sĩ') ||
+        lowerAns.contains('cơ sở y tế') ||
+        lowerAns.contains('dấu hiệu bất thường') ||
+        lowerAns.contains('nguy hiểm') ||
+        lowerAns.contains('rủi ro sức khỏe') ||
+        lowerAns.contains('khám ngay') ||
+        lowerAns.contains('cần đến ngay') ||
+        lowerAns.contains('tiềm ẩn những rủi ro');
+    final hasVitalsInQ = RegExp(r'\b\d{2,3}\s*[\/\-]\s*\d{2,3}\b').hasMatch(lowerQ) ||
+        lowerQ.contains('huyết áp') ||
+        lowerQ.contains('nhức đầu') ||
+        lowerQ.contains('đau đầu') ||
+        lowerQ.contains('sốt') ||
+        lowerQ.contains('đường huyết') ||
+        lowerQ.contains('tiền sản giật');
+
+    if (!isWarning && hasDoctorAdvice && hasVitalsInQ) {
+      isWarning = true;
+    }
+
     setState(() {
       _messages.add(
         _Message(
