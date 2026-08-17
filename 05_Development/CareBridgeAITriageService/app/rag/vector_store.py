@@ -293,10 +293,28 @@ class PgVectorStore:
             "là", "và", "của", "cho", "các", "những", "được", "có", "trong",
             "để", "khi", "ở", "gì", "thế", "nào", "ạ", "nhé", "với", "từ",
             "ra", "vào", "thì", "cần", "nên", "hãy", "bị", "do", "về",
+            "cách", "theo", "dõi", "tại", "nhà", "cho", "làm", "sao",
         }
         clean_words = [
             w for w in re.sub(r"[^\w\s]", " ", query.lower()).split()
             if w not in stopwords and (len(w) > 1 or w.isdigit())
+        ]
+
+        # Extract 2-gram and 3-gram meaningful clinical phrases
+        raw_words = re.sub(r"[^\w\s]", " ", query.lower()).split()
+        phrases = []
+        for i in range(len(raw_words) - 1):
+            phrases.append(f"{raw_words[i]} {raw_words[i+1]}")
+        for i in range(len(raw_words) - 2):
+            phrases.append(f"{raw_words[i]} {raw_words[i+1]} {raw_words[i+2]}")
+
+        meaningful_phrases = [
+            p for p in phrases
+            if any(k in p for k in [
+                "cử động", "thai máy", "đếm thai", "huyết áp", "đường huyết", "sinh hiệu",
+                "tiền sản giật", "ra máu", "sốt", "đau đầu", "vi chất", "axit folic",
+                "canxi", "siêu âm", "khám thai", "dinh dưỡng", "nghén", "vỡ ối"
+            ])
         ]
 
         async def _search_db(s: AsyncSession) -> List[Dict[str, Any]]:
@@ -310,7 +328,7 @@ class PgVectorStore:
             if topic:
                 stmt_vec = stmt_vec.where(MaternalKnowledgeChunk.topic == topic)
 
-            stmt_vec = stmt_vec.order_by("distance").limit(20)
+            stmt_vec = stmt_vec.order_by("distance").limit(40)
             res_vec = await s.execute(stmt_vec)
             
             candidates: Dict[int, tuple[MaternalKnowledgeChunk, float]] = {}
@@ -318,15 +336,19 @@ class PgVectorStore:
                 vec_sim = 1.0 - float(dist) if dist is not None else 0.0
                 candidates[chunk.id] = (chunk, vec_sim)
 
-            # 2. Query Sparse Keyword candidates
-            if clean_words:
-                kw_filters = [MaternalKnowledgeChunk.content.ilike(f"%{w}%") for w in clean_words]
+            # 2. Query Sparse Keyword & Phrase candidates
+            search_terms = meaningful_phrases if meaningful_phrases else [w for w in clean_words if len(w) >= 3]
+            if search_terms:
+                kw_filters = [
+                    MaternalKnowledgeChunk.content.ilike(f"%{t}%") | MaternalKnowledgeChunk.title.ilike(f"%{t}%")
+                    for t in search_terms
+                ]
                 stmt_kw = select(MaternalKnowledgeChunk).where(or_(*kw_filters))
                 if stage and stage != "ALL":
                     stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
                 if topic:
                     stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.topic == topic)
-                stmt_kw = stmt_kw.limit(20)
+                stmt_kw = stmt_kw.limit(40)
                 res_kw = await s.execute(stmt_kw)
                 for chunk in res_kw.scalars():
                     if chunk.id not in candidates:
@@ -342,21 +364,11 @@ class PgVectorStore:
                 kw_ratio = kw_hits / max(len(clean_words), 1)
 
                 phrase_boost = 0.0
-                query_lower = query.lower()
-                if "vi chất" in content_lower and "vi chất" in query_lower:
-                    phrase_boost += 0.35
-                if "3 tháng đầu" in content_lower and "3 tháng đầu" in query_lower:
-                    phrase_boost += 0.25
-                if "axit folic" in content_lower and ("axit folic" in query_lower or "vi chất" in query_lower):
-                    phrase_boost += 0.30
-                if "canxi" in content_lower and "canxi" in query_lower:
-                    phrase_boost += 0.30
-                if "tiền sản giật" in content_lower and ("tiền sản giật" in query_lower or "huyết áp" in query_lower):
-                    phrase_boost += 0.30
-                if "sau sinh" in content_lower and "sau sinh" in query_lower:
-                    phrase_boost += 0.30
+                for p in meaningful_phrases:
+                    if p in content_lower or p in title_lower:
+                        phrase_boost += 0.45
 
-                hybrid_score = (vec_sim * 0.35) + (kw_ratio * 0.45) + phrase_boost
+                hybrid_score = (vec_sim * 0.35) + (kw_ratio * 0.30) + phrase_boost
                 scored.append((chunk, hybrid_score))
 
             scored.sort(key=lambda x: x[1], reverse=True)
