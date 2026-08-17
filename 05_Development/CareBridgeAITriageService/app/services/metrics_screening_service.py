@@ -44,7 +44,11 @@ class MetricsScreeningService:
         risk_factors.extend(bp_factors)
 
         # 2. Evaluate Temperature (Thân nhiệt)
-        temp_status, temp_factors = self._check_temperature(request.temperature)
+        temp_status, temp_factors = self._check_temperature(
+            request.temperature,
+            stage=request.stage or MaternalStage.PREGNANCY,
+            symptoms=request.symptoms or [],
+        )
         if temp_status == TriageRiskStatus.CRITICAL_EMERGENCY:
             is_critical = True
         elif temp_status == TriageRiskStatus.ANOMALY_MONITOR:
@@ -232,20 +236,71 @@ class MetricsScreeningService:
 
         return TriageRiskStatus.NORMAL, factors
 
-    def _check_temperature(self, temp: float | None) -> Tuple[TriageRiskStatus, List[str]]:
+    def _check_temperature(
+        self,
+        temp: float | None,
+        stage: MaternalStage = MaternalStage.PREGNANCY,
+        symptoms: List[str] = [],
+    ) -> Tuple[TriageRiskStatus, List[str]]:
         factors = []
         if temp is None:
             return TriageRiskStatus.NORMAL, factors
 
-        if temp >= 38.5:
-            factors.append(f"Sốt cao ({temp}°C) - Nguy cơ nhiễm trùng ối hoặc nhiễm trùng toàn thân")
-            return TriageRiskStatus.CRITICAL_EMERGENCY, factors
-        elif temp >= 37.5:
-            factors.append(f"Thân nhiệt sốt nhẹ ({temp}°C)")
-            return TriageRiskStatus.ANOMALY_MONITOR, factors
-        elif temp < 35.5:
-            factors.append(f"Thân nhiệt hạ thấp ({temp}°C)")
-            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        symptom_text = " ".join(symptoms).lower()
+        has_alarm_symptoms = any(
+            k in symptom_text
+            for k in [
+                "đau bụng", "rỉ ối", "vỡ ối", "ra máu", "chảy máu", "sản dịch hôi",
+                "cương tức vú", "đau ngực", "mệt lả", "rét run", "chills",
+            ]
+        )
+
+        # 1. Giai đoạn Hậu sản / Sau sinh (POSTPARTUM)
+        if stage == MaternalStage.POSTPARTUM:
+            if temp >= 38.5 or (temp >= 38.0 and has_alarm_symptoms):
+                factors.append(
+                    f"Sốt hậu sản ({temp}°C) - Nghi ngờ Nhiễm trùng hậu sản / Viêm nội mạc tử cung / Viêm tắc tuyến vú"
+                )
+                return TriageRiskStatus.CRITICAL_EMERGENCY, factors
+            elif temp >= 38.0:
+                factors.append(
+                    f"Sốt sau sinh ({temp}°C) - Cần theo dõi sát nguy cơ Nhiễm trùng hậu sản"
+                )
+                return TriageRiskStatus.CRITICAL_EMERGENCY, factors
+            elif temp >= 37.5:
+                factors.append(f"Thân nhiệt tăng nhẹ sau sinh ({temp}°C)")
+                return TriageRiskStatus.ANOMALY_MONITOR, factors
+            elif temp < 35.5:
+                factors.append(f"Thân nhiệt hạ thấp ({temp}°C)")
+                return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        # 2. Giai đoạn Đang mang thai (PREGNANCY)
+        elif stage == MaternalStage.PREGNANCY:
+            if temp >= 38.5 or (temp >= 38.0 and has_alarm_symptoms):
+                factors.append(
+                    f"Sốt cao thai kỳ ({temp}°C) - Nguy cơ Nhiễm trùng ối (Chorioamnionitis) hoặc Nhiễm khuẩn toàn thân"
+                )
+                return TriageRiskStatus.CRITICAL_EMERGENCY, factors
+            elif temp >= 37.5:
+                factors.append(
+                    f"Sốt nhẹ thai kỳ ({temp}°C) - Cần bù nước, hạ sốt an toàn và theo dõi sát"
+                )
+                return TriageRiskStatus.ANOMALY_MONITOR, factors
+            elif temp < 35.5:
+                factors.append(f"Thân nhiệt hạ thấp ({temp}°C)")
+                return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        # 3. Giai đoạn Tiền mang thai / Chung (PRECONCEPTION / ALL)
+        else:
+            if temp >= 39.0 or (temp >= 38.5 and has_alarm_symptoms):
+                factors.append(f"Sốt cao ({temp}°C) - Cần cấp cứu y tế")
+                return TriageRiskStatus.CRITICAL_EMERGENCY, factors
+            elif temp >= 37.5:
+                factors.append(f"Sốt nhẹ ({temp}°C)")
+                return TriageRiskStatus.ANOMALY_MONITOR, factors
+            elif temp < 35.5:
+                factors.append(f"Thân nhiệt hạ thấp ({temp}°C)")
+                return TriageRiskStatus.ANOMALY_MONITOR, factors
 
         return TriageRiskStatus.NORMAL, factors
 
@@ -484,8 +539,13 @@ class MetricsScreeningService:
             parts.append("uống ít nước bổ sung nước thai kỳ thiểu ối")
         if request.epds_score is not None and request.epds_score >= 10:
             parts.append("trầm cảm tâm lý lo âu thai kỳ sau sinh")
-        if request.temperature and request.temperature >= 37.5:
-            parts.append(f"sốt {request.temperature} độ")
+        if request.temperature:
+            if request.temperature >= 38.5:
+                parts.append(f"sốt cao {request.temperature} độ hạ sốt khẩn cấp nhiễm trùng ối hậu sản")
+            elif request.temperature >= 37.5:
+                parts.append(f"sốt nhẹ {request.temperature} độ cách hạ sốt an toàn paracetamol thai kỳ")
+            elif request.temperature < 35.5:
+                parts.append(f"hạ thân nhiệt {request.temperature} độ")
         if request.symptoms:
             parts.extend(request.symptoms)
         if request.free_text_notes:
