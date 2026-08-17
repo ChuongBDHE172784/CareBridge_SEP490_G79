@@ -35,17 +35,17 @@ class RagChatService:
     ) -> RagChatResponse:
         """Process user message, retrieve relevant medical chunks, and generate grounded answer via Gemini Flash."""
         # 1. Build Context-Aware Vector Search Query
-        # If user refers to previous context (e.g., "nó có nguy hiểm không?"), merge with recent symptoms
+        # 1. Build Context-Aware Vector Search Query
+        # If user refers to short contextual follow-up (e.g. "có sao không?", "uống gì?"), enrich with last topic
         search_query = request.message
-        if request.conversation_history:
+        if request.conversation_history and len(request.message.strip().split()) <= 4:
             recent_user_turns = [
                 msg.content
-                for msg in request.conversation_history[-4:]
+                for msg in request.conversation_history[-2:]
                 if msg.role.lower() in ("user", "human")
             ]
             if recent_user_turns:
-                # Merge recent user mentions with current message for richer vector recall
-                search_query = f"{' '.join(recent_user_turns)} {request.message}"
+                search_query = f"{recent_user_turns[-1]} {request.message}"
 
         # 2. Semantic Search across Maternal Knowledge pgvector
         stage_filter = request.stage.value if request.stage else "PREGNANCY"
@@ -56,9 +56,8 @@ class RagChatService:
             session=session,
         )
 
-        # 3. Check for Critical Emergency Flags in the user's message & recent turns
-        combined_text = f"{search_query} {request.message}"
-        has_critical_warning = self._detect_emergency_intent(combined_text)
+        # 3. Check for Critical Emergency Flags in the CURRENT user message
+        has_critical_warning = self._detect_emergency_intent(request.message)
 
         # 4. Format Recent Metrics Context if provided
         recent_metrics_summary = None
@@ -154,7 +153,7 @@ class RagChatService:
 
         # Check if expert consultation is required (LLM Clinical Judgment + Safety Gate)
         need_expert_consultation = has_critical_warning or need_expert_llm or self._detect_expert_consultation_need(
-            combined_text, request.recent_metrics, answer_text=answer_text
+            request.message, request.recent_metrics, answer_text=answer_text
         )
 
         return RagChatResponse(
