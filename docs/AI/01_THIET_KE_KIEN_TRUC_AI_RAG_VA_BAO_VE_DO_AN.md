@@ -15,7 +15,7 @@
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt & Gợi ý Động (Multi-turn Context & Dynamic Follow-ups)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)](#7-kiến-trúc-giao-diện-ai-nurse-trên-ứng-dụng-di-động-mobile-app-ui--state)
 8. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#8-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 24 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---24-câu-hỏi-chuyên-sâu)
+9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 25 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---25-câu-hỏi-chuyên-sâu)
 10. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#10-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -762,6 +762,17 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   > 5. **Sàng lọc Trầm cảm EPDS ($0 - 30$ điểm):** Căn cứ thang đo chuẩn hóa quốc tế **Edinburgh Postnatal Depression Scale (Cox et al.)** và tiêu chuẩn sức khỏe tâm thần bà mẹ của WHO.
   > 
   > Nhờ các căn cứ y khoa chính thống này, hệ thống đảm bảo tính pháp lý, độ tin cậy và an toàn lâm sàng tuyệt đối khi triển khai thực tế."
+
+---
+
+### Câu 25: "Tại sao hệ thống lại chọn độ dài Cửa sổ trượt (Sliding Window Memory) là 6 tin nhắn (3 lượt đối thoại) mà không gửi toàn bộ 50 hay 100 tin nhắn lịch sử của phiên chat vào LLM? Thiết kế này có ưu điểm gì?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, việc áp dụng **Sliding Window Buffer Memory (độ sâu 6 tin nhắn gần nhất)** là chuẩn mực thiết kế (Industry Best Practice) trong các hệ thống Conversational AI Y tế chuyên nghiệp vì 4 lý do cốt lõi:
+  > 
+  > 1. **Chu kỳ Tham vấn Lâm sàng Chuẩn:** Trong y tế, một vấn đề sức khỏe thường diễn ra trọn vẹn trong 2 - 3 lượt hỏi đáp (*Hỏi triệu chứng $\rightarrow$ Đánh giá mức độ nghiêm trọng $\rightarrow$ Hướng dẫn chăm sóc & cảnh báo*). Độ sâu 6 tin nhắn là 'điểm ngọt' (Sweet Spot) để AI hiểu liền mạch toàn bộ mạch chuyện.
+  > 2. **Tránh Hiện tượng Loãng Ngữ cảnh (Context Dilution / Attention Degradation):** Khi phiên chat kéo dài, người dùng thường đổi chủ đề (ví dụ từ dinh dưỡng sang tiêm phòng rồi sang đau lưng). Nếu nhồi nhét cả 50 tin nhắn cũ, LLM sẽ bị phân tán chú ý và có nguy cơ trả lời sai lệch về triệu chứng cũ đã kết thúc.
+  > 3. **Mở rộng Truy vấn Vector Không Độ trễ (Zero-Latency Query Expansion):** Backend tự động kết hợp câu hỏi trước với câu hiện tại để tìm kiếm trong pgvector trong $0.1$ ms, giải quyết triệt để đại từ ẩn ý (*'Nó có nguy hiểm không?'*) mà không tốn thêm 1 lần gọi LLM phụ.
+  > 4. **Tối ưu Token Budget & Tốc độ Phản hồi:** Giữ prompt luôn tinh gọn, tiết kiệm chi phí API và duy trì thời gian phản hồi cho mẹ bầu luôn dưới 2 giây."
 
 ---
 

@@ -1413,13 +1413,74 @@ class _HistoryBottomSheet extends StatelessWidget {
                       ),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        size: 18,
-                        color: Colors.grey,
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 20,
+                        color: Colors.grey.shade500,
                       ),
-                      tooltip: 'Xóa đoạn chat này',
-                      onPressed: () => onDeleteSession(s.id),
+                      tooltip: 'Xóa đoạn hội thoại này',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (dialogCtx) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: const Row(
+                              children: [
+                                Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: Colors.redAccent,
+                                  size: 22,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Xóa đoạn hội thoại?',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            content: Text(
+                              'Đoạn hội thoại "${s.title}" (${s.messages.length} tin nhắn) sẽ bị xóa vĩnh viễn khỏi lịch sử.',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF4A3B32),
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(dialogCtx).pop(),
+                                child: const Text(
+                                  'Hủy',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFBA1A1A),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.of(dialogCtx).pop();
+                                  onDeleteSession(s.id);
+                                },
+                                child: const Text(
+                                  'Xóa',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     onTap: () => onSelectSession(s),
                   );
