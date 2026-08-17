@@ -290,18 +290,34 @@ flowchart TD
 
 ---
 
-#### E. Bảng Ánh xạ Mã Nguồn Thực thi (Code Mapping Reference):
+#### E. Cơ chế Bức tranh Tổng thể Đa Chỉ số Sinh hiệu & Tâm lý (Holistic Multi-Metric Health Snapshot):
+
+Thay vì chỉ kiểm tra đơn lẻ một chỉ số người dùng vừa bấm lưu, hệ thống áp dụng cơ chế **Hợp nhất Bức tranh Đa chỉ số Toàn diện**:
+* Khi mẹ bầu nhập bất kỳ một chỉ số nào (ví dụ: BMI), hệ thống Mobile App tự động truy vấn song song các snapshot đo lường gần nhất của **tất cả các chỉ số khác** trong hồ sơ thai kỳ của mẹ:
+  1. **Huyết áp (`BLOOD_PRESSURE`):** Tâm thu và tâm trương đo gần nhất.
+  2. **Cử động thai (`FETAL_MOVEMENT_SESSION`):** Số lần thai máy trong 2 giờ gần nhất.
+  3. **Lượng nước uống (`HYDRATION`):** Tổng lượng nước nạp trong ngày (ml).
+  4. **Đường huyết (`BLOOD_GLUCOSE`):** Chỉ số đường huyết kèm ngữ cảnh đói/sau ăn.
+  5. **Nhịp tim mẹ (`MATERNAL_HEART_RATE`):** Tần số tim mẹ (bpm).
+  6. **Chỉ số BMI & Thể trạng (`BMI` / `WEIGHT` / `HEIGHT`):** Cân nặng và chiều cao.
+  7. **Tâm trạng & Trầm cảm (`EPDS_SCORE`):** Điểm sàng lọc thang đo EPDS Edinburgh.
+  8. **Tuần thai thực tế & Tiền sử Bệnh lý (Survey Onboarding):** Tuần thai tính từ kỳ kinh cuối / ngày dự sinh, kết hợp tiền sử tiền sản giật, ĐTĐ thai kỳ, tăng huyết áp mạn.
+* Toàn bộ gói dữ liệu đa chiều này được gửi lên `CareBridgeAITriageService` để thực hiện sàng lọc tương quan đa biến (Correlation Screening) và truy vấn Vector DB đồng thời, giúp phát hiện sớm các nguy cơ phức hợp (ví dụ: BMI cao kết hợp Huyết áp tăng nhẹ và Lượng nước uống ít $\rightarrow$ Cảnh báo rủi ro Tiền sản giật kết hợp Thiểu ối).
+
+---
+
+#### F. Bảng Ánh xạ Mã Nguồn Thực thi (Code Mapping Reference):
 
 Để đối chiếu và minh chứng trước Hội đồng, toàn bộ luồng xử lý được tổ chức rõ ràng trong các module mã nguồn sau:
 
 | Thành phần & Nhiệm vụ | File Mã nguồn | Hàm / Class thực thi chính |
 | :--- | :--- | :--- |
-| **1. Tầng Ngưỡng Lâm sàng Cố định (Deterministic Safety Gate)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) | `_check_blood_pressure()`, `_check_temperature()`, `_check_glucose()`, `_check_fetal_movements()`, `_check_symptoms()` |
+| **1. Tầng Ngưỡng Lâm sàng Cố định (Deterministic Safety Gate)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) | `_check_blood_pressure()`, `_check_temperature()`, `_check_glucose()`, `_check_fetal_movements()`, `_check_bmi()`, `_check_heart_rate()`, `_check_water_intake()`, `_check_epds_score()`, `_check_spo2()`, `_check_sleep()`, `_check_symptoms()` |
 | **2. Tầng Truy xuất Cẩm nang RAG Động (pgvector Retrieval)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) & [`app/rag/vector_store.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/vector_store.py) | `_build_retrieval_query()` ➔ `vector_store.similarity_search(top_k=3)` ➔ trả về `relevant_sources` |
 | **3. Tầng Tạo sinh AI Nurse RAG (Bước 10)** | [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) & [`app/rag/gemini_client.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/gemini_client.py) | `chat_with_nurse()`, `generate_medical_response()` |
 | **4. Mobile: Thu thập Đa Ngữ cảnh & Đánh giá AI** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) | `_loadJourneyAndSurveyContext()`, `_save()`, `_evaluateMetricWithAi()` |
-| **5. Mobile: Modal Cấp cứu & Kích hoạt Bản đồ SOS** | [`add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) ➔ [`emergency_map_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) | `_showCriticalEmergencyDialog()` ➔ `context.push('/emergency/map')` (Còi SOS, GPS Gia đình, BV Sản gần nhất) |
-| **6. Mobile: Modal Cảnh báo & Chuyển sang AI Nurse** | [`add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) ➔ [`rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) | `_showAnomalyWarningDialog()` ➔ `context.push('/rag/chat')` |
+| **5. Mobile: Modal Cấp cứu & Kích hoạt Bản đồ SOS** | [`add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) ➔ [`emergency_map_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) | `_showCriticalEmergencyDialog()` ➔ `EmergencyService().openFlow(triggerSource: 'AI_TRIAGE')` ➔ `context.push('/emergency/map')` (Còi SOS, GPS Gia đình, BV Sản gần nhất) |
+| **6. Mobile: Modal Cảnh báo & Tự động Đính kèm sang AI Nurse** | [`add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) ➔ [`rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) | `_showAnomalyWarningDialog()` ➔ `context.push('/rag/chat', extra: {attachedContext: ..., prompt: ..., autoSend: true})` ➔ `_AttachedContextBanner` |
 
 ---
 
