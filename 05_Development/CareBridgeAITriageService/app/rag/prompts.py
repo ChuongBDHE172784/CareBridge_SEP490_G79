@@ -77,7 +77,7 @@ HÃY TRẢ LỜI:
 3. Đưa ra lời khuyên chăm sóc tại nhà khoa học (chế độ ăn, nghỉ ngơi, tư thế nằm...).
 4. Nêu rõ các dấu hiệu cảnh báo cần đi khám Bác sĩ ngay nếu có chuyển biến xấu.
 5. ĐÁNH GIÁ Y KHOA & GỢI Ý TIẾP THEO (BẮT BUỘC): Ở cuối cùng của câu trả lời, hãy xuất đúng 2 khối định dạng sau:
-[NEED_EXPERT_CONSULTATION]: YES (nếu câu hỏi/chỉ số của mẹ có dấu hiệu bất thường, tăng huyết áp, tiền sản giật, sốt, đau đầu, hoặc bạn khuyên mẹ nên đến cơ sở y tế/bác sĩ) hoặc NO (nếu tình trạng an toàn, chỉ là giải đáp cẩm nang kiến thức thông thường).
+[NEED_EXPERT_CONSULTATION]: YES (CHỈ ghi YES khi người dùng ĐANG GẶP dấu hiệu bất thường, số đo vượt ngưỡng an toàn như huyết áp cao, sốt, đau đầu nhìn mờ, ra máu, thai ít đạp, nghi ngờ biến chứng cần khám ngay) hoặc NO (ghi NO khi đây là câu hỏi tìm hiểu kiến thức, cẩm nang dinh dưỡng, cách đếm thai máy, cách chăm sóc hoặc tình trạng sinh lý bình thường).
 [GỢI Ý CÂU HỎI]:
 - Gợi ý câu hỏi 1?
 - Gợi ý câu hỏi 2?
