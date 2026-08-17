@@ -35,7 +35,10 @@ class MetricsScreeningService:
 
         # 1. Evaluate Blood Pressure (Huyết áp)
         bp_status, bp_factors = self._check_blood_pressure(
-            request.systolic_bp, request.diastolic_bp, request.symptoms
+            request.systolic_bp,
+            request.diastolic_bp,
+            request.symptoms or [],
+            free_text_notes=request.free_text_notes,
         )
         if bp_status == TriageRiskStatus.CRITICAL_EMERGENCY:
             is_critical = True
@@ -199,17 +202,18 @@ class MetricsScreeningService:
         sbp: int | None,
         dbp: int | None,
         symptoms: List[str],
+        free_text_notes: str | None = None,
     ) -> Tuple[TriageRiskStatus, List[str]]:
         factors = []
         if sbp is None and dbp is None:
             return TriageRiskStatus.NORMAL, factors
 
-        symptom_text = " ".join(symptoms).lower()
+        symptom_text = (" ".join(symptoms) + " " + (free_text_notes or "")).lower()
         has_preeclampsia_symptoms = any(
             k in symptom_text
             for k in [
-                "đau đầu", "hoa mắt", "nhìn mờ", "đau thượng vị", "đau hạ sườn", "phù mặt",
-                "headache", "blurred vision", "epigastric",
+                "đau đầu", "hoa mắt", "nhìn mờ", "chóng mặt", "đau thượng vị", "đau hạ sườn", "phù mặt",
+                "headache", "blurred vision", "dizziness", "epigastric",
             ]
         )
 
@@ -222,7 +226,7 @@ class MetricsScreeningService:
         if (sbp and sbp >= 140) or (dbp and dbp >= 90):
             if has_preeclampsia_symptoms:
                 factors.append(
-                    f"Huyết áp cao ({sbp}/{dbp} mmHg) kèm triệu chứng báo động (đau đầu/hoa mắt/đau bụng) - Nghi ngờ Tiền sản giật"
+                    f"Huyết áp cao ({sbp}/{dbp} mmHg) kèm triệu chứng báo động (đau đầu/hoa mắt/chóng mặt/đau bụng) - Nghi ngờ Tiền sản giật"
                 )
                 return TriageRiskStatus.CRITICAL_EMERGENCY, factors
             else:
@@ -405,6 +409,7 @@ class MetricsScreeningService:
         # Mild / Common anomalies
         mild_keywords = [
             ("phù", "Phù nề chân/tay"),
+            ("đau đầu", "Đau đầu / Nhức đầu"),
             ("đau lưng", "Đau mỏi lưng hông"),
             ("buồn nôn", "Ốm nghén / Buồn nôn"),
             ("chóng mặt", "Chóng mặt, choáng váng"),
