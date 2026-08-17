@@ -167,3 +167,43 @@ cd "05_Development/CareBridgeAITriageService"
 ./venv/bin/pytest tests/ -v
 ```
 *(Toàn bộ **14/14 test cases** lâm sàng và API đều đạt kết quả 100% Passed).*
+
+---
+
+### Kịch bản 5: Luồng AI Nurse Phát hiện Dấu hiệu Bất thường ➔ Khuyến nghị Tham vấn Chuyên gia ➔ Tuyên bố Miễn trừ Trách nhiệm (Bước 10 ➔ 11 ➔ 12A/12B)
+Theo thiết kế kiến trúc chuẩn tại `docs/mainworkflow-Trang-3.drawio.png`:
+
+#### 🔹 Trường hợp 5.1: Mẹ đồng ý kết nối bác sĩ (Nhánh Bước 12B ➔ 13)
+1. Trên Mobile App, mẹ mở màn hình **Đo chỉ số** hoặc **Hỏi Trợ lý AI Nurse**.
+2. Gửi câu hỏi kèm chỉ số cảnh báo: *"Hôm nay em đo huyết áp 145/95 mmHg và thấy nhức đầu nhiều, có sao không?"*
+3. **AI Phản hồi:**
+   - Trả lời phân tích nguy cơ tăng huyết áp thai kỳ / tiền sản giật dựa trên RAG cẩm nang y tế.
+   - Tin nhắn có nhãn cảnh báo vàng/đỏ và xuất hiện Action Card: `🩺 Khuyến nghị từ hệ thống: Cần tham vấn Bác sĩ / Chuyên gia y tế`.
+4. **Modal Bước 11 xuất hiện:**
+   - Tiêu đề: **Khuyến nghị Tham vấn Bác sĩ** (Need Expert Consultation).
+   - Bấm nút **'Kết nối Bác sĩ'** ➔ Ứng dụng điều hướng tức thì sang trang **Danh sách Chuyên gia/Bác sĩ sản phụ khoa** (`/experts`) để mẹ chọn bác sĩ và đặt lịch tư vấn trực tuyến (Teleconsultation Chat / Video).
+
+#### 🔹 Trường hợp 5.2: Mẹ từ chối kết nối bác sĩ ➔ Kích hoạt Cảnh báo Pháp lý & Tự theo dõi (Nhánh Bước 12A)
+1. Tại Modal Bước 11 (*Khuyến nghị Tham vấn Bác sĩ*), người dùng bấm **'Tự theo dõi thêm'** (Từ chối).
+2. **Modal Bước 12A kích hoạt:**
+   - **Tuyên bố miễn trừ trách nhiệm:** Hệ thống AI Nurse chỉ cung cấp thông tin tham khảo dựa trên thuật toán, không thay thế cho chẩn đoán, điều trị hoặc lời khuyên y khoa chuyên nghiệp. CareBridge hoàn toàn miễn trừ trách nhiệm đối với bất kỳ hậu quả, tổn thất nào phát sinh từ quyết định từ chối khám y khoa của bạn.
+   - **Yêu cầu tự theo dõi:** Thai phụ phải tự chịu trách nhiệm theo dõi sát sao các chỉ số cơ thể, diễn biến triệu chứng. Nếu xuất hiện bất kỳ dấu hiệu chuyển biến nặng nào, cần lập tức gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất.
+3. **Các thao tác tương tác:**
+   - Nếu bấm **'Tôi đã hiểu và đồng ý'**: Đóng cảnh báo, cho phép người dùng tiếp tục tự theo dõi sinh hiệu và trò chuyện tiếp với AI Nurse bình thường (`Resume Tracking` ➔ Bước 6).
+   - Nếu bấm **'Thay đổi ý định, kết nối Bác sĩ'**: Đảo ngược quyết định và mở ngay trang Danh sách chuyên gia (`/experts`).
+
+---
+
+### Kịch bản 6: Kiểm thử Banner Đính kèm Hồ sơ & Kết quả Khảo sát Survey
+1. Tại màn hình **Đo chỉ số sức khỏe** (`AddMaternalHealthMetricScreen`), nhập huyết áp hoặc triệu chứng và bấm **'HỎI TRỢ LÝ AI NURSE'**.
+2. **Trên màn hình AI Nurse (`RagChatScreen`):**
+   - Phía trên ô nhập tin nhắn có Banner: `📋 Đính kèm ngữ cảnh lâm sàng • Tuần thai X • ...`
+   - Bấm vào banner ➔ Modal BottomSheet mở ra chi tiết:
+     - Giai đoạn / Tuần thai / Tam cá nguyệt.
+     - Dấu hiệu AI lưu ý trong lần đo này.
+     - **Tiền sử & Bệnh nền (từ Khảo sát Onboarding):**
+       - Nếu có bệnh lý: Hiển thị các Chip y tế dịch chuẩn tiếng Việt (*Tăng huyết áp mạn, Tiền sử Tiền sản giật, Đái tháo đường...*).
+       - Nếu thể trạng bình thường: Hiển thị thẻ xanh xác nhận: `✅ Đã ghi nhận khảo sát • Không có tiền sử bệnh lý nguy cơ`.
+     - Bảng snapshot toàn bộ sinh hiệu gần nhất.
+     - Nút **'Gỡ đính kèm'** để xóa ngữ cảnh khi muốn chat tự do.
+

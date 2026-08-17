@@ -646,6 +646,29 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
+### Câu 19: "Khi AI Nurse phát hiện dấu hiệu bất thường, luồng Khuyến nghị tham vấn Chuyên gia (Bước 11) và Tuyên bố miễn trừ trách nhiệm (Bước 12A) theo thiết kế Workflow hoạt động ra sao?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge tuân thủ nghiêm ngặt **Quy trình Phân loại & Tham vấn Lâm sàng chuẩn Y khoa (Workflow Bước 10 $\rightarrow$ 11 $\rightarrow$ 12A/12B)** được thiết kế tại `docs/mainworkflow-Trang-3.drawio.png`:
+  > 
+  > 1. **Bước 10 — Trao đổi & Làm rõ triệu chứng với AI Nurse (RAG Chat):**
+  >    - Khi thai phụ trò chuyện hoặc gửi câu hỏi có kèm chỉ số sinh hiệu bất thường (ví dụ: Huyết áp cao, Đau đầu, Sốt, Protein niệu...).
+  >    - AI Nurse phân tích ngữ cảnh, trả lời giải thích cơ chế sinh lý và tự động gắn cờ `need_expert_consultation: true` hoặc `has_critical_warning: true`.
+  > 
+  > 2. **Bước 11 — Khuyến nghị Tham vấn Chuyên gia Y tế (Need Expert Consultation Modal):**
+  >    - Ứng dụng tự động kích hoạt Modal Cảnh báo y khoa: *"Khuyến nghị Tham vấn Bác sĩ"* và làm rõ rằng dấu hiệu của mẹ cần được bác sĩ chuyên khoa đánh giá trực tiếp.
+  >    - **Nhánh Đồng ý (Bước 12B $\rightarrow$ 13):** Người dùng bấm **'Kết nối Bác sĩ'** $\rightarrow$ Hệ thống điều hướng ngay tới trang danh sách Chuyên gia/Bác sĩ sản khoa (`/experts`) để chọn bác sĩ và đặt lịch tư vấn trực tuyến (Teleconsultation Chat/Video).
+  >    - **Nhánh Từ chối (Bước 12A):** Người dùng bấm **'Tự theo dõi thêm'** $\rightarrow$ Hệ thống kích hoạt ngay Bước 12A.
+  > 
+  > 3. **Bước 12A — Tuyên bố Miễn trừ Trách nhiệm & Yêu cầu Tự theo dõi (Self-tracking Requirement & Legal Disclaimer):**
+  >    - Để đảm bảo tính pháp lý và an toàn tối đa cho thai phụ, hệ thống hiển thị Dialog Cảnh báo trách nhiệm bắt buộc:
+  >      - **Tuyên bố miễn trừ trách nhiệm:** Hệ thống AI Nurse chỉ mang tính chất tham khảo thuật toán, không thay thế chẩn đoán y khoa chuyên nghiệp và miễn trừ trách nhiệm khi người dùng từ chối thăm khám bác sĩ.
+  >      - **Yêu cầu tự theo dõi:** Yêu cầu thai phụ tự chịu trách nhiệm theo dõi sát sao các chỉ số và lập tức gọi cấp cứu 115 / đến cơ sở y tế khi có chuyển biến nặng.
+  >    - **Hành động:**
+  >      - Nút **'Tôi đã hiểu và đồng ý'**: Đóng dialog và cho phép người dùng tiếp tục tự theo dõi (`Resume Tracking` $\rightarrow$ Bước 6).
+  >      - Nút **'Thay đổi ý định, kết nối Bác sĩ'**: Cho phép người dùng đảo ngược quyết định và mở ngay danh sách chuyên gia (`/experts`)."
+
+---
+
 ---
 
 ## 10. Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới
