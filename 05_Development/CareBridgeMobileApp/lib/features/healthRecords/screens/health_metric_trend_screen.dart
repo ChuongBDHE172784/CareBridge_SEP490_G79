@@ -47,7 +47,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
 
   static const _overviewOption = _MetricOption(
     apiValue: 'TOTAL_OVERVIEW',
-    label: '📊 Đánh giá Sức khỏe Toàn diện AI',
+    label: 'Đánh giá Sức khỏe Toàn diện AI',
     unit: '',
     icon: Icons.auto_awesome,
   );
@@ -96,6 +96,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       unit: 'mg/dL',
       icon: Icons.water_drop_outlined,
     ),
+    _MetricOption(
+      apiValue: 'TEMPERATURE',
+      label: 'Nhiệt độ cơ thể',
+      unit: '°C',
+      icon: Icons.thermostat_outlined,
+    ),
   ];
 
   final _service = HealthMetricService();
@@ -119,6 +125,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
   MetricDataPoint? _latestHydration;
   MetricDataPoint? _latestEpds;
   MetricDataPoint? _latestHeartRate;
+  MetricDataPoint? _latestTemp;
   int? _journeyGestationalWeeks;
   List<String> _surveyRiskConditions = [];
 
@@ -159,10 +166,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     unawaited(_watchImportService.drainQueuedEvents());
     _loadCapabilities();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ));
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
+      );
     });
   }
 
@@ -171,9 +180,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       final capabilities = await _service.getCapabilities(widget.journeyId);
       if (!mounted) return;
       final options = capabilities
-          .where((capability) =>
-              capability.manualEntrySupported &&
-              capability.metricCode != 'STRESS')
+          .where(
+            (capability) =>
+                capability.manualEntrySupported &&
+                capability.metricCode != 'STRESS',
+          )
           .map(_optionFromCapability)
           .toList();
       final resolvedOptions = [_overviewOption, ...options];
@@ -282,7 +293,10 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
           final journeyRes = await apiGet('/api/v1/journey/dashboard');
           if (journeyRes is Map && mounted) {
             final data = journeyRes['data'] ?? journeyRes;
-            final week = data['effectivePregnancyWeek'] ?? data['weekNumber'] ?? data['currentWeek'];
+            final week =
+                data['effectivePregnancyWeek'] ??
+                data['weekNumber'] ??
+                data['currentWeek'];
             if (week != null && week is int) {
               _journeyGestationalWeeks = week;
             }
@@ -292,7 +306,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         try {
           final profileRes = await apiGet('/api/v1/recommendations/profile');
           if (profileRes is Map && mounted) {
-            final data = (profileRes['data'] is Map) ? profileRes['data'] : profileRes;
+            final data = (profileRes['data'] is Map)
+                ? profileRes['data']
+                : profileRes;
             final profile = data['profile'] ?? data;
             final conditions = <String>[];
             if (profile is Map) {
@@ -316,24 +332,112 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         } catch (_) {}
 
         final results = await Future.wait([
-          _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'BLOOD_PRESSURE').catchError((_) => const MetricTrend(metricType: 'BLOOD_PRESSURE', dataPoints: [])),
-          _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'BMI').catchError((_) => const MetricTrend(metricType: 'BMI', dataPoints: [])),
-          _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'BLOOD_GLUCOSE').catchError((_) => const MetricTrend(metricType: 'BLOOD_GLUCOSE', dataPoints: [])),
-          _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'FETAL_MOVEMENT_SESSION').catchError((_) => const MetricTrend(metricType: 'FETAL_MOVEMENT_SESSION', dataPoints: [])),
-          _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'HYDRATION').catchError((_) => const MetricTrend(metricType: 'HYDRATION', dataPoints: [])),
-          _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'EPDS_SCORE').catchError((_) => const MetricTrend(metricType: 'EPDS_SCORE', dataPoints: [])),
-          _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'MATERNAL_HEART_RATE').catchError((_) => const MetricTrend(metricType: 'MATERNAL_HEART_RATE', dataPoints: [])),
+          _service
+              .getMetricTrend(
+                journeyId: widget.journeyId,
+                metricType: 'BLOOD_PRESSURE',
+              )
+              .catchError(
+                (_) => const MetricTrend(
+                  metricType: 'BLOOD_PRESSURE',
+                  dataPoints: [],
+                ),
+              ),
+          _service
+              .getMetricTrend(journeyId: widget.journeyId, metricType: 'BMI')
+              .catchError(
+                (_) => const MetricTrend(metricType: 'BMI', dataPoints: []),
+              ),
+          _service
+              .getMetricTrend(
+                journeyId: widget.journeyId,
+                metricType: 'BLOOD_GLUCOSE',
+              )
+              .catchError(
+                (_) => const MetricTrend(
+                  metricType: 'BLOOD_GLUCOSE',
+                  dataPoints: [],
+                ),
+              ),
+          _service
+              .getMetricTrend(
+                journeyId: widget.journeyId,
+                metricType: 'FETAL_MOVEMENT_SESSION',
+              )
+              .catchError(
+                (_) => const MetricTrend(
+                  metricType: 'FETAL_MOVEMENT_SESSION',
+                  dataPoints: [],
+                ),
+              ),
+          _service
+              .getMetricTrend(
+                journeyId: widget.journeyId,
+                metricType: 'HYDRATION',
+              )
+              .catchError(
+                (_) =>
+                    const MetricTrend(metricType: 'HYDRATION', dataPoints: []),
+              ),
+          _service
+              .getMetricTrend(
+                journeyId: widget.journeyId,
+                metricType: 'EPDS_SCORE',
+              )
+              .catchError(
+                (_) =>
+                    const MetricTrend(metricType: 'EPDS_SCORE', dataPoints: []),
+              ),
+          _service
+              .getMetricTrend(
+                journeyId: widget.journeyId,
+                metricType: 'MATERNAL_HEART_RATE',
+              )
+              .catchError(
+                (_) => const MetricTrend(
+                  metricType: 'MATERNAL_HEART_RATE',
+                  dataPoints: [],
+                ),
+              ),
+          _service
+              .getMetricTrend(
+                journeyId: widget.journeyId,
+                metricType: 'TEMPERATURE',
+              )
+              .catchError(
+                (_) => const MetricTrend(
+                  metricType: 'TEMPERATURE',
+                  dataPoints: [],
+                ),
+              ),
         ]);
 
         if (mounted) {
           setState(() {
-            _latestBp = results[0].dataPoints.isNotEmpty ? results[0].dataPoints.last : null;
-            _latestBmi = results[1].dataPoints.isNotEmpty ? results[1].dataPoints.last : null;
-            _latestGlucose = results[2].dataPoints.isNotEmpty ? results[2].dataPoints.last : null;
-            _latestKicks = results[3].dataPoints.isNotEmpty ? results[3].dataPoints.last : null;
-            _latestHydration = results[4].dataPoints.isNotEmpty ? results[4].dataPoints.last : null;
-            _latestEpds = results[5].dataPoints.isNotEmpty ? results[5].dataPoints.last : null;
-            _latestHeartRate = results[6].dataPoints.isNotEmpty ? results[6].dataPoints.last : null;
+            _latestBp = results[0].dataPoints.isNotEmpty
+                ? results[0].dataPoints.last
+                : null;
+            _latestBmi = results[1].dataPoints.isNotEmpty
+                ? results[1].dataPoints.last
+                : null;
+            _latestGlucose = results[2].dataPoints.isNotEmpty
+                ? results[2].dataPoints.last
+                : null;
+            _latestKicks = results[3].dataPoints.isNotEmpty
+                ? results[3].dataPoints.last
+                : null;
+            _latestHydration = results[4].dataPoints.isNotEmpty
+                ? results[4].dataPoints.last
+                : null;
+            _latestEpds = results[5].dataPoints.isNotEmpty
+                ? results[5].dataPoints.last
+                : null;
+            _latestHeartRate = results[6].dataPoints.isNotEmpty
+                ? results[6].dataPoints.last
+                : null;
+            _latestTemp = results[7].dataPoints.isNotEmpty
+                ? results[7].dataPoints.last
+                : null;
             _isLoading = false;
           });
         }
@@ -425,7 +529,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       ),
       builder: (ctx) {
         final entryOptions = _fallbackMetricOptions
-            .where((o) => o.apiValue != 'TOTAL_OVERVIEW' && o.apiValue != 'STRESS')
+            .where(
+              (o) => o.apiValue != 'TOTAL_OVERVIEW' && o.apiValue != 'STRESS',
+            )
             .toList();
         return SafeArea(
           child: Padding(
@@ -459,7 +565,8 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: entryOptions.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: _surfaceContainer),
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, color: _surfaceContainer),
                     itemBuilder: (ctx, i) {
                       final opt = entryOptions[i];
                       return ListTile(
@@ -480,7 +587,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                             color: _onSurface,
                           ),
                         ),
-                        trailing: const Icon(Icons.chevron_right, color: _onSurfaceVariant, size: 20),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: _onSurfaceVariant,
+                          size: 20,
+                        ),
                         onTap: () => Navigator.of(ctx).pop(opt),
                       );
                     },
@@ -545,9 +656,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
 
   void _showWatchMetricError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _openMetricDetail(MetricDataPoint point) async {
@@ -649,7 +760,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
           actions: [
             IconButton(
               tooltip: 'Nhập chỉ số',
-              icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
+              icon: const Icon(
+                Icons.add_circle_outline,
+                color: _primary,
+                size: 26,
+              ),
               onPressed: _openAddMetric,
             ),
           ],
@@ -669,7 +784,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(48),
-                      child: CircularProgressIndicator(color: _primaryContainer),
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
                     ),
                   )
                 else if (!_isSupportedMetric)
@@ -1152,7 +1269,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                       color: _primary.withAlpha(25),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.favorite_rounded, color: _primary, size: 22),
+                    child: const Icon(
+                      Icons.favorite_rounded,
+                      color: _primary,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1202,11 +1323,17 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   runSpacing: 6,
                   children: _surveyRiskConditions.map((c) {
                     var label = c;
-                    if (c == 'PRIOR_PREECLAMPSIA') label = 'Tiền sử Tiền sản giật';
-                    if (c == 'CHRONIC_HYPERTENSION') label = 'Tăng huyết áp mạn';
-                    if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM') label = 'Tiền sử ĐTĐ thai kỳ';
+                    if (c == 'PRIOR_PREECLAMPSIA')
+                      label = 'Tiền sử Tiền sản giật';
+                    if (c == 'CHRONIC_HYPERTENSION')
+                      label = 'Tăng huyết áp mạn';
+                    if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM')
+                      label = 'Tiền sử ĐTĐ thai kỳ';
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFAF1ED),
                         borderRadius: BorderRadius.circular(20),
@@ -1250,7 +1377,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   ),
                   TextButton.icon(
                     onPressed: _showMetricPickerModal,
-                    icon: const Icon(Icons.add_rounded, size: 18, color: _primary),
+                    icon: const Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: _primary,
+                    ),
                     label: const Text(
                       'Ghi nhận',
                       style: TextStyle(
@@ -1347,6 +1478,18 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 measuredAt: _latestEpds?.measuredAt,
                 metricCode: 'EPDS_SCORE',
               ),
+              const Divider(height: 1, color: _surfaceContainer),
+
+              // Nhiệt độ cơ thể
+              _buildOverviewMetricTile(
+                icon: Icons.thermostat_outlined,
+                title: 'Nhiệt độ cơ thể',
+                value: _latestTemp != null
+                    ? '${_latestTemp!.valueNumeric.toStringAsFixed(1)} °C'
+                    : null,
+                measuredAt: _latestTemp?.measuredAt,
+                metricCode: 'TEMPERATURE',
+              ),
             ],
           ),
         ),
@@ -1370,10 +1513,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               const SizedBox(height: 6),
               const Text(
                 'Ghi nhận các biểu hiện như: đau đầu, hoa mắt, nhìn mờ, phù nề, mệt mỏi, đau bụng...',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 12, color: _onSurfaceVariant),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -1381,7 +1521,10 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 maxLines: 3,
                 decoration: InputDecoration(
                   hintText: 'Ví dụ: Em hơi đau đầu và thấy người mệt...',
-                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFA0938E)),
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFA0938E),
+                  ),
                   filled: true,
                   fillColor: _canvas,
                   contentPadding: const EdgeInsets.all(12),
@@ -1428,7 +1571,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.auto_awesome, size: 20, color: Colors.amberAccent),
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 20,
+                      color: Colors.amberAccent,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'GỬI AI ĐÁNH GIÁ SỨC KHỎE TOÀN DIỆN',
@@ -1464,7 +1611,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               color: hasValue ? _surfaceAccent : _canvas,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: hasValue ? _primary : _onSurfaceVariant, size: 20),
+            child: Icon(
+              icon,
+              color: hasValue ? _primary : _onSurfaceVariant,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1549,21 +1700,29 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     final waterIntake = _latestHydration?.valueNumeric.round();
     final epds = _latestEpds?.valueNumeric.round();
     final bmi = _latestBmi?.valueNumeric;
+    final temp = _latestTemp?.valueNumeric;
 
     final symptoms = <String>[];
     final noteText = _symptomNoteCtrl.text.toLowerCase();
-    if (noteText.contains('đau đầu') || noteText.contains('nhức đầu')) symptoms.add('Đau đầu dữ dội');
-    if (noteText.contains('hoa mắt') || noteText.contains('nhìn mờ')) symptoms.add('Hoa mắt nhìn mờ');
+    if (noteText.contains('đau đầu') || noteText.contains('nhức đầu'))
+      symptoms.add('Đau đầu dữ dội');
+    if (noteText.contains('hoa mắt') || noteText.contains('nhìn mờ'))
+      symptoms.add('Hoa mắt nhìn mờ');
     if (noteText.contains('phù')) symptoms.add('Phù mặt/chân');
-    if (noteText.contains('buồn nôn') || noteText.contains('nghén')) symptoms.add('Ốm nghén / Buồn nôn');
+    if (noteText.contains('buồn nôn') || noteText.contains('nghén'))
+      symptoms.add('Ốm nghén / Buồn nôn');
     if (noteText.contains('đau lưng')) symptoms.add('Đau mỏi lưng hông');
-    if (noteText.contains('ra máu') || noteText.contains('chảy máu')) symptoms.add('Ra máu âm đạo');
-    if (noteText.contains('rỉ ối') || noteText.contains('vỡ ối')) symptoms.add('Rỉ ối / Vỡ ối');
+    if (noteText.contains('ra máu') || noteText.contains('chảy máu'))
+      symptoms.add('Ra máu âm đạo');
+    if (noteText.contains('rỉ ối') || noteText.contains('vỡ ối'))
+      symptoms.add('Rỉ ối / Vỡ ối');
 
     for (final c in _surveyRiskConditions) {
       if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
-      if (c == 'CHRONIC_HYPERTENSION') symptoms.add('Bệnh nền: Tăng huyết áp mạn');
-      if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM') symptoms.add('Tiền sử Đái tháo đường');
+      if (c == 'CHRONIC_HYPERTENSION')
+        symptoms.add('Bệnh nền: Tăng huyết áp mạn');
+      if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM')
+        symptoms.add('Tiền sử Đái tháo đường');
     }
 
     final gestationalAge = _journeyGestationalWeeks ?? 20;
@@ -1585,7 +1744,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       if (heartRate != null) 'heart_rate': heartRate,
       if (waterIntake != null) 'water_intake_ml': waterIntake,
       if (epds != null) 'epds_score': epds,
-      if (_symptomNoteCtrl.text.isNotEmpty) 'free_text_notes': _symptomNoteCtrl.text.trim(),
+      if (temp != null) 'temperature': temp,
+      if (_symptomNoteCtrl.text.isNotEmpty)
+        'free_text_notes': _symptomNoteCtrl.text.trim(),
       'symptoms': symptoms,
     };
 
@@ -1614,7 +1775,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     if (aiResult == null) {
       final extraFactors = <String>[];
       if (sbp != null && (sbp >= 160 || (dbp != null && dbp >= 110))) {
-        extraFactors.add('Huyết áp rất cao ($sbp/$dbp mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ');
+        extraFactors.add(
+          'Huyết áp rất cao ($sbp/$dbp mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
+        );
       }
       if (bmi != null && bmi >= 30.0) {
         extraFactors.add('Béo phì (BMI: ${bmi.toStringAsFixed(1)} kg/m²)');
@@ -1628,18 +1791,29 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       if (heartRate != null && heartRate >= 120) {
         extraFactors.add('Nhịp tim mẹ rất nhanh ($heartRate bpm)');
       }
+      if (temp != null && temp >= 38.5) {
+        extraFactors.add('Sốt cao (${temp.toStringAsFixed(1)}°C) - Nguy cơ nhiễm trùng ối / nhiễm khuẩn toàn thân');
+      } else if (temp != null && temp >= 37.5) {
+        extraFactors.add('Sốt nhẹ (${temp.toStringAsFixed(1)}°C) cần theo dõi');
+      } else if (temp != null && temp < 35.5) {
+        extraFactors.add('Thân nhiệt hạ thấp (${temp.toStringAsFixed(1)}°C)');
+      }
 
-      final isCritical = (sbp != null && (sbp >= 160 || (dbp != null && dbp >= 110))) ||
-          (heartRate != null && heartRate >= 120);
+      final isCritical =
+          (sbp != null && (sbp >= 160 || (dbp != null && dbp >= 110))) ||
+          (heartRate != null && heartRate >= 120) ||
+          (temp != null && temp >= 38.5);
 
       aiResult = {
-        'triage_status': isCritical ? 'CRITICAL_EMERGENCY' : (extraFactors.isNotEmpty ? 'ANOMALY_MONITOR' : 'NORMAL'),
+        'triage_status': isCritical
+            ? 'CRITICAL_EMERGENCY'
+            : (extraFactors.isNotEmpty ? 'ANOMALY_MONITOR' : 'NORMAL'),
         'risk_factors': extraFactors,
         'clinical_rationale': isCritical
             ? 'Phát hiện chỉ số sinh hiệu ở ngưỡng nguy hiểm khẩn cấp.'
             : (extraFactors.isNotEmpty
-                ? 'Các chỉ số có dấu hiệu bất thường cần tư vấn chuyên khoa.'
-                : 'Bức tranh sức khỏe toàn diện của mẹ hoàn toàn ổn định.'),
+                  ? 'Các chỉ số có dấu hiệu bất thường cần tư vấn chuyên khoa.'
+                  : 'Bức tranh sức khỏe toàn diện của mẹ hoàn toàn ổn định.'),
       };
     }
 
@@ -1647,8 +1821,14 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     setState(() => _isEvaluatingAi = false);
 
     final status = aiResult['triage_status']?.toString() ?? 'NORMAL';
-    final reasons = (aiResult['risk_factors'] as List?)?.map((e) => e.toString()).toList() ?? [];
-    final advice = aiResult['clinical_rationale']?.toString() ?? 'Bức tranh sức khỏe toàn diện của mẹ hoàn toàn ổn định.';
+    final reasons =
+        (aiResult['risk_factors'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final advice =
+        aiResult['clinical_rationale']?.toString() ??
+        'Bức tranh sức khỏe toàn diện của mẹ hoàn toàn ổn định.';
 
     if (status == 'CRITICAL_EMERGENCY') {
       await _showCriticalEmergencyDialog(
@@ -1657,7 +1837,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       );
     } else if (status == 'ANOMALY_MONITOR') {
       await _showAnomalyDialog(
-        reasons: reasons.isEmpty ? ['Chỉ số có dấu hiệu bất thường cần theo dõi'] : reasons,
+        reasons: reasons.isEmpty
+            ? ['Chỉ số có dấu hiệu bất thường cần theo dõi']
+            : reasons,
         advice: advice,
         attachedPayload: payload,
       );
@@ -1718,8 +1900,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ', style: TextStyle(color: Color(0xFFBA1A1A), fontWeight: FontWeight.bold)),
-                    Expanded(child: Text(r, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFBA1A1A)))),
+                    const Text(
+                      '• ',
+                      style: TextStyle(
+                        color: Color(0xFFBA1A1A),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        r,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFBA1A1A),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1734,7 +1931,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               ),
               child: Text(
                 advice,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF5A463F), height: 1.3),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF5A463F),
+                  height: 1.3,
+                ),
               ),
             ),
           ],
@@ -1748,20 +1949,36 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   backgroundColor: const Color(0xFFBA1A1A),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: const Icon(Icons.emergency_outlined, size: 20),
-                label: const Text('MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
                 onPressed: () async {
                   Navigator.of(dialogCtx).pop();
                   try {
-                    final pos = await SafetyPermissionService().readConsentedLocation();
-                    final lat = pos != null ? double.parse(pos.latitude.toStringAsFixed(7)) : null;
-                    final lng = pos != null ? double.parse(pos.longitude.toStringAsFixed(7)) : null;
-                    await EmergencyService().openFlow(triggerSource: 'AI_TRIAGE', latitude: lat, longitude: lng);
+                    final pos = await SafetyPermissionService()
+                        .readConsentedLocation();
+                    final lat = pos != null
+                        ? double.parse(pos.latitude.toStringAsFixed(7))
+                        : null;
+                    final lng = pos != null
+                        ? double.parse(pos.longitude.toStringAsFixed(7))
+                        : null;
+                    await EmergencyService().openFlow(
+                      triggerSource: 'AI_TRIAGE',
+                      latitude: lat,
+                      longitude: lng,
+                    );
                   } catch (_) {
                     try {
-                      await EmergencyService().openFlow(triggerSource: 'AI_TRIAGE');
+                      await EmergencyService().openFlow(
+                        triggerSource: 'AI_TRIAGE',
+                      );
                     } catch (_) {}
                   }
                   if (context.mounted) {
@@ -1775,10 +1992,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   foregroundColor: const Color(0xFFBA1A1A),
                   side: const BorderSide(color: Color(0xFFBA1A1A), width: 1.5),
                   padding: const EdgeInsets.symmetric(vertical: 11),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: const Icon(Icons.phone_in_talk, size: 18),
-                label: const Text('GỌI CẤP CỨU 115 NGAY', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'GỌI CẤP CỨU 115 NGAY',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
                 onPressed: () async {
                   Navigator.of(dialogCtx).pop();
                   final url = Uri.parse('tel:115');
@@ -1787,7 +2009,10 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.of(dialogCtx).pop(),
-                child: const Text('Đóng', style: TextStyle(color: Color(0xFF757575))),
+                child: const Text(
+                  'Đóng',
+                  style: TextStyle(color: Color(0xFF757575)),
+                ),
               ),
             ],
           ),
@@ -1848,8 +2073,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ', style: TextStyle(color: Color(0xFFE65100), fontWeight: FontWeight.bold)),
-                    Expanded(child: Text(r, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFE65100)))),
+                    const Text(
+                      '• ',
+                      style: TextStyle(
+                        color: Color(0xFFE65100),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        r,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFE65100),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1864,7 +2104,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               ),
               child: Text(
                 advice,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF5A463F), height: 1.3),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF5A463F),
+                  height: 1.3,
+                ),
               ),
             ),
           ],
@@ -1878,7 +2122,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: const Icon(Icons.support_agent, size: 20),
                 label: const Text(
@@ -1888,13 +2134,36 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 onPressed: () {
                   Navigator.of(dialogCtx).pop();
                   final vitals = <String>[];
-                  if (_latestBp != null) vitals.add('Huyết áp: ${_latestBp!.valueNumeric.round()}/${_latestBp!.valueSecondary?.round() ?? 0} mmHg');
-                  if (_latestBmi != null) vitals.add('BMI: ${_latestBmi!.valueNumeric.toStringAsFixed(1)} kg/m²');
-                  if (_latestGlucose != null) vitals.add('Đường huyết: ${_latestGlucose!.valueNumeric} mg/dL');
-                  if (_latestKicks != null) vitals.add('Cử động thai: ${_latestKicks!.valueNumeric.round()} lần/2h');
-                  if (_latestHydration != null) vitals.add('Lượng nước: ${_latestHydration!.valueNumeric.round()} ml');
-                  if (_latestHeartRate != null) vitals.add('Nhịp tim: ${_latestHeartRate!.valueNumeric.round()} bpm');
-                  if (_latestEpds != null) vitals.add('EPDS: ${_latestEpds!.valueNumeric.round()}/30');
+                  if (_latestBp != null)
+                    vitals.add(
+                      'Huyết áp: ${_latestBp!.valueNumeric.round()}/${_latestBp!.valueSecondary?.round() ?? 0} mmHg',
+                    );
+                  if (_latestBmi != null)
+                    vitals.add(
+                      'BMI: ${_latestBmi!.valueNumeric.toStringAsFixed(1)} kg/m²',
+                    );
+                  if (_latestGlucose != null)
+                    vitals.add(
+                      'Đường huyết: ${_latestGlucose!.valueNumeric} mg/dL',
+                    );
+                  if (_latestKicks != null)
+                    vitals.add(
+                      'Cử động thai: ${_latestKicks!.valueNumeric.round()} lần/2h',
+                    );
+                  if (_latestHydration != null)
+                    vitals.add(
+                      'Lượng nước: ${_latestHydration!.valueNumeric.round()} ml',
+                    );
+                  if (_latestHeartRate != null)
+                    vitals.add(
+                      'Nhịp tim: ${_latestHeartRate!.valueNumeric.round()} bpm',
+                    );
+                  if (_latestEpds != null)
+                    vitals.add('EPDS: ${_latestEpds!.valueNumeric.round()}/30');
+                  if (_latestTemp != null)
+                    vitals.add(
+                      'Thân nhiệt: ${_latestTemp!.valueNumeric.toStringAsFixed(1)} °C',
+                    );
 
                   context.push(
                     '/rag/chat',
@@ -1916,7 +2185,10 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               const SizedBox(height: 6),
               TextButton(
                 onPressed: () => Navigator.of(dialogCtx).pop(),
-                child: const Text('Đã hiểu', style: TextStyle(color: Color(0xFF757575))),
+                child: const Text(
+                  'Đã hiểu',
+                  style: TextStyle(color: Color(0xFF757575)),
+                ),
               ),
             ],
           ),
@@ -1964,7 +2236,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
           children: [
             Text(
               'Bức tranh sức khỏe toàn diện của mẹ ở tuần thai thứ $week đang rất tốt!',
-              style: const TextStyle(fontSize: 13, color: Color(0xFF444444), height: 1.4),
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF444444),
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 10),
             Container(
@@ -1976,7 +2252,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               ),
               child: Text(
                 advice,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF2E7D32), height: 1.3),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF2E7D32),
+                  height: 1.3,
+                ),
               ),
             ),
           ],
@@ -1986,10 +2266,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Tuyệt vời', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Tuyệt vời',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

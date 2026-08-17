@@ -41,6 +41,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   late bool _isDualValue;
   bool get _isBmi => widget.metric.metricCode == 'BMI' || widget.metric.metricType == MetricType.bmi;
   bool get _isGlucose => widget.metric.metricCode == 'BLOOD_GLUCOSE';
+  bool get _isTemperature => widget.metric.metricCode == 'TEMPERATURE' || widget.metric.metricType == MetricType.temperature;
 
   String _glucoseContext = 'FASTING';
   static const _glucoseContexts = [
@@ -50,6 +51,14 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     DropdownMenuItem(value: 'POST_MEAL_2H', child: Text('Sau ăn 2 giờ')),
     DropdownMenuItem(value: 'RANDOM', child: Text('Ngẫu nhiên')),
     DropdownMenuItem(value: 'OTHER_APPROVED', child: Text('Khác (đã được duyệt)')),
+  ];
+
+  String _temperatureSite = 'ARMPIT';
+  static const _temperatureSites = [
+    DropdownMenuItem(value: 'ARMPIT', child: Text('Nách (Chuẩn phổ biến)')),
+    DropdownMenuItem(value: 'FOREHEAD', child: Text('Trán (Cảm ứng nhiệt)')),
+    DropdownMenuItem(value: 'ORAL', child: Text('Miệng')),
+    DropdownMenuItem(value: 'EAR', child: Text('Tai (Màng nhĩ)')),
   ];
 
   final _service = HealthMetricService();
@@ -81,6 +90,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     }
     if (_isGlucose && m.context['measurementContext'] != null) {
       _glucoseContext = m.context['measurementContext'].toString();
+    }
+    if (_isTemperature && m.context['measurementSite'] != null) {
+      _temperatureSite = m.context['measurementSite'].toString();
     }
     _noteCtrl.text = m.note ?? '';
     _measuredDate = m.measuredAt;
@@ -169,6 +181,12 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         return;
       }
       primaryVal = weightKg / ((heightCm / 100) * (heightCm / 100));
+    } else if (_isTemperature) {
+      primaryVal = double.tryParse(_valuePrimaryCtrl.text.trim());
+      if (primaryVal == null || primaryVal < 30.0 || primaryVal > 45.0) {
+        _showError('Nhập thân nhiệt hợp lệ từ 30.0 đến 45.0 °C.');
+        return;
+      }
     } else {
       primaryVal = double.tryParse(_valuePrimaryCtrl.text.trim());
       if (primaryVal == null) {
@@ -194,6 +212,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
       }
       if (_isGlucose) {
         contextPayload['measurementContext'] = _glucoseContext;
+      }
+      if (_isTemperature) {
+        contextPayload['measurementSite'] = _temperatureSite;
       }
 
       await _service.updateMetric(
@@ -566,6 +587,43 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                   onChanged: enabled
                       ? (val) {
                           if (val != null) setState(() => _glucoseContext = val);
+                        }
+                      : null,
+                ),
+              ],
+              if (_isTemperature) ...[
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _temperatureSites.any((item) => item.value == _temperatureSite)
+                      ? _temperatureSite
+                      : 'ARMPIT',
+                  decoration: InputDecoration(
+                    labelText: 'Vị trí đo thân nhiệt',
+                    labelStyle: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: _onSurfaceVariant,
+                    ),
+                    filled: true,
+                    fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+                    ),
+                  ),
+                  items: _temperatureSites,
+                  onChanged: enabled
+                      ? (val) {
+                          if (val != null) setState(() => _temperatureSite = val);
                         }
                       : null,
                 ),

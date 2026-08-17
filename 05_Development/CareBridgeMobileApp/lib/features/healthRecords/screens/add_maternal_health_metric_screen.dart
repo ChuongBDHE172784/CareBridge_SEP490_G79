@@ -69,6 +69,7 @@ class _AddMaternalHealthMetricScreenState
   DateTime _periodEndDate = DateTime.now();
   TimeOfDay _periodEndTime = TimeOfDay.now();
   String _glucoseContext = 'FASTING';
+  String _temperatureSite = 'ARMPIT';
   String _completionStatus = 'COMPLETED';
   List<MetricCapability> _capabilities = const [];
   bool _isLoadingCapabilities = true;
@@ -84,6 +85,7 @@ class _AddMaternalHealthMetricScreenState
   MetricDataPoint? _latestHydration;
   MetricDataPoint? _latestEpds;
   MetricDataPoint? _latestHeartRate;
+  MetricDataPoint? _latestTemp;
 
   List<String> get _pythonCandidates {
     final list = <String>[];
@@ -110,6 +112,13 @@ class _AddMaternalHealthMetricScreenState
     'POST_MEAL_2H': 'Sau ăn 2 giờ',
     'RANDOM': 'Ngẫu nhiên',
     'OTHER_APPROVED': 'Khác (đã được duyệt)',
+  };
+
+  static const _temperatureSites = <String, String>{
+    'ARMPIT': 'Nách (Chuẩn phổ biến)',
+    'FOREHEAD': 'Trán (Cảm ứng nhiệt)',
+    'ORAL': 'Miệng',
+    'EAR': 'Tai (Màng nhĩ)',
   };
 
   static const _completionStatuses = <String, String>{
@@ -182,6 +191,7 @@ class _AddMaternalHealthMetricScreenState
         _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'HYDRATION').catchError((_) => const MetricTrend(metricType: 'HYDRATION', dataPoints: [])),
         _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'EPDS_SCORE').catchError((_) => const MetricTrend(metricType: 'EPDS_SCORE', dataPoints: [])),
         _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'HEART_RATE').catchError((_) => const MetricTrend(metricType: 'HEART_RATE', dataPoints: [])),
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'TEMPERATURE').catchError((_) => const MetricTrend(metricType: 'TEMPERATURE', dataPoints: [])),
       ]);
 
       if (mounted) {
@@ -193,6 +203,7 @@ class _AddMaternalHealthMetricScreenState
           if (results[4].dataPoints.isNotEmpty) _latestHydration = results[4].dataPoints.last;
           if (results[5].dataPoints.isNotEmpty) _latestEpds = results[5].dataPoints.last;
           if (results[6].dataPoints.isNotEmpty) _latestHeartRate = results[6].dataPoints.last;
+          if (results[7].dataPoints.isNotEmpty) _latestTemp = results[7].dataPoints.last;
         });
       }
     } catch (_) {}
@@ -205,6 +216,7 @@ class _AddMaternalHealthMetricScreenState
   bool get _isGlucose => _metricType == 'BLOOD_GLUCOSE';
   bool get _isFetalMovement => _metricType == 'FETAL_MOVEMENT_SESSION';
   bool get _isHydration => _metricType == 'HYDRATION';
+  bool get _isTemperature => _metricType == 'TEMPERATURE';
 
   MetricCapability? get _capability {
     for (final capability in _capabilities) {
@@ -218,6 +230,7 @@ class _AddMaternalHealthMetricScreenState
   String get _title {
     if (_isBloodPressure) return 'Thêm huyết áp';
     if (_isFetalMovement) return 'Thêm cử động thai';
+    if (_isTemperature) return 'Thêm nhiệt độ cơ thể';
     return 'Thêm $_metricLabel';
   }
 
@@ -225,6 +238,7 @@ class _AddMaternalHealthMetricScreenState
     if (_isBloodPressure) return 'Tâm thu (mmHg)';
     if (_isBmi) return 'Cân nặng (kg)';
     if (_isFetalMovement) return 'Số cử động';
+    if (_isTemperature) return 'Nhiệt độ (°C)';
     return '$_metricLabel ($_unit)';
   }
 
@@ -477,10 +491,25 @@ class _AddMaternalHealthMetricScreenState
       return;
     }
 
+    if (_isTemperature) {
+      final rawTemp = _primaryCtrl.text.trim();
+      final tempVal = double.tryParse(rawTemp);
+      if (tempVal == null ||
+          tempVal < 30.0 ||
+          tempVal > 45.0 ||
+          !_hasAtMostOneFractionalDigit(rawTemp)) {
+        _showError(
+          'Nhập thân nhiệt hợp lệ từ 30.0 đến 45.0 °C, tối đa 1 chữ số thập phân.',
+        );
+        return;
+      }
+    }
+
     setState(() => _isSaving = true);
     try {
       final contextPayload = <String, dynamic>{};
       if (_isGlucose) contextPayload['measurementContext'] = _glucoseContext;
+      if (_isTemperature) contextPayload['measurementSite'] = _temperatureSite;
       if (_isFetalMovement) {
         contextPayload['protocolCode'] = _protocolCtrl.text.trim();
         contextPayload['completionStatus'] = _completionStatus;
@@ -587,6 +616,7 @@ class _AddMaternalHealthMetricScreenState
     final heartRate = (_metricType == 'HEART_RATE' || _metricType == 'MATERNAL_HEART_RATE') ? primaryVal.round() : null;
     final waterIntake = _isHydration ? primaryVal.round() : null;
     final epds = (_metricType == 'EPDS_SCORE' || _metricType == 'EPDS') ? primaryVal.round() : null;
+    final temp = _isTemperature ? primaryVal : null;
 
     final rawWeight = _isBmi ? double.tryParse(_primaryCtrl.text.trim()) : null;
     final rawHeight = _isBmi ? double.tryParse(_secondaryCtrl.text.trim()) : null;
@@ -649,6 +679,7 @@ class _AddMaternalHealthMetricScreenState
       if (heartRate != null) 'heart_rate': heartRate,
       if (waterIntake != null) 'water_intake_ml': waterIntake,
       if (epds != null) 'epds_score': epds,
+      if (temp != null) 'temperature': temp,
       if (note != null && note.isNotEmpty) 'free_text_notes': note,
       'symptoms': symptoms,
     };
@@ -695,6 +726,19 @@ class _AddMaternalHealthMetricScreenState
     if (heartRate != null && (heartRate > 100 || heartRate < 50)) {
       extraFactors.add('Nhịp tim bất thường ($heartRate bpm)');
     }
+    if (temp != null) {
+      if (temp >= 38.5) {
+        extraFactors.add(
+          'Sốt cao thai kỳ (${temp.toStringAsFixed(1)}°C) - Nguy cơ Nhiễm trùng ối hoặc Nhiễm khuẩn toàn thân',
+        );
+      } else if (temp >= 37.5) {
+        extraFactors.add(
+          'Sốt nhẹ thai kỳ (${temp.toStringAsFixed(1)}°C) - Cần bù nước, hạ sốt an toàn và theo dõi sát',
+        );
+      } else if (temp < 35.5) {
+        extraFactors.add('Thân nhiệt hạ thấp (${temp.toStringAsFixed(1)}°C)');
+      }
+    }
 
     final isCritical =
         (sbp != null && sbp >= 160) ||
@@ -707,6 +751,7 @@ class _AddMaternalHealthMetricScreenState
                   s.contains('Tiền sản giật'),
             )) ||
         (kicks != null && kicks == 0 && gestationalAge >= 28) ||
+        (temp != null && temp >= 38.5) ||
         (symptoms.any((s) => s.contains('Ra máu') || s.contains('Vỡ ối')));
 
     final isAnomaly =
@@ -714,6 +759,7 @@ class _AddMaternalHealthMetricScreenState
         (dbp != null && dbp >= 85) ||
         (glucose != null && glucose >= 5.1) ||
         (kicks != null && kicks < 4 && gestationalAge >= 28) ||
+        (temp != null && (temp >= 37.5 || temp < 35.5)) ||
         extraFactors.isNotEmpty ||
         symptoms.isNotEmpty;
 
@@ -1152,6 +1198,7 @@ class _AddMaternalHealthMetricScreenState
                     if (_latestHydration != null) vitalsMap['Lượng nước'] = '${_latestHydration!.valueDisplay} ml';
                     if (_latestEpds != null) vitalsMap['Tâm trạng EPDS'] = '${_latestEpds!.valueDisplay}/30 đ';
                     if (_latestHeartRate != null) vitalsMap['Nhịp tim'] = '${_latestHeartRate!.valueDisplay} bpm';
+                    if (_latestTemp != null) vitalsMap['Thân nhiệt'] = '${_latestTemp!.valueDisplay} °C';
 
                     context.push(
                       '/rag/chat',
@@ -1275,6 +1322,19 @@ class _AddMaternalHealthMetricScreenState
                           onChanged: (value) {
                             if (value != null) {
                               setState(() => _glucoseContext = value);
+                            }
+                          },
+                        ),
+                      ],
+                      if (_isTemperature) ...[
+                        const SizedBox(height: 14),
+                        _buildDropdown<String>(
+                          label: 'Vị trí đo thân nhiệt',
+                          value: _temperatureSite,
+                          items: _temperatureSites,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _temperatureSite = value);
                             }
                           },
                         ),
