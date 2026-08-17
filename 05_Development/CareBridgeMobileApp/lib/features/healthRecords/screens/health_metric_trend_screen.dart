@@ -295,8 +295,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         try {
           final journeyRes = await apiGet('/api/v1/journeys/me/dashboard');
           if (journeyRes is Map && mounted) {
-            final data =
-                (journeyRes['data'] is Map) ? journeyRes['data'] : journeyRes;
+            final data = (journeyRes['data'] is Map)
+                ? journeyRes['data']
+                : journeyRes;
             final week =
                 data['pregnancyWeek'] ??
                 data['completedGestationalWeek'] ??
@@ -1803,7 +1804,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         extraFactors.add('Nhịp tim mẹ rất nhanh ($heartRate bpm)');
       }
       if (temp != null && temp >= 38.5) {
-        extraFactors.add('Sốt cao (${temp.toStringAsFixed(1)}°C) - Nguy cơ nhiễm trùng ối / nhiễm khuẩn toàn thân');
+        extraFactors.add(
+          'Sốt cao (${temp.toStringAsFixed(1)}°C) - Nguy cơ nhiễm trùng ối / nhiễm khuẩn toàn thân',
+        );
       } else if (temp != null && temp >= 37.5) {
         extraFactors.add('Sốt nhẹ (${temp.toStringAsFixed(1)}°C) cần theo dõi');
       } else if (temp != null && temp < 35.5) {
@@ -2139,7 +2142,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 ),
                 icon: const Icon(Icons.support_agent, size: 20),
                 label: const Text(
-                  'HỎI TRỢ LÝ AI NURSE (BƯỚC 10)',
+                  'HỎI TRỢ LÝ AI NURSE',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 onPressed: () {
