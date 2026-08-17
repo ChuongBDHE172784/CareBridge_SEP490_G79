@@ -957,8 +957,8 @@ final GoRouter appRouter = GoRouter(
         Map<String, dynamic>? attachedContext;
         bool autoSend = state.uri.queryParameters['autoSend'] == 'true';
         if (extra is Map<String, dynamic>) {
-          initialPrompt ??= extra['prompt'] as String?;
-          attachedContext = extra['attachedContext'] as Map<String, dynamic>?;
+          initialPrompt ??= (extra['prompt'] ?? extra['initialMessage']) as String?;
+          attachedContext = (extra['attachedContext'] ?? extra['attachedHealthContext']) as Map<String, dynamic>?;
           if (extra.containsKey('autoSend')) {
             autoSend = extra['autoSend'] == true;
           }
@@ -974,12 +974,12 @@ final GoRouter appRouter = GoRouter(
       path: '/rag/chat',
       builder: (context, state) {
         final extra = state.extra;
-        String? initialPrompt = state.uri.queryParameters['prompt'];
+        String? initialPrompt = state.uri.queryParameters['prompt'] ?? state.uri.queryParameters['initialMessage'];
         Map<String, dynamic>? attachedContext;
         bool autoSend = state.uri.queryParameters['autoSend'] == 'true';
         if (extra is Map<String, dynamic>) {
-          initialPrompt ??= extra['prompt'] as String?;
-          attachedContext = extra['attachedContext'] as Map<String, dynamic>?;
+          initialPrompt ??= (extra['prompt'] ?? extra['initialMessage']) as String?;
+          attachedContext = (extra['attachedContext'] ?? extra['attachedHealthContext']) as Map<String, dynamic>?;
           if (extra.containsKey('autoSend')) {
             autoSend = extra['autoSend'] == true;
           }

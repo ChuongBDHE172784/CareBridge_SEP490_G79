@@ -1339,8 +1339,10 @@ class _AddMaternalHealthMetricScreenState
                       'gestationalAge': gestationalAge,
                       'riskFactors': riskFactors,
                       'latestVitals': vitalsMap,
+                      'surveyRiskConditions': _surveyRiskConditions,
+                      'note': _noteCtrl.text.trim(),
                     },
-                    'autoSend': true,
+                    'autoSend': false,
                   },
                 );
               },

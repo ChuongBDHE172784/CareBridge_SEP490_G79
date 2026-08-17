@@ -449,6 +449,22 @@ class _RagChatScreenState extends State<RagChatScreen> {
     );
   }
 
+  void _openAttachmentDetailsModal() {
+    if (_attachedContext == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _AttachedHealthContextBottomSheet(
+        contextData: _attachedContext!,
+        onRemoveAttachment: () {
+          Navigator.of(ctx).pop();
+          setState(() => _attachedContext = null);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = AuthState.instance.role ?? 'MOTHER';
@@ -519,43 +535,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.history_rounded),
-            tooltip: 'Lịch sử trò chuyện',
+            tooltip: 'Lịch sử tư vấn',
             onPressed: _openHistoryModal,
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: 'Lưu ý y tế',
-            onPressed: () => showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                title: const Row(
-                  children: [
-                    Icon(Icons.shield_outlined, color: _primary),
-                    SizedBox(width: 8),
-                    Text(
-                      'Về Trợ lý AI CareBridge',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-                content: const Text(
-                  'CareBridge AI Nurse là trợ lý hỗ trợ tra cứu cẩm nang y tế từ Bộ Y Tế & WHO.\n\nThông tin chỉ mang tính chất tham khảo, không thay thế cho chẩn đoán hoặc chỉ định trực tiếp từ Bác sĩ chuyên khoa.',
-                  style: TextStyle(fontSize: 13, height: 1.4),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text(
-                      'Đã hiểu',
-                      style: TextStyle(color: _primary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -567,15 +548,12 @@ class _RagChatScreenState extends State<RagChatScreen> {
                 quickPrompts: _quickPrompts,
                 onPromptTap: (p) => _send(p),
               ),
-            ),
-          if (_messages.isNotEmpty)
+            )
+          else
             Expanded(
               child: ListView.builder(
                 controller: _scrollCtrl,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 16,
-                ),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 itemCount: _messages.length + (_sending ? 1 : 0),
                 itemBuilder: (ctx, i) {
                   if (i == _messages.length) {
@@ -592,61 +570,125 @@ class _RagChatScreenState extends State<RagChatScreen> {
           if (_attachedContext != null)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF1EC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFC98C7B)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.attachment_rounded,
-                    size: 18,
-                    color: Color(0xFF845143),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFF4F0), Color(0xFFFEEDEA)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE5BDB3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFC98C7B).withValues(alpha: 0.1),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: _openAttachmentDetailsModal,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          'Đính kèm: ${_attachedContext!['metricLabel'] ?? 'Chỉ số'} ${_attachedContext!['displayValue'] ?? ''} • Tuần ${_attachedContext!['gestationalAge'] ?? 'thai'}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFC98C7B).withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.assignment_outlined,
+                            size: 18,
                             color: Color(0xFF845143),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (_attachedContext!['latestVitals'] is Map &&
-                            (_attachedContext!['latestVitals'] as Map).isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              'Snapshot: ${(_attachedContext!['latestVitals'] as Map).entries.map((e) => '${e.key}: ${e.value}').join(' • ')}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF845143),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      'Hồ sơ đính kèm: ${_attachedContext!['metricLabel'] ?? 'Chỉ số sức khỏe'}',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF6B3A2D),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (_attachedContext!['gestationalAge'] != null ||
+                                      _attachedContext!['gestationalWeeks'] != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFC98C7B),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Tuần ${_attachedContext!['gestationalAge'] ?? _attachedContext!['gestationalWeeks']}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              const SizedBox(height: 2),
+                              const Row(
+                                children: [
+                                  Text(
+                                    'Chạm để xem chi tiết sinh hiệu, survey...',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF9E6555),
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 10,
+                                    color: Color(0xFF9E6555),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          color: const Color(0xFF845143),
+                          tooltip: 'Gỡ đính kèm',
+                          onPressed: () => setState(() => _attachedContext = null),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                       ],
                     ),
                   ),
-                  InkWell(
-                    onTap: () => setState(() => _attachedContext = null),
-                    child: const Icon(
-                      Icons.close,
-                      size: 16,
-                      color: Color(0xFF845143),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           _InputBar(
@@ -1574,6 +1616,524 @@ class _InputBar extends StatelessWidget {
                         color: Colors.white,
                         size: 22,
                       ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttachedHealthContextBottomSheet extends StatelessWidget {
+  final Map<String, dynamic> contextData;
+  final VoidCallback onRemoveAttachment;
+
+  const _AttachedHealthContextBottomSheet({
+    required this.contextData,
+    required this.onRemoveAttachment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final metricLabel =
+        contextData['metricLabel'] ?? contextData['metricType'] ?? 'Chỉ số sức khỏe';
+    final displayValue =
+        contextData['displayValue'] ?? contextData['value'] ?? '';
+    final gestationalAge =
+        contextData['gestationalAge'] ?? contextData['gestationalWeeks'];
+    final note =
+        (contextData['note'] ?? contextData['free_text_notes'])?.toString();
+    final surveyRisks = (contextData['surveyRiskConditions'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final riskFactors =
+        (contextData['riskFactors'] ?? contextData['reasons'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final latestVitals = contextData['latestVitals'];
+
+    String getTrimester(dynamic week) {
+      if (week == null) return '';
+      final w = int.tryParse(week.toString());
+      if (w == null) return '';
+      if (w <= 13) return 'Tam cá nguyệt 1 (3 tháng đầu)';
+      if (w <= 27) return 'Tam cá nguyệt 2 (3 tháng giữa)';
+      return 'Tam cá nguyệt 3 (3 tháng cuối)';
+    }
+
+    String formatSurveyLabel(String raw) {
+      switch (raw) {
+        case 'PRIOR_PREECLAMPSIA':
+          return 'Tiền sử Tiền sản giật';
+        case 'CHRONIC_HYPERTENSION':
+          return 'Tăng huyết áp mạn';
+        case 'PREGESTATIONAL_DIABETES':
+        case 'PRIOR_GDM':
+          return 'Tiền sử ĐTĐ thai kỳ';
+        default:
+          return raw;
+      }
+    }
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0E0E0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 16, 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1EC),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.health_and_safety_rounded,
+                      color: Color(0xFF845143),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hồ sơ Sức khỏe Đính kèm',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Ngữ cảnh lâm sàng cung cấp cho AI Nurse',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Content
+            Flexible(
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  // Tuần thai & Giai đoạn
+                  if (gestationalAge != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFF8F5), Color(0xFFFFF1EC)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5BDB3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.child_care_rounded,
+                            color: Color(0xFF845143),
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Tuần thai hiện tại: Tuần $gestationalAge',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF6B3A2D),
+                                  ),
+                                ),
+                                if (getTrimester(gestationalAge).isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    getTrimester(gestationalAge),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF845143),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Chỉ số vừa đo
+                  if (displayValue.toString().isNotEmpty) ...[
+                    const Text(
+                      'Chỉ số sinh hiệu vừa ghi nhận',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF555555),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9F7F5),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFEFEBE9)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            metricLabel.toString(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF845143).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              displayValue.toString(),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF845143),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Ghi chú triệu chứng
+                  if (note != null && note.trim().isNotEmpty) ...[
+                    const Text(
+                      'Ghi chú triệu chứng từ mẹ',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF555555),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF9F7),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFF0DDD6)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.edit_note_rounded,
+                            color: Color(0xFF845143),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              note,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF444444),
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Tiền sử / Bệnh nền (Survey)
+                  if (surveyRisks.isNotEmpty) ...[
+                    const Text(
+                      'Tiền sử & Bệnh nền (từ Khảo sát)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF555555),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: surveyRisks.map((r) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFAF1ED),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFD6C2BD)),
+                          ),
+                          child: Text(
+                            formatSurveyLabel(r),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF845143),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Cảnh báo AI phát hiện
+                  if (riskFactors.isNotEmpty) ...[
+                    const Text(
+                      'Dấu hiệu AI lưu ý trong lần đo này',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF555555),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFFCC80)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: riskFactors.map((rf) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4, right: 8),
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 14,
+                                    color: Color(0xFFE65100),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    rf,
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: Color(0xFFBF360C),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Toàn bộ sinh hiệu gần nhất
+                  if (latestVitals != null) ...[
+                    const Text(
+                      'Snapshot Toàn bộ Sinh hiệu Gần nhất',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF555555),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (latestVitals is Map && latestVitals.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9F7F5),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFEFEBE9)),
+                        ),
+                        child: Column(
+                          children: latestVitals.entries.map((e) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    e.key.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF666666),
+                                    ),
+                                  ),
+                                  Text(
+                                    e.value.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF333333),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      )
+                    else if (latestVitals is String && latestVitals.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9F7F5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFEFEBE9)),
+                        ),
+                        child: Text(
+                          latestVitals,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF444444),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Medical disclaimer note
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F4F8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: Color(0xFF5C6B73),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Ngữ cảnh này được đính kèm tự động để AI Nurse Assistant nắm bắt đầy đủ thông tin và đưa ra lời khuyên phù hợp nhất.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF5C6B73),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Bottom action buttons
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('Gỡ đính kèm'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFBA1A1A),
+                        side: const BorderSide(color: Color(0xFFFFCDD2)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: onRemoveAttachment,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC98C7B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        'Đã hiểu',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

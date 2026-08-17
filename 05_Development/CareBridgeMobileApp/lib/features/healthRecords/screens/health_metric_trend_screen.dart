@@ -2172,51 +2172,47 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 ),
                 onPressed: () {
                   Navigator.of(dialogCtx).pop();
-                  final vitals = <String>[];
+                  final vitalsMap = <String, String>{};
                   if (_latestBp != null)
-                    vitals.add(
-                      'Huyết áp: ${_latestBp!.valueNumeric.round()}/${_latestBp!.valueSecondary?.round() ?? 0} mmHg',
-                    );
+                    vitalsMap['Huyết áp'] =
+                        '${_latestBp!.valueNumeric.round()}/${_latestBp!.valueSecondary?.round() ?? 0} mmHg';
                   if (_latestBmi != null)
-                    vitals.add(
-                      'BMI: ${_latestBmi!.valueNumeric.toStringAsFixed(1)} kg/m²',
-                    );
+                    vitalsMap['BMI'] =
+                        '${_latestBmi!.valueNumeric.toStringAsFixed(1)} kg/m²';
                   if (_latestGlucose != null)
-                    vitals.add(
-                      'Đường huyết: ${_latestGlucose!.valueNumeric} mg/dL',
-                    );
+                    vitalsMap['Đường huyết'] =
+                        '${_latestGlucose!.valueNumeric} mg/dL';
                   if (_latestKicks != null)
-                    vitals.add(
-                      'Cử động thai: ${_latestKicks!.valueNumeric.round()} lần/2h',
-                    );
+                    vitalsMap['Cử động thai'] =
+                        '${_latestKicks!.valueNumeric.round()} lần/2h';
                   if (_latestHydration != null)
-                    vitals.add(
-                      'Lượng nước: ${_latestHydration!.valueNumeric.round()} ml',
-                    );
+                    vitalsMap['Lượng nước'] =
+                        '${_latestHydration!.valueNumeric.round()} ml';
                   if (_latestHeartRate != null)
-                    vitals.add(
-                      'Nhịp tim: ${_latestHeartRate!.valueNumeric.round()} bpm',
-                    );
+                    vitalsMap['Nhịp tim'] =
+                        '${_latestHeartRate!.valueNumeric.round()} bpm';
                   if (_latestEpds != null)
-                    vitals.add('EPDS: ${_latestEpds!.valueNumeric.round()}/30');
+                    vitalsMap['Điểm EPDS'] =
+                        '${_latestEpds!.valueNumeric.round()}/30';
                   if (_latestTemp != null)
-                    vitals.add(
-                      'Thân nhiệt: ${_latestTemp!.valueNumeric.toStringAsFixed(1)} °C',
-                    );
+                    vitalsMap['Thân nhiệt'] =
+                        '${_latestTemp!.valueNumeric.toStringAsFixed(1)} °C';
 
                   context.push(
                     '/rag/chat',
                     extra: {
-                      'attachedContext': {
-                        'metricType': 'TOTAL_OVERVIEW',
-                        'value': 'Tổng quan sức khỏe',
-                        'unit': '',
-                        'gestationalWeeks': _journeyGestationalWeeks ?? 20,
-                        'reasons': reasons,
-                        'latestVitals': vitals.join(' • '),
-                      },
-                      'initialMessage':
+                      'prompt':
                           'Bức tranh sức khỏe toàn diện của em ở tuần thai ${_journeyGestationalWeeks ?? 20} có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ dinh dưỡng, nghỉ ngơi và theo dõi như thế nào?',
+                      'attachedContext': {
+                        'metricLabel': 'Tổng quan sức khỏe',
+                        'displayValue': 'Đánh giá toàn diện',
+                        'gestationalAge': _journeyGestationalWeeks ?? 20,
+                        'riskFactors': reasons,
+                        'latestVitals': vitalsMap,
+                        'surveyRiskConditions': _surveyRiskConditions,
+                        'note': _symptomNoteCtrl.text.trim(),
+                      },
+                      'autoSend': false,
                     },
                   );
                 },
