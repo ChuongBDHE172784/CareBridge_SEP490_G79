@@ -86,6 +86,10 @@ public class MetricObservationValidator {
             requireRange(primary, new BigDecimal("30"), new BigDecimal("250"),
                     "Heart rate must be between 30 and 250 bpm");
         }
+        if ("TEMPERATURE".equals(metricCode)) {
+            requireRange(primary, new BigDecimal("30"), new BigDecimal("45"),
+                    "Temperature must be between 30 and 45 °C");
+        }
         if ("STRESS".equals(metricCode)) {
             requireRange(primary, BigDecimal.ZERO, new BigDecimal("100"),
                     "Stress value must be between 0 and 100");
