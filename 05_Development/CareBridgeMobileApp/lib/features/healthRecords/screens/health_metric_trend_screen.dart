@@ -1715,29 +1715,6 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     final temp = _latestTemp?.valueNumeric;
 
     final symptoms = <String>[];
-    final noteText = _symptomNoteCtrl.text.toLowerCase();
-    if (noteText.contains('đau đầu') || noteText.contains('nhức đầu'))
-      symptoms.add('Đau đầu dữ dội');
-    if (noteText.contains('chóng mặt') || noteText.contains('choáng váng'))
-      symptoms.add('Chóng mặt / Choáng váng');
-    if (noteText.contains('hoa mắt') || noteText.contains('nhìn mờ'))
-      symptoms.add('Hoa mắt nhìn mờ');
-    if (noteText.contains('phù')) symptoms.add('Phù mặt/chân');
-    if (noteText.contains('buồn nôn') || noteText.contains('nghén'))
-      symptoms.add('Ốm nghén / Buồn nôn');
-    if (noteText.contains('đau lưng')) symptoms.add('Đau mỏi lưng hông');
-    if (noteText.contains('ra máu') || noteText.contains('chảy máu'))
-      symptoms.add('Ra máu âm đạo');
-    if (noteText.contains('rỉ ối') || noteText.contains('vỡ ối'))
-      symptoms.add('Rỉ ối / Vỡ ối');
-    if (noteText.contains('đau bụng') || noteText.contains('gò'))
-      symptoms.add('Đau quặn bụng');
-    if (noteText.contains('sốt') || noteText.contains('nóng'))
-      symptoms.add('Sốt');
-    if (symptoms.isEmpty && _symptomNoteCtrl.text.trim().isNotEmpty) {
-      symptoms.add(_symptomNoteCtrl.text.trim());
-    }
-
     for (final c in _surveyRiskConditions) {
       if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
       if (c == 'CHRONIC_HYPERTENSION')

@@ -745,25 +745,6 @@ class _AddMaternalHealthMetricScreenState
         : null;
 
     final symptoms = <String>[];
-    final noteText = (note ?? '').toLowerCase();
-    if (noteText.contains('đau đầu') || noteText.contains('nhức đầu')) {
-      symptoms.add('Đau đầu dữ dội');
-    }
-    if (noteText.contains('hoa mắt') || noteText.contains('nhìn mờ')) {
-      symptoms.add('Hoa mắt nhìn mờ');
-    }
-    if (noteText.contains('phù')) symptoms.add('Phù mặt/chân');
-    if (noteText.contains('buồn nôn') || noteText.contains('nghén')) {
-      symptoms.add('Ốm nghén / Buồn nôn');
-    }
-    if (noteText.contains('đau lưng')) symptoms.add('Đau mỏi lưng hông');
-    if (noteText.contains('ra máu') || noteText.contains('chảy máu')) {
-      symptoms.add('Ra máu âm đạo');
-    }
-    if (noteText.contains('rỉ ối') || noteText.contains('vỡ ối')) {
-      symptoms.add('Rỉ ối / Vỡ ối');
-    }
-
     // Kết hợp thông tin tiền sử/khảo sát survey đã lưu
     for (final c in _surveyRiskConditions) {
       if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
