@@ -97,7 +97,32 @@ class MetricsScreeningService:
             is_anomaly = True
         risk_factors.extend(hr_factors)
 
-        # 8. RAG Retrieval for matching medical guidelines
+        # 8. Evaluate Hydration (Lượng nước uống trong ngày)
+        water_status, water_factors = self._check_water_intake(request.water_intake_ml)
+        if water_status == TriageRiskStatus.ANOMALY_MONITOR:
+            is_anomaly = True
+        risk_factors.extend(water_factors)
+
+        # 9. Evaluate EPDS Mood Score (Điểm sàng lọc trầm cảm / tâm trạng)
+        epds_status, epds_factors = self._check_epds_score(request.epds_score)
+        if epds_status == TriageRiskStatus.ANOMALY_MONITOR:
+            is_anomaly = True
+        risk_factors.extend(epds_factors)
+
+        # 10. Evaluate SpO2 & Sleep (Oxy máu và giấc ngủ)
+        spo2_status, spo2_factors = self._check_spo2(request.spo2)
+        if spo2_status == TriageRiskStatus.CRITICAL_EMERGENCY:
+            is_critical = True
+        elif spo2_status == TriageRiskStatus.ANOMALY_MONITOR:
+            is_anomaly = True
+        risk_factors.extend(spo2_factors)
+
+        sleep_status, sleep_factors = self._check_sleep(request.sleep_hours)
+        if sleep_status == TriageRiskStatus.ANOMALY_MONITOR:
+            is_anomaly = True
+        risk_factors.extend(sleep_factors)
+
+        # 11. RAG Retrieval for matching medical guidelines
         query = self._build_retrieval_query(request, risk_factors)
         rag_results = await self.vector_store.similarity_search(
             query=query,
@@ -367,6 +392,76 @@ class MetricsScreeningService:
 
         return TriageRiskStatus.NORMAL, factors
 
+    def _check_water_intake(self, water_ml: int | None) -> Tuple[TriageRiskStatus, List[str]]:
+        factors = []
+        if water_ml is None:
+            return TriageRiskStatus.NORMAL, factors
+
+        if water_ml < 1200:
+            factors.append(
+                f"Lượng nước uống rất ít ({water_ml} ml/ngày, chuẩn khuyến nghị 2000-2500ml) - Nguy cơ mất nước, thiểu ối và táo bón thai kỳ"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        elif water_ml < 1800:
+            factors.append(
+                f"Lượng nước uống chưa đủ ({water_ml} ml/ngày, cần bổ sung đạt 2000-2500ml/ngày)"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        elif water_ml >= 4500:
+            factors.append(
+                f"Lượng nước uống quá nhiều ({water_ml} ml/ngày) - Cần tầm soát đái tháo đường thai kỳ hoặc hội chứng đa niệu"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        return TriageRiskStatus.NORMAL, factors
+
+    def _check_epds_score(self, score: int | None) -> Tuple[TriageRiskStatus, List[str]]:
+        factors = []
+        if score is None:
+            return TriageRiskStatus.NORMAL, factors
+
+        if score >= 13:
+            factors.append(
+                f"Điểm sàng lọc trầm cảm EPDS rất cao ({score}/30 điểm) - Nguy cơ trầm cảm thai kỳ / sau sinh mức độ nặng"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        elif score >= 10:
+            factors.append(
+                f"Điểm sàng lọc EPDS ở mức rủi ro ({score}/30 điểm) - Dấu hiệu lo âu / trầm cảm nhẹ đến trung bình"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        return TriageRiskStatus.NORMAL, factors
+
+    def _check_spo2(self, spo2: int | None) -> Tuple[TriageRiskStatus, List[str]]:
+        factors = []
+        if spo2 is None:
+            return TriageRiskStatus.NORMAL, factors
+
+        if spo2 < 92:
+            factors.append(
+                f"Độ bão hòa oxy SpO2 rất thấp ({spo2}%) - Suy hô hấp cấp, nguy cơ thiếu oxy bào thai nghiêm trọng"
+            )
+            return TriageRiskStatus.CRITICAL_EMERGENCY, factors
+        elif spo2 < 95:
+            factors.append(f"Độ bão hòa oxy SpO2 giảm ({spo2}%, chuẩn >= 95%)")
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        return TriageRiskStatus.NORMAL, factors
+
+    def _check_sleep(self, sleep_hours: float | None) -> Tuple[TriageRiskStatus, List[str]]:
+        factors = []
+        if sleep_hours is None:
+            return TriageRiskStatus.NORMAL, factors
+
+        if sleep_hours < 5.0:
+            factors.append(
+                f"Thời gian ngủ quá ít ({sleep_hours:.1f} giờ/ngày) - Mất ngủ kéo dài gây kiệt sức và căng thẳng thai kỳ"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        return TriageRiskStatus.NORMAL, factors
+
     def _build_retrieval_query(
         self, request: HealthMetricsLogRequest, risk_factors: List[str]
     ) -> str:
@@ -385,6 +480,10 @@ class MetricsScreeningService:
                 parts.append("thiếu cân suy dinh dưỡng thai kỳ")
         if request.fetal_movements_count is not None:
             parts.append(f"cử động thai {request.fetal_movements_count} lần")
+        if request.water_intake_ml is not None and request.water_intake_ml < 1800:
+            parts.append("uống ít nước bổ sung nước thai kỳ thiểu ối")
+        if request.epds_score is not None and request.epds_score >= 10:
+            parts.append("trầm cảm tâm lý lo âu thai kỳ sau sinh")
         if request.temperature and request.temperature >= 37.5:
             parts.append(f"sốt {request.temperature} độ")
         if request.symptoms:
