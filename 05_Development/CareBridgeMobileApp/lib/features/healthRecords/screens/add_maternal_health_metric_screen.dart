@@ -580,13 +580,13 @@ class _AddMaternalHealthMetricScreenState
     double? secondaryVal,
     String? note,
   }) async {
-    final sbp = _isBloodPressure ? primaryVal.round() : _latestBp?.valueNumeric.round();
-    final dbp = _isBloodPressure ? (secondaryVal?.round() ?? 0) : _latestBp?.valueSecondary?.round();
-    final glucose = _isGlucose ? primaryVal : _latestGlucose?.valueNumeric;
-    final kicks = _isFetalMovement ? primaryVal.round() : _latestKicks?.valueNumeric.round();
-    final heartRate = _metricType == 'HEART_RATE' ? primaryVal.round() : _latestHeartRate?.valueNumeric.round();
-    final waterIntake = _isHydration ? primaryVal.round() : _latestHydration?.valueNumeric.round();
-    final epds = _metricType == 'EPDS_SCORE' ? primaryVal.round() : _latestEpds?.valueNumeric.round();
+    final sbp = _isBloodPressure ? primaryVal.round() : null;
+    final dbp = _isBloodPressure ? (secondaryVal?.round() ?? 0) : null;
+    final glucose = _isGlucose ? primaryVal : null;
+    final kicks = _isFetalMovement ? primaryVal.round() : null;
+    final heartRate = (_metricType == 'HEART_RATE' || _metricType == 'MATERNAL_HEART_RATE') ? primaryVal.round() : null;
+    final waterIntake = _isHydration ? primaryVal.round() : null;
+    final epds = (_metricType == 'EPDS_SCORE' || _metricType == 'EPDS') ? primaryVal.round() : null;
 
     final rawWeight = _isBmi ? double.tryParse(_primaryCtrl.text.trim()) : null;
     final rawHeight = _isBmi ? double.tryParse(_secondaryCtrl.text.trim()) : null;
@@ -594,7 +594,7 @@ class _AddMaternalHealthMetricScreenState
         ? (rawWeight != null && rawHeight != null && rawHeight > 0
             ? rawWeight / ((rawHeight / 100) * (rawHeight / 100))
             : primaryVal)
-        : _latestBmi?.valueNumeric;
+        : null;
 
     final symptoms = <String>[];
     final noteText = (note ?? '').toLowerCase();
