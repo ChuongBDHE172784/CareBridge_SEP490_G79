@@ -1781,10 +1781,9 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       }
     }
 
+    final maxHeight = MediaQuery.of(context).size.height * 0.82;
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
+      height: maxHeight,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1792,7 +1791,6 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             // Handle bar
             Container(
@@ -1853,7 +1851,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
             const Divider(height: 1),
 
             // Content
-            Flexible(
+            Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
@@ -2225,13 +2223,16 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    e.key.toString(),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF666666),
+                                  Expanded(
+                                    child: Text(
+                                      e.key.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF666666),
+                                      ),
                                     ),
                                   ),
+                                  const SizedBox(width: 12),
                                   Text(
                                     e.value.toString(),
                                     style: const TextStyle(
