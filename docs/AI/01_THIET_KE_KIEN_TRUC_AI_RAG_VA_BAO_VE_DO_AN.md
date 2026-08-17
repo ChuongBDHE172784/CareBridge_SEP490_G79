@@ -160,6 +160,11 @@ ON maternal_knowledge_chunks
 USING hnsw (embedding vector_cosine_ops);
 ```
 
+> [!NOTE]
+> **Cơ chế Khởi tạo Linh hoạt (Dual-Mode DB Setup):**
+> 1. **Môi trường Toàn hệ thống:** Tự động chạy qua Flyway Migration của Spring Boot tại [`CareBridgeAPI/src/main/resources/db/migration/V3__create_maternal_knowledge_chunks.sql`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAPI/src/main/resources/db/migration/V3__create_maternal_knowledge_chunks.sql).
+> 2. **Môi trường Phát triển Độc lập AI (Standalone Dev/Test):** Chạy nhanh qua script CLI [`CareBridgeAITriageService/scripts/init_pgvector_db.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/scripts/init_pgvector_db.py) mà không cần khởi động Spring Boot.
+
 #### Giải thích chi tiết các trường dữ liệu:
 * **`id`:** Định danh duy nhất cho từng đoạn tri thức.
 * **`title`:** Tên tài liệu / Tiêu đề cẩm nang.
