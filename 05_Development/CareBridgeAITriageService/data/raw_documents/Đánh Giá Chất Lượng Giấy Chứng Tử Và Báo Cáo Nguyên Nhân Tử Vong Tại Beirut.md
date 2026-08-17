@@ -3,7 +3,7 @@ title: Phân Tích Thực Trạng Thiếu Sót Trong Cấp Giấy Chứng Tử V
 stage: ALL
 topic: HEALTH_MONITORING
 document_type: RESEARCH
-source: Inadequacies of death certification in Beirut: who is responsible? (Bulletin of the World Health Organization 2002;80:555–561)
+source: "Inadequacies of death certification in Beirut: who is responsible? (Bulletin of the World Health Organization 2002;80:555–561)"
 organization: WHO (Tổ chức Y tế Thế giới) & Đại học Hoa Kỳ Beirut (AUB)
 section: Thống kê Sinh tử và Kỹ thuật Y khoa Pháp lý
 ---

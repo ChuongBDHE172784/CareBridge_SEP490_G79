@@ -3,7 +3,7 @@ title: Bài Học Triển Khai Mô Hình Khám Thai Tối Thiểu 8 Lần (BANC 
 stage: PREGNANCY
 topic: HEALTH_MONITORING
 document_type: RESEARCH
-source: Implementing antenatal care recommendations, South Africa (Bulletin of the World Health Organization 2021;99:220–227)
+source: "Implementing antenatal care recommendations, South Africa (Bulletin of the World Health Organization 2021;99:220–227)"
 organization: WHO (Tổ chức Y tế Thế giới) & Bộ Y tế Nam Phi
 section: Tổ chức Dịch vụ Tiền sản và Kiểm soát Tăng huyết áp Thai kỳ
 ---
