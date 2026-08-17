@@ -211,7 +211,7 @@ Bám sát sơ đồ thiết kế hệ thống tại [docs/mainworkflow-Trang-3.d
 
 Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe dựa trên hướng dẫn chuyên môn của **Bộ Y tế Việt Nam** và **Tổ chức Y tế Thế giới (WHO)**.
 
-#### A. Danh mục 7 Chỉ số Sức khỏe Chuẩn hóa của Mẹ (Maternal Health Metrics):
+#### A. Danh mục 8 Chỉ số Sức khỏe Chuẩn hóa của Mẹ (Maternal Health Metrics):
 1. **Chỉ số khối cơ thể (BMI / Cân nặng & Chiều cao):** Đơn vị $kg/m^2$ — Giám sát mức tăng cân theo từng tam cá nguyệt.
 2. **Cử động thai (Fetal Movement Count / Session):** Đơn vị $count / session$ — Theo dõi thai máy từ tuần 28 để phát hiện sớm dấu hiệu suy thai.
 3. **Huyết áp (Blood Pressure - $SBP / DBP$):** Đơn vị $mmHg$ — Sàng lọc cao huyết áp thai kỳ và Tiền sản giật.
@@ -219,6 +219,7 @@ Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe d�
 5. **Nhịp tim mẹ (Maternal Heart Rate):** Đơn vị $bpm$ — Phát hiện rối loạn nhịp tim, hồi hộp, thiếu máu thai kỳ.
 6. **Điểm sàng lọc trầm cảm EPDS (Edinburgh Postnatal Depression Scale):** Thang điểm $0 - 30$ điểm (10 câu hỏi chuẩn y khoa) — Đánh giá sức khỏe tâm thần, sàng lọc sớm Trầm cảm trước và sau sinh; có cơ chế cờ đỏ an toàn nếu câu hỏi 10 $> 0$.
 7. **Đường huyết (Blood Glucose):** Đơn vị $mg/dL$ hoặc $mmol/L$ — Theo dõi và phòng ngừa Đái tháo đường thai kỳ (ĐTĐTK).
+8. **Thân nhiệt / Nhiệt độ cơ thể (Body Temperature - `TEMPERATURE`):** Đơn vị $^\circ C$ ($30.0 - 45.0^\circ C$) kèm vị trí đo (`ARMPIT`, `FOREHEAD`, `ORAL`, `EAR`) — Phân tích theo từng giai đoạn sản khoa (Mang thai vs Hậu sản vs Chu sinh) để phát hiện sớm Sốt cao thai kỳ, Nhiễm trùng ối (*Chorioamnionitis*) và Sốt nhiễm trùng hậu sản (*Puerperal Sepsis* theo chuẩn WHO).
 
 *(Hệ thống kiên quyết loại bỏ chỉ số "Mức độ căng thẳng / Stress" cảm tính chung chung để thay thế bằng thang điểm trầm cảm EPDS chuẩn y tế được quốc tế công nhận).*
 
@@ -236,10 +237,10 @@ Khi Mẹ bầu mở màn hình nhập chỉ số sức khỏe ([AddMaternalHealt
 1. **Dữ liệu Survey Khảo sát Ban đầu (Onboarding Medical Profile):**
    - Gọi `GET /api/v1/recommendations/profile` (hoặc trích xuất từ `mother_journeys.recommendation_profile_json`).
    - Tự động bóc tách các mã bệnh lý nền (`underlyingConditions`: `CHRONIC_HYPERTENSION`, `CARDIOVASCULAR_DISEASE`...), tiền sử sản khoa (`reproductiveHistory`: `PRIOR_PREECLAMPSIA`, `PRIOR_GDM`...), và BMI ban đầu.
-2. **Tuần thai Thực tế (Gestational Age):**
-   - Gọi `GET /api/v1/journey/dashboard` để lấy chính xác tuần thai hiện tại (`effectivePregnancyWeek` / `weekNumber`).
+2. **Tuần thai Thực tế & Giai đoạn Sản khoa (Gestational Age & Maternal Stage):**
+   - Gọi `GET /api/v1/journey/dashboard` để lấy chính xác tuần thai hiện tại (`effectivePregnancyWeek` / `weekNumber`) và giai đoạn (`PREGNANCY` vs `POSTPARTUM`).
 3. **Chỉ số Sức khỏe & Triệu chứng Mẹ vừa nhập:**
-   - Huyết áp tâm thu/tâm trương ($SBP/DBP$), Đường huyết ($Glucose$), Cử động thai ($Kicks$), Cân nặng/Chiều cao, Thân nhiệt, Nhịp tim và ghi chú triệu chứng tự do.
+   - Huyết áp tâm thu/tâm trương ($SBP/DBP$), Đường huyết ($Glucose$), Cử động thai ($Kicks$), Cân nặng/Chiều cao, Thân nhiệt ($Temperature$), Nhịp tim và ghi chú triệu chứng tự do.
 
 ---
 
@@ -248,8 +249,8 @@ Dữ liệu tổng hợp được đóng gói và gửi lên AI Triage Service q
 
 ```mermaid
 flowchart TD
-    INPUT["Mẹ nhập Chỉ số<br/>(Huyết áp, Đường huyết, Thai máy, v.v.)"] --> SAVE_DB["Lưu Database PostgreSQL"]
-    SAVE_DB --> AGGREGATE["Tổng hợp Đa Ngữ cảnh:<br/>• Survey bệnh nền & Tiền sử sản khoa<br/>• Tuần thai hiện tại (Journey Dashboard)<br/>• Chỉ số & Triệu chứng vừa nhập"]
+    INPUT["Mẹ nhập Chỉ số<br/>(Huyết áp, Thân nhiệt, Đường huyết, Thai máy, v.v.)"] --> SAVE_DB["Lưu Database PostgreSQL"]
+    SAVE_DB --> AGGREGATE["Tổng hợp Đa Ngữ cảnh:<br/>• Survey bệnh nền & Tiền sử sản khoa<br/>• Tuần thai & Giai đoạn (PREGNANCY/POSTPARTUM)<br/>• Chỉ số & Triệu chứng vừa nhập"]
     AGGREGATE --> AI_EVAL["AI Triage Service<br/>(POST /api/v1/metrics/evaluate)"]
     
     AI_EVAL --> RISK_CHECK{"Đánh giá Rủi ro"}
@@ -268,7 +269,11 @@ flowchart TD
      - $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg (Cơn tăng huyết áp kịch phát).
      - $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg kèm triệu chứng đau đầu/hoa mắt/nhìn mờ/tiền sử Tiền sản giật (`PRIOR_PREECLAMPSIA`).
      - Mất cử động thai sau tuần 28 ($0$ lần hoặc $< 4$ lần/2h).
-     - Sốt cao $\ge 38.5^\circ C$, ra máu âm đạo tươi hoặc rỉ/vỡ ối sớm.
+     - **Thân nhiệt theo Giai đoạn:**
+       - *Mang thai (`PREGNANCY`):* $T \ge 38.5^\circ C$ (hoặc $\ge 38.0^\circ C$ kèm rỉ ối, đau bụng, ra máu) $\rightarrow$ Nguy cơ Nhiễm trùng ối (*Chorioamnionitis*) hoặc Nhiễm trùng toàn thân.
+       - *Hậu sản (`POSTPARTUM`):* $T \ge 38.0^\circ C \rightarrow$ Nghi ngờ Nhiễm trùng hậu sản (*Puerperal Sepsis*), Viêm nội mạc tử cung, Viêm tắc tuyến vú theo WHO.
+       - *Chung/Chu sinh:* $T \ge 39.0^\circ C$.
+     - Ra máu âm đạo tươi hoặc rỉ/vỡ ối sớm.
    - *Hành vi Ứng dụng:*
      - Hiển thị Modal Cảnh báo Nguy cấp Toàn màn hình (`CẢNH BÁO NGUY CẤP Y TẾ`).
      - **Nút "MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU":** Điều hướng sang [EmergencyMapScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) (`/emergency/map?mode=triage&stage=PREGNANCY`):
@@ -278,14 +283,14 @@ flowchart TD
      - **Nút "GỌI CẤP CỨU 115 NGAY":** Kích hoạt quay số trực tiếp `tel:115`.
 
 2. **🟡 Nhánh VÀNG — Cần Theo dõi Bất thường (`ANOMALY_MONITOR`):**
-   - *Ngưỡng kích hoạt:* Tiền tăng huyết áp ($130-139/85-89$), Đường huyết lúc đói $\ge 5.1$ mmol/L, cử động thai giảm nhẹ, ốm nghén, đau lưng.
+   - *Ngưỡng kích hoạt:* Tiền tăng huyết áp ($130-139/85-89$), Đường huyết lúc đói $\ge 5.1$ mmol/L, cử động thai giảm nhẹ, sốt nhẹ ($37.5^\circ C - 38.4^\circ C$ thai kỳ, $37.5^\circ C - 37.9^\circ C$ hậu sản) hoặc hạ thân nhiệt ($< 35.5^\circ C$), ốm nghén, đau lưng.
    - *Hành vi Ứng dụng:*
      - Hiển thị Modal Cảnh báo Vàng (`LƯU Ý THEO DÕI SỨC KHỎE`).
      - Liệt kê các nguy cơ AI phát hiện.
      - **Nút "HỎI TRỢ LÝ AI NURSE (BƯỚC 10)":** Mở ngay [RagChatScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) (`/rag/chat`) kèm nội dung chỉ số đã điền sẵn để AI Nurse giải thích và trích dẫn cẩm nang y tế.
 
 3. **🟢 Nhánh XANH — Chỉ số An toàn (`NORMAL`):**
-   - *Ngưỡng kích hoạt:* Tất cả chỉ số nằm trong giới hạn an toàn.
+   - *Ngưỡng kích hoạt:* Tất cả chỉ số nằm trong giới hạn an toàn ($36.0 - 37.4^\circ C$, HA bình thường, đường huyết chuẩn).
    - *Hành vi Ứng dụng:* Hiển thị SnackBar thông báo thành công và động viên mẹ an tâm.
 
 ---
@@ -295,14 +300,14 @@ flowchart TD
 Nhằm tối ưu hóa trải nghiệm người dùng (UX) và đảm bảo tính chính xác lâm sàng, CareBridge thiết kế hệ thống theo **2 Chế độ Đánh giá rõ ràng**:
 
 1. **Chế độ 1: Cô lập Đánh giá Chỉ số Đơn lẻ (Single Metric Isolation):**
-   * Khi mẹ bầu nhập một chỉ số đo lường cụ thể trong ngày (ví dụ: Huyết áp, Đường huyết, hoặc Cân nặng), hệ thống **chỉ kiểm tra và đánh giá chỉ số vừa nhập** kèm theo ghi chú triệu chứng của lần đo đó.
+   * Khi mẹ bầu nhập một chỉ số đo lường cụ thể trong ngày (ví dụ: Huyết áp, Đường huyết, Thân nhiệt, hoặc Cân nặng), hệ thống **chỉ kiểm tra và đánh giá chỉ số vừa nhập** kèm theo ghi chú triệu chứng của lần đo đó.
    * **Lợi ích:** Tránh hiện tượng cảnh báo sai lệch (False Alarm) do các chỉ số cũ chưa kịp cập nhật, giúp việc ghi nhận nhật ký hằng ngày diễn ra nhanh chóng, nhẹ nhàng và không gây phiền toái cho mẹ.
 
 2. **Chế độ 2: Trang Tổng hợp & Đánh giá Sức khỏe Toàn diện AI (Total Overview AI Health Assessment):**
    * Trong danh mục Dropdown chọn chỉ số sức khỏe, CareBridge cung cấp mục chuyên biệt: **`📊 Đánh giá Sức khỏe Toàn diện AI`** ([`HealthMetricTrendScreen`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart)).
    * Tại đây, hệ thống tự động tổng hợp bức tranh đa chiều gồm:
      1. **Tuần thai thực tế & Bệnh sử khảo sát (Survey Onboarding):** Tuần thai hiện tại kết hợp tiền sử tiền sản giật, tăng huyết áp mạn, đái tháo đường thai kỳ.
-     2. **Bảng 7 Chỉ số Sinh hiệu & Tâm lý mới nhất:**
+     2. **Bảng 8 Chỉ số Sinh hiệu & Tâm lý mới nhất:**
         - 🩺 **Huyết áp (`BLOOD_PRESSURE`):** Tâm thu và tâm trương đo gần nhất.
         - ⚖️ **BMI & Thể trạng (`BMI` / `WEIGHT` / `HEIGHT`):** Cân nặng, chiều cao, chỉ số BMI.
         - 🩸 **Đường huyết (`BLOOD_GLUCOSE`):** Nồng độ glucose kèm ngữ cảnh đo.
@@ -310,7 +315,8 @@ Nhằm tối ưu hóa trải nghiệm người dùng (UX) và đảm bảo tính
         - 💧 **Lượng nước uống (`HYDRATION`):** Tổng lượng nước nạp trong ngày.
         - ❤️ **Nhịp tim mẹ (`MATERNAL_HEART_RATE`):** Tần số tim mẹ (bpm).
         - 🧠 **Tâm trạng & Cảm xúc (`EPDS_SCORE`):** Điểm sàng lọc trầm cảm thai kỳ Edinburgh.
-     3. **Ô nhập triệu chứng cảm nhận bổ sung:** Cho phép mẹ ghi nhận các biểu hiện như đau đầu, hoa mắt, nhìn mờ, phù nề, mệt mỏi...
+        - 🌡️ **Nhiệt độ cơ thể (`TEMPERATURE`):** Thân nhiệt ($^\circ C$) đo gần nhất.
+     3. **Ô nhập triệu chứng cảm nhận bổ sung:** Cho phép mẹ ghi nhận các biểu hiện như đau đầu, hoa mắt, nhìn mờ, phù nề, sốt ớn lạnh, mệt mỏi...
      4. **Nút CTA "GỬI AI ĐÁNH GIÁ SỨC KHỎE TOÀN DIỆN":** Khi bấm, toàn bộ gói dữ liệu đa chiều được gửi lên `CareBridgeAITriageService` để thực hiện sàng lọc tương quan đa biến (Correlation Matrix Screening) và điều hướng chính xác theo 3 luồng (🔴 Cấp cứu SOS GPS / 🟡 AI Nurse Assistant / 🟢 An toàn).
 
 ---
@@ -323,11 +329,13 @@ Nhằm tối ưu hóa trải nghiệm người dùng (UX) và đảm bảo tính
 | :--- | :--- | :--- |
 | **1. Tầng Ngưỡng Lâm sàng Cố định (Deterministic Safety Gate)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) | `_check_blood_pressure()`, `_check_temperature()`, `_check_glucose()`, `_check_fetal_movements()`, `_check_bmi()`, `_check_heart_rate()`, `_check_water_intake()`, `_check_epds_score()`, `_check_spo2()`, `_check_sleep()`, `_check_symptoms()` |
 | **2. Tầng Truy xuất Cẩm nang RAG Động (pgvector Retrieval)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) & [`app/rag/vector_store.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/vector_store.py) | `_build_retrieval_query()` ➔ `vector_store.similarity_search(top_k=3)` ➔ trả về `relevant_sources` |
-| **3. Tầng Tạo sinh AI Nurse RAG (Bước 10)** | [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) & [`app/rag/gemini_client.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/gemini_client.py) | `chat_with_nurse()`, `generate_medical_response()` |
-| **4. Mobile: Lưu Chỉ số Đơn lẻ (Isolate Evaluation)** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) | `_save()`, `_evaluateMetricWithAi()` |
-| **5. Mobile: Trang Tổng quan & Đánh giá Sức khỏe Toàn diện AI** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart) | `_overviewOption`, `_buildTotalOverviewSection()`, `_evaluateTotalOverviewWithAi()`, `_showMetricPickerModal()` |
-| **6. Mobile: Modal Cấp cứu & Kích hoạt Bản đồ SOS + GPS** | [`emergency_map_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) & [`SafetyPermissionService`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/safety/services/safety_permission_service.dart) | `_showCriticalEmergencyDialog()` ➔ `readConsentedLocation()` ➔ `EmergencyService().openFlow(triggerSource: 'AI_TRIAGE', latitude, longitude)` ➔ `context.push('/emergency/map')` |
-| **7. Mobile: Modal Cảnh báo & Tự động Đính kèm sang AI Nurse** | [`rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) | `_showAnomalyDialog()` ➔ `context.push('/rag/chat', extra: {attachedContext: ..., initialMessage: ...})` ➔ `_AttachedContextBanner` |
+| **3. Tầng Backend Validation (Spring Boot)** | [`MetricObservationValidator.java`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/service/MetricObservationValidator.java) | `validateNumericValue()` ➔ `requireRange(30.0, 45.0)` cho `TEMPERATURE` |
+| **4. Tầng Tạo sinh AI Nurse RAG (Bước 10)** | [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) & [`app/rag/gemini_client.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/gemini_client.py) | `chat_with_nurse()`, `generate_medical_response()` |
+| **5. Mobile: Nhập Chỉ số Đơn lẻ (Isolate Evaluation)** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) | `_save()`, `_evaluateMetricWithAi()`, dropdown vị trí đo `_temperatureSite` |
+| **6. Mobile: Chỉnh sửa Bản ghi Chỉ số** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/edit_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/edit_health_metric_screen.dart) | Hỗ trợ xem/sửa giá trị thân nhiệt và vị trí đo `measurementSite` |
+| **7. Mobile: Trang Tổng quan & Đánh giá Sức khỏe Toàn diện AI** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart) | `_overviewOption`, `_buildTotalOverviewSection()`, `_evaluateTotalOverviewWithAi()`, `_showMetricPickerModal()`, nạp song song 8 metrics |
+| **8. Mobile: Modal Cấp cứu & Kích hoạt Bản đồ SOS + GPS** | [`emergency_map_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) & [`SafetyPermissionService`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/safety/services/safety_permission_service.dart) | `_showCriticalEmergencyDialog()` ➔ `readConsentedLocation()` ➔ `EmergencyService().openFlow(triggerSource: 'AI_TRIAGE', latitude, longitude)` ➔ `context.push('/emergency/map')` |
+| **9. Mobile: Modal Cảnh báo & Tự động Đính kèm sang AI Nurse** | [`rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) | `_showAnomalyDialog()` ➔ `context.push('/rag/chat', extra: {attachedContext: ..., initialMessage: ...})` ➔ `_AttachedContextBanner` |
 
 ---
 
