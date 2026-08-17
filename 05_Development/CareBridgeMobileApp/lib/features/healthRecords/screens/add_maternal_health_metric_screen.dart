@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../emergency/services/emergency_service.dart';
+import '../../safety/services/safety_permission_service.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 
@@ -918,8 +919,19 @@ class _AddMaternalHealthMetricScreenState
                     Navigator.of(dialogCtx).pop();
                     Navigator.of(context).pop(true);
                     try {
-                      await EmergencyService().openFlow(triggerSource: 'AI_TRIAGE');
-                    } catch (_) {}
+                      final pos = await SafetyPermissionService().readConsentedLocation();
+                      final lat = pos != null ? double.parse(pos.latitude.toStringAsFixed(7)) : null;
+                      final lng = pos != null ? double.parse(pos.longitude.toStringAsFixed(7)) : null;
+                      await EmergencyService().openFlow(
+                        triggerSource: 'AI_TRIAGE',
+                        latitude: lat,
+                        longitude: lng,
+                      );
+                    } catch (_) {
+                      try {
+                        await EmergencyService().openFlow(triggerSource: 'AI_TRIAGE');
+                      } catch (_) {}
+                    }
                     if (context.mounted) {
                       context.push('/emergency/map?mode=triage&stage=PREGNANCY');
                     }
