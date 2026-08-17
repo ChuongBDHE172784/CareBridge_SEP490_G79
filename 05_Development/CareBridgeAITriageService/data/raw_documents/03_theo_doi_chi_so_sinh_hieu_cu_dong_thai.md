@@ -20,8 +20,8 @@ section: Hướng dẫn Tự chăm sóc và Theo dõi Thai kỳ
 ### Phân loại mức huyết áp ở mẹ bầu:
 - **Bình thường:** Huyết áp tâm thu < 130 mmHg và huyết áp tâm trương < 85 mmHg.
 - **Tăng huyết áp nhẹ (cần theo dõi sát):** Tâm thu từ 130 - 139 mmHg hoặc tâm trương từ 85 - 89 mmHg.
-- **Tăng huyết áp thai kỳ (nghi ngờ tiền sản giật):** Tâm thu $\ge 140$ mmHg hoặc tâm trương $\ge 90$ mmHg.
-- **Tăng huyết áp mức độ nặng (Cấp cứu khẩn cấp):** Tâm thu $\ge 160$ mmHg hoặc tâm trương $\ge 110$ mmHg.
+- **Tăng huyết áp thai kỳ (nghi ngờ tiền sản giật):** Tâm thu ≥ 140 mmHg hoặc tâm trương ≥ 90 mmHg.
+- **Tăng huyết áp mức độ nặng (Cấp cứu khẩn cấp):** Tâm thu ≥ 160 mmHg hoặc tâm trương ≥ 110 mmHg.
 
 ---
 
@@ -30,9 +30,9 @@ section: Hướng dẫn Tự chăm sóc và Theo dõi Thai kỳ
 Đái tháo đường thai kỳ thường được sàng lọc ở tuần 24 - 28 bằng nghiệm pháp dung nạp glucose đường uống (OGTT 75g).
 
 ### Mục tiêu đường huyết kiểm soát tại nhà (theo Hiệp hội Đái tháo đường Hoa Kỳ ADA & Bộ Y Tế):
-- **Đường huyết lúc đói (trước ăn sáng):** $\le 5.1$ mmol/L (92 mg/dL).
-- **Đường huyết sau ăn 1 giờ:** $\le 7.8$ mmol/L (140 mg/dL).
-- **Đường huyết sau ăn 2 giờ:** $\le 6.7$ - 8.5 mmol/L (120 - 153 mg/dL).
+- **Đường huyết lúc đói (trước ăn sáng):** ≤ 5.1 mmol/L (92 mg/dL).
+- **Đường huyết sau ăn 1 giờ:** ≤ 7.8 mmol/L (140 mg/dL).
+- **Đường huyết sau ăn 2 giờ:** ≤ 6.7 - 8.5 mmol/L (120 - 153 mg/dL).
 
 ### Lời khuyên dinh dưỡng ổn định đường huyết:
 - Chia nhỏ bữa ăn thành 3 bữa chính và 2 - 3 bữa phụ.

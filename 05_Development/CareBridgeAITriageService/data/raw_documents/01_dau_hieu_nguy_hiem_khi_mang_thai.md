@@ -13,14 +13,14 @@ section: Chương IV - Cảnh báo Cấp cứu Sản khoa
 Tiền sản giật là một biến chứng thai kỳ nguy hiểm đặc trưng bởi tăng huyết áp và tổn thương các cơ quan (thường là thận và gan), thường xuất hiện sau tuần thứ 20 của thai kỳ.
 
 ### Các dấu hiệu cảnh báo nghiêm trọng:
-- **Huyết áp tăng cao:** Huyết áp tâm thu $\ge 140$ mmHg hoặc huyết áp tâm trương $\ge 90$ mmHg đo ở hai lần cách nhau ít nhất 4 giờ. Ngưỡng $\ge 160/110$ mmHg là cơn tăng huyết áp khẩn cấp.
+- **Huyết áp tăng cao:** Huyết áp tâm thu ≥ 140 mmHg hoặc huyết áp tâm trương ≥ 90 mmHg đo ở hai lần cách nhau ít nhất 4 giờ. Ngưỡng ≥ 160/110 mmHg là cơn tăng huyết áp khẩn cấp.
 - **Đau đầu dữ dội:** Cơn đau đầu dai dẳng, không thuyên giảm khi nghỉ ngơi hoặc dùng các biện pháp thư giãn.
 - **Rối loạn thị giác:** Hoa mắt, chóng mặt, nhìn mờ, nhìn thấy đốm sáng nhấp nháy hoặc mất thị lực thoáng qua.
 - **Đau vùng thượng vị hoặc hạ sườn phải:** Đau quặn hoặc âm ỉ dữ dội dưới mũi ức hoặc dưới bờ sườn bên phải (dấu hiệu tổn thương gan hoặc hội chứng HELLP).
 - **Phù nề tiến triển nhanh:** Phù đột ngột ở mặt, mí mắt, bàn tay (ngón tay căng tức không tháo được nhẫn) hoặc tăng cân nhanh (> 1kg/tuần).
 
 ### Xử trí:
-Khi có huyết áp $\ge 140/90$ kèm theo bất kỳ dấu hiệu thị giác hoặc đau đầu nào, thai phụ phải được đưa đến ngay khoa Cấp cứu Sản khoa của Bệnh viện để được dùng thuốc kiểm soát huyết áp và đề phòng cơn co giật (Sản giật).
+Khi có huyết áp ≥ 140/90 kèm theo bất kỳ dấu hiệu thị giác hoặc đau đầu nào, thai phụ phải được đưa đến ngay khoa Cấp cứu Sản khoa của Bệnh viện để được dùng thuốc kiểm soát huyết áp và đề phòng cơn co giật (Sản giật).
 
 ---
 

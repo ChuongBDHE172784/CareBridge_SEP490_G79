@@ -56,3 +56,54 @@ async def test_rag_chat_multi_turn_conversation():
     assert len(result.answer) > 0
     # Should retrieve preeclampsia or blood pressure related sources thanks to multi-turn query expansion
     assert len(result.sources) > 0
+
+
+@pytest.mark.asyncio
+async def test_rag_chat_family_role():
+    service = RagChatService()
+    request = RagChatRequest(
+        message="Vợ tôi đang mang thai 3 tháng đầu hay bị ốm nghén, tôi nên nấu những món gì bồi bổ và chăm sóc vợ thế nào?",
+        stage=MaternalStage.PREGNANCY,
+        user_role="FAMILY",
+    )
+    result = await service.chat(request)
+    assert result.answer is not None
+    assert len(result.answer) > 0
+    assert result.has_critical_warning is False
+    assert len(result.suggested_followups) > 0
+
+
+@pytest.mark.asyncio
+async def test_rag_chat_mother_with_survey_profile():
+    service = RagChatService()
+    request = RagChatRequest(
+        message="Em nên ăn uống và vận động như thế nào trong tam cá nguyệt này?",
+        stage=MaternalStage.PREGNANCY,
+        gestational_age_weeks=24,
+        user_role="MOTHER",
+        survey_profile={
+            "conditions": ["Tiền sử tiền sản giật nhẹ lần mang thai trước"],
+            "allergies": ["Hải sản"],
+        },
+    )
+    result = await service.chat(request)
+    assert result.answer is not None
+    assert len(result.answer) > 0
+    assert result.has_critical_warning is False
+
+
+def test_clean_latex_and_math_artifacts():
+    service = RagChatService()
+    raw = r"Huyết áp $\ge 140/90$ mmHg, sốt $\ge 38.5^\circ C$, đường huyết $\le 5.1$ mmol/L, $\approx 10$ ngày, $\pm 2$ tuần, $140/90$."
+    cleaned = service._clean_latex_and_math_artifacts(raw)
+    assert r"$\ge" not in cleaned
+    assert r"\ge" not in cleaned
+    assert r"$\le" not in cleaned
+    assert r"\le" not in cleaned
+    assert r"^\circ" not in cleaned
+    assert "≥ 140/90" in cleaned
+    assert "≥ 38.5°C" in cleaned
+    assert "≤ 5.1" in cleaned
+    assert "≈ 10" in cleaned
+    assert "± 2" in cleaned
+

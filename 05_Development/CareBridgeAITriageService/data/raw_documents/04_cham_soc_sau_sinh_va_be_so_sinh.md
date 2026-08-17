@@ -20,7 +20,7 @@ Sản dịch là dịch chảy ra từ tử cung sau khi sinh con.
 
 ### Dấu hiệu bất thường (Băng huyết / Nhiễm trùng hậu sản):
 - Sản dịch ra máu tươi ồ ạt làm ướt đẫm băng vệ sinh dày chỉ trong 1 giờ.
-- Sản dịch có mùi hôi tanh nồng nặc kèm theo sốt cao $\ge 38^\circ C$ và đau bụng dưới dữ dội.
+- Sản dịch có mùi hôi tanh nồng nặc kèm theo sốt cao ≥ 38°C và đau bụng dưới dữ dội.
 - Đột ngột ra máu đỏ tươi trở lại sau khi sản dịch đã chuyển sang màu trắng.
 ➔ Phải đến ngay bệnh viện sản phụ khoa khám cấp cứu.
 
@@ -39,4 +39,4 @@ Sản dịch là dịch chảy ra từ tử cung sau khi sinh con.
 - **Phòng ngừa và xử trí tắc tia sữa / Viêm tuyến vú:**
   - Cho bé bú đúng khớp ngậm, vắt cạn sữa thừa sau cữ bú nếu ngực còn căng cứng.
   - Chườm ấm nhẹ trước khi cho bú, chườm mát sau khi bú nếu có cảm giác sưng tức.
-  - Nếu bầu ngực sưng đỏ cục bộ, sốt cao $\ge 38.5^\circ C$ và ớn lạnh, cần đi khám để được điều trị viêm tuyến vú.
+  - Nếu bầu ngực sưng đỏ cục bộ, sốt cao ≥ 38.5°C và ớn lạnh, cần đi khám để được điều trị viêm tuyến vú.
