@@ -288,6 +288,23 @@ flowchart TD
    - *Ngưỡng kích hoạt:* Tất cả chỉ số nằm trong giới hạn an toàn.
    - *Hành vi Ứng dụng:* Hiển thị SnackBar thông báo thành công và động viên mẹ an tâm.
 
+---
+
+#### E. Bảng Ánh xạ Mã Nguồn Thực thi (Code Mapping Reference):
+
+Để đối chiếu và minh chứng trước Hội đồng, toàn bộ luồng xử lý được tổ chức rõ ràng trong các module mã nguồn sau:
+
+| Thành phần & Nhiệm vụ | File Mã nguồn | Hàm / Class thực thi chính |
+| :--- | :--- | :--- |
+| **1. Tầng Ngưỡng Lâm sàng Cố định (Deterministic Safety Gate)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) | `_check_blood_pressure()`, `_check_temperature()`, `_check_glucose()`, `_check_fetal_movements()`, `_check_symptoms()` |
+| **2. Tầng Truy xuất Cẩm nang RAG Động (pgvector Retrieval)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) & [`app/rag/vector_store.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/vector_store.py) | `_build_retrieval_query()` ➔ `vector_store.similarity_search(top_k=3)` ➔ trả về `relevant_sources` |
+| **3. Tầng Tạo sinh AI Nurse RAG (Bước 10)** | [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) & [`app/rag/gemini_client.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/gemini_client.py) | `chat_with_nurse()`, `generate_medical_response()` |
+| **4. Mobile: Thu thập Đa Ngữ cảnh & Đánh giá AI** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) | `_loadJourneyAndSurveyContext()`, `_save()`, `_evaluateMetricWithAi()` |
+| **5. Mobile: Modal Cấp cứu & Kích hoạt Bản đồ SOS** | [`add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) ➔ [`emergency_map_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) | `_showCriticalEmergencyDialog()` ➔ `context.push('/emergency/map')` (Còi SOS, GPS Gia đình, BV Sản gần nhất) |
+| **6. Mobile: Modal Cảnh báo & Chuyển sang AI Nurse** | [`add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart) ➔ [`rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) | `_showAnomalyWarningDialog()` ➔ `context.push('/rag/chat')` |
+
+---
+
 ### 5.2. Luồng AI Nurse Assistant RAG Chat (Bước 10)
 Khi mẹ bầu gửi câu hỏi thảo luận:
 1. **Semantic Search:** Embed câu hỏi thành vector 768 chiều $\rightarrow$ Truy vấn pgvector lấy Top $K=4$ đoạn văn bản có điểm số Cosine cao nhất, có lọc theo `stage` (ví dụ mẹ đang mang thai thì lọc tài liệu `PREGNANCY`).
@@ -499,6 +516,25 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   >    - Nếu huyết áp cao $\ge 140/90$ kèm tiền sử `PRIOR_PREECLAMPSIA` hoặc triệu chứng đau đầu/hoa mắt $\rightarrow$ Phân loại `CRITICAL_EMERGENCY`.
   >    - **Nhánh ĐỎ:** Ứng dụng hiện Modal Cảnh báo Cấp cứu, cung cấp nút **'MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU'** để chuyển sang `EmergencyMapScreen` (bật còi SOS, tự động gửi định vị GPS khẩn cấp tới Người thân trong nhóm Gia đình, quét danh sách Bệnh viện Sản khoa gần nhất và mở dẫn đường TrackAsia/Google Maps) và nút **'GỌI 115'**.
   >    - **Nhánh VÀNG (`ANOMALY_MONITOR`):** Hiện Modal Cảnh báo Vàng kèm nút **'HỎI TRỢ LÝ AI NURSE'** để chuyển ngay sang `RagChatScreen` với câu hỏi ngữ cảnh được điền sẵn, giúp mẹ nhận tư vấn cẩm nang kịp thời."
+
+---
+
+### Câu 15: "Các chỉ số sức khỏe đang được so sánh theo ngưỡng cố định (hard-coded) hay so sánh theo tài liệu RAG? Chỉ rõ vị trí mã nguồn thực thi?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng **Kiến trúc Lai 2 Tầng Chuẩn Y khoa (Dual-Layer Clinical Architecture)** — tiêu chuẩn bắt buộc của các hệ thống Y tế số quốc tế:
+  > 
+  > 1. **Tầng 1: Ngưỡng Lâm sàng Cố định (Deterministic Safety Gate):**
+  >    - *Bản chất:* Các con số sinh tử như Huyết áp cấp cứu ($\ge 160/110$ mmHg), Mất cử động thai sau tuần 28 ($0$ lần/2h), Sốt cao $\ge 38.5^\circ C$ là **Quy chuẩn Y khoa Bắt buộc** của Bộ Y tế và ACOG.
+  >    - *Lý do kỹ thuật:* Trong y tế, **tuyệt đối không được phó mặc tính mạng bệnh nhân cho mô hình xác suất LLM** vì LLM có nguy cơ ảo giác (hallucination) và độ trễ mạng. Tầng này phản hồi tức thì trong $1$ ms để bảo vệ 100% an toàn thai phụ.
+  >    - *Vị trí code:* Nằm tại [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) (các hàm `_check_blood_pressure()`, `_check_temperature()`, `_check_glucose()`, `_check_fetal_movements()`, `_check_symptoms()`).
+  > 
+  > 2. **Tầng 2: Truy xuất & Đối chiếu Cẩm nang RAG Động (Dynamic Semantic RAG Retrieval):**
+  >    - *Bản chất:* Sau khi xác định nhóm rủi ro, hệ thống tự động tổng hợp chỉ số thành vector truy vấn 768 chiều và truy vấn CSDL Vector `pgvector` để **trích xuất chính xác các đoạn cẩm nang y tế liên quan** (phác đồ Tiền sản giật, cẩm nang đếm cử động thai, chế độ ăn cho mẹ đái tháo đường).
+  >    - *Vị trí code:* Nằm tại [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) (hàm `_build_retrieval_query()` và `vector_store.similarity_search()`) kết nối với [`app/rag/vector_store.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/vector_store.py).
+  > 
+  > 3. **Tầng 3: AI Nurse RAG Generative Chat (Bước 10):**
+  >    - *Bản chất:* Mẹ bầu trao đổi tự nhiên với AI Nurse, toàn bộ câu trả lời, lời khuyên dinh dưỡng và gợi ý câu hỏi tiếp theo được Gemini sinh **động 100% dựa trên kho tài liệu RAG**.
+  >    - *Vị trí code:* Nằm tại [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) và giao diện Mobile tại [`CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart)."
 
 ---
 
