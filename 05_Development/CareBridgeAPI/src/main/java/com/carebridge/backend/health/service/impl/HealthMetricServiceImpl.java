@@ -42,7 +42,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private static final java.util.Set<String> P0_MANUAL_METRICS = java.util.Set.of(
             "BMI", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "HYDRATION",
-            "EPDS_SCORE", "MATERNAL_HEART_RATE");
+            "EPDS_SCORE", "MATERNAL_HEART_RATE", "TEMPERATURE");
     private static final String DISCLAIMER = "Đây là dữ liệu theo dõi, không phải chẩn đoán y khoa.";
     private static final String EPDS_METRIC_CODE = "EPDS_SCORE";
 

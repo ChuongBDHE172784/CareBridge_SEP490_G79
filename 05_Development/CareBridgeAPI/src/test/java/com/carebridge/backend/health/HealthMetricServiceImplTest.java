@@ -255,7 +255,7 @@ class HealthMetricServiceImplTest {
 
         assertThat(capabilities)
                 .extracting("metricCode")
-                .containsExactly("BMI", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION");
+                .containsExactly("BMI", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "TEMPERATURE");
     }
 
     @Test
