@@ -76,10 +76,10 @@ class RagChatService:
                 parts.append(f"Triệu chứng: {', '.join(m.symptoms)}")
             recent_metrics_summary = ", ".join(parts)
 
-        # 5. Filter relevant chunks and Build Grounded Prompt with Conversation History
+        # 5. Filter relevant chunks (threshold >= 0.35) and Build Grounded Prompt
         valid_chunks = [
             c for c in retrieved_chunks
-            if c.get("similarity") is None or c.get("similarity", 0.0) >= 0.05
+            if c.get("similarity") is None or c.get("similarity", 0.0) >= 0.35
         ]
 
         history_dicts = [
