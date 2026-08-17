@@ -311,20 +311,47 @@ class MetricsScreeningService:
         if glucose is None:
             return TriageRiskStatus.NORMAL, factors
 
-        # Fasting threshold (>= 5.1 mmol/L nghi đái tháo đường thai kỳ)
+        # Tự động nhận diện đơn vị: nếu glucose >= 25.0, giá trị được nhập theo đơn vị mg/dL
+        # Chuẩn quy đổi: 1 mmol/L = 18.0182 mg/dL
+        is_mg_dl = glucose >= 25.0
+        mmol_val = round(glucose / 18.0182, 2) if is_mg_dl else round(glucose, 2)
+        mg_dl_val = round(glucose, 1) if is_mg_dl else round(glucose * 18.0182, 1)
+        display_str = (
+            f"{mg_dl_val} mg/dL (~{mmol_val} mmol/L)"
+            if is_mg_dl
+            else f"{mmol_val} mmol/L (~{mg_dl_val} mg/dL)"
+        )
+
+        # 1. Hạ đường huyết (< 3.5 mmol/L hoặc < 63 mg/dL)
+        if mmol_val < 3.5:
+            factors.append(
+                f"Hạ đường huyết ({display_str}) - Cần bổ sung nước đường/trái cây và theo dõi"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        # 2. Ngưỡng đường huyết lúc đói (Fasting: chuẩn < 5.1 mmol/L / < 92 mg/dL)
         if is_fasting:
-            if glucose >= 7.0:
-                factors.append(f"Đường huyết lúc đói rất cao ({glucose} mmol/L)")
+            if mmol_val >= 7.0:
+                factors.append(
+                    f"Đường huyết lúc đói rất cao ({display_str}, chuẩn < 5.1 mmol/L) - Nguy cơ đái tháo đường thai kỳ nặng"
+                )
                 return TriageRiskStatus.ANOMALY_MONITOR, factors
-            elif glucose >= 5.1:
-                factors.append(f"Đường huyết lúc đói tăng nhẹ ({glucose} mmol/L, chuẩn < 5.1)")
+            elif mmol_val >= 5.1:
+                factors.append(
+                    f"Đường huyết lúc đói tăng nhẹ ({display_str}, chuẩn < 5.1 mmol/L / < 92 mg/dL)"
+                )
                 return TriageRiskStatus.ANOMALY_MONITOR, factors
         else:
-            if glucose >= 11.1:
-                factors.append(f"Đường huyết sau ăn rất cao ({glucose} mmol/L)")
+            # Ngưỡng đường huyết sau ăn 1-2h (Postprandial: chuẩn < 8.5 mmol/L / < 153 mg/dL)
+            if mmol_val >= 11.1:
+                factors.append(
+                    f"Đường huyết sau ăn rất cao ({display_str}, chuẩn < 8.5 mmol/L)"
+                )
                 return TriageRiskStatus.ANOMALY_MONITOR, factors
-            elif glucose >= 8.5:
-                factors.append(f"Đường huyết sau ăn tăng ({glucose} mmol/L, chuẩn < 8.5)")
+            elif mmol_val >= 8.5:
+                factors.append(
+                    f"Đường huyết sau ăn tăng ({display_str}, chuẩn < 8.5 mmol/L / < 153 mg/dL)"
+                )
                 return TriageRiskStatus.ANOMALY_MONITOR, factors
 
         return TriageRiskStatus.NORMAL, factors

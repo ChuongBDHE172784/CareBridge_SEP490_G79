@@ -41,7 +41,7 @@ class HealthMetricsLogRequest(BaseModel):
     # Vital signs
     systolic_bp: Optional[int] = Field(default=None, ge=50, le=250, description="Huyết áp tâm thu (mmHg)")
     diastolic_bp: Optional[int] = Field(default=None, ge=30, le=160, description="Huyết áp tâm trương (mmHg)")
-    blood_glucose: Optional[float] = Field(default=None, ge=1.0, le=35.0, description="Chỉ số đường huyết (mmol/L)")
+    blood_glucose: Optional[float] = Field(default=None, ge=1.0, le=600.0, description="Chỉ số đường huyết (mmol/L hoặc mg/dL)")
     is_fasting_glucose: Optional[bool] = Field(default=True, description="Đo lúc đói hay sau ăn")
     temperature: Optional[float] = Field(default=None, ge=34.0, le=43.0, description="Thân nhiệt (°C)")
     heart_rate: Optional[int] = Field(default=None, ge=30, le=220, description="Nhịp tim (lần/phút)")
