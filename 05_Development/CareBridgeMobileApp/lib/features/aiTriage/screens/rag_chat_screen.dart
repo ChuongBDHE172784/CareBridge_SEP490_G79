@@ -588,20 +588,23 @@ class _RagChatScreenState extends State<RagChatScreen> {
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isMother
-                            ? (_effectiveStage == 'PRECONCEPTION'
-                                ? 'Đồng hành Chuẩn bị mang thai • 24/7'
-                                : (_effectiveStage == 'POSTPARTUM'
-                                    ? 'Đồng hành Hậu sản & Chăm bé • 24/7'
-                                    : (_pregnancyWeek != null
-                                        ? 'Đồng hành cùng Mẹ bầu (Tuần $_pregnancyWeek) • 24/7'
-                                        : 'Đồng hành cùng Mẹ bầu • 24/7')))
-                            : 'Hỗ trợ Gia đình chăm sóc mẹ & bé',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white70,
+                      Expanded(
+                        child: Text(
+                          isMother
+                              ? (_effectiveStage == 'PRECONCEPTION'
+                                  ? 'Đồng hành Chuẩn bị mang thai • 24/7'
+                                  : (_effectiveStage == 'POSTPARTUM'
+                                      ? 'Đồng hành Hậu sản & Chăm bé • 24/7'
+                                      : (_pregnancyWeek != null
+                                          ? 'Đồng hành cùng Mẹ bầu (Tuần $_pregnancyWeek) • 24/7'
+                                          : 'Đồng hành cùng Mẹ bầu • 24/7')))
+                              : 'Hỗ trợ Gia đình chăm sóc mẹ & bé',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white70,
+                          ),
                         ),
                       ),
                     ],
@@ -673,6 +676,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
+                  key: const Key('attachment_context_banner_tap'),
                   borderRadius: BorderRadius.circular(14),
                   onTap: _openAttachmentDetailsModal,
                   child: Padding(
@@ -760,12 +764,16 @@ class _RagChatScreenState extends State<RagChatScreen> {
                               const SizedBox(height: 2),
                               const Row(
                                 children: [
-                                  Text(
-                                    'Chạm để xem chi tiết sinh hiệu, survey...',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF9E6555),
+                                  Expanded(
+                                    child: Text(
+                                      'Chạm để xem chi tiết sinh hiệu, survey...',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF9E6555),
+                                      ),
                                     ),
                                   ),
                                   SizedBox(width: 4),
@@ -1747,15 +1755,14 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
         contextData['gestationalAge'] ?? contextData['gestationalWeeks'];
     final note =
         (contextData['note'] ?? contextData['free_text_notes'])?.toString();
-    final surveyRisks = (contextData['surveyRiskConditions'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        [];
-    final riskFactors =
-        (contextData['riskFactors'] ?? contextData['reasons'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        [];
+    final rawSurvey = contextData['surveyRiskConditions'];
+    final surveyRisks = (rawSurvey is Iterable)
+        ? rawSurvey.map((e) => e.toString()).toList()
+        : <String>[];
+    final rawRisks = contextData['riskFactors'] ?? contextData['reasons'];
+    final riskFactors = (rawRisks is Iterable)
+        ? rawRisks.map((e) => e.toString()).toList()
+        : <String>[];
     final latestVitals = contextData['latestVitals'];
 
     String getTrimester(dynamic week) {
