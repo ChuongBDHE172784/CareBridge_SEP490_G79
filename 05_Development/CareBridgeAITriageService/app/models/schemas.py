@@ -45,7 +45,9 @@ class HealthMetricsLogRequest(BaseModel):
     is_fasting_glucose: Optional[bool] = Field(default=True, description="Đo lúc đói hay sau ăn")
     temperature: Optional[float] = Field(default=None, ge=34.0, le=43.0, description="Thân nhiệt (°C)")
     heart_rate: Optional[int] = Field(default=None, ge=30, le=220, description="Nhịp tim (lần/phút)")
-    weight_kg: Optional[float] = Field(default=None, ge=30.0, le=200.0, description="Cân nặng hiện tại (kg)")
+    weight_kg: Optional[float] = Field(default=None, ge=20.0, le=300.0, description="Cân nặng hiện tại (kg)")
+    height_cm: Optional[float] = Field(default=None, ge=50.0, le=250.0, description="Chiều cao (cm)")
+    bmi: Optional[float] = Field(default=None, ge=10.0, le=250.0, description="Chỉ số khối cơ thể BMI (kg/m²)")
     
     # Fetal movement (Kicks) - Quan trọng từ tuần 28
     fetal_movements_count: Optional[int] = Field(default=None, ge=0, le=100, description="Số lần thai cử động")

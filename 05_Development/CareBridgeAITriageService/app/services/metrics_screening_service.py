@@ -79,7 +79,25 @@ class MetricsScreeningService:
             is_anomaly = True
         risk_factors.extend(symptom_factors)
 
-        # 6. RAG Retrieval for matching medical guidelines
+        # 6. Evaluate BMI & Weight / Height (Chỉ số BMI và thể trạng mẹ)
+        bmi_status, bmi_factors = self._check_bmi(
+            request.bmi, request.weight_kg, request.height_cm
+        )
+        if bmi_status == TriageRiskStatus.CRITICAL_EMERGENCY:
+            is_critical = True
+        elif bmi_status == TriageRiskStatus.ANOMALY_MONITOR:
+            is_anomaly = True
+        risk_factors.extend(bmi_factors)
+
+        # 7. Evaluate Maternal Heart Rate (Nhịp tim mẹ)
+        hr_status, hr_factors = self._check_heart_rate(request.heart_rate)
+        if hr_status == TriageRiskStatus.CRITICAL_EMERGENCY:
+            is_critical = True
+        elif hr_status == TriageRiskStatus.ANOMALY_MONITOR:
+            is_anomaly = True
+        risk_factors.extend(hr_factors)
+
+        # 8. RAG Retrieval for matching medical guidelines
         query = self._build_retrieval_query(request, risk_factors)
         rag_results = await self.vector_store.similarity_search(
             query=query,
@@ -295,6 +313,60 @@ class MetricsScreeningService:
 
         return TriageRiskStatus.NORMAL, factors
 
+    def _check_bmi(
+        self,
+        bmi: float | None,
+        weight_kg: float | None,
+        height_cm: float | None,
+    ) -> Tuple[TriageRiskStatus, List[str]]:
+        factors = []
+        val_bmi = bmi
+        if val_bmi is None and weight_kg is not None and height_cm is not None and height_cm > 0:
+            val_bmi = weight_kg / ((height_cm / 100) ** 2)
+
+        if val_bmi is None:
+            return TriageRiskStatus.NORMAL, factors
+
+        if val_bmi >= 40.0:
+            factors.append(
+                f"Béo phì độ III rất nặng (BMI: {val_bmi:.1f} kg/m²) - Nguy cơ cao Tiền sản giật, ĐTĐ thai kỳ, Thuyên tắc huyết khối"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        elif val_bmi >= 30.0:
+            factors.append(
+                f"Béo phì thai kỳ (BMI: {val_bmi:.1f} kg/m²) - Cần khám dinh dưỡng và theo dõi sát huyết áp, đường huyết"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        elif val_bmi >= 25.0:
+            factors.append(
+                f"Thừa cân thai kỳ (BMI: {val_bmi:.1f} kg/m²) - Cần kiểm soát mức tăng cân hợp lý theo khuyến nghị"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        elif val_bmi < 18.5:
+            factors.append(
+                f"Thiếu cân thai kỳ (BMI: {val_bmi:.1f} kg/m²) - Nguy cơ suy dinh dưỡng bào thai hoặc sinh non"
+            )
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        return TriageRiskStatus.NORMAL, factors
+
+    def _check_heart_rate(self, hr: int | None) -> Tuple[TriageRiskStatus, List[str]]:
+        factors = []
+        if hr is None:
+            return TriageRiskStatus.NORMAL, factors
+
+        if hr >= 120:
+            factors.append(f"Nhịp tim mẹ tăng rất nhanh ({hr} bpm) - Nguy cơ rối loạn nhịp tim cấp, thiếu máu nặng hoặc sốc")
+            return TriageRiskStatus.CRITICAL_EMERGENCY, factors
+        elif hr >= 100:
+            factors.append(f"Nhịp tim mẹ hơi nhanh ({hr} bpm) so với sinh lý bình thường")
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        elif hr < 50:
+            factors.append(f"Nhịp tim mẹ chậm ({hr} bpm)")
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        return TriageRiskStatus.NORMAL, factors
+
     def _build_retrieval_query(
         self, request: HealthMetricsLogRequest, risk_factors: List[str]
     ) -> str:
@@ -303,6 +375,16 @@ class MetricsScreeningService:
             parts.append(f"thai tuần {request.gestational_age_weeks}")
         if request.systolic_bp:
             parts.append(f"huyết áp {request.systolic_bp}/{request.diastolic_bp}")
+        if request.blood_glucose:
+            parts.append(f"đường huyết {request.blood_glucose}")
+        if request.bmi or (request.weight_kg and request.height_cm):
+            bmi_val = request.bmi or (request.weight_kg / ((request.height_cm / 100) ** 2))
+            if bmi_val >= 25.0:
+                parts.append("thừa cân béo phì dinh dưỡng thai kỳ")
+            elif bmi_val < 18.5:
+                parts.append("thiếu cân suy dinh dưỡng thai kỳ")
+        if request.fetal_movements_count is not None:
+            parts.append(f"cử động thai {request.fetal_movements_count} lần")
         if request.temperature and request.temperature >= 37.5:
             parts.append(f"sốt {request.temperature} độ")
         if request.symptoms:
@@ -311,9 +393,9 @@ class MetricsScreeningService:
             parts.append(request.free_text_notes)
         if risk_factors:
             parts.extend(risk_factors)
-
-        query = " ".join(parts)
-        return query if query.strip() else "hướng dẫn theo dõi chỉ số sức khỏe thai kỳ chuẩn"
+        if not parts:
+            parts.append("hướng dẫn chăm sóc và theo dõi sức khỏe thai kỳ chuẩn y tế")
+        return " ".join(parts)
 
 
 metrics_screening_service = MetricsScreeningService()
