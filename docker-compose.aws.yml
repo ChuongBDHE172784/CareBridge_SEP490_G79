@@ -39,6 +39,15 @@ services:
       GEMINI_TIMEOUT_SECONDS: ${AI_GEMINI_TIMEOUT_SECONDS:-6}
       GEMINI_MAX_RETRIES: ${AI_GEMINI_MAX_RETRIES:-1}
       GEMINI_TEMPERATURE: ${AI_GEMINI_TEMPERATURE:-0.2}
+      # Mô hình sinh embedding cho kho tri thức RAG. Khác model sinh văn bản ở trên.
+      GEMINI_EMBEDDING_MODEL: ${AI_GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      # Kho vector của RAG. Mặc định trong app/config.py trỏ localhost:5433 — đúng
+      # cho máy lập trình, nhưng trong container thì "localhost" là chính nó, nên
+      # phải truyền vào tường minh. Hai chuỗi này chứa mật khẩu database nên chỉ
+      # nằm ở .env.server (đã bị .gitignore chặn), không bao giờ ghi vào compose.
+      # asyncpg không hiểu tham số sslmode của libpq; nó dùng ssl=require.
+      DATABASE_URL: ${AI_TRIAGE_DATABASE_URL:-}
+      SYNC_DATABASE_URL: ${AI_TRIAGE_SYNC_DATABASE_URL:-}
     expose:
       - "8001"
     networks:
