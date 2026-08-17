@@ -26,14 +26,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
-/**
- * Community posting gates and visibility rules ONLY. The former autoReportIfRedFlag() hook
- * (medical red-flag keyword -> AUTOMATED ContentReport, category UNSAFE_ADVICE) was removed
- * (CB-MOD-IMP-017): a user DESCRIBING symptoms is a medical-safety signal, not a content
- * violation. Emergency keyword handling stays in TriageRedFlagPolicy (triage/RAG routing,
- * untouched); content violations are detected semantically by the AI moderation scan that is
- * enqueued in the same transactions that used to call the removed hook.
- */
 @Component
 @RequiredArgsConstructor
 public class CommunitySafetyPolicy {
@@ -45,29 +37,44 @@ public class CommunitySafetyPolicy {
     private final ModerationActionRepository moderationActionRepository;
 
     public User requirePostingAllowed(UUID userId) {
+        // [Kiểm tra 1]: Tìm kiếm thông tin người dùng trong cơ sở dữ liệu
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccessDeniedException("Authenticated user was not found"));
+
+        // [Kiểm tra 2]: Trạng thái tài khoản không bị vô hiệu hóa hoặc khóa vĩnh viễn
         if (!user.isEnabled() || user.isLocked()) {
             throw new AccessDeniedException("Tài khoản đang bị khóa hoặc vô hiệu hóa");
         }
+
+        // [Kiểm tra 3]: Kiểm tra thời hạn tạm đình chỉ toàn bộ tài khoản
         Instant suspendedUntil = user.getSuspendedUntil();
         if (suspendedUntil != null && suspendedUntil.isAfter(Instant.now())) {
             throw new AccessDeniedException("Tài khoản đang bị tạm đình chỉ đến " + suspendedUntil);
         }
+
+        // [Kiểm tra 4]: Kiểm tra thời hạn hạn chế tính năng đăng bài cộng đồng
         Instant restrictedUntil = user.getCommunityPostingRestrictedUntil();
         if (restrictedUntil != null && restrictedUntil.isAfter(Instant.now())) {
             throw new AccessDeniedException("Tài khoản đang bị hạn chế đăng bài đến " + restrictedUntil);
         }
+
+        // [Kiểm tra 5]: Truy vấn bảng moderation_actions để tìm các quyết định xử phạt
+        // kiểm duyệt gần nhất còn hiệu lực
         if (moderationActionRepository != null) {
             Page<ModerationAction> activeActions = moderationActionRepository.findAccountActionsByTargetId(
                     userId,
                     List.of(ModerationActionType.RESTRICT, ModerationActionType.SUSPEND),
                     PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "actionAt")));
             for (ModerationAction action : activeActions) {
+                // Nếu án phạt chưa hết hạn thì chặn hành động đăng bài và nêu rõ lý do
                 if (action.getExpiresAt() != null && action.getExpiresAt().isAfter(Instant.now())) {
-                    String actionName = action.getActionType() == ModerationActionType.SUSPEND ? "tạm đình chỉ" : "hạn chế đăng bài";
-                    String reasonSuffix = (action.getReason() != null && !action.getReason().isBlank()) ? " do " + action.getReason() : "";
-                    throw new AccessDeniedException("Tài khoản đang bị " + actionName + " đến " + action.getExpiresAt() + reasonSuffix);
+                    String actionName = action.getActionType() == ModerationActionType.SUSPEND ? "tạm đình chỉ"
+                            : "hạn chế đăng bài";
+                    String reasonSuffix = (action.getReason() != null && !action.getReason().isBlank())
+                            ? " do " + action.getReason()
+                            : "";
+                    throw new AccessDeniedException(
+                            "Tài khoản đang bị " + actionName + " đến " + action.getExpiresAt() + reasonSuffix);
                 }
             }
         }
@@ -105,7 +112,7 @@ public class CommunitySafetyPolicy {
         return question.getStatus() == QuestionStatus.APPROVED
                 || ((question.getStatus() == QuestionStatus.AI_PENDING
                         || question.getStatus() == QuestionStatus.PENDING)
-                    && question.getAuthorId().equals(userId));
+                        && question.getAuthorId().equals(userId));
     }
 
 }

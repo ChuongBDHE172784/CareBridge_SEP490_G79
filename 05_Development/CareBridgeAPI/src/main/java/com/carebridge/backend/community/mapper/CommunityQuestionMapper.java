@@ -18,6 +18,15 @@ public class CommunityQuestionMapper {
 
     private static final String ANONYMOUS_AUTHOR = "Thành viên ẩn danh";
 
+    /**
+     * [Chuyển đổi Request DTO -> Database Entity]
+     * Ánh xạ thông tin từ CreateCommunityQuestionRequest và authorId thành Entity CommunityQuestion.
+     * Trạng thái ban đầu được đặt là AI_PENDING để hệ thống đưa vào hàng đợi kiểm duyệt AI.
+     *
+     * @param request DTO đầu vào chứa thông tin câu hỏi
+     * @param authorId UUID của người tạo (lấy từ JWT Authentication)
+     * @return Entity CommunityQuestion sẵn sàng để lưu vào cơ sở dữ liệu
+     */
     public CommunityQuestion toEntity(CreateCommunityQuestionRequest request, UUID authorId) {
         return CommunityQuestion.builder()
                 .topicId(request.getTopicId())
@@ -30,12 +39,20 @@ public class CommunityQuestionMapper {
                 .babyAgeMonths(request.getBabyAgeMonths() != null ? request.getBabyAgeMonths().shortValue() : null)
                 .urgency(request.getUrgency())
                 .anonymous(Boolean.TRUE.equals(request.getIsAnonymous()))
-                .status(QuestionStatus.AI_PENDING)
+                .status(QuestionStatus.AI_PENDING) // Khởi tạo trạng thái AI_PENDING chờ quét kiểm duyệt
                 .build();
     }
 
+    /**
+     * [Chuyển đổi Database Entity -> Response DTO]
+     * Đóng gói thông tin Entity CommunityQuestion thành CommunityQuestionResponse trả về cho Client.
+     * Áp dụng quy tắc bảo mật danh tính ADR-COM-002: Nếu isAnonymous = true thì ẩn authorId (trả về null).
+     *
+     * @param entity Bản ghi câu hỏi từ cơ sở dữ liệu
+     * @return DTO CommunityQuestionResponse trả về cho Client
+     */
     public CommunityQuestionResponse toResponse(CommunityQuestion entity) {
-        // ADR-COM-002: mask authorId when isAnonymous=true
+        // ADR-COM-002: Che giấu authorId nếu tác giả chọn chế độ đăng ẩn danh
         UUID exposedAuthorId = entity.isAnonymous() ? null : entity.getAuthorId();
 
         return CommunityQuestionResponse.builder()
@@ -47,8 +64,8 @@ public class CommunityQuestionMapper {
                 .stage(entity.getStage() != null ? entity.getStage().name() : null)
                 .urgency(entity.getUrgency() != null ? entity.getUrgency().name() : null)
                 .anonymous(entity.isAnonymous())
-                .authorId(exposedAuthorId)
-                .status(toResponseStatus(entity.getStatus()))
+                .authorId(exposedAuthorId) // null nếu ẩn danh
+                .status(toResponseStatus(entity.getStatus())) // AI_PENDING được biểu diễn là PENDING ở phía Client
                 .answerCount(entity.getAnswerCount())
                 .likeCount(entity.getLikeCount())
                 .createdAt(entity.getCreatedAt())
@@ -105,10 +122,24 @@ public class CommunityQuestionMapper {
                 .build();
     }
 
+    /**
+     * Sao chép phòng thủ danh sách URL hình ảnh để tránh các vấn đề sửa đổi danh sách gốc ngoài ý muốn (Defensive Copy).
+     *
+     * @param imageUrls Danh sách URL hình ảnh ban đầu
+     * @return Danh sách URL hình ảnh mới hoặc danh sách rỗng nếu null
+     */
     private List<String> copyImageUrls(List<String> imageUrls) {
         return imageUrls == null ? new ArrayList<>() : new ArrayList<>(imageUrls);
     }
 
+    /**
+     * Chuẩn hóa trạng thái kiểm duyệt khi trả về cho Client.
+     * Quy tắc: Trạng thái kỹ thuật nội bộ `AI_PENDING` được map thành `PENDING` ở response bên ngoài
+     * để người dùng cuối hiểu là nội dung đang chờ được hệ thống kiểm duyệt.
+     *
+     * @param status Trạng thái QuestionStatus trong cơ sở dữ liệu
+     * @return Tên chuỗi trạng thái phản hồi cho Client
+     */
     private String toResponseStatus(QuestionStatus status) {
         if (status == null) {
             return null;

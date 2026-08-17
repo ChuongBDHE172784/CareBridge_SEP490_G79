@@ -108,11 +108,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     _messages.add(
       _ChatMessage(
         role: _ChatRole.assistant,
-        text: widget.entryContext.requiresStageSelection
-            ? 'Hãy chọn đúng giai đoạn trước khi mô tả triệu chứng. CareBridge sẽ giữ nguyên ngữ cảnh đó trong suốt phiên.'
-            : widget.entryContext.isMaternal
-            ? 'Hãy mô tả dấu hiệu bạn đang gặp. CareBridge chỉ hỗ trợ phân loại rủi ro ban đầu theo giai đoạn sức khỏe hiện tại.'
-            : 'Hãy mô tả triệu chứng của bé. CareBridge sẽ hỏi thêm nếu cần và chỉ phân loại rủi ro ban đầu.',
+        text: 'Chào bạn! Trợ lý AI CareBridge luôn sẵn sàng hỗ trợ giải đáp thắc mắc và chăm sóc sức khỏe cho mẹ và bé. Bạn có thể nhập câu hỏi ngay bên dưới hoặc chọn nhanh giai đoạn mong muốn.',
       ),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -241,11 +237,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   Future<void> _start() async {
     if (_loading) return;
     if (!_stageConfirmed) {
-      setState(
-        () => _error =
-            'Vui lòng chọn giai đoạn sức khỏe trước khi bắt đầu AI Triage.',
-      );
-      return;
+      _stageConfirmed = true;
     }
     final text = _initialController.text.trim();
     if (text.isEmpty) return;

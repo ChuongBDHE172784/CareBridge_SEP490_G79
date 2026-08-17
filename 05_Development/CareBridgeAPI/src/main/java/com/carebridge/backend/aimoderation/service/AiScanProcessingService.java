@@ -130,32 +130,49 @@ public class AiScanProcessingService {
         }
     }
 
-    /** Synchronous core — also invoked directly by tests. */
+    /**
+     * [HÀM CỐT LÕI]: Thực hiện quét kiểm duyệt nội dung bằng AI (Gemini) và so sánh với chính sách hệ thống.
+     *
+     * Quy trình 7 bước:
+     * 1. Trích xuất nội dung cần quét (tiêu đề + nội dung câu hỏi/câu trả lời).
+     * 2. Kiểm tra tính hợp lệ và mã băm SHA-256 (bỏ qua nếu nội dung đã bị sửa).
+     * 3. Lấy tập hợp chính sách kiểm duyệt hệ thống đang kích hoạt (active policies snapshot).
+     * 4. Kiểm tra cache đánh giá trước đó (idempotency check).
+     * 5. Gửi nội dung kèm toàn bộ chính sách sang Gemini API (Structured Output).
+     * 6. Phân tích kết quả (parse verdict JSON) và đưa ra quyết định dựa trên ngưỡng tin cậy.
+     * 7. Ghi nhận kết quả đánh giá (AiContentAssessment) và gọi OutcomeApplier để duyệt hoặc mở case vi phạm.
+     *
+     * @param jobId UUID của tác vụ quét trong bảng ai_content_scan_jobs
+     */
     public void processJob(UUID jobId) {
+        // [Bước 1]: Lấy thông tin job quét từ cơ sở dữ liệu
         AiContentScanJob job = jobRepository.findById(jobId).orElse(null);
         if (job == null || job.getStatus() != AiScanJobStatus.PROCESSING) {
             return;
         }
 
+        // [Bước 2]: Trích xuất nội dung thực tế từ bảng đích (CommunityQuestion / CommunityAnswer / Content)
         AiScanTargetResolver.TargetContent target = targetResolver.resolve(job.getTargetType(), job.getTargetId());
         if (!target.isPresent()) {
             recorder.recordSkip(job.getId(), target.skipReason());
             return;
         }
 
+        // [Bước 3]: Kiểm tra tính toàn vẹn mã băm (Content Hash). Nếu người dùng đã sửa bài, bỏ qua job cũ này
         String currentHash = AiContentHasher.sha256Hex(target.text());
         if (!currentHash.equals(job.getContentHash())) {
-            // Content changed after enqueue; the edit hook enqueued a fresh job for the new hash.
             recorder.recordSkip(job.getId(), "STALE_CONTENT");
             return;
         }
 
+        // [Bước 4]: Lấy danh sách các chính sách kiểm duyệt hệ thống đang có hiệu lực cho loại nội dung này
         AiPolicySet policySet = policySetService.activeSnapshotFor(job.getTargetType());
         if (policySet.isEmpty()) {
             recorder.recordSkip(job.getId(), "NO_ACTIVE_POLICIES");
             return;
         }
 
+        // [Bước 5]: Kiểm tra xem cùng nội dung + cùng bộ chính sách + cùng model đã từng được đánh giá COMPLETED chưa
         String model = geminiModerationClient.model();
         Optional<AiContentAssessment> existingAssessment = !job.isForceRescan() ? assessmentRepository
                 .findFirstByTargetTypeAndTargetIdAndContentHashAndPolicySetHashAndModelAndStatus(
@@ -163,35 +180,42 @@ public class AiScanProcessingService {
                         policySet.policySetHash(), model, AiAssessmentStatus.COMPLETED)
                 : Optional.empty();
         if (existingAssessment.isPresent()) {
+            // Tận dụng kết quả đánh giá có sẵn mà không cần gọi lại Gemini API (tiết kiệm chi phí & thời gian)
             recorder.completeIdempotent(job, existingAssessment.get());
             return;
         }
 
+        // [Bước 6]: Gọi Google Gemini API để AI so sánh nội dung bài đăng với danh sách các chính sách
         ModerationCallResult callResult;
         try {
             callResult = geminiModerationClient.classify(
-                    promptBuilder.buildSystemInstruction(policySet.policies()),
-                    promptBuilder.buildUserContent(job.getTargetType(), target.text()),
-                    promptBuilder.responseSchema());
+                    promptBuilder.buildSystemInstruction(policySet.policies()), // Nạp danh sách chính sách vào prompt
+                    promptBuilder.buildUserContent(job.getTargetType(), target.text()), // Nội dung người dùng cần quét
+                    promptBuilder.responseSchema()); // Định dạng JSON Schema đầu ra bắt buộc
         } catch (GeminiConfigurationException ex) {
-            // Non-retryable: bad key/model/request or provider safety block
+            // Lỗi cấu hình hoặc vi phạm bộ lọc an toàn của Google Provider (không thử lại)
             recorder.recordFailure(job, policySet.policySetHash(), model, ex.getErrorCode());
             return;
         } catch (GeminiUnavailableException ex) {
+            // Lỗi tạm thời (Timeout, mạng, 429) -> Thử lại có giãn cách (Exponential Backoff)
             retryOrFail(job, policySet.policySetHash(), model, "GEMINI_UNAVAILABLE");
             return;
         }
 
+        // [Bước 7.1]: Phân tích kết quả JSON trả về từ Gemini
         AiVerdict verdict;
         try {
             verdict = verdictParser.parse(callResult.rawJson(), policySet.byCode(), target.text());
         } catch (AiVerdictParseException ex) {
-            // Schema-invalid output is a failure, never SAFE
+            // Nếu model trả về sai JSON Schema, không được mặc định là SAFE mà phải đưa vào xử lý lỗi/thử lại
             retryOrFail(job, policySet.policySetHash(), model, "GEMINI_RESPONSE_INVALID");
             return;
         }
 
+        // [Bước 7.2]: Đưa ra quyết định (CaseDecision) dựa trên mức độ nghiêm trọng và ngưỡng tin cậy của chính sách vi phạm
         CaseDecision decision = decisionPolicy.decide(verdict, policySet.byCode());
+
+        // [Bước 7.3]: Lưu kết quả đánh giá (AiContentAssessment) và tự động duyệt bài hoặc mở ModerationCase
         recorder.recordSuccess(job, policySet.policySetHash(), model, verdict, decision,
                 callResult.latencyMs(), callResult.promptTokens(), callResult.outputTokens());
     }

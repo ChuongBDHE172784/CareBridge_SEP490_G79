@@ -127,14 +127,14 @@ class _AddMaternalHealthMetricScreenState
       case 'BMI':
         return 'kg/m²';
       case 'TEMPERATURE':
-        return 'Cel';
+        return '°C';
       case 'FETAL_MOVEMENT_SESSION':
         return 'count';
       case 'HYDRATION':
         return 'ml';
       case 'MATERNAL_HEART_RATE':
         return 'bpm';
-      case 'STRESS':
+      case 'EPDS_SCORE':
         return 'điểm';
       default:
         return _capability?.canonicalUnit.isNotEmpty == true
@@ -159,8 +159,8 @@ class _AddMaternalHealthMetricScreenState
         return 'lượng nước uống';
       case 'MATERNAL_HEART_RATE':
         return 'nhịp tim';
-      case 'STRESS':
-        return 'stress';
+      case 'EPDS_SCORE':
+        return 'điểm sàng lọc trầm cảm EPDS';
       default:
         return 'chỉ số sức khỏe';
     }
@@ -179,8 +179,11 @@ class _AddMaternalHealthMetricScreenState
       case 'HEART_RATE':
       case 'MATERNAL_HEART_RATE':
         return 'MATERNAL_HEART_RATE';
-      case 'STRESS':
-        return 'STRESS';
+      case 'EPDS':
+      case 'EPDS_SCORE':
+        return 'EPDS_SCORE';
+      case 'TEMPERATURE':
+        return 'TEMPERATURE';
       default:
         return value;
     }

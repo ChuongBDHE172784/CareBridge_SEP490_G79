@@ -104,13 +104,24 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
         this.restClient = restClient;
     }
 
+    /**
+     * Gửi request phân tích tọa độ mốc cơ thể (MediaPipe Landmarks) sang Python Sidecar AI.
+     * Endpoint: `POST http://localhost:8002/v1/inference/landmarks`
+     *
+     * @param request Chứa version model, key bài tập ("squat", "bicep_curl", "lunge", "plank"), số thứ tự frame và danh sách landmarks
+     * @return InferenceResult chứa kết quả phân loại (predictedClass), pha chuyển động (stage), độ tin cậy (confidence), điểm số và feedback
+     */
     @Override
     public InferenceResult infer(InferenceRequest request) {
+        // [1] Kiểm tra Sidecar Provider có được bật qua cấu hình application.yaml không
         if (!enabled) {
             throw unavailable("PROVIDER_DISABLED");
         }
+
+        // [2] Validate tính toàn vẹn của request và 33 điểm mốc cơ thể MediaPipe (x, y, z, visibility)
         validateRequest(request);
 
+        // [3] Đóng gói DTO SidecarRequest theo chuẩn Schema v1
         SidecarRequest body = new SidecarRequest(
                 LANDMARK_SCHEMA_VERSION,
                 request.modelVersion(),
@@ -119,6 +130,7 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                 null,
                 request.landmarks());
 
+        // [4] Gọi HTTP POST sang FastAPI Python Sidecar qua RestClient (HTTP/1.1)
         try {
             SidecarResponse response = restClient.post()
                     .uri("/v1/inference/landmarks")
@@ -126,19 +138,24 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                     .body(body)
                     .retrieve()
                     .body(SidecarResponse.class);
+            // [5] Ánh xạ kết quả trả về từ Sidecar sang InferenceResult của Spring Boot
             return mapResponse(response, request);
         } catch (HttpClientErrorException exception) {
+            // Lỗi 4xx: Sidecar từ chối request (sai định dạng landmark hoặc bài tập chưa hỗ trợ)
             logSidecarStatus("rejected the inference request", exception);
             throw unavailable("SIDECAR_REJECTED_REQUEST");
         } catch (HttpServerErrorException exception) {
+            // Lỗi 5xx: Lỗi nội bộ trong quá trình inference của Python
             logSidecarStatus("reported a server error", exception);
             throw unavailable("SIDECAR_UNAVAILABLE");
         } catch (ResourceAccessException exception) {
+            // Lỗi timeout / kết nối: Sidecar chưa khởi động hoặc bị treo
             LOG.warn(
                     "Exercise-Correction sidecar is unreachable or timed out: {}",
                     exception.getClass().getSimpleName());
             throw unavailable("SIDECAR_TIMEOUT_OR_UNREACHABLE");
         } catch (RestClientException exception) {
+            // Lỗi parse response
             LOG.warn(
                     "Exercise-Correction sidecar returned an unreadable response: {}",
                     exception.getClass().getSimpleName());
@@ -178,6 +195,10 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
         }
     }
 
+    /**
+     * Kiểm tra tính hợp lệ của Request trước khi gửi sang Sidecar:
+     * modelVersion, exerciseKey, sequenceNumber và danh sách mốc landmarks không được rỗng.
+     */
     private void validateRequest(InferenceRequest request) {
         if (request == null
                 || request.modelVersion() == null
@@ -192,6 +213,11 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
         }
     }
 
+    /**
+     * Xác thực cấu trúc của từng mốc MediaPipe:
+     * - Tên mốc phải thuộc tập 33 mốc chuẩn MediaPipe Pose.
+     * - Mỗi mốc bắt buộc phải chứa đủ 4 trường tọa độ: "x", "y", "z", "visibility" với giá trị số hữu hạn (finite numbers).
+     */
     private boolean validLandmarks(Map<String, Object> landmarks) {
         for (Map.Entry<String, Object> entry : landmarks.entrySet()) {
             if (!LANDMARK_NAMES.contains(entry.getKey()) || !(entry.getValue() instanceof Map<?, ?> point)) {
@@ -212,6 +238,12 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
         return true;
     }
 
+    /**
+     * Ánh xạ và kiểm tra tính hợp lệ của DTO phản hồi từ Python Sidecar (SidecarResponse -> InferenceResult):
+     * - Xác thực schemaVersion, modelVersion, exerciseKey, sequenceNumber khớp với request.
+     * - Kiểm tra các giá trị bắt buộc: predictedClass, confidence trong khoảng [0, 1], score trong khoảng [0, 100].
+     * - Ánh xạ danh sách Feedback (code, severity, message).
+     */
     private InferenceResult mapResponse(SidecarResponse response, InferenceRequest request) {
         if (response == null
                 || !RESPONSE_SCHEMA_VERSION.equals(response.schemaVersion())
@@ -261,7 +293,7 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                 || feedback.message().isBlank();
     }
 
-    /** Absent is valid; present must be a short opaque token, since it is persisted. */
+    /** Pha chuyển động (stage) phải là token ngắn hợp lệ nếu có */
     private boolean validStage(String stage) {
         return stage == null || STAGE_TOKEN.matcher(stage).matches();
     }

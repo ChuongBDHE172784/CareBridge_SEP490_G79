@@ -121,29 +121,70 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  question, topicName, questionAuthorDisplay, answers, isBookmarked, isLiked, currentUserId);
  }
 
- @Override
- @Transactional
- public CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request) {
- communitySafetyPolicy.requirePostingAllowed(authorId);
+	@Override
+	@Transactional
+	public CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request) {
+		// =========================================================================
+		// [BƯỚC 1 & 2: Validate nghiệp vụ & Tiếp nhận Request]
+		// =========================================================================
 
- // ADR-COM-021: questions may target only visible TOPIC rows.
- topicRepository.findByIdAndTypeAndIsHiddenFalse(request.getTopicId(), TopicType.TOPIC)
- .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
- fileService.assertCommunityImagesOwned(request.getImageUrls(), authorId);
+		// Kiểm tra chính sách an toàn: Người dùng (Mother/Family) có được phép đăng bài không?
+		// (Kiểm tra tài khoản không bị vô hiệu hóa, không bị khóa, không trong thời gian tạm đình chỉ / hạn chế đăng)
+		communitySafetyPolicy.requirePostingAllowed(authorId);
 
- CommunityQuestion question = questionMapper.toEntity(request, authorId);
- question = questionRepository.save(question);
- EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
-         ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
- if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
- question.setStatus(QuestionStatus.PENDING);
- question = questionRepository.save(question);
- }
+		// ADR-COM-021: Kiểm tra chủ đề (Topic) có tồn tại, đúng loại TOPIC và không bị ẩn (is_hidden = false)
+		// Tránh trường hợp gắn câu hỏi vào Chủ đề Cha (CATEGORY) hoặc Chủ đề đã bị ẩn/xóa
+		topicRepository.findByIdAndTypeAndIsHiddenFalse(request.getTopicId(), TopicType.TOPIC)
+				.orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
 
- auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId, "CommunityQuestion", question.getId().toString(), "created");
+		// Xác thực quyền sở hữu hình ảnh: Các URL ảnh đính kèm (Cloudinary) phải do chính tác giả upload lên trước đó
+		fileService.assertCommunityImagesOwned(request.getImageUrls(), authorId);
 
- return questionMapper.toResponse(question);
- }
+		// =========================================================================
+		// [BƯỚC 3.1: Chuyển đổi dữ liệu Request DTO -> Database Entity]
+		// =========================================================================
+
+		// Ánh xạ dữ liệu từ DTO sang Entity CommunityQuestion với authorId và trạng thái khởi tạo ban đầu AI_PENDING
+		CommunityQuestion question = questionMapper.toEntity(request, authorId);
+
+		// =========================================================================
+		// [BƯỚC 4.1: Lưu trữ Entity ban đầu vào Cơ sở dữ liệu]
+		// =========================================================================
+
+		// INSERT bản ghi câu hỏi mới vào bảng 'community_content' (content_type = 'QUESTION')
+		question = questionRepository.save(question);
+
+		// =========================================================================
+		// [BƯỚC 3.2 & 4.2: Đưa vào hàng đợi kiểm duyệt AI (AI Moderation Scan Job)]
+		// =========================================================================
+
+		// Đẩy nội dung câu hỏi (tiêu đề + thân bài) vào hàng đợi quét kiểm duyệt AI bất đồng bộ
+		// Job quét được lưu trữ bền vững (durable) trong bảng 'ai_content_scan_jobs' cùng transaction
+		EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
+				ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+
+		// Nếu hệ thống AI kiểm duyệt đang tắt hoặc chưa sẵn sàng cấu hình, cần chuyển trạng thái sang PENDING để chờ Moderator duyệt thủ công
+		if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
+			// Cập nhật trạng thái câu hỏi thành PENDING (chờ duyệt thủ công)
+			question.setStatus(QuestionStatus.PENDING);
+			// UPDATE lại trạng thái câu hỏi trong cơ sở dữ liệu
+			question = questionRepository.save(question);
+		}
+
+		// =========================================================================
+		// [BƯỚC 3.3 & 4.3: Ghi nhận vết kiểm toán hệ thống (Audit Log)]
+		// =========================================================================
+
+		// INSERT bản ghi lịch sử kiểm toán vào bảng 'audit_logs' để truy vết hành động tạo câu hỏi của người dùng
+		auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId, "CommunityQuestion", question.getId().toString(), "created");
+
+		// =========================================================================
+		// [BƯỚC 4 & 5: Đóng gói phản hồi & Trạng thái Database]
+		// =========================================================================
+
+		// Chuyển đổi Entity sang Response DTO (áp dụng che giấu danh tính authorId nếu câu hỏi ẩn danh - ADR-COM-002)
+		return questionMapper.toResponse(question);
+	}
 
  @Override
  @Transactional

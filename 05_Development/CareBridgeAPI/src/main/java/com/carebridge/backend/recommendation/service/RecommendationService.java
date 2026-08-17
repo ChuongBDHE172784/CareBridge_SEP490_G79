@@ -313,12 +313,22 @@ public class RecommendationService implements RecommendationConsentCleanup {
 
     @Transactional
     public RecommendationContentResponse getContent(UUID ownerUserId, UUID careGroupId, int limit) {
+        // =========================================================================
+        // [BƯỚC 1 & 2: Validate nghiệp vụ & Tiếp nhận Request]
+        // =========================================================================
+        // (1) Kiểm tra limit nằm trong khoảng cho phép [1, MAX_LIMIT]
         if (limit < 1 || limit > RecommendationConstants.MAX_LIMIT) {
             throw new RecommendationException(org.springframework.http.HttpStatus.BAD_REQUEST,
-                    "RECOMMENDATION_LIMIT_INVALID", "limit must be between 1 and 3");
+                    "RECOMMENDATION_LIMIT_INVALID", "limit must be between 1 and " + RecommendationConstants.MAX_LIMIT);
         }
+
+        // (2) Truy vấn hành trình thai kỳ chính thức (MotherJourney) của người mẹ (kèm kiểm tra quyền CareGroup nếu có)
         MotherJourney journey = canonical(ownerUserId, careGroupId, true);
+
+        // (3) Đánh giá trạng thái đồng ý chia sẻ dữ liệu nhạy cảm (ConsentGrant) có còn ACTIVE và đúng hạn hay không
         ConsentAssessment assessment = assessConsent(journey, ownerUserId, Instant.now(clock));
+
+        // (4) Phân giải ngữ cảnh y khoa: tính toán giai đoạn thai kỳ (Stage) và tuần thai (Pregnancy Week)
         RecommendationContext context;
         try {
             context = contextResolver.resolve(journey);
@@ -326,82 +336,133 @@ public class RecommendationService implements RecommendationConsentCleanup {
             throw RecommendationException.journeyRequired();
         }
 
+        // =========================================================================
+        // [BƯỚC 3.1: Trích xuất tín hiệu cá nhân hóa (Signals)]
+        // =========================================================================
         Set<String> signals = new LinkedHashSet<>();
+        // Chỉ kích hoạt cá nhân hóa khi: module bật (enabled), hồ sơ cá nhân hóa ACTIVE và quyền Consent còn hiệu lực
         if (enabled
                 && journey.getRecommendationProfileStatus() == RecommendationProfileStatus.ACTIVE
                 && assessment.active()) {
+            // (1) Trích xuất các tín hiệu y tế từ hồ sơ đã lưu (ví dụ: rec-high-bmi, rec-gestational-diabetes...)
             signals.addAll(resolveStoredSignals(journey, ownerUserId));
+            // (2) Bổ sung các tín hiệu về sở thích hỗ trợ & phong cách sống của người mẹ
             signals.addAll(resolveSupportPreferenceSignals(journey));
         }
-        // Fetch the two pools independently. A high-volume fallback pool cannot
-        // consume the targeted page before Java applies the frozen comparator.
-        // The SQL predicates are only an optimization; hard eligibility and
-        // catalog validation remain authoritative below.
+
+        // =========================================================================
+        // [BƯỚC 3.2: Truy vấn 2 Pool bài viết từ Database (Table: content_items)]
+        // =========================================================================
+        // (1) Truy vấn Pool Targeted (Native SQL): Lấy bài viết ARTICLE đã duyệt (APPROVED), đúng tuần thai VÀ có tag khớp signals
         List<ContentItem> targetedItems = signals.isEmpty()
                 ? List.of()
                 : contentRepository.findApprovedTargetedArticlesForRecommendation(
                         context.stage().name(), context.pregnancyWeek(), signals,
                         PageRequest.of(0, RecommendationConstants.MAX_POOL_SCAN));
+
+        // (2) Truy vấn Pool Fallback (Native SQL): Lấy bài viết ARTICLE đã duyệt, đúng tuần thai nhưng KHÔNG chứa bất kỳ tag cá nhân hóa rec-* nào
         List<ContentItem> fallbackItems = contentRepository.findApprovedFallbackArticlesForRecommendation(
                 context.stage().name(), context.pregnancyWeek(),
                 PageRequest.of(0, RecommendationConstants.MAX_POOL_SCAN));
+
+        // (3) Gộp 2 nhóm bài viết vào Map theo ID để loại bỏ trùng lặp (ưu tiên bài Targeted trước)
         Map<UUID, ContentItem> itemById = new LinkedHashMap<>();
         targetedItems.forEach(item -> itemById.put(item.getId(), item));
         fallbackItems.forEach(item -> itemById.putIfAbsent(item.getId(), item));
         List<ContentItem> items = new ArrayList<>(itemById.values());
+
+        // (4) Tải thông tin danh mục Tag/Topic liên kết của các bài viết từ DB để kiểm tra toàn vẹn dữ liệu
         Map<UUID, List<UUID>> tagIdsByContentId = loadRecommendationTagIds(itemById.keySet());
         Set<UUID> tagIds = tagIdsByContentId.values().stream()
                 .flatMap(Collection::stream)
                 .collect(Collectors.toSet());
         Map<UUID, CommunityTopic> topics = loadTopics(tagIds);
+
+        // =========================================================================
+        // [BƯỚC 3.3: Lọc cứng (Hard Eligibility) & Phân loại bài viết vào 2 nhóm]
+        // =========================================================================
         List<RecommendationRanker.Candidate> targeted = new ArrayList<>();
         List<RecommendationRanker.Candidate> fallback = new ArrayList<>();
         for (ContentItem item : items) {
+            // (1) Lọc cứng (Hard Eligibility): Kiểm tra bài viết có khớp giai đoạn thai kỳ (Stage)
+            //     và nằm trong khoảng tuần thai hợp lệ (eligible_from_week <= pregnancyWeek <= eligible_to_week)
             if (!eligibilityPolicy.isHardEligible(item, context)) continue;
+
+            // Lấy danh sách ID các tag/topic gắn liền với bài viết này
             List<UUID> associatedTagIds = tagIdsByContentId.getOrDefault(item.getId(), List.of());
-            // A missing topic row means we cannot prove that the article has no
-            // controlled rec-* tag.  Fail closed instead of accidentally
-            // treating a partially-resolved article as lifecycle fallback.
+
+            // (2) Kiểm tra an toàn: Nếu bài viết có tag nhưng không tìm thấy trong DB topics -> fail-closed (bỏ qua)
+            //     để tránh trường hợp bài viết cá nhân hóa bị hiển thị nhầm thành bài viết chung (fallback)
             if (associatedTagIds.stream().anyMatch(id -> !topics.containsKey(id))) {
                 continue;
             }
+
+            // Lấy danh sách đối tượng CommunityTopic tương ứng của bài viết
             Set<CommunityTopic> associated = associatedTagIds.stream()
                     .map(topics::get).filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
+
+            // (3) Kiểm tra Catalog kiểm soát: Nếu bài viết chứa tag hệ thống (controlled) nhưng không nằm trong Catalog V1 -> Bỏ qua
             boolean invalidControlled = associated.stream()
                     .filter(RecommendationMetadataPolicy::isControlled)
                     .anyMatch(topic -> !RecommendationMetadataPolicy.isCatalogTopic(topic));
             if (invalidControlled) continue;
+
+            // Trích xuất toàn bộ slug của các tag cá nhân hóa (tiền tố 'rec-') được gắn trên bài viết
             Set<String> allRec = associated.stream().map(CommunityTopic::getSlug)
                     .filter(Objects::nonNull).filter(slug -> slug.startsWith("rec-")).collect(Collectors.toSet());
+
+            // (4) Tìm và đếm số lượng tag khớp (matchedCount): 
+            //     Tag phải là TYPE_TAG, không bị ẩn, nằm trong Catalog V1 chuẩn VÀ trùng với tín hiệu (signals) của người mẹ
             Set<String> matched = associated.stream()
                     .filter(topic -> topic.getType() == TopicType.TAG && !topic.isHidden())
                     .map(CommunityTopic::getSlug)
                     .filter(RecommendationConstants.ALL_TAG_SLUGS::contains)
                     .filter(signals::contains)
                     .collect(Collectors.toSet());
+
+            // Xác thực điều kiện bài viết Targeted hợp lệ: Có tag rec-*, tất cả tag rec-* đều thuộc Catalog V1
             boolean validTargeted = !allRec.isEmpty()
                     && allRec.stream().allMatch(RecommendationConstants.ALL_TAG_SLUGS::contains)
                     && associated.stream().filter(RecommendationMetadataPolicy::isControlled)
                             .allMatch(RecommendationMetadataPolicy::isCatalogTopic);
+
+            // (5) Phân loại vào danh sách Candidate:
+            // - Nhóm Targeted: Bài viết có tag mục tiêu và có ít nhất 1 tag trùng khớp với người mẹ (matched.size() > 0)
+            // - Nhóm Fallback: Bài viết theo tuần thai thông thường (không chứa bất kỳ tag cá nhân hóa rec-* nào)
             if (validTargeted && !matched.isEmpty()) {
                 targeted.add(candidate(item, matched.size()));
             } else if (allRec.isEmpty()) {
                 fallback.add(candidate(item, 0));
             }
         }
+
+        // =========================================================================
+        // [BƯỚC 3.4: Xếp hạng (Ranker Comparator) & Ghép đủ số lượng bài theo limit]
+        // =========================================================================
+        // (1) Lấy bộ so sánh Ranker đa tiêu chí: Priority (DESC) -> Matched Tags (DESC) -> Tuần hẹp hơn (ASC) -> Ngày xuất bản mới nhất (DESC)
         Comparator<RecommendationRanker.Candidate> comparator = ranker.comparator();
         targeted.sort(comparator);
         fallback.sort(comparator);
+
+        // (2) Ưu tiên chọn tối đa số lượng bài viết từ nhóm Targeted trước
         List<RecommendationRanker.Candidate> selected = new ArrayList<>(targeted.stream().limit(limit).toList());
+
+        // (3) Nếu nhóm Targeted chưa đủ số lượng limit: Lấy bù thêm các bài viết tốt nhất từ nhóm Fallback (tránh trùng lặp ID)
         if (selected.size() < limit) {
             Set<UUID> ids = selected.stream().map(value -> value.item().getId()).collect(Collectors.toSet());
             fallback.stream().filter(value -> !ids.contains(value.item().getId()))
                     .limit(limit - selected.size()).forEach(selected::add);
         }
+
+        // =========================================================================
+        // [BƯỚC 4 & 5: Đóng gói phản hồi (Response & Read-Only Context)]
+        // =========================================================================
+        // (1) Khởi tạo danh sách DTO phản hồi trả về cho Client
         List<RecommendationContentResponse.Item> responseItems = new ArrayList<>();
         for (int i = 0; i < selected.size(); i++) {
             RecommendationRanker.Candidate candidate = selected.get(i);
             boolean isTargeted = candidate.matchedCount() > 0;
+            // Gán thứ hạng hiển thị (rank), phân loại TARGETED/FALLBACK, mã lý do ReasonCode và thông điệp giải thích thân thiện
             responseItems.add(new RecommendationContentResponse.Item(
                     i + 1,
                     isTargeted ? SelectionType.TARGETED : SelectionType.FALLBACK,
@@ -410,12 +471,20 @@ public class RecommendationService implements RecommendationConsentCleanup {
                     new ContentSummary(candidate.item().getId(), candidate.item().getType().name(), candidate.item().getTitle(),
                             candidate.item().getSummary(), candidate.item().getStage().name(), candidate.item().getTopicId(), candidate.item().getPublishedAt())));
         }
+
+        // (2) Kiểm tra xem trong kết quả trả về có phải sử dụng bài viết dự phòng (Fallback) hay không
         boolean fallbackUsed = responseItems.stream().anyMatch(item -> item.selectionType() == SelectionType.FALLBACK);
+
+        // (3) Xác định chế độ lựa chọn: EMPTY, TARGETED_ONLY, TARGETED_WITH_FALLBACK hoặc FALLBACK_ONLY
         SelectionMode mode = responseItems.isEmpty() ? SelectionMode.EMPTY
                 : responseItems.stream().allMatch(item -> item.selectionType() == SelectionType.FALLBACK) ? SelectionMode.FALLBACK_ONLY
                 : fallbackUsed ? SelectionMode.TARGETED_WITH_FALLBACK : SelectionMode.TARGETED_ONLY;
+
+        // (4) Đánh giá mức độ đáp ứng số lượng: COMPLETE (đủ limit), PARTIAL (thiếu bài), hoặc EMPTY
         CoverageStatus coverage = responseItems.size() == limit ? CoverageStatus.COMPLETE
                 : responseItems.isEmpty() ? CoverageStatus.EMPTY : CoverageStatus.PARTIAL;
+
+        // (5) Trả về DTO tổng hợp đầy đủ thông tin giai đoạn, tuần thai, chế độ gợi ý và danh sách bài viết
         return new RecommendationContentResponse(context.stage().name(), context.pregnancyWeek(),
                 context.weekEligibilityMode(), journey.getRecommendationProfileStatus(), mode, coverage, fallbackUsed, responseItems);
     }
@@ -477,6 +546,10 @@ public class RecommendationService implements RecommendationConsentCleanup {
         });
     }
 
+    /**
+     * Tạo đối tượng Candidate để đưa vào bộ xếp hạng (RecommendationRanker).
+     * Bao gồm thông tin bài viết, số tag khớp, cờ áp dụng toàn giai đoạn (stageWide), độ hẹp tuần (windowWidth) và độ ưu tiên.
+     */
     private RecommendationRanker.Candidate candidate(ContentItem item, int matchedCount) {
         return new RecommendationRanker.Candidate(item, matchedCount, eligibilityPolicy.isStageWide(item),
                 eligibilityPolicy.inclusiveWidth(item), item.getRecommendationPriority() == null ? 0 : item.getRecommendationPriority());
@@ -510,6 +583,9 @@ public class RecommendationService implements RecommendationConsentCleanup {
         }
     }
 
+    /**
+     * Tải danh sách ID các tag được gán cho từng bài viết từ bảng liên kết content_item_topics.
+     */
     private Map<UUID, List<UUID>> loadRecommendationTagIds(Collection<UUID> contentItemIds) {
         if (contentItemIds == null || contentItemIds.isEmpty()) return Map.of();
         Map<UUID, List<UUID>> result = new HashMap<>();
@@ -523,12 +599,19 @@ public class RecommendationService implements RecommendationConsentCleanup {
         return result;
     }
 
+    /**
+     * Tải chi tiết các đối tượng CommunityTopic từ bảng community_topics theo danh sách ID tag.
+     */
     private Map<UUID, CommunityTopic> loadTopics(Collection<UUID> ids) {
         if (ids == null || ids.isEmpty()) return Map.of();
         return topicRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(CommunityTopic::getId, value -> value));
     }
 
+    /**
+     * Phân giải các tín hiệu y tế (Medical Signals) từ hồ sơ cá nhân hóa JSON của người mẹ.
+     * Bao gồm: Nhóm tuổi, BMI, tiền sử thai kỳ, bệnh nền, dinh dưỡng, tiêm chủng...
+     */
     private Set<String> resolveStoredSignals(MotherJourney journey, UUID ownerUserId) {
         try {
             Map<String, Object> envelope = safeMap(journey.getRecommendationProfileJson());
@@ -564,6 +647,9 @@ public class RecommendationService implements RecommendationConsentCleanup {
         }
     }
 
+    /**
+     * Trích xuất các tín hiệu về sở thích hỗ trợ & phong cách sống (Support Preferences) từ trường baselinePreferences của hành trình.
+     */
     private Set<String> resolveSupportPreferenceSignals(MotherJourney journey) {
         if (journey.getBaselinePreferences() == null) return Set.of();
         Set<String> result = new LinkedHashSet<>();
@@ -589,6 +675,10 @@ public class RecommendationService implements RecommendationConsentCleanup {
         return canonical(ownerUserId, null, lock);
     }
 
+    /**
+     * Truy vấn hành trình thai kỳ chính thức (Canonical Journey) của người mẹ.
+     * Hỗ trợ trường hợp thành viên gia đình (FAMILY) truy cập thông qua nhóm chăm sóc (CareGroup).
+     */
     private MotherJourney canonical(UUID ownerUserId, UUID careGroupId, boolean lock) {
         Optional<MotherJourney> journey = lock ? journeyRepository.findCanonicalForUpdate(ownerUserId)
                 : journeyRepository.findCanonical(ownerUserId);
@@ -629,6 +719,11 @@ public class RecommendationService implements RecommendationConsentCleanup {
         return value;
     }
 
+    /**
+     * Đánh giá tính hợp lệ của sự đồng ý (Consent Grant) cho việc cá nhân hóa nội dung.
+     * Kiểm tra: Còn hạn (not expired), chưa bị thu hồi (not revoked), trạng thái ACTIVE và phiên bản chính sách khớp.
+     * Nếu consent hết hạn hoặc bị thu hồi, tự động chuyển trạng thái hồ sơ về RECONSENT_REQUIRED hoặc REVOKED.
+     */
     private ConsentAssessment assessConsent(MotherJourney journey, UUID ownerUserId, Instant now) {
         List<ConsentGrant> latestRows = consentGrantRepository.findLatestRecommendationGrant(
                 ownerUserId, CONSENT_SCOPE, PageRequest.of(0, 1));

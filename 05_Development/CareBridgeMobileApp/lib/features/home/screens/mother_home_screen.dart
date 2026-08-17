@@ -192,6 +192,9 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     } catch (_) {}
   }
 
+  /// [BƯỚC 1: TIẾP NHẬN DỮ LIỆU TUẦN THAI TỪ BACKEND]
+  /// Tải dữ liệu tổng quan hành trình của mẹ (bao gồm tuần thai, tam cá nguyệt, ngày dự sinh)
+  /// thông qua JourneyService.getDashboard() -> Gọi API `GET /api/v1/journeys/me/dashboard`
   Future<void> _load() async {
     unawaited(_loadRecommendations());
     final todayRefresh = _todayTasksController.refresh();
@@ -208,12 +211,14 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       }
     } catch (_) {}
     try {
+      // Gọi Service để gửi request lấy Dashboard dữ liệu tuổi thai từ Backend
       final dashboard =
           await (widget.dashboardLoader?.call() ??
               _journeyService.getDashboard());
       final reminders = await _loadReminders();
       if (mounted && generation == _loadGeneration) {
         setState(() {
+          // Cập nhật State Dashboard (chứa pregnancyWeek, completedGestationalDays, trimester, plan...)
           _dashboard = dashboard;
           _reminders = reminders;
           _loading = false;
@@ -232,6 +237,10 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     }
   }
 
+  /// [BƯỚC 1: KIỂM TRA ĐIỀU KIỆN & GỌI API GỢI Ý BÀI VIẾT TỪ FRONTEND]
+  /// 1. Kiểm tra hành trình thai kỳ có đang hoạt động (ACTIVE_PREGNANCY, ACTIVE_POSTPARTUM, PRE_PREGNANCY).
+  /// 2. Gửi request đến Backend qua RecommendationService.getContent(limit: 3) -> Gọi `GET /api/v1/recommendations/content`.
+  /// 3. Cập nhật State `_recommendations` để render danh sách bài viết gợi ý lên Widget trang chủ.
   Future<void> _loadRecommendations() async {
     final generation = ++_recommendationLoadGeneration;
     final accountId = AuthState.instance.userId;
@@ -248,38 +257,39 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     }
     if (mounted && generation == _recommendationLoadGeneration) {
       setState(() {
-        // Keep recommendation progress independent from the main dashboard
-        // load while the eligibility context is being resolved.
+        // Giữ trạng thái loading gợi ý độc lập với Dashboard chính
         _recommendationLoading = true;
         _recommendationError = null;
       });
     }
     try {
+      // (1) Lấy thông tin Dashboard hành trình hiện tại để xác định tính hợp lệ
       final dashboard =
           _dashboard ??
           await (widget.dashboardLoader?.call() ??
               _journeyService.getDashboard());
       if (!mounted || generation != _recommendationLoadGeneration) return;
       if (accountId != AuthState.instance.userId) return;
-      // Recommendation content is meaningful only for an active maternal
-      // lifecycle.  In particular, never call the recommendation endpoint
-      // for a missing journey, BABY_CARE, or an unknown/retired stage.
+
+      // (2) Chỉ gọi API gợi ý khi mẹ đang ở giai đoạn thai kỳ hợp lệ (PRE_PREGNANCY, PREGNANCY, POSTPARTUM)
       if (!_isRecommendationEligibleDashboard(dashboard)) {
         _clearRecommendationState(generation);
         return;
       }
     } catch (_) {
-      // Fail closed: without a trustworthy maternal dashboard we must not
-      // fabricate a stage or call the recommendation endpoint.
+      // Fail closed: Nếu không lấy được dashboard hành trình, không gọi API gợi ý
       _clearRecommendationState(generation);
       return;
     }
     try {
+      // (3) Gọi Service gửi HTTP GET /api/v1/recommendations/content
       final response =
           await (widget.recommendationLoader?.call() ??
               _recommendationService.getContent(limit: 3));
       if (!mounted || generation != _recommendationLoadGeneration) return;
       if (accountId != null && accountId != AuthState.instance.userId) return;
+
+      // (4) Cập nhật State khi nhận phản hồi thành công từ Backend
       setState(() {
         _recommendations = response;
         _recommendationLoading = false;
@@ -288,6 +298,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     } catch (_) {
       if (!mounted || generation != _recommendationLoadGeneration) return;
       if (accountId != null && accountId != AuthState.instance.userId) return;
+      // (5) Xử lý State khi gặp lỗi kết nối hoặc API thất bại
       setState(() {
         _recommendationLoading = false;
         _recommendationError =
@@ -296,6 +307,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     }
   }
 
+  /// Kiểm tra Dashboard người mẹ có đủ điều kiện nhận gợi ý cá nhân hóa không
   bool _isRecommendationEligibleDashboard(JourneyDashboard dashboard) {
     const activeMaternalStatuses = {
       'ACTIVE_PREGNANCY',
@@ -728,13 +740,18 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     );
   }
 
+  /// [HIỂN THỊ GIAO DIỆN: THẺ TIẾN ĐỘ THAI KỲ & TUẦN THAI HIỆN TẠI]
+  /// Sử dụng `displayPregnancyWeek` (hoặc `pregnancyWeek`) và `pregnancyProgress`
+  /// tính từ `completedGestationalWeek / 40` để hiển thị trực quan cho mẹ bầu.
   Widget _buildJourneyCard() {
     final d = _dashboard;
     if (d?.hasActiveJourney != true) {
       return _buildNoJourneyCard();
     }
 
+    // Lấy tuần thai hiển thị (1-based: ví dụ Tuần 12)
     final week = d!.displayPregnancyWeek;
+    // Lấy tỷ lệ tiến độ hoàn thành thai kỳ (0.0 đến 1.0)
     final progress = d.pregnancyProgress;
     final title = week != null ? 'Tuần $week' : d.phaseLabel;
     final description = week != null
@@ -1435,11 +1452,16 @@ class _SkeletonLine extends StatelessWidget {
 }
 
 extension _MotherHomeRecommendationView on _MotherHomeScreenState {
+  /// [BƯỚC 5: RENDER GIAO DIỆN RECOMMENDATION WIDGET TRÊN HOME SCREEN]
+  /// Hiển thị tiêu đề theo tuần thai/giai đoạn, thông báo trạng thái độ phủ (Coverage Notice)
+  /// và danh sách các Card bài viết gợi ý.
   Widget _buildRecommendationSection() {
     final response = _recommendations;
+    // (1) Trạng thái đang tải lần đầu: hiển thị Skeleton Loading
     if (response == null && _recommendationLoading) {
       return const _RecommendationLoadingState();
     }
+    // (2) Trạng thái lỗi tải dữ liệu: hiển thị nút thử lại
     if (response == null && _recommendationError != null) {
       return _RecommendationErrorState(
         message: _recommendationError!,
@@ -1448,6 +1470,7 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
     }
     if (response == null) return const SizedBox.shrink();
     final items = response.items;
+    // (3) Xác định tiêu đề động theo tuần thai hoặc giai đoạn hiện tại của mẹ
     final title = switch (response.stage) {
       'PRE_PREGNANCY' => 'Gợi ý cho chuẩn bị mang thai',
       'PREGNANCY' when response.pregnancyWeek != null =>
@@ -1470,6 +1493,7 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
             color: _MotherHomeScreenState._onSurfaceVariant,
           ),
         ),
+        // (4) Nhắc nhở cập nhật hồ sơ cá nhân hóa nếu trạng thái là REVIEW_REQUIRED hoặc RECONSENT_REQUIRED
         if (response.profileStatus ==
                 RecommendationProfileStatus.reviewRequired ||
             response.profileStatus ==
@@ -1503,6 +1527,7 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
             onRetry: _loadRecommendations,
           ),
         ],
+        // (5) Thông báo trạng thái độ phủ bài viết (Coverage Notices)
         if (response.selectionMode == 'FALLBACK_ONLY')
           const _RecommendationCoverageNotice(
             key: Key('mother-home-recommendation-fallback-only'),
@@ -1523,11 +1548,13 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
             onBrowse: () => context.push('/content'),
           ),
         const SizedBox(height: 14),
+        // (6) Render danh sách từng Card bài viết gợi ý
         if (items.isNotEmpty) ...items.map(_buildRecommendationCard),
       ],
     );
   }
 
+  /// Render Card bài viết gợi ý đơn lẻ kèm tiêu đề, tóm tắt và thông điệp giải thích lý do gợi ý
   Widget _buildRecommendationCard(RecommendationContentItem item) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

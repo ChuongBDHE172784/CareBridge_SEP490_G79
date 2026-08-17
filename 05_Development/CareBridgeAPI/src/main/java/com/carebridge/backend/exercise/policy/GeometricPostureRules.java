@@ -79,15 +79,12 @@ public final class GeometricPostureRules {
     }
 
     /**
-     * Evaluates the frame-local rules for one exercise.
+     * Đánh giá các quy tắc hình học cục bộ cho từng khung hình (Frame-local rules).
      *
-     * @param exerciseKey server-owned exercise key; unknown keys yield no findings
-     * @param landmarks   named MediaPipe landmarks as posted by the client
-     * @param stage       model-reported phase ({@code up}/{@code down}) or {@code null}
-     *                    when inference did not run; stage-dependent checks are then
-     *                    skipped rather than evaluated against a guessed band
-     * @return findings in a stable order, empty when the pose is acceptable or the
-     *         required landmarks are missing or not confidently visible
+     * @param exerciseKey Tên định danh bài tập ("bicep_curl", "squat", "lunge", "plank")
+     * @param landmarks   Các điểm mốc cơ thể (MediaPipe landmarks) từ camera
+     * @param stage       Pha chuyển động do model phân loại ("up", "down", "middle")
+     * @return Danh sách các lỗi vi phạm hình học phát hiện được (RuleFinding)
      */
     public static List<RuleFinding> evaluate(
             String exerciseKey, Map<String, Object> landmarks, String stage) {
@@ -98,14 +95,15 @@ public final class GeometricPostureRules {
             case "bicep_curl" -> evaluateBicepCurl(landmarks);
             case "squat" -> evaluateSquat(landmarks, stage);
             case "lunge" -> evaluateLunge(landmarks);
-            // plank: upstream applies no geometric rule beyond its model threshold.
+            // plank: không áp dụng thêm luật hình học phụ ngoài ngưỡng phân loại của Model AI
             default -> List.of();
         };
     }
 
     /**
-     * Upstream's loose-upper-arm check: the angle between the upper arm and vertical,
-     * measured at the shoulder. A curl should keep the upper arm pinned to the torso.
+     * Quy tắc bài tập Bicep Curl: Kiểm tra góc cánh tay trên so với phương thẳng đứng (LOOSE_UPPER_ARM).
+     * Nghiệp vụ y tế: Thai phụ khi gập tạ tay cần ép sát cánh tay vào thân người; nếu vung cánh tay quá 40 độ
+     * sẽ gây sai khớp vai và mất thăng bằng cơ thể.
      */
     private static List<RuleFinding> evaluateBicepCurl(Map<String, Object> landmarks) {
         for (String side : List.of("left", "right")) {
@@ -114,8 +112,7 @@ public final class GeometricPostureRules {
             if (shoulder == null || elbow == null) {
                 continue;
             }
-            // Upstream projects the shoulder straight down the frame and measures the
-            // angle at the shoulder between that projection and the elbow.
+            // Chiếu điểm vai xuống theo phương thẳng đứng và đo góc hợp bởi (elbow - shoulder - projection)
             Point projection = new Point(shoulder.x(), shoulder.y() + 1.0);
             double angle = angleAt(shoulder, elbow, projection);
             if (angle > LOOSE_UPPER_ARM_DEGREES) {
@@ -126,9 +123,10 @@ public final class GeometricPostureRules {
     }
 
     /**
-     * Upstream's foot- and knee-placement analysis. Both are width ratios, so they
-     * survive the missing aspect-ratio correction far better than a raw angle would:
-     * the segments compared are all roughly horizontal.
+     * Quy tắc bài tập Squat: Kiểm tra tỷ lệ độ rộng đặt chân (Foot Placement) và khoảng cách 2 đầu gối (Knee Placement).
+     * Nghiệp vụ y tế:
+     * 1. Độ rộng 2 chân so với vai (footShoulderRatio): phải nằm trong khoảng [1.2, 2.8]. Quá hẹp làm mất cân bằng bụng bầu, quá rộng gây áp lực khớp háng.
+     * 2. Tỷ lệ gối so với chân (kneeFootRatio theo từng pha up/middle/down): Đầu gối không được chụm vào trong (valgus) hoặc bè ra ngoài quá mức.
      */
     private static List<RuleFinding> evaluateSquat(Map<String, Object> landmarks, String stage) {
         List<RuleFinding> findings = new ArrayList<>();
@@ -137,6 +135,7 @@ public final class GeometricPostureRules {
         Double footWidth = width(landmarks, "left_foot_index", "right_foot_index", SQUAT_VISIBILITY);
         Double kneeWidth = width(landmarks, "left_knee", "right_knee", SQUAT_VISIBILITY);
 
+        // Kiểm tra độ mở rộng của hai bàn chân so với độ rộng hai vai
         if (shoulderWidth != null && footWidth != null && shoulderWidth > 0) {
             double footShoulderRatio = round1(footWidth / shoulderWidth);
             if (footShoulderRatio < FOOT_SHOULDER_MIN) {
@@ -146,6 +145,7 @@ public final class GeometricPostureRules {
             }
         }
 
+        // Kiểm tra vị trí đầu gối so với bàn chân tương ứng với từng giai đoạn chuyển động
         double[] band = stage == null ? null : KNEE_FOOT_RATIO.get(stage);
         if (band != null && footWidth != null && kneeWidth != null && footWidth > 0) {
             double kneeFootRatio = round1(kneeWidth / footWidth);

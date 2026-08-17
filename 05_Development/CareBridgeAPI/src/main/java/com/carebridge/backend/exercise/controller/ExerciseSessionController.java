@@ -30,6 +30,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST Controller quản lý vòng đời phiên tập luyện thể dục thai kỳ (Exercise Sessions)
+ * và phân tích tư thế thời gian thực bằng Camera AI (Realtime Posture Analysis).
+ */
 @RestController
 @RequestMapping("/api/v1/exercises/sessions")
 @RequiredArgsConstructor
@@ -40,7 +44,10 @@ public class ExerciseSessionController {
     private final IExerciseSessionHistoryService sessionHistoryService;
     private final IPostureAnalysisService postureAnalysisService;
 
-    // UC181 — Pause session
+    /**
+     * [UC181] Tạm dừng phiên tập luyện (Pause Exercise Session).
+     * Chuyển trạng thái sang PAUSED và ghi nhận thời điểm tạm dừng để tính toán thời lượng thực tế.
+     */
     @PatchMapping("/{sessionId}/pause")
     @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<SessionStateResponse>> pauseSession(
@@ -50,7 +57,10 @@ public class ExerciseSessionController {
                 ApiResponse.success(sessionService.pauseSession(sessionId, userId)));
     }
 
-    // UC181 — Resume session
+    /**
+     * [UC181] Tiếp tục phiên tập luyện (Resume Exercise Session).
+     * Chuyển trạng thái về IN_PROGRESS, tính tổng số giây đã tạm dừng để trừ khỏi tổng thời gian tập.
+     */
     @PatchMapping("/{sessionId}/resume")
     @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<SessionStateResponse>> resumeSession(
@@ -60,7 +70,10 @@ public class ExerciseSessionController {
                 ApiResponse.success(sessionService.resumeSession(sessionId, userId)));
     }
 
-    // UC30 — Analyze Exercise Posture (submit body landmark data, receive real-time feedback)
+    /**
+     * [UC30] Phân tích tư thế tập luyện từ mốc tọa độ Camera AI (Analyze Posture Event).
+     * Tiếp nhận mốc cơ thể (MediaPipe Landmarks) từ client, chạy qua AI/Rule-based và trả về hướng dẫn sửa tư thế.
+     */
     @PostMapping("/{sessionId}/posture-events")
     @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<PostureFeedbackResponse>> analyzePosture(
@@ -71,7 +84,10 @@ public class ExerciseSessionController {
         return ResponseEntity.ok(postureAnalysisService.analyzePosture(sessionId, userId, request));
     }
 
-    // UC182 — Complete session
+    /**
+     * [UC182] Kết thúc và hoàn thành phiên tập (Complete Exercise Session).
+     * Tính toán % hoàn thành, điểm tư thế trung bình (postureScore) và tổng hợp kết quả lưu vào database.
+     */
     @PatchMapping("/{sessionId}/complete")
     @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<SessionResultResponse>> completeSession(
@@ -81,7 +97,9 @@ public class ExerciseSessionController {
                 ApiResponse.success(sessionService.completeSession(sessionId, userId)));
     }
 
-    // UC183 — View session result
+    /**
+     * [UC183] Xem kết quả chi tiết của phiên tập (View Session Result).
+     */
     @GetMapping("/{sessionId}/result")
     @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<SessionResultResponse>> getSessionResult(
@@ -90,7 +108,10 @@ public class ExerciseSessionController {
         return ResponseEntity.ok(sessionResultService.getSessionResult(sessionId, userId));
     }
 
-    // UC184 — View pregnancy exercise history
+    /**
+     * [UC184] Xem lịch sử các phiên tập luyện thai kỳ (View Exercise Session History).
+     * Hỗ trợ lọc theo tam cá nguyệt (trimesterScope) và khoảng thời gian (from, to), có phân trang.
+     */
     @GetMapping("/history")
     @PreAuthorize("hasAnyRole('MOTHER', 'SYSTEM_ADMIN')")
     public ResponseEntity<PaginatedResponse<ExerciseSessionHistorySummary>> getSessionHistory(

@@ -67,7 +67,7 @@ class RecommendationControllerTest {
                         RecommendationProfileStatus.NOT_STARTED, true, false, 0, 0, null,
                         new RecommendationProfileResponse.ConsentSummary("NONE", null, null, null, null),
                         null, null));
-        when(recommendationService.getContent(UUID.fromString(USER), null, 3)).thenReturn(
+        when(recommendationService.getContent(UUID.fromString(USER), null, 10)).thenReturn(
                 new RecommendationContentResponse(
                         "PRE_PREGNANCY", null, WeekEligibilityMode.NOT_APPLICABLE,
                         RecommendationProfileStatus.NOT_STARTED, SelectionMode.EMPTY,
@@ -85,7 +85,7 @@ class RecommendationControllerTest {
     @WithMockUser(username = USER, roles = "FAMILY")
     void familyMemberCanReadContentWithCareGroupId() throws Exception {
         UUID group = UUID.fromString("00000000-0000-0000-0000-000000000002");
-        when(recommendationService.getContent(UUID.fromString(USER), group, 3)).thenReturn(
+        when(recommendationService.getContent(UUID.fromString(USER), group, 10)).thenReturn(
                 new RecommendationContentResponse(
                         "PREGNANCY", 12, WeekEligibilityMode.BOUNDED_AND_STAGE_WIDE,
                         RecommendationProfileStatus.NOT_STARTED, SelectionMode.EMPTY,

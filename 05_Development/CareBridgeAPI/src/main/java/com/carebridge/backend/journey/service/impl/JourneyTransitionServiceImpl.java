@@ -321,6 +321,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
     @Override
     public CreateJourneyResponse createJourney(CreateJourneyRequest request, UUID callerId) {
+        // [BƯỚC 1 & 2: Validate nghiệp vụ & Tiếp nhận Request]
+        // Kiểm tra quyền hạn và vai trò MOTHER của người dùng
         var user = userRepository.findById(callerId)
                 .orElseThrow(() -> new BusinessException(
                         HttpStatus.NOT_FOUND, "JOURNEY-001", "User not found: " + callerId));
@@ -334,17 +336,20 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
         onboardingService.ensureEligible(callerId);
 
+        // [BƯỚC 3: Xử lý nghiệp vụ & Thuật toán cốt lõi Gestational Dating]
         int contractVersion = contractVersion(request.getChecklistContractVersion());
         LocalDate serverToday = LocalDate.now(clock.withZone(CAREBRIDGE_BUSINESS_ZONE));
+        // Gọi datingResolver tính toán tuần thai, điểm neo canonicalLmp và WHO Plan
         GestationalDatingResolution dating = datingResolver.resolveCreate(
                 request, contractVersion, serverToday);
-        // Resolve stage applicability before postpartum provenance validation so
-        // date-bearing non-pregnancy requests fail with the dating contract code.
+        
         validateDirectPostpartumCreate(request);
         transitionPolicy.validateCreate(request);
         Instant requestEffectiveAt = effectiveAtOrNow(request.getEffectiveAt());
         Instant recordedAt = Instant.now(clock);
         Instant datingEffectiveAt = dating.resolved() ? recordedAt : null;
+        
+        // Kiểm tra xung đột nếu đã có hành trình ACTIVE
         if (journeyRepository.existsByOwnerUserIdAndStatusAndJourneyTypeIn(
                 callerId, JourneyStatus.ACTIVE, JourneyTransitionPolicy.CANONICAL_STAGES)) {
             throw canonicalConflict();
@@ -354,6 +359,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 ? nextDatingRevision(null)
                 : null;
 
+        // [BƯỚC 4: Lưu trữ & Thay đổi trạng thái Database - INSERT MotherJourney]
         UUID careSubjectId = ensureMotherCareSubject(callerId);
         MotherJourney current = MotherJourney.builder()
                 .ownerUserId(callerId)
@@ -373,15 +379,15 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
         MotherJourney saved;
         try {
+            // INSERT vào bảng mother_journeys
             saved = journeyRepository.saveAndFlush(current);
             journeyRepository.linkMotherCareSubject(careSubjectId, saved.getId());
-            // Canonical convention: maternal observations use care_subject_id = journey_id,
-            // so the matching MOTHER care_subjects row must exist for the FK.
             journeyRepository.ensureJourneyObservationSubject(saved.getId());
         } catch (DataIntegrityViolationException exception) {
             throw canonicalConflict();
         }
 
+        // Ghi lại sự kiện chuyển đổi trạng thái (Transition Audit)
         Map<String, Object> changes = new LinkedHashMap<>();
         addChange(changes, "journeyType", null, saved.getJourneyType());
         addChange(changes, "startDate", null, saved.getStartDate());
@@ -415,12 +421,15 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .build();
         transitionRepository.saveAndFlush(transition);
 
+        // [BƯỚC 5: Phản hồi & Tác vụ phụ Event / Audit Log]
         auditService.log(
                 AuditAction.JOURNEY_CREATED,
                 callerId,
                 "MotherJourney",
                 saved.getId().toString(),
                 Map.of("journeyVersion", saved.getVersion()));
+        
+        // Bắn domain event kích hoạt sinh Checklist thai kỳ theo tuần
         publishAfterCommit(new MotherJourneyCreated(
                 UUID.randomUUID(),
                 saved.getId(),
@@ -430,6 +439,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 saved.getVersion(),
                 recordedAt,
                 correlationId));
+        
         return toCreateResponse(saved);
     }
 
@@ -474,8 +484,10 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     @Override
     public JourneyResponse updateJourney(
             UUID ownerId, UUID journeyId, UpdateJourneyRequest request) {
+        // [BƯỚC 1 & 2: Validate nghiệp vụ & Tiếp nhận Request]
         onboardingService.ensureEligible(ownerId);
         MotherJourney current = ownedJourney(ownerId, journeyId);
+        // Chỉ cho phép cập nhật khi hành trình đang ACTIVE
         if (current.getStatus() != JourneyStatus.ACTIVE) {
             throw new BusinessException(
                     HttpStatus.BAD_REQUEST, "JOURNEY-012", "Journey is not active");
@@ -513,6 +525,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                     "A new pregnancy epoch must remain active");
         }
 
+        // [BƯỚC 3: Xử lý tính toán lại tuổi thai & Kiểm tra tính đẳng trị]
         int contractVersion = contractVersion(request.getChecklistContractVersion());
         LocalDate serverToday = LocalDate.now(clock.withZone(CAREBRIDGE_BUSINESS_ZONE));
         GestationalDatingResolution dating = datingResolver.resolveUpdate(
@@ -547,8 +560,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         Instant recordedAt = Instant.now(clock);
         Instant datingEffectiveAt = datingAuthorityChanged ? recordedAt : null;
 
-        // An unchanged canonical anchor is an idempotent authority no-op.  It
-        // must not consume a Journey version or append an audit transition.
+        // Nếu dữ liệu ngày thai kỳ không thay đổi (Idempotent No-Op) -> Trả về ngay mà không sửa DB
         boolean onlyAuthorityNoOp = dating.semanticNoOp()
                 && (request.getJourneyType() == null
                 || request.getJourneyType() == current.getJourneyType())
@@ -566,6 +578,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             return toJourneyResponse(current);
         }
 
+        // [BƯỚC 4: Lưu trữ & Thay đổi trạng thái Database - UPDATE MotherJourney]
         if (request.getJourneyType() != null) {
             current.setJourneyType(request.getJourneyType());
         }
