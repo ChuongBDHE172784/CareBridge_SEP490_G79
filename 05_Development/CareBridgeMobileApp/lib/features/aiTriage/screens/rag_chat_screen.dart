@@ -151,6 +151,18 @@ class _RagChatScreenState extends State<RagChatScreen> {
   }
 
   List<String> get _quickPrompts {
+    final role = (AuthState.instance.role ?? 'MOTHER').toUpperCase();
+    final isMother = role == 'MOTHER';
+
+    if (!isMother) {
+      return const [
+        'Chế độ dinh dưỡng và món ăn bồi bổ tốt nhất cho vợ mang thai?',
+        'Dấu hiệu chuyển dạ và nguy hiểm của mẹ bầu mà gia đình cần đưa đi viện ngay?',
+        'Cách chăm sóc và massage giúp mẹ bầu giảm đau lưng, căng thẳng?',
+        'Người thân cần chuẩn bị và hỗ trợ gì khi mẹ sau sinh và chăm sóc bé sơ sinh?',
+      ];
+    }
+
     final stage = _effectiveStage;
 
     if (stage == 'PRECONCEPTION') {
@@ -201,6 +213,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
   }
 
   Future<void> _loadJourneyContext() async {
+    final role = (AuthState.instance.role ?? 'MOTHER').toUpperCase();
+    if (role != 'MOTHER') return;
+
     try {
       final res = await apiGet('/api/v1/journeys/me/dashboard');
       if (res is Map && mounted) {
@@ -431,12 +446,63 @@ class _RagChatScreenState extends State<RagChatScreen> {
     bool isWarning = false;
 
     // 1. Prioritize direct Python FastAPI AI RAG Service (PGVector + Gemini + Citations)
+    final role = (AuthState.instance.role ?? 'MOTHER').toUpperCase();
+    final isMother = role == 'MOTHER';
+
     final historyPayload = _messages
         .take(_messages.length - 1)
         .map(
           (m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text},
         )
         .toList();
+
+    final Map<String, dynamic> requestPayload = {
+      'message': question,
+      'stage': isMother ? _effectiveStage : 'ALL',
+      'user_role': isMother ? 'MOTHER' : 'FAMILY',
+      'conversation_history': historyPayload,
+    };
+
+    if (isMother) {
+      if (_pregnancyWeek != null) {
+        requestPayload['gestational_age_weeks'] = _pregnancyWeek;
+      }
+      if (_surveyProfile != null && _surveyProfile!.isNotEmpty) {
+        requestPayload['survey_profile'] = _surveyProfile;
+      }
+      if (_attachedContext != null) {
+        final metricType =
+            _attachedContext!['metricType']?.toString().toUpperCase();
+        final val = _attachedContext!['value'];
+        final Map<String, dynamic> recentMetrics = {};
+        if (metricType == 'BLOOD_PRESSURE' && val is Map) {
+          if (val['systolic'] != null) {
+            recentMetrics['systolic_bp'] = val['systolic'];
+          }
+          if (val['diastolic'] != null) {
+            recentMetrics['diastolic_bp'] = val['diastolic'];
+          }
+        } else if (metricType == 'TEMPERATURE' ||
+            metricType == 'BODY_TEMPERATURE') {
+          if (val is num) recentMetrics['temperature'] = val.toDouble();
+        } else if (metricType == 'BLOOD_GLUCOSE' ||
+            metricType == 'GLUCOSE') {
+          if (val is num) recentMetrics['blood_glucose'] = val.toDouble();
+        } else if (metricType == 'FETAL_MOVEMENT' ||
+            metricType == 'FETAL_MOVEMENTS') {
+          if (val is num) {
+            recentMetrics['fetal_movements_count'] = val.toInt();
+          }
+        }
+        final notes = _attachedContext!['notes']?.toString();
+        if (notes != null && notes.isNotEmpty) {
+          recentMetrics['symptoms'] = [notes];
+        }
+        if (recentMetrics.isNotEmpty) {
+          requestPayload['recent_metrics'] = recentMetrics;
+        }
+      }
+    }
 
     for (final base in _pythonCandidates) {
       try {
@@ -447,11 +513,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
                 'Content-Type': 'application/json',
                 'X-Internal-API-Key': 'carebridge',
               },
-              body: jsonEncode({
-                'message': question,
-                'stage': _effectiveStage,
-                'conversation_history': historyPayload,
-              }),
+              body: jsonEncode(requestPayload),
             )
             .timeout(const Duration(seconds: 15));
 
@@ -1496,8 +1558,42 @@ class _MessageBubble extends StatelessWidget {
     this.onConsultDoctorTap,
   });
 
+  String _sanitizeMathAndLatex(String input) {
+    if (input.isEmpty) return input;
+    var res = input;
+    res = res.replaceAll(RegExp(r'\$\\ge\s*([^$]*)\$'), r'≥ $1');
+    res = res.replaceAll(RegExp(r'\$\\le\s*([^$]*)\$'), r'≤ $1');
+    res = res.replaceAll(RegExp(r'\$\\geq\s*([^$]*)\$'), r'≥ $1');
+    res = res.replaceAll(RegExp(r'\$\\leq\s*([^$]*)\$'), r'≤ $1');
+    res = res.replaceAll(r'$\ge$', '≥');
+    res = res.replaceAll(r'$\le$', '≤');
+    res = res.replaceAll(r'$\geq$', '≥');
+    res = res.replaceAll(r'$\leq$', '≤');
+    res = res.replaceAll(r'$\ge', '≥');
+    res = res.replaceAll(r'$\le', '≤');
+    res = res.replaceAll(r'$\geq', '≥');
+    res = res.replaceAll(r'$\leq', '≤');
+    res = res.replaceAll(RegExp(r'\\ge\b'), '≥');
+    res = res.replaceAll(RegExp(r'\\le\b'), '≤');
+    res = res.replaceAll(RegExp(r'\\geq\b'), '≥');
+    res = res.replaceAll(RegExp(r'\\leq\b'), '≤');
+    res = res.replaceAll(r'$^\circ C$', '°C');
+    res = res.replaceAll(r'^\circ C', '°C');
+    res = res.replaceAll(r'$^\circ$', '°');
+    res = res.replaceAll(r'^\circ', '°');
+    res = res.replaceAll(r'$\approx$', '≈');
+    res = res.replaceAll(RegExp(r'\\approx\b'), '≈');
+    res = res.replaceAll(r'$\pm$', '±');
+    res = res.replaceAll(RegExp(r'\\pm\b'), '±');
+    res = res.replaceAll(r'$\times$', '×');
+    res = res.replaceAll(RegExp(r'\\times\b'), '×');
+    res = res.replaceAll(RegExp(r'\$([≥≤><=+\-\d\.\s/]+)\$'), r'$1');
+    return res;
+  }
+
   Widget _buildFormattedContent(String raw, bool isUser) {
-    final lines = raw.split('\n');
+    final sanitizedRaw = _sanitizeMathAndLatex(raw);
+    final lines = sanitizedRaw.split('\n');
     final children = <Widget>[];
     final numberRegex = RegExp(r'^(\d+[\.\)])\s*(.*)');
 
@@ -1977,25 +2073,97 @@ class _MessageBubble extends StatelessWidget {
             ],
           ),
           if (!isUser && message.followups.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.only(left: 2, top: 2),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: message.followups
-                    .map(
-                      (f) => ActionChip(
-                        label: Text(f, style: const TextStyle(fontSize: 12)),
-                        backgroundColor: Colors.white,
-                        side: const BorderSide(color: Color(0xFFDECFC8)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+              padding: const EdgeInsets.only(left: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 6, left: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          size: 13,
+                          color: Color(0xFFC98C7B),
                         ),
-                        onPressed: () => onFollowupTap(f),
+                        SizedBox(width: 4),
+                        Text(
+                          'Gợi ý câu hỏi tiếp theo:',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF8D6E63),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ...message.followups.map(
+                    (f) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => onFollowupTap(f),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE8DFD8),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.02),
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  size: 14,
+                                  color: Color(0xFFC98C7B),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    f,
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: Color(0xFF4A3731),
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    softWrap: true,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 11,
+                                  color: Color(0xFFBCAAA4),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
