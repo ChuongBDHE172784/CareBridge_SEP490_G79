@@ -136,17 +136,28 @@ class _AddMaternalHealthMetricScreenState
 
   Future<void> _loadJourneyAndSurveyContext() async {
     try {
-      final journeyRes = await apiGet('/api/v1/journey/dashboard');
+      final journeyRes = await apiGet('/api/v1/journeys/me/dashboard');
       if (journeyRes is Map && mounted) {
-        final data = journeyRes['data'] ?? journeyRes;
-        final week = data['effectivePregnancyWeek'] ?? data['weekNumber'] ?? data['currentWeek'];
-        if (week != null && week is int) {
-          setState(() {
-            _journeyGestationalWeeks = week;
-            if (_gestationalAgeCtrl.text.isEmpty) {
-              _gestationalAgeCtrl.text = '$week';
-            }
-          });
+        final data =
+            (journeyRes['data'] is Map) ? journeyRes['data'] : journeyRes;
+        final week =
+            data['pregnancyWeek'] ??
+            data['completedGestationalWeek'] ??
+            data['effectivePregnancyWeek'] ??
+            data['weekNumber'] ??
+            data['currentWeek'];
+        if (week != null) {
+          final parsed = (week is int)
+              ? week
+              : int.tryParse(week.toString());
+          if (parsed != null) {
+            setState(() {
+              _journeyGestationalWeeks = parsed;
+              if (_gestationalAgeCtrl.text.isEmpty) {
+                _gestationalAgeCtrl.text = '$parsed';
+              }
+            });
+          }
         }
       }
     } catch (_) {}

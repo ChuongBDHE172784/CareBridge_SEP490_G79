@@ -258,6 +258,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       case 'BLOOD_SUGAR':
       case 'BLOOD_GLUCOSE':
         return 'BLOOD_GLUCOSE';
+      case 'TEMPERATURE':
+      case 'BODY_TEMPERATURE':
+        return 'TEMPERATURE';
       case 'BMI':
       default:
         return value ?? 'TOTAL_OVERVIEW';
@@ -290,15 +293,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     if (_selectedMetric.apiValue == 'TOTAL_OVERVIEW') {
       try {
         try {
-          final journeyRes = await apiGet('/api/v1/journey/dashboard');
+          final journeyRes = await apiGet('/api/v1/journeys/me/dashboard');
           if (journeyRes is Map && mounted) {
-            final data = journeyRes['data'] ?? journeyRes;
+            final data =
+                (journeyRes['data'] is Map) ? journeyRes['data'] : journeyRes;
             final week =
+                data['pregnancyWeek'] ??
+                data['completedGestationalWeek'] ??
                 data['effectivePregnancyWeek'] ??
                 data['weekNumber'] ??
                 data['currentWeek'];
-            if (week != null && week is int) {
-              _journeyGestationalWeeks = week;
+            if (week != null) {
+              final parsed = (week is int)
+                  ? week
+                  : int.tryParse(week.toString());
+              if (parsed != null) {
+                _journeyGestationalWeeks = parsed;
+              }
             }
           }
         } catch (_) {}
