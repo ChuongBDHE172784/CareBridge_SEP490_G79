@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import MEDICAL_DISCLAIMER
 from app.core.gemini import get_gemini_client
 from app.models.schemas import (
+    HealthMetricsLogRequest,
     RagChatRequest,
     RagChatResponse,
     SourceCitation,
@@ -149,9 +150,15 @@ class RagChatService:
                 )
             )
 
+        # Check if expert consultation is required
+        need_expert_consultation = has_critical_warning or self._detect_expert_consultation_need(
+            combined_text, request.recent_metrics
+        )
+
         return RagChatResponse(
             answer=answer_text.strip(),
             has_critical_warning=has_critical_warning,
+            need_expert_consultation=need_expert_consultation,
             suggested_followups=dynamic_followups,
             sources=citations,
             disclaimer=MEDICAL_DISCLAIMER,
@@ -197,6 +204,39 @@ class RagChatService:
             "nhìn mờ", "hoa mắt dữ dội", "sốt cao 39", "sốt cao 40",
         ]
         return any(signal in lower for signal in danger_signals)
+
+    def _detect_expert_consultation_need(
+        self,
+        message: str,
+        metrics: HealthMetricsLogRequest | None = None,
+    ) -> bool:
+        """Determines if the user's inquiry or physiological context warrants professional expert consult."""
+        lower = message.lower()
+        warning_keywords = [
+            "huyết áp cao", "tăng huyết áp", "140/90", "135/85", "đau đầu",
+            "phù chân", "tiền sản giật", "tiểu đường thai kỳ", "đường huyết cao",
+            "sốt", "khó thở", "cơn gò", "uống thuốc gì", "dùng thuốc nào",
+            "đơn thuốc", "kê đơn", "trầm cảm", "lo âu quá mức", "ngứa lòng bàn tay",
+            "protein niệu", "chóng mặt", "buồn nôn liên tục", "thai ít đạp",
+        ]
+        if any(kw in lower for kw in warning_keywords):
+            return True
+
+        if metrics:
+            if (metrics.systolic_bp and metrics.systolic_bp >= 135) or (metrics.diastolic_bp and metrics.diastolic_bp >= 85):
+                return True
+            if metrics.temperature and metrics.temperature >= 37.8:
+                return True
+            if metrics.blood_glucose and metrics.blood_glucose >= 7.2:
+                return True
+            if metrics.epds_score and metrics.epds_score >= 10:
+                return True
+            if metrics.fetal_movements_count is not None and metrics.fetal_movements_count < 4:
+                return True
+            if metrics.symptoms:
+                return True
+
+        return False
 
     def _generate_fallback_followups(self, is_emergency: bool) -> List[str]:
         """Minimal fallback only used if Gemini fails to provide dynamic follow-up tags."""

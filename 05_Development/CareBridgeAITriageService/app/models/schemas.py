@@ -96,6 +96,7 @@ class RagChatRequest(BaseModel):
 class RagChatResponse(BaseModel):
     answer: str = Field(description="Nội dung giải đáp chi tiết, ân cần từ AI Nurse Assistant")
     has_critical_warning: bool = Field(default=False, description="True nếu câu hỏi của mẹ chứa dấu hiệu nguy hiểm cần đi viện")
+    need_expert_consultation: bool = Field(default=False, description="True nếu phát hiện dấu hiệu hoặc chỉ số sức khỏe bất thường cần tham vấn bác sĩ chuyên khoa")
     suggested_followups: List[str] = Field(default_factory=list, description="Các câu hỏi gợi ý tiếp theo")
     sources: List[SourceCitation] = Field(default_factory=list, description="Các đoạn tài liệu cẩm nang y tế được trích dẫn")
     disclaimer: str = Field(description="Cảnh báo y tế không thay thế chẩn đoán bác sĩ")
