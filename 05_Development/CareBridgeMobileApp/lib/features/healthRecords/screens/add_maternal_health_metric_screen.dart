@@ -1,12 +1,14 @@
 import 'dart:convert';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:universal_io/io.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../emergency/services/emergency_service.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 
@@ -75,11 +77,23 @@ class _AddMaternalHealthMetricScreenState
   int? _journeyGestationalWeeks;
   List<String> _surveyRiskConditions = [];
 
-  static final _pythonCandidates = [
-    'http://10.0.2.2:8001',
-    'http://127.0.0.1:8001',
-    'http://localhost:8001',
-  ];
+  List<String> get _pythonCandidates {
+    final list = <String>[];
+    try {
+      final uri = Uri.parse(apiBaseUrl);
+      if (uri.host.isNotEmpty) {
+        list.add('${uri.scheme}://${uri.host}:8001');
+      }
+    } catch (_) {}
+    if (kIsWeb) {
+      list.add('http://127.0.0.1:8001');
+    } else if (Platform.isAndroid) {
+      list.addAll(['http://10.0.2.2:8001', 'http://127.0.0.1:8001']);
+    } else {
+      list.addAll(['http://127.0.0.1:8001', 'http://localhost:8001']);
+    }
+    return list;
+  }
 
   static const _glucoseContexts = <String, String>{
     'FASTING': 'Lúc đói',
@@ -538,6 +552,14 @@ class _AddMaternalHealthMetricScreenState
     final glucose = _isGlucose ? primaryVal : null;
     final kicks = _isFetalMovement ? primaryVal.round() : null;
 
+    final rawWeight = double.tryParse(_primaryCtrl.text.trim());
+    final rawHeight = double.tryParse(_secondaryCtrl.text.trim());
+    final bmi = _isBmi
+        ? (rawWeight != null && rawHeight != null && rawHeight > 0
+            ? rawWeight / ((rawHeight / 100) * (rawHeight / 100))
+            : primaryVal)
+        : null;
+
     final symptoms = <String>[];
     final noteText = (note ?? '').toLowerCase();
     if (noteText.contains('đau đầu') || noteText.contains('nhức đầu')) {
@@ -585,6 +607,11 @@ class _AddMaternalHealthMetricScreenState
         'fetal_movements_count': kicks,
         'fetal_movements_duration_hours': 2,
       },
+      if (_isBmi) ...{
+        if (bmi != null) 'bmi': bmi,
+        if (rawWeight != null) 'weight_kg': rawWeight,
+        if (rawHeight != null) 'height_cm': rawHeight,
+      },
       if (note != null && note.isNotEmpty) 'free_text_notes': note,
       'symptoms': symptoms,
     };
@@ -610,6 +637,19 @@ class _AddMaternalHealthMetricScreenState
     }
 
     // 2. Dự phòng thuật toán lâm sàng cục bộ
+    final bmiRiskFactors = <String>[];
+    if (bmi != null) {
+      if (bmi >= 40.0) {
+        bmiRiskFactors.add('Béo phì độ III rất nặng (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ cao Tiền sản giật, ĐTĐ thai kỳ');
+      } else if (bmi >= 30.0) {
+        bmiRiskFactors.add('Béo phì thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần khám dinh dưỡng và theo dõi sát huyết áp, đường huyết');
+      } else if (bmi >= 25.0) {
+        bmiRiskFactors.add('Thừa cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần kiểm soát mức tăng cân hợp lý');
+      } else if (bmi < 18.5) {
+        bmiRiskFactors.add('Thiếu cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ suy dinh dưỡng bào thai hoặc sinh non');
+      }
+    }
+
     final isCritical =
         (sbp != null && sbp >= 160) ||
         (dbp != null && dbp >= 110) ||
@@ -628,6 +668,7 @@ class _AddMaternalHealthMetricScreenState
         (dbp != null && dbp >= 85) ||
         (glucose != null && glucose >= 5.1) ||
         (kicks != null && kicks < 4 && gestationalAge >= 28) ||
+        bmiRiskFactors.isNotEmpty ||
         symptoms.isNotEmpty;
 
     if (isCritical) {
@@ -642,6 +683,7 @@ class _AddMaternalHealthMetricScreenState
             'Huyết áp rất cao ($sbp/$dbp mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
           if (kicks != null && kicks == 0)
             'Mất cử động thai ở tuần thứ $gestationalAge',
+          ...bmiRiskFactors,
           ...symptoms,
         ],
         'suggested_action':
@@ -659,6 +701,7 @@ class _AddMaternalHealthMetricScreenState
             'Huyết áp hơi cao ($sbp/$dbp mmHg) so với bình thường',
           if (glucose != null && glucose >= 5.1)
             'Đường huyết cao ($glucose mg/dL) cần theo dõi',
+          ...bmiRiskFactors,
           ...symptoms,
         ],
         'suggested_action':
@@ -826,10 +869,15 @@ class _AddMaternalHealthMetricScreenState
                     'MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.of(dialogCtx).pop();
                     Navigator.of(context).pop(true);
-                    context.push('/emergency/map?mode=triage&stage=PREGNANCY');
+                    try {
+                      await EmergencyService().openFlow(triggerSource: 'AI_TRIAGE');
+                    } catch (_) {}
+                    if (context.mounted) {
+                      context.push('/emergency/map?mode=triage&stage=PREGNANCY');
+                    }
                   },
                 ),
                 const SizedBox(height: 8),
@@ -885,6 +933,26 @@ class _AddMaternalHealthMetricScreenState
             ?.map((e) => e.toString())
             .toList() ??
         [];
+
+    final gestationalAge =
+        _journeyGestationalWeeks ??
+        int.tryParse(_gestationalAgeCtrl.text.replaceAll(RegExp(r'\D'), '')) ??
+        20;
+    final metricLabel = _metricLabel;
+    String displayValue = '';
+    if (_isBloodPressure) {
+      displayValue = '${_primaryCtrl.text.trim()}/${_secondaryCtrl.text.trim()} mmHg';
+    } else if (_isBmi) {
+      final w = double.tryParse(_primaryCtrl.text.trim());
+      final h = double.tryParse(_secondaryCtrl.text.trim());
+      final bmiVal = (w != null && h != null && h > 0) ? (w / ((h / 100) * (h / 100))) : null;
+      displayValue = '${_primaryCtrl.text.trim()}kg, ${_secondaryCtrl.text.trim()}cm' + (bmiVal != null ? ' (BMI: ${bmiVal.toStringAsFixed(1)})' : '');
+    } else {
+      displayValue = '${_primaryCtrl.text.trim()} $_unit';
+    }
+
+    final reasonList = riskFactors.isNotEmpty ? riskFactors.join(', ') : headline;
+    final promptText = 'Tôi vừa đo $metricLabel là $displayValue ở tuần thai thứ $gestationalAge. AI phát hiện dấu hiệu cần lưu ý: $reasonList. Bác sĩ / AI Nurse có thể tư vấn giúp tôi chế độ ăn uống, nghỉ ngơi và các dấu hiệu cần theo dõi không?';
 
     await showDialog<void>(
       context: context,
@@ -1001,7 +1069,7 @@ class _AddMaternalHealthMetricScreenState
                   ),
                 ],
                 const SizedBox(height: 16),
-                // Nút 1: Chuyển sang chat AI Nurse Assistant
+                // Nút 1: Chuyển sang chat AI Nurse Assistant kèm ngữ cảnh tự động
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF845143),
@@ -1019,7 +1087,19 @@ class _AddMaternalHealthMetricScreenState
                   onPressed: () {
                     Navigator.of(dialogCtx).pop();
                     Navigator.of(context).pop(true);
-                    context.push('/rag/chat');
+                    context.push(
+                      '/rag/chat',
+                      extra: {
+                        'prompt': promptText,
+                        'attachedContext': {
+                          'metricLabel': metricLabel,
+                          'displayValue': displayValue,
+                          'gestationalAge': gestationalAge,
+                          'riskFactors': riskFactors,
+                        },
+                        'autoSend': true,
+                      },
+                    );
                   },
                 ),
                 const SizedBox(height: 8),

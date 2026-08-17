@@ -85,7 +85,16 @@ class _ChatSession {
 }
 
 class RagChatScreen extends StatefulWidget {
-  const RagChatScreen({super.key});
+  final String? initialPrompt;
+  final Map<String, dynamic>? attachedHealthContext;
+  final bool autoSendInitialPrompt;
+
+  const RagChatScreen({
+    super.key,
+    this.initialPrompt,
+    this.attachedHealthContext,
+    this.autoSendInitialPrompt = false,
+  });
 
   @override
   State<RagChatScreen> createState() => _RagChatScreenState();
@@ -107,6 +116,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
   String _currentSessionId = '';
   bool _sending = false;
   bool _loadingHistory = true;
+  Map<String, dynamic>? _attachedContext;
 
   final List<String> _quickPrompts = [
     'Mang thai 3 tháng đầu cần bổ sung vi chất gì?',
@@ -119,6 +129,10 @@ class _RagChatScreenState extends State<RagChatScreen> {
   void initState() {
     super.initState();
     _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    _attachedContext = widget.attachedHealthContext;
+    if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
+      _inputCtrl.text = widget.initialPrompt!;
+    }
     _loadHistoryFromStorage();
   }
 
@@ -145,8 +159,10 @@ class _RagChatScreenState extends State<RagChatScreen> {
         if (mounted) {
           setState(() {
             _sessions = loadedSessions;
-            // Tự động tải lại phiên trò chuyện gần nhất nếu màn hình đang trống
-            if (_messages.isEmpty && _sessions.isNotEmpty) {
+            // Tự động tải lại phiên trò chuyện gần nhất nếu màn hình đang trống và không có initialPrompt
+            if (_messages.isEmpty &&
+                _sessions.isNotEmpty &&
+                widget.initialPrompt == null) {
               final latest = _sessions.first;
               _currentSessionId = latest.id;
               _messages.clear();
@@ -159,6 +175,15 @@ class _RagChatScreenState extends State<RagChatScreen> {
     } catch (_) {}
     if (mounted) {
       setState(() => _loadingHistory = false);
+      if (widget.autoSendInitialPrompt &&
+          widget.initialPrompt != null &&
+          widget.initialPrompt!.trim().isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_sending) {
+            _send(widget.initialPrompt!);
+          }
+        });
+      }
     }
   }
 
@@ -261,11 +286,21 @@ class _RagChatScreenState extends State<RagChatScreen> {
   }
 
   List<String> get _pythonCandidates {
-    if (kIsWeb) return ['http://127.0.0.1:8001'];
-    if (Platform.isAndroid) {
-      return ['http://10.0.2.2:8001', 'http://127.0.0.1:8001'];
+    final list = <String>[];
+    try {
+      final uri = Uri.parse(apiBaseUrl);
+      if (uri.host.isNotEmpty) {
+        list.add('${uri.scheme}://${uri.host}:8001');
+      }
+    } catch (_) {}
+    if (kIsWeb) {
+      list.add('http://127.0.0.1:8001');
+    } else if (Platform.isAndroid) {
+      list.addAll(['http://10.0.2.2:8001', 'http://127.0.0.1:8001']);
+    } else {
+      list.addAll(['http://127.0.0.1:8001', 'http://localhost:8001']);
     }
-    return ['http://127.0.0.1:8001', 'http://localhost:8001'];
+    return list;
   }
 
   Future<void> _send([String? customPrompt]) async {
@@ -552,6 +587,46 @@ class _RagChatScreenState extends State<RagChatScreen> {
                     onFollowupTap: (p) => _send(p),
                   );
                 },
+              ),
+            ),
+          if (_attachedContext != null)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1EC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFC98C7B)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.attachment_rounded,
+                    size: 18,
+                    color: Color(0xFF845143),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Đính kèm chỉ số: ${_attachedContext!['metricLabel'] ?? 'Chỉ số'} ${_attachedContext!['displayValue'] ?? ''} • Tuần ${_attachedContext!['gestationalAge'] ?? 'thai'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF845143),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => setState(() => _attachedContext = null),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Color(0xFF845143),
+                    ),
+                  ),
+                ],
               ),
             ),
           _InputBar(
