@@ -15,7 +15,7 @@
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt & Gợi ý Động (Multi-turn Context & Dynamic Follow-ups)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)](#7-kiến-trúc-giao-diện-ai-nurse-trên-ứng-dụng-di-động-mobile-app-ui--state)
 8. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#8-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 12 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---12-câu-hỏi-chuyên-sâu)
+9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 18 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---18-câu-hỏi-chuyên-sâu)
 10. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#10-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -402,6 +402,37 @@ Khi mẹ bầu trò chuyện qua lại nhiều lượt, một bài toán kinh đ
 * Dưới mỗi bong bóng chat phản hồi của AI luôn đính kèm một khung cảnh báo nhẹ nhàng:
   > ⚠️ *Lưu ý: Thông tin từ AI chỉ mang tính chất tham khảo và có thể có sai sót. Vui lòng tham khảo ý kiến bác sĩ hoặc đến ngay cơ sở y tế khi có dấu hiệu bất thường.*
 
+### 7.4. Cơ chế Điền sẵn Prompt (Prompt Prefill without Auto-sending) & Modal Chi tiết Hồ sơ Đính kèm (Interactive Health Context Bottom Sheet)
+* **Triết lý Thiết kế Trải nghiệm Người dùng (Human-in-the-Loop UX):**
+  - Khi phát hiện chỉ số bất thường hoặc mẹ bầu muốn nhận tư vấn từ màn hình Đánh giá Toàn diện, hệ thống **không tự động gửi tin nhắn ngầm** (Auto-send).
+  - Thay vào đó, câu hỏi định hướng ngữ cảnh lâm sàng được **điền sẵn vào ô soạn thảo** (`_inputCtrl.text = initialPrompt`).
+  - **Lợi ích lâm sàng:** Mẹ bầu luôn giữ quyền chủ động kiểm tra lại nội dung, gõ thêm các triệu chứng phát sinh hoặc chỉnh sửa câu chữ theo ý muốn trước khi chủ động bấm nút Gửi.
+* **Khung Đính kèm Hồ sơ Sinh hiệu Tương tác (Interactive Attached Health Context):**
+  - Phía trên thanh nhập tin nhắn hiển thị một banner thông tin nổi bật với badge tóm tắt: `Hồ sơ đính kèm: [Tên chỉ số] • [Tag Giai đoạn/Tuần thai]`.
+  - Khung đính kèm được bọc trong hiệu ứng chạm (`InkWell`), cho phép mẹ bấm vào để mở **Modal BottomSheet Chi Tiết Hồ Sơ Y Tế**:
+    1. **Thông tin Giai đoạn / Thai kỳ:** Tuần thai hiện tại & Tam cá nguyệt (3 tháng đầu/giữa/cuối) hoặc trạng thái Chuẩn bị mang thai / Hậu sản & Chăm sóc bé.
+    2. **Chỉ số vừa đo:** Tên chỉ số và giá trị đo vừa nhập.
+    3. **Ghi chú triệu chứng từ mẹ:** Nguyên văn đoạn mô tả triệu chứng của mẹ bầu.
+    4. **Tiền sử & Bệnh lý nền (từ Khảo sát Onboarding):** Các nhãn bệnh nền (Tiền sử Tiền sản giật, Đái tháo đường thai kỳ, Tăng huyết áp mạn...).
+    5. **Dấu hiệu AI lưu ý trong lần đo:** Danh sách các cảnh báo bất thường AI đã phát hiện.
+    6. **Snapshot Toàn bộ Sinh hiệu Gần nhất:** Bảng tổng hợp đầy đủ các chỉ số sinh hiệu gần nhất của mẹ (Huyết áp, Đường huyết, Nhịp tim, Cử động thai, Lượng nước, Điểm EPDS, Thân nhiệt).
+    7. **Nút "Gỡ đính kèm" & "Đã hiểu":** Thai phụ có thể gỡ bỏ ngữ cảnh nếu chỉ muốn hỏi các câu hỏi thông thường.
+
+### 7.5. Kiến trúc Thích ứng Đa Vòng Đời Sản Khoa (Multi-Lifecycle Maternal UI & RAG Adaptation)
+* CareBridge hỗ trợ toàn diện **3 giai đoạn lớn** trong hành trình làm mẹ:
+  1. **Chuẩn bị mang thai (`PRECONCEPTION` / `PRE_PREGNANCY`):**
+     - Subtitle AppBar: `Đồng hành Chuẩn bị mang thai • 24/7`.
+     - Bộ câu hỏi gợi ý nhanh (Quick Prompts): Tập trung vào bổ sung axit folic & vi chất tiền sản, cách tính ngày rụng trứng, các vắc-xin cần tiêm phòng và xét nghiệm tiền hôn nhân.
+     - Payload RAG: Truyền `stage: PRECONCEPTION` để vector store ưu tiên cẩm nang dinh dưỡng tiền sản và chuẩn bị thụ thai.
+  2. **Đang mang thai (`PREGNANCY`):**
+     - Subtitle AppBar: `Đồng hành cùng Mẹ bầu (Tuần $week) • 24/7`.
+     - Quick Prompts: Dinh dưỡng theo tam cá nguyệt, dấu hiệu nguy hiểm cần cấp cứu, đếm cử động thai máy, thực đơn thai kỳ.
+     - Payload RAG: Truyền `stage: PREGNANCY` để truy xuất cẩm nang sản khoa, siêu âm thai và hướng dẫn sàng lọc trước sinh của Bộ Y Tế.
+  3. **Hậu sản & Chăm bé (`POSTPARTUM` / `BABY_CARE`):**
+     - Subtitle AppBar: `Đồng hành Hậu sản & Chăm bé • 24/7`.
+     - Quick Prompts: Chăm sóc vết mổ/tầng sinh môn, kỹ thuật kích sữa và thông tắc tia sữa, sàng lọc trầm cảm sau sinh (EPDS), lịch tiêm chủng và biểu đồ tăng trưởng chuẩn WHO cho bé.
+     - Payload RAG: Truyền `stage: POSTPARTUM` để truy xuất cẩm nang chăm sóc sơ sinh thiết yếu sớm (EENC) và phục hồi hậu sản.
+
 ---
 
 ## 8. Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng
@@ -419,7 +450,7 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 12 Câu Hỏi Chuyên Sâu)
+## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 18 Câu Hỏi Chuyên Sâu)
 
 ### Câu 1: "AI RAG em hiểu là gì và vì sao dự án y tế cho mẹ bầu lại chọn RAG thay vì Fine-tuning mô hình?"
 * **Trả lời:**
@@ -569,6 +600,51 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   > 3. **Tầng 3: AI Nurse RAG Generative Chat (Bước 10):**
   >    - *Bản chất:* Mẹ bầu trao đổi tự nhiên với AI Nurse, toàn bộ câu trả lời, lời khuyên dinh dưỡng và gợi ý câu hỏi tiếp theo được Gemini sinh **động 100% dựa trên kho tài liệu RAG**.
   >    - *Vị trí code:* Nằm tại [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) và giao diện Mobile tại [`CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart)."
+
+---
+
+### Câu 16: "Hệ thống AI RAG và sàng lọc sức khỏe thích ứng như thế nào giữa các giai đoạn Chuẩn bị mang thai, Đang mang thai và Sau sinh chăm bé?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hành trình làm mẹ có các nhu cầu lâm sàng và tâm lý hoàn toàn khác biệt ở từng thời kỳ. CareBridge thiết kế **Kiến trúc Thích ứng Đa Vòng Đời Sản Khoa (Multi-Lifecycle Adaptation)** xuyên suốt từ Client đến Vector Database:
+  > 
+  > 1. **Nhận diện Vòng đời Tự động (`journeyType`):**
+  >    - Khi mẹ đăng nhập, ứng dụng đồng bộ trạng thái `PRE_PREGNANCY` (Chuẩn bị mang thai), `PREGNANCY` (Đang mang thai) hoặc `POSTPARTUM` / `BABY_CARE` (Hậu sản & Chăm bé) từ `GET /api/v1/journeys/me/dashboard`.
+  > 2. **Chuyển đổi Ngữ cảnh Giao diện Động (Dynamic UI Context):**
+  >    - *Chuẩn bị mang thai:* Subtitle chuyển thành `'Đồng hành Chuẩn bị mang thai • 24/7'`. Quick prompts tự động gợi ý câu hỏi về bổ sung Axit folic, tính ngày rụng trứng, tiêm phòng vắc-xin trước thai kỳ. Badge hồ sơ hiển thị nhãn `Chuẩn bị mang thai` (không gượng ép hiển thị số tuần thai).
+  >    - *Đang mang thai:* Hiển thị tuần thai thực tế và tam cá nguyệt (3 tháng đầu/giữa/cuối), gợi ý thai máy, dinh dưỡng và dấu hiệu cấp cứu thai kỳ.
+  >    - *Hậu sản & Chăm bé:* Subtitle chuyển thành `'Đồng hành Hậu sản & Chăm bé • 24/7'`. Quick prompts gợi ý chăm sóc vết may/vết mổ, kích sữa và xử lý tắc tia sữa, sàng lọc trầm cảm sau sinh EPDS, lịch tiêm chủng chuẩn WHO cho bé.
+  > 3. **Lọc Ngữ nghĩa Phân tầng trên pgvector (`stage` filtering):**
+  >    - Khi gửi câu hỏi, Client đính kèm `stage` (`PRECONCEPTION`, `PREGNANCY`, hoặc `POSTPARTUM`).
+  >    - Vector Store tự động ưu tiên lọc đúng các cẩm nang chuyên sâu của Bộ Y Tế & WHO cho giai đoạn đó, tránh tình trạng mẹ sau sinh hỏi vết mổ lại bị trả về tài liệu siêu âm thai 3 tháng đầu."
+
+---
+
+### Câu 17: "Tại sao nhóm loại bỏ hardcoded if-else từ khóa triệu chứng trên Mobile App và chuyển giao toàn bộ chuỗi ghi chú tự do cho AI Triage Service?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, đây là một **Quyết định Thiết kế Kiến trúc Chuẩn mực (Architectural Best Practice)** vì 3 lý do:
+  > 
+  > 1. **Tuân thủ Nguyên lý Phân tách Trách nhiệm (Separation of Concerns):**
+  >    - Mobile App chỉ đóng vai trò **Presentation & Data Collection Layer** (Thu thập dữ liệu và hiển thị giao diện). Nếu viết các câu lệnh `if (note.contains('đau đầu') || note.contains('chóng mặt'))` trên Mobile, mã nguồn client sẽ bị phình to (bloated), dễ gãy khi người dùng dùng từ đồng nghĩa, từ địa phương, hoặc viết sai chính tả.
+  > 2. **Tận dụng Sức mạnh NLP & Semantic Reasoning trên AI Backend:**
+  >    - Khi chuyển giao toàn bộ chuỗi `free_text_notes` lên `CareBridgeAITriageService`, hệ thống sử dụng kết hợp giữa **Tầng Ngưỡng Lâm sàng Xác định** và **Bộ nhúng Vector RAG**. AI có khả năng hiểu các câu tự nhiên phức tạp như: *'Hôm nay thấy hơi choáng váng và hoa mắt nhẹ sau khi leo cầu thang'*, điều mà các lệnh if-else từ khóa thô sơ hoàn toàn bất lực.
+  > 3. **Dễ dàng Bảo trì & Nâng cấp Tập trung (Centralized Maintenance):**
+  >    - Mọi quy chuẩn y tế, ngưỡng cảnh báo và từ điển lâm sàng được quản trị tập trung tại Backend Python. Khi có cập nhật phác đồ điều trị mới từ Bộ Y Tế, nhóm chỉ cần cập nhật tại Backend mà không phải build lại và bắt người dùng cập nhật ứng dụng trên App Store / Google Play."
+
+---
+
+### Câu 18: "Tại sao khi chuyển từ cảnh báo bất thường sang AI Nurse, hệ thống không tự động gửi luôn tin nhắn mà lại điền sẵn prompt vào ô chat? Hồ sơ đính kèm hoạt động ra sao?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, đây là **Triết lý Thiết kế Đặt Con người Làm Trung tâm (Human-in-the-Loop UX Design)** trong Y tế số:
+  > 
+  > 1. **Quyền Chủ động của Thai phụ (User Autonomy & Safety):**
+  >    - Khi phát hiện chỉ số bất thường, hệ thống tự động soạn sẵn một câu hỏi hoàn chỉnh mang tính định hướng lâm sàng (ví dụ: *'Bức tranh sức khỏe toàn diện của em ở tuần thai 20 có các dấu hiệu (Huyết áp cao 145/95 mmHg, Đau đầu). Em cần có chế độ dinh dưỡng và theo dõi như thế nào?'*).
+  >    - Câu hỏi này được **điền sẵn vào ô soạn thảo** (`_inputCtrl.text`) chứ không tự ý gửi ngầm. Điều này cho phép thai phụ đọc lại, bổ sung thêm cảm nhận thực tế hoặc chỉnh sửa câu hỏi trước khi gửi.
+  > 2. **Khung Đính kèm Ngữ cảnh Lâm sàng Tương tác (Interactive Health Context):**
+  >    - Phía trên ô chat hiển thị một banner thông tin có thể bấm vào để mở **Modal BottomSheet Chi Tiết**.
+  >    - Modal này trực quan hóa toàn bộ: Tuần thai/giai đoạn, Chỉ số vừa đo, Ghi chú triệu chứng, Tiền sử bệnh nền từ Survey và Bảng snapshot toàn bộ sinh hiệu gần nhất.
+  >    - Nhờ đó, người dùng hoàn toàn minh bạch biết được AI Nurse đang nhận những thông tin sức khỏe nào của mình để đưa ra lời khuyên, đồng thời có thể bấm nút **'Gỡ đính kèm'** bất kỳ lúc nào nếu chỉ muốn trò chuyện tự do."
+
+---
 
 ---
 
