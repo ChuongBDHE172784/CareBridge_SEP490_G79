@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_client.dart';
 import '../models/health_metric_model.dart';
@@ -67,6 +72,15 @@ class _AddMaternalHealthMetricScreenState
   bool _isSaving = false;
   String? _loadError;
 
+  int? _journeyGestationalWeeks;
+  List<String> _surveyRiskConditions = [];
+
+  static final _pythonCandidates = [
+    'http://10.0.2.2:8001',
+    'http://127.0.0.1:8001',
+    'http://localhost:8001',
+  ];
+
   static const _glucoseContexts = <String, String>{
     'FASTING': 'Lúc đói',
     'PRE_MEAL': 'Trước ăn',
@@ -86,6 +100,55 @@ class _AddMaternalHealthMetricScreenState
     super.initState();
     _service = widget.service ?? HealthMetricService();
     _loadCapabilities();
+    _loadJourneyAndSurveyContext();
+  }
+
+  Future<void> _loadJourneyAndSurveyContext() async {
+    try {
+      final journeyRes = await apiGet('/api/v1/journey/dashboard');
+      if (journeyRes is Map && mounted) {
+        final data = journeyRes['data'] ?? journeyRes;
+        final week = data['effectivePregnancyWeek'] ?? data['weekNumber'] ?? data['currentWeek'];
+        if (week != null && week is int) {
+          setState(() {
+            _journeyGestationalWeeks = week;
+            if (_gestationalAgeCtrl.text.isEmpty) {
+              _gestationalAgeCtrl.text = '$week';
+            }
+          });
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final profileRes = await apiGet('/api/v1/recommendations/profile');
+      if (profileRes is Map && mounted) {
+        final data = (profileRes['data'] is Map) ? profileRes['data'] : profileRes;
+        final profile = data['profile'] ?? data;
+        final conditions = <String>[];
+        if (profile is Map) {
+          if (profile['underlyingConditions'] is Map &&
+              profile['underlyingConditions']['conditionCodes'] is List) {
+            conditions.addAll(
+              (profile['underlyingConditions']['conditionCodes'] as List)
+                  .map((e) => e.toString()),
+            );
+          }
+          if (profile['reproductiveHistory'] is Map &&
+              profile['reproductiveHistory']['conditionCodes'] is List) {
+            conditions.addAll(
+              (profile['reproductiveHistory']['conditionCodes'] as List)
+                  .map((e) => e.toString()),
+            );
+          }
+        }
+        if (conditions.isNotEmpty && mounted) {
+          setState(() {
+            _surveyRiskConditions = conditions;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   String get _metricType => _canonicalMetricType(widget.initialMetricType);
@@ -387,14 +450,18 @@ class _AddMaternalHealthMetricScreenState
           ? weightKg! / ((heightCm! / 100) * (heightCm / 100))
           : null;
 
+      final primaryVal = bmi ?? double.parse(_primaryCtrl.text.trim());
+      final secondaryVal = _isBloodPressure
+          ? double.parse(_secondaryCtrl.text.trim())
+          : null;
+
+      // 1. Lưu chỉ số vào Backend Database
       await _service.addMetric(
         widget.journeyId,
         AddMetricRequest(
           metricType: _metricType,
-          valueNumeric: bmi ?? double.parse(_primaryCtrl.text.trim()),
-          valueSecondary: _isBloodPressure
-              ? double.parse(_secondaryCtrl.text.trim())
-              : null,
+          valueNumeric: primaryVal,
+          valueSecondary: secondaryVal,
           unit: _unit,
           measuredAt: measuredAt,
           note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
@@ -404,14 +471,35 @@ class _AddMaternalHealthMetricScreenState
           definitionVersion: _capability?.version,
         ),
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã thêm chỉ số thành công'),
-          backgroundColor: _primary,
-        ),
+
+      // 2. Chạy AI Triage Sàng lọc Rủi ro Lâm sàng
+      final evalResult = await _evaluateMetricWithAi(
+        primaryVal: primaryVal,
+        secondaryVal: secondaryVal,
+        note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
       );
-      Navigator.of(context).pop(true);
+
+      if (!mounted) return;
+
+      final riskStatus = evalResult['status']?.toString();
+      final isEmergency =
+          evalResult['emergency_mode'] == true ||
+          riskStatus == 'CRITICAL_EMERGENCY';
+      final isAnomaly = riskStatus == 'ANOMALY_MONITOR';
+
+      if (isEmergency) {
+        await _showCriticalEmergencyDialog(context, evalResult);
+      } else if (isAnomaly) {
+        await _showAnomalyWarningDialog(context, evalResult);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã thêm chỉ số thành công. Tình trạng hoàn toàn bình thường!'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
     } on ApiException catch (error) {
       _showError(_metricSaveError(error));
     } catch (_) {
@@ -438,6 +526,525 @@ class _AddMaternalHealthMetricScreenState
       'METRIC-004' => 'Thời điểm đo không được ở tương lai quá 5 phút.',
       _ => 'Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.',
     };
+  }
+
+  Future<Map<String, dynamic>> _evaluateMetricWithAi({
+    required double primaryVal,
+    double? secondaryVal,
+    String? note,
+  }) async {
+    final sbp = _isBloodPressure ? primaryVal.round() : null;
+    final dbp = _isBloodPressure ? (secondaryVal?.round() ?? 0) : null;
+    final glucose = _isGlucose ? primaryVal : null;
+    final kicks = _isFetalMovement ? primaryVal.round() : null;
+
+    final symptoms = <String>[];
+    final noteText = (note ?? '').toLowerCase();
+    if (noteText.contains('đau đầu') || noteText.contains('nhức đầu')) {
+      symptoms.add('Đau đầu dữ dội');
+    }
+    if (noteText.contains('hoa mắt') || noteText.contains('nhìn mờ')) {
+      symptoms.add('Hoa mắt nhìn mờ');
+    }
+    if (noteText.contains('phù')) symptoms.add('Phù mặt/chân');
+    if (noteText.contains('buồn nôn') || noteText.contains('nghén')) {
+      symptoms.add('Ốm nghén / Buồn nôn');
+    }
+    if (noteText.contains('đau lưng')) symptoms.add('Đau mỏi lưng hông');
+    if (noteText.contains('ra máu') || noteText.contains('chảy máu')) {
+      symptoms.add('Ra máu âm đạo');
+    }
+    if (noteText.contains('rỉ ối') || noteText.contains('vỡ ối')) {
+      symptoms.add('Rỉ ối / Vỡ ối');
+    }
+
+    // Kết hợp thông tin tiền sử/khảo sát survey đã lưu
+    for (final c in _surveyRiskConditions) {
+      if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
+      if (c == 'CHRONIC_HYPERTENSION') symptoms.add('Bệnh nền: Tăng huyết áp mạn');
+      if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM') {
+        symptoms.add('Tiền sử Đái tháo đường');
+      }
+    }
+
+    final gestationalAge =
+        _journeyGestationalWeeks ??
+        int.tryParse(_gestationalAgeCtrl.text.replaceAll(RegExp(r'\D'), '')) ??
+        20;
+
+    final payload = {
+      'stage': 'PREGNANCY',
+      'gestational_age_weeks': gestationalAge,
+      if (sbp != null) 'systolic_bp': sbp,
+      if (dbp != null) 'diastolic_bp': dbp,
+      if (glucose != null) ...{
+        'blood_glucose': glucose,
+        'is_fasting_glucose': _glucoseContext == 'FASTING',
+      },
+      if (kicks != null) ...{
+        'fetal_movements_count': kicks,
+        'fetal_movements_duration_hours': 2,
+      },
+      if (note != null && note.isNotEmpty) 'free_text_notes': note,
+      'symptoms': symptoms,
+    };
+
+    // 1. Thử gọi Python FastAPI AI Service
+    for (final base in _pythonCandidates) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$base/api/v1/metrics/evaluate'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 4));
+
+        if (res.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(res.bodyBytes));
+          if (data is Map<String, dynamic>) {
+            return data;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Dự phòng thuật toán lâm sàng cục bộ
+    final isCritical =
+        (sbp != null && sbp >= 160) ||
+        (dbp != null && dbp >= 110) ||
+        ((sbp != null && sbp >= 140 || dbp != null && dbp >= 90) &&
+            symptoms.any(
+              (s) =>
+                  s.contains('Đau đầu') ||
+                  s.contains('Hoa mắt') ||
+                  s.contains('Tiền sản giật'),
+            )) ||
+        (kicks != null && kicks == 0 && gestationalAge >= 28) ||
+        (symptoms.any((s) => s.contains('Ra máu') || s.contains('Vỡ ối')));
+
+    final isAnomaly =
+        (sbp != null && sbp >= 130) ||
+        (dbp != null && dbp >= 85) ||
+        (glucose != null && glucose >= 5.1) ||
+        (kicks != null && kicks < 4 && gestationalAge >= 28) ||
+        symptoms.isNotEmpty;
+
+    if (isCritical) {
+      return {
+        'status': 'CRITICAL_EMERGENCY',
+        'emergency_mode': true,
+        'headline': 'CẢNH BÁO: Phát hiện chỉ số / dấu hiệu nguy hiểm khẩn cấp!',
+        'summary':
+            'Chỉ số sinh hiệu hoặc triệu chứng của mẹ đang ở ngưỡng báo động cao. Cần kích hoạt chế độ khẩn cấp, liên hệ ngay cơ sở y tế hoặc khoa Cấp cứu Sản gần nhất.',
+        'risk_factors': [
+          if (sbp != null && sbp >= 160)
+            'Huyết áp rất cao ($sbp/$dbp mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
+          if (kicks != null && kicks == 0)
+            'Mất cử động thai ở tuần thứ $gestationalAge',
+          ...symptoms,
+        ],
+        'suggested_action':
+            'KÍCH HOẠT CHẾ ĐỘ CẤP CỨU: Gọi 115 hoặc di chuyển ngay đến Bệnh viện chuyên khoa Sản gần nhất.',
+      };
+    } else if (isAnomaly) {
+      return {
+        'status': 'ANOMALY_MONITOR',
+        'emergency_mode': false,
+        'headline': 'Lưu ý: Chỉ số có dấu hiệu bất thường nhẹ cần theo dõi',
+        'summary':
+            'Phát hiện yếu tố cần lưu ý trong các chỉ số mẹ vừa nhập. Mẹ nên trao đổi thêm với AI Nurse Assistant để được hướng dẫn chi tiết hoặc đặt lịch khám Bác sĩ.',
+        'risk_factors': [
+          if (sbp != null && sbp >= 130)
+            'Huyết áp hơi cao ($sbp/$dbp mmHg) so với bình thường',
+          if (glucose != null && glucose >= 5.1)
+            'Đường huyết cao ($glucose mg/dL) cần theo dõi',
+          ...symptoms,
+        ],
+        'suggested_action':
+            'Trò chuyện với AI Nurse Assistant để làm rõ triệu chứng hoặc Đặt lịch hẹn Bác sĩ tư vấn.',
+      };
+    } else {
+      return {
+        'status': 'NORMAL',
+        'emergency_mode': false,
+        'headline': 'Tuyệt vời: Các chỉ số sinh hiệu hoàn toàn bình thường',
+        'summary':
+            'Tất cả các chỉ số sinh hiệu của mẹ đều nằm trong giới hạn an toàn theo hướng dẫn y tế thai kỳ.',
+        'risk_factors': <String>[],
+        'suggested_action':
+            'Tiếp tục theo dõi sức khỏe và thực hiện kế hoạch chăm sóc hàng ngày.',
+      };
+    }
+  }
+
+  Future<void> _showCriticalEmergencyDialog(
+    BuildContext context,
+    Map<String, dynamic> eval,
+  ) async {
+    final headline =
+        eval['headline']?.toString() ??
+        'CẢNH BÁO: Phát hiện chỉ số / dấu hiệu nguy hiểm khẩn cấp!';
+    final summary =
+        eval['summary']?.toString() ??
+        'Chỉ số sinh hiệu đang ở ngưỡng báo động cao. Cần kích hoạt cấp cứu hoặc đến Bệnh viện ngay.';
+    final riskFactors =
+        (eval['risk_factors'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (dialogCtx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: const Color(0xFFFFF8F6),
+            contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFDAD6),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFBA1A1A),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Color(0xFFBA1A1A),
+                        size: 28,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'CẢNH BÁO NGUY CẤP Y TẾ',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF410002),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  headline,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFBA1A1A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  summary,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF271812),
+                    height: 1.4,
+                  ),
+                ),
+                if (riskFactors.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFF1D5CF)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Yếu tố nguy cơ phát hiện:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFBA1A1A),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...riskFactors.map(
+                          (rf) => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '• ',
+                                  style: TextStyle(
+                                    color: Color(0xFFBA1A1A),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    rf,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF524440),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                // Nút 1: Mở Emergency Map Screen (115 + Còi SOS + Chia sẻ GPS Gia đình + Bệnh viện gần nhất)
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFBA1A1A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  icon: const Icon(Icons.emergency_outlined, size: 20),
+                  label: const Text(
+                    'MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    Navigator.of(context).pop(true);
+                    context.push('/emergency/map?mode=triage&stage=PREGNANCY');
+                  },
+                ),
+                const SizedBox(height: 8),
+                // Nút 2: Quay số 115
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFBA1A1A),
+                    side: const BorderSide(
+                      color: Color(0xFFBA1A1A),
+                      width: 1.5,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.phone_in_talk, size: 18),
+                  label: const Text(
+                    'GỌI CẤP CỨU 115 NGAY',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () => launchUrl(Uri.parse('tel:115')),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    Navigator.of(context).pop(true);
+                  },
+                  child: const Text(
+                    'Đã hiểu / Bỏ qua',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Future<void> _showAnomalyWarningDialog(
+    BuildContext context,
+    Map<String, dynamic> eval,
+  ) async {
+    final headline =
+        eval['headline']?.toString() ??
+        'Lưu ý: Chỉ số có dấu hiệu bất thường nhẹ cần theo dõi';
+    final summary =
+        eval['summary']?.toString() ??
+        'Phát hiện yếu tố cần lưu ý trong các chỉ số mẹ vừa nhập.';
+    final riskFactors =
+        (eval['risk_factors'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (dialogCtx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: const Color(0xFFFFFBF8),
+            contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1EC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFC98C7B),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.health_and_safety_outlined,
+                        color: Color(0xFF845143),
+                        size: 26,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'LƯU Ý THEO DÕI SỨC KHỎE',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF845143),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  headline,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF845143),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  summary,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF271812),
+                    height: 1.4,
+                  ),
+                ),
+                if (riskFactors.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFF0E3DE)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Yếu tố cần lưu ý:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF845143),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...riskFactors.map(
+                          (rf) => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '• ',
+                                  style: TextStyle(
+                                    color: Color(0xFF845143),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    rf,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF524440),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                // Nút 1: Chuyển sang chat AI Nurse Assistant
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF845143),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                  label: const Text(
+                    'HỎI TRỢ LÝ AI NURSE (BƯỚC 10)',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    Navigator.of(context).pop(true);
+                    context.push('/rag/chat');
+                  },
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF524440),
+                    side: const BorderSide(color: Color(0xFFD6C2BD)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    Navigator.of(context).pop(true);
+                  },
+                  child: const Text(
+                    'Đã hiểu, tôi sẽ tiếp tục theo dõi',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
   }
 
   @override
