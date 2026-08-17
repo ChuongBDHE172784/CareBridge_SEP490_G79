@@ -164,6 +164,7 @@ public class MetricObservationValidator {
             case HYDRATION -> "HYDRATION";
             case EPDS_SCORE -> "EPDS_SCORE";
             case MATERNAL_HEART_RATE -> "MATERNAL_HEART_RATE";
+            case TEMPERATURE -> "TEMPERATURE";
             case STRESS -> "STRESS";
             default -> null;
         };

@@ -167,6 +167,20 @@ class MetricObservationValidatorTest {
                 .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
     }
 
+    @Test
+    void temperatureNormalizesCorrectly() {
+        AddMetricRequest request = base(MetricType.TEMPERATURE, "37.2", "°C");
+        request.setContext(new LinkedHashMap<>());
+        request.getContext().put("measurementSite", "ARMPIT");
+
+        var result = validator.normalize(request,
+                definition("TEMPERATURE", ObservationShape.POINT, "Cel", List.of("Cel", "°C", "°F")));
+
+        assertThat(result.metricCode()).isEqualTo("TEMPERATURE");
+        assertThat(result.valueNumeric()).isEqualByComparingTo("37.2");
+        assertThat(result.unit()).isEqualTo("Cel");
+    }
+
     private AddMetricRequest base(MetricType type, String value, String unit) {
         AddMetricRequest request = new AddMetricRequest();
         request.setMetricType(type);
