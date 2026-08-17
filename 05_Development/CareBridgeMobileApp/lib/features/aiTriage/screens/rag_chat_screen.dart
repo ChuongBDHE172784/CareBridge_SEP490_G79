@@ -607,15 +607,35 @@ class _RagChatScreenState extends State<RagChatScreen> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'Đính kèm chỉ số: ${_attachedContext!['metricLabel'] ?? 'Chỉ số'} ${_attachedContext!['displayValue'] ?? ''} • Tuần ${_attachedContext!['gestationalAge'] ?? 'thai'}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF845143),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Đính kèm: ${_attachedContext!['metricLabel'] ?? 'Chỉ số'} ${_attachedContext!['displayValue'] ?? ''} • Tuần ${_attachedContext!['gestationalAge'] ?? 'thai'}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF845143),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (_attachedContext!['latestVitals'] is Map &&
+                            (_attachedContext!['latestVitals'] as Map).isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Snapshot: ${(_attachedContext!['latestVitals'] as Map).entries.map((e) => '${e.key}: ${e.value}').join(' • ')}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF845143),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   InkWell(

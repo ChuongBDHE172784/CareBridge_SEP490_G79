@@ -76,6 +76,13 @@ class _AddMaternalHealthMetricScreenState
 
   int? _journeyGestationalWeeks;
   List<String> _surveyRiskConditions = [];
+  MetricDataPoint? _latestBp;
+  MetricDataPoint? _latestBmi;
+  MetricDataPoint? _latestGlucose;
+  MetricDataPoint? _latestKicks;
+  MetricDataPoint? _latestHydration;
+  MetricDataPoint? _latestEpds;
+  MetricDataPoint? _latestHeartRate;
 
   List<String> get _pythonCandidates {
     final list = <String>[];
@@ -161,6 +168,31 @@ class _AddMaternalHealthMetricScreenState
             _surveyRiskConditions = conditions;
           });
         }
+      }
+    } catch (_) {}
+
+    // Tự động tải snapshot các chỉ số mới nhất (Huyết áp, cử động thai, BMI, nước, nhịp tim, đường huyết, EPDS)
+    try {
+      final results = await Future.wait([
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'BLOOD_PRESSURE').catchError((_) => const MetricTrend(metricType: 'BLOOD_PRESSURE', dataPoints: [])),
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'BMI').catchError((_) => const MetricTrend(metricType: 'BMI', dataPoints: [])),
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'BLOOD_GLUCOSE').catchError((_) => const MetricTrend(metricType: 'BLOOD_GLUCOSE', dataPoints: [])),
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'FETAL_MOVEMENT_SESSION').catchError((_) => const MetricTrend(metricType: 'FETAL_MOVEMENT_SESSION', dataPoints: [])),
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'HYDRATION').catchError((_) => const MetricTrend(metricType: 'HYDRATION', dataPoints: [])),
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'EPDS_SCORE').catchError((_) => const MetricTrend(metricType: 'EPDS_SCORE', dataPoints: [])),
+        _service.getMetricTrend(journeyId: widget.journeyId, metricType: 'HEART_RATE').catchError((_) => const MetricTrend(metricType: 'HEART_RATE', dataPoints: [])),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          if (results[0].dataPoints.isNotEmpty) _latestBp = results[0].dataPoints.last;
+          if (results[1].dataPoints.isNotEmpty) _latestBmi = results[1].dataPoints.last;
+          if (results[2].dataPoints.isNotEmpty) _latestGlucose = results[2].dataPoints.last;
+          if (results[3].dataPoints.isNotEmpty) _latestKicks = results[3].dataPoints.last;
+          if (results[4].dataPoints.isNotEmpty) _latestHydration = results[4].dataPoints.last;
+          if (results[5].dataPoints.isNotEmpty) _latestEpds = results[5].dataPoints.last;
+          if (results[6].dataPoints.isNotEmpty) _latestHeartRate = results[6].dataPoints.last;
+        });
       }
     } catch (_) {}
   }
@@ -547,18 +579,21 @@ class _AddMaternalHealthMetricScreenState
     double? secondaryVal,
     String? note,
   }) async {
-    final sbp = _isBloodPressure ? primaryVal.round() : null;
-    final dbp = _isBloodPressure ? (secondaryVal?.round() ?? 0) : null;
-    final glucose = _isGlucose ? primaryVal : null;
-    final kicks = _isFetalMovement ? primaryVal.round() : null;
+    final sbp = _isBloodPressure ? primaryVal.round() : _latestBp?.valueNumeric.round();
+    final dbp = _isBloodPressure ? (secondaryVal?.round() ?? 0) : _latestBp?.valueSecondary?.round();
+    final glucose = _isGlucose ? primaryVal : _latestGlucose?.valueNumeric;
+    final kicks = _isFetalMovement ? primaryVal.round() : _latestKicks?.valueNumeric.round();
+    final heartRate = _metricType == 'HEART_RATE' ? primaryVal.round() : _latestHeartRate?.valueNumeric.round();
+    final waterIntake = _isHydration ? primaryVal.round() : _latestHydration?.valueNumeric.round();
+    final epds = _metricType == 'EPDS_SCORE' ? primaryVal.round() : _latestEpds?.valueNumeric.round();
 
-    final rawWeight = double.tryParse(_primaryCtrl.text.trim());
-    final rawHeight = double.tryParse(_secondaryCtrl.text.trim());
+    final rawWeight = _isBmi ? double.tryParse(_primaryCtrl.text.trim()) : null;
+    final rawHeight = _isBmi ? double.tryParse(_secondaryCtrl.text.trim()) : null;
     final bmi = _isBmi
         ? (rawWeight != null && rawHeight != null && rawHeight > 0
             ? rawWeight / ((rawHeight / 100) * (rawHeight / 100))
             : primaryVal)
-        : null;
+        : _latestBmi?.valueNumeric;
 
     final symptoms = <String>[];
     final noteText = (note ?? '').toLowerCase();
@@ -607,11 +642,12 @@ class _AddMaternalHealthMetricScreenState
         'fetal_movements_count': kicks,
         'fetal_movements_duration_hours': 2,
       },
-      if (_isBmi) ...{
-        if (bmi != null) 'bmi': bmi,
-        if (rawWeight != null) 'weight_kg': rawWeight,
-        if (rawHeight != null) 'height_cm': rawHeight,
-      },
+      if (bmi != null) 'bmi': bmi,
+      if (rawWeight != null) 'weight_kg': rawWeight,
+      if (rawHeight != null) 'height_cm': rawHeight,
+      if (heartRate != null) 'heart_rate': heartRate,
+      if (waterIntake != null) 'water_intake_ml': waterIntake,
+      if (epds != null) 'epds_score': epds,
       if (note != null && note.isNotEmpty) 'free_text_notes': note,
       'symptoms': symptoms,
     };
@@ -637,17 +673,26 @@ class _AddMaternalHealthMetricScreenState
     }
 
     // 2. Dự phòng thuật toán lâm sàng cục bộ
-    final bmiRiskFactors = <String>[];
+    final extraFactors = <String>[];
     if (bmi != null) {
       if (bmi >= 40.0) {
-        bmiRiskFactors.add('Béo phì độ III rất nặng (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ cao Tiền sản giật, ĐTĐ thai kỳ');
+        extraFactors.add('Béo phì độ III rất nặng (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ cao Tiền sản giật, ĐTĐ thai kỳ');
       } else if (bmi >= 30.0) {
-        bmiRiskFactors.add('Béo phì thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần khám dinh dưỡng và theo dõi sát huyết áp, đường huyết');
+        extraFactors.add('Béo phì thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần khám dinh dưỡng và theo dõi sát huyết áp, đường huyết');
       } else if (bmi >= 25.0) {
-        bmiRiskFactors.add('Thừa cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần kiểm soát mức tăng cân hợp lý');
+        extraFactors.add('Thừa cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần kiểm soát mức tăng cân hợp lý');
       } else if (bmi < 18.5) {
-        bmiRiskFactors.add('Thiếu cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ suy dinh dưỡng bào thai hoặc sinh non');
+        extraFactors.add('Thiếu cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ suy dinh dưỡng bào thai hoặc sinh non');
       }
+    }
+    if (waterIntake != null && waterIntake < 1500) {
+      extraFactors.add('Lượng nước uống ít ($waterIntake ml/ngày, chuẩn 2000-2500ml)');
+    }
+    if (epds != null && epds >= 10) {
+      extraFactors.add('Điểm trầm cảm/tâm trạng EPDS cao ($epds/30 điểm)');
+    }
+    if (heartRate != null && (heartRate > 100 || heartRate < 50)) {
+      extraFactors.add('Nhịp tim bất thường ($heartRate bpm)');
     }
 
     final isCritical =
@@ -668,7 +713,7 @@ class _AddMaternalHealthMetricScreenState
         (dbp != null && dbp >= 85) ||
         (glucose != null && glucose >= 5.1) ||
         (kicks != null && kicks < 4 && gestationalAge >= 28) ||
-        bmiRiskFactors.isNotEmpty ||
+        extraFactors.isNotEmpty ||
         symptoms.isNotEmpty;
 
     if (isCritical) {
@@ -683,7 +728,7 @@ class _AddMaternalHealthMetricScreenState
             'Huyết áp rất cao ($sbp/$dbp mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
           if (kicks != null && kicks == 0)
             'Mất cử động thai ở tuần thứ $gestationalAge',
-          ...bmiRiskFactors,
+          ...extraFactors,
           ...symptoms,
         ],
         'suggested_action':
@@ -701,7 +746,7 @@ class _AddMaternalHealthMetricScreenState
             'Huyết áp hơi cao ($sbp/$dbp mmHg) so với bình thường',
           if (glucose != null && glucose >= 5.1)
             'Đường huyết cao ($glucose mg/dL) cần theo dõi',
-          ...bmiRiskFactors,
+          ...extraFactors,
           ...symptoms,
         ],
         'suggested_action':
@@ -1087,6 +1132,15 @@ class _AddMaternalHealthMetricScreenState
                   onPressed: () {
                     Navigator.of(dialogCtx).pop();
                     Navigator.of(context).pop(true);
+                    final vitalsMap = <String, String>{};
+                    if (_latestBp != null) vitalsMap['Huyết áp'] = '${_latestBp!.valueDisplay} mmHg';
+                    if (_latestBmi != null) vitalsMap['BMI'] = _latestBmi!.valueDisplay;
+                    if (_latestGlucose != null) vitalsMap['Đường huyết'] = '${_latestGlucose!.valueDisplay} mmol/L';
+                    if (_latestKicks != null) vitalsMap['Cử động thai'] = '${_latestKicks!.valueDisplay} lần/2h';
+                    if (_latestHydration != null) vitalsMap['Lượng nước'] = '${_latestHydration!.valueDisplay} ml';
+                    if (_latestEpds != null) vitalsMap['Tâm trạng EPDS'] = '${_latestEpds!.valueDisplay}/30 đ';
+                    if (_latestHeartRate != null) vitalsMap['Nhịp tim'] = '${_latestHeartRate!.valueDisplay} bpm';
+
                     context.push(
                       '/rag/chat',
                       extra: {
@@ -1096,6 +1150,7 @@ class _AddMaternalHealthMetricScreenState
                           'displayValue': displayValue,
                           'gestationalAge': gestationalAge,
                           'riskFactors': riskFactors,
+                          'latestVitals': vitalsMap,
                         },
                         'autoSend': true,
                       },
