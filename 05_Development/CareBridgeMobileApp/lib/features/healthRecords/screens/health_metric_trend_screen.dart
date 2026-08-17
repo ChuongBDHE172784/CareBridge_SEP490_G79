@@ -1718,6 +1718,8 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     final noteText = _symptomNoteCtrl.text.toLowerCase();
     if (noteText.contains('đau đầu') || noteText.contains('nhức đầu'))
       symptoms.add('Đau đầu dữ dội');
+    if (noteText.contains('chóng mặt') || noteText.contains('choáng váng'))
+      symptoms.add('Chóng mặt / Choáng váng');
     if (noteText.contains('hoa mắt') || noteText.contains('nhìn mờ'))
       symptoms.add('Hoa mắt nhìn mờ');
     if (noteText.contains('phù')) symptoms.add('Phù mặt/chân');
@@ -1728,6 +1730,13 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       symptoms.add('Ra máu âm đạo');
     if (noteText.contains('rỉ ối') || noteText.contains('vỡ ối'))
       symptoms.add('Rỉ ối / Vỡ ối');
+    if (noteText.contains('đau bụng') || noteText.contains('gò'))
+      symptoms.add('Đau quặn bụng');
+    if (noteText.contains('sốt') || noteText.contains('nóng'))
+      symptoms.add('Sốt');
+    if (symptoms.isEmpty && _symptomNoteCtrl.text.trim().isNotEmpty) {
+      symptoms.add(_symptomNoteCtrl.text.trim());
+    }
 
     for (final c in _surveyRiskConditions) {
       if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
@@ -1786,10 +1795,32 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     // Dự phòng thuật toán lâm sàng nếu offline
     if (aiResult == null) {
       final extraFactors = <String>[];
-      if (sbp != null && (sbp >= 160 || (dbp != null && dbp >= 110))) {
+      final isSevereBp =
+          sbp != null && (sbp >= 160 || (dbp != null && dbp >= 110));
+      final isHighBp =
+          sbp != null && (sbp >= 140 || (dbp != null && dbp >= 90));
+      final hasAlarmSymptoms =
+          symptoms.isNotEmpty || _symptomNoteCtrl.text.trim().isNotEmpty;
+
+      if (isSevereBp) {
         extraFactors.add(
-          'Huyết áp rất cao ($sbp/$dbp mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
+          'Huyết áp rất cao ($sbp/${dbp ?? 0} mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
         );
+      } else if (isHighBp) {
+        if (hasAlarmSymptoms) {
+          extraFactors.add(
+            'Huyết áp cao ($sbp/${dbp ?? 0} mmHg) kèm triệu chứng báo động (${symptoms.join(", ")}) - Nghi ngờ Tiền sản giật',
+          );
+        } else {
+          extraFactors.add(
+            'Huyết áp tăng cao ($sbp/${dbp ?? 0} mmHg) - Cần theo dõi sát huyết áp',
+          );
+        }
+      }
+      if (symptoms.isNotEmpty) {
+        for (final s in symptoms) {
+          extraFactors.add('Triệu chứng ghi nhận: $s');
+        }
       }
       if (bmi != null && bmi >= 30.0) {
         extraFactors.add('Béo phì (BMI: ${bmi.toStringAsFixed(1)} kg/m²)');
@@ -1814,19 +1845,21 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       }
 
       final isCritical =
-          (sbp != null && (sbp >= 160 || (dbp != null && dbp >= 110))) ||
+          isSevereBp ||
+          (isHighBp && hasAlarmSymptoms) ||
           (heartRate != null && heartRate >= 120) ||
           (temp != null && temp >= 38.5);
 
       aiResult = {
-        'triage_status': isCritical
+        'status': isCritical
             ? 'CRITICAL_EMERGENCY'
             : (extraFactors.isNotEmpty ? 'ANOMALY_MONITOR' : 'NORMAL'),
+        'emergency_mode': isCritical,
         'risk_factors': extraFactors,
-        'clinical_rationale': isCritical
-            ? 'Phát hiện chỉ số sinh hiệu ở ngưỡng nguy hiểm khẩn cấp.'
+        'summary': isCritical
+            ? 'Phát hiện chỉ số sinh hiệu hoặc triệu chứng của mẹ ở ngưỡng nguy hiểm khẩn cấp.'
             : (extraFactors.isNotEmpty
-                  ? 'Các chỉ số có dấu hiệu bất thường cần tư vấn chuyên khoa.'
+                  ? 'Các chỉ số có dấu hiệu bất thường cần theo dõi sát và tư vấn AI Nurse.'
                   : 'Bức tranh sức khỏe toàn diện của mẹ hoàn toàn ổn định.'),
       };
     }
@@ -1834,22 +1867,30 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     if (!mounted) return;
     setState(() => _isEvaluatingAi = false);
 
-    final status = aiResult['triage_status']?.toString() ?? 'NORMAL';
+    final status =
+        (aiResult['status'] ?? aiResult['triage_status'])?.toString() ??
+        'NORMAL';
+    final isEmergency =
+        aiResult['emergency_mode'] == true ||
+        status == 'CRITICAL_EMERGENCY';
+    final isAnomaly = status == 'ANOMALY_MONITOR';
     final reasons =
         (aiResult['risk_factors'] as List?)
             ?.map((e) => e.toString())
             .toList() ??
         [];
     final advice =
+        aiResult['summary']?.toString() ??
+        aiResult['headline']?.toString() ??
         aiResult['clinical_rationale']?.toString() ??
         'Bức tranh sức khỏe toàn diện của mẹ hoàn toàn ổn định.';
 
-    if (status == 'CRITICAL_EMERGENCY') {
+    if (isEmergency) {
       await _showCriticalEmergencyDialog(
         reasons: reasons.isEmpty ? ['Phát hiện chỉ số nguy cấp y tế'] : reasons,
         advice: advice,
       );
-    } else if (status == 'ANOMALY_MONITOR') {
+    } else if (isAnomaly || reasons.isNotEmpty) {
       await _showAnomalyDialog(
         reasons: reasons.isEmpty
             ? ['Chỉ số có dấu hiệu bất thường cần theo dõi']

@@ -107,8 +107,8 @@ class _AddMaternalHealthMetricScreenState
   }
 
   static const _glucoseUnits = <String, String>{
-    'mg/dL': 'mg/dL (Máy đo đường huyết cá nhân)',
-    'mmol/L': 'mmol/L (Chuẩn xét nghiệm y khoa)',
+    'mg/dL': 'mg/dL',
+    'mmol/L': 'mmol/L',
   };
 
   static const _glucoseContexts = <String, String>{
