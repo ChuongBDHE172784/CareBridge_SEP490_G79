@@ -1779,10 +1779,33 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
         case 'PRIOR_PREECLAMPSIA':
           return 'Tiền sử Tiền sản giật';
         case 'CHRONIC_HYPERTENSION':
+        case 'HYPERTENSION':
           return 'Tăng huyết áp mạn';
         case 'PREGESTATIONAL_DIABETES':
         case 'PRIOR_GDM':
-          return 'Tiền sử ĐTĐ thai kỳ';
+        case 'PRIOR_GESTATIONAL_DIABETES':
+        case 'DIABETES':
+          return 'Tiền sử Đái tháo đường';
+        case 'CARDIOVASCULAR_DISEASE':
+          return 'Bệnh lý tim mạch';
+        case 'THYROID_DISORDER':
+          return 'Bệnh lý tuyến giáp';
+        case 'ASTHMA':
+          return 'Hen phế quản';
+        case 'KIDNEY_DISEASE':
+          return 'Bệnh lý thận';
+        case 'AUTOIMMUNE_DISEASE':
+          return 'Bệnh tự miễn';
+        case 'ANEMIA':
+          return 'Thiếu máu';
+        case 'PRIOR_PRETERM_BIRTH':
+          return 'Tiền sử sinh non';
+        case 'PRIOR_STILLBIRTH':
+          return 'Tiền sử thai lưu';
+        case 'PRIOR_RECURRENT_PREGNANCY_LOSS':
+          return 'Tiền sử sảy thai nhiều lần';
+        case 'PRIOR_ECTOPIC_PREGNANCY':
+          return 'Tiền sử thai ngoài tử cung';
         default:
           return raw;
       }
@@ -2112,16 +2135,16 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                   ],
 
                   // Tiền sử / Bệnh nền (Survey)
-                  if (surveyRisks.isNotEmpty) ...[
-                    const Text(
-                      'Tiền sử & Bệnh nền (từ Khảo sát)',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF555555),
-                      ),
+                  const Text(
+                    'Tiền sử & Bệnh nền (từ Khảo sát Onboarding)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF555555),
                     ),
-                    const SizedBox(height: 8),
+                  ),
+                  const SizedBox(height: 8),
+                  if (surveyRisks.isNotEmpty)
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -2136,19 +2159,62 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: const Color(0xFFD6C2BD)),
                           ),
-                          child: Text(
-                            formatSurveyLabel(r),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF845143),
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.medical_services_outlined,
+                                size: 14,
+                                color: Color(0xFF845143),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                formatSurveyLabel(r),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF845143),
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       }).toList(),
+                    )
+                  else
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F8E9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFC8E6C9)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 18,
+                            color: Color(0xFF2E7D32),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Đã ghi nhận khảo sát • Không có tiền sử bệnh lý nguy cơ (Huyết áp mạn, Tiền sản giật, ĐTĐ)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF1B5E20),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                  const SizedBox(height: 16),
 
                   // Cảnh báo AI phát hiện
                   if (riskFactors.isNotEmpty) ...[
