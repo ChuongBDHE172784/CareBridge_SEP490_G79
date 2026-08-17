@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:universal_io/io.dart';
 import '../../../core/network/api_client.dart';
@@ -429,7 +430,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
         if (response.statusCode == 200) {
           final decoded = jsonDecode(utf8.decode(response.bodyBytes));
           answerText = decoded['answer']?.toString() ?? '';
-          isWarning = decoded['has_critical_warning'] == true;
+          isWarning = decoded['has_critical_warning'] == true ||
+              decoded['need_expert_consultation'] == true;
 
           if (decoded['sources'] is List) {
             for (final s in decoded['sources']) {
@@ -504,6 +506,14 @@ class _RagChatScreenState extends State<RagChatScreen> {
 
     _persistCurrentSession();
     _scrollToBottom();
+
+    if (isWarning && mounted) {
+      Future.delayed(const Duration(milliseconds: 700), () {
+        if (mounted) {
+          _showNeedExpertConsultationDialog();
+        }
+      });
+    }
   }
 
   String _formatTime(DateTime dt) {
@@ -539,6 +549,304 @@ class _RagChatScreenState extends State<RagChatScreen> {
           Navigator.of(ctx).pop();
           setState(() => _attachedContext = null);
         },
+      ),
+    );
+  }
+
+  /// Bước 11 trong Workflow: Khuyến nghị tham vấn Chuyên gia Y tế (Need Expert Consultation)
+  void _showNeedExpertConsultationDialog({String? reason}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.medical_services_rounded,
+                color: Color(0xFFE65100),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Khuyến nghị Tham vấn Bác sĩ',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D2421),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              reason ??
+                  'Dựa trên dấu hiệu sinh hiệu và tình trạng bạn vừa chia sẻ, hệ thống ghi nhận có các chỉ số cần được Bác sĩ / Chuyên gia sản phụ khoa đánh giá trực tiếp để đảm bảo an toàn tối đa cho mẹ và bé.',
+              style: const TextStyle(
+                fontSize: 13.5,
+                color: Color(0xFF4A3E39),
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF6F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE8DFD8)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.verified_user_outlined,
+                    size: 16,
+                    color: Color(0xFFC98C7B),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Tư vấn trực tuyến qua Video / Chat cùng đội ngũ Bác sĩ Sản phụ khoa CareBridge.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF6B4F46)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    side: const BorderSide(color: Color(0xFFD6C2BD)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    _showSelfTrackingDisclaimerDialog();
+                  },
+                  child: const Text(
+                    'Tự theo dõi thêm',
+                    style: TextStyle(
+                      color: Color(0xFF7A5C52),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  label: const Text('Kết nối Bác sĩ'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC98C7B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    context.push('/experts');
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bước 12A trong Workflow: Tuyên bố miễn trừ trách nhiệm & Yêu cầu tự theo dõi (Self-tracking requirement & Disclaimer)
+  void _showSelfTrackingDisclaimerDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEBEE),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.warning_rounded,
+                color: Color(0xFFC62828),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Lưu ý Trách nhiệm Y tế & Tự theo dõi',
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFC62828),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8F7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFCDD2)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.gavel_rounded, size: 16, color: Color(0xFFC62828)),
+                        SizedBox(width: 6),
+                        Text(
+                          'Tuyên bố miễn trừ trách nhiệm:',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFC62828),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Hệ thống AI Nurse chỉ cung cấp thông tin tham khảo dựa trên thuật toán, không thay thế cho chẩn đoán, điều trị hoặc lời khuyên y khoa chuyên nghiệp. Chúng tôi hoàn toàn miễn trừ trách nhiệm đối với bất kỳ hậu quả, tổn thất hoặc diễn biến xấu nào liên quan đến sức khỏe phát sinh từ quyết định từ chối khám y khoa của bạn.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF424242),
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFDE7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFF59D)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.monitor_heart_rounded, size: 16, color: Color(0xFFF57F17)),
+                        SizedBox(width: 6),
+                        Text(
+                          'Yêu cầu tự theo dõi:',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFF57F17),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Bạn phải tự chịu trách nhiệm theo dõi sát sao các chỉ số cơ thể, diễn biến triệu chứng và tình trạng sức khỏe hiện tại của mình. Nếu xuất hiện bất kỳ dấu hiệu bất thường hoặc chuyển biến nặng nào, bạn cần lập tức liên hệ với cơ sở y tế gần nhất hoặc gọi cấp cứu.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF424242),
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  label: const Text('Thay đổi ý định, kết nối Bác sĩ'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFC98C7B),
+                    side: const BorderSide(color: Color(0xFFC98C7B)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                    context.push('/experts');
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5A463F),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop();
+                  },
+                  child: const Text(
+                    'Tôi đã hiểu và đồng ý',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -650,6 +958,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
                     message: _messages[i],
                     formatTime: _formatTime,
                     onFollowupTap: (p) => _send(p),
+                    onConsultDoctorTap: () =>
+                        _showNeedExpertConsultationDialog(),
                   );
                 },
               ),
@@ -1127,11 +1437,13 @@ class _MessageBubble extends StatelessWidget {
   final _Message message;
   final String Function(DateTime) formatTime;
   final ValueChanged<String> onFollowupTap;
+  final VoidCallback? onConsultDoctorTap;
 
   const _MessageBubble({
     required this.message,
     required this.formatTime,
     required this.onFollowupTap,
+    this.onConsultDoctorTap,
   });
 
   Widget _buildFormattedContent(String raw, bool isUser) {
@@ -1546,6 +1858,65 @@ class _MessageBubble extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      ],
+                      if (!isUser && message.isWarning) ...[
+                        const SizedBox(height: 10),
+                        InkWell(
+                          onTap: onConsultDoctorTap,
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFBE9E7),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFFFAB91),
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.medical_services_rounded,
+                                  size: 16,
+                                  color: Color(0xFFD84315),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Khuyến nghị từ hệ thống',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFD84315),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Cần tham vấn Bác sĩ / Chuyên gia y tế',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFFBF360C),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 12,
+                                  color: Color(0xFFD84315),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
