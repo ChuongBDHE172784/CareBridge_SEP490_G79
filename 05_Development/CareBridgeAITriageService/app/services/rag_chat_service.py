@@ -152,7 +152,7 @@ class RagChatService:
 
         # Check if expert consultation is required
         need_expert_consultation = has_critical_warning or self._detect_expert_consultation_need(
-            combined_text, request.recent_metrics
+            combined_text, request.recent_metrics, answer_text=answer_text
         )
 
         return RagChatResponse(
@@ -209,19 +209,46 @@ class RagChatService:
         self,
         message: str,
         metrics: HealthMetricsLogRequest | None = None,
+        answer_text: str | None = None,
     ) -> bool:
         """Determines if the user's inquiry or physiological context warrants professional expert consult."""
         lower = message.lower()
+        
+        # 1. Check blood pressure regex pattern (e.g. 145/95, 140/90, 135-85)
+        import re
+        bp_match = re.search(r'(\d{2,3})\s*[\/\\-]\s*(\d{2,3})', lower)
+        if bp_match:
+            try:
+                sys_val = int(bp_match.group(1))
+                dia_val = int(bp_match.group(2))
+                if 100 <= sys_val <= 250 and 50 <= dia_val <= 150:
+                    if sys_val >= 135 or dia_val >= 85:
+                        return True
+            except ValueError:
+                pass
+
+        # 2. Comprehensive physiological & symptom risk keywords
         warning_keywords = [
-            "huyết áp cao", "tăng huyết áp", "140/90", "135/85", "đau đầu",
-            "phù chân", "tiền sản giật", "tiểu đường thai kỳ", "đường huyết cao",
-            "sốt", "khó thở", "cơn gò", "uống thuốc gì", "dùng thuốc nào",
-            "đơn thuốc", "kê đơn", "trầm cảm", "lo âu quá mức", "ngứa lòng bàn tay",
-            "protein niệu", "chóng mặt", "buồn nôn liên tục", "thai ít đạp",
+            "huyết áp", "tăng huyết áp", "ha ", "mmhg", "140/90", "135/85", "145/95", "150/", "160/",
+            "đau đầu", "nhức đầu", "đau nhức đầu", "nửa đầu",
+            "hoa mắt", "chóng mặt", "choáng váng", "nhìn mờ", "mờ mắt",
+            "phù chân", "sưng phù", "phù mặt", "sưng tay",
+            "tiền sản giật", "tiểu đường thai kỳ", "đường huyết", "tiểu đường",
+            "sốt", "nhiệt độ cao", "ớn lạnh", "rét run",
+            "khó thở", "thở dốc", "hụt hơi", "tim đập nhanh",
+            "cơn gò", "gò tử cung", "gò bụng", "đau bụng", "đau trằn bụng",
+            "uống thuốc gì", "dùng thuốc nào", "đơn thuốc", "kê đơn", "uống thuốc",
+            "trầm cảm", "lo âu", "buồn bã", "khóc", "suy sụp",
+            "ngứa lòng bàn tay", "ngứa da", "vàng da",
+            "protein niệu", "nước tiểu đục", "tiểu buốt", "tiểu rắt",
+            "buồn nôn", "nôn nhiều", "nôn ói", "đau thượng vị",
+            "thai ít đạp", "thai ít máy", "ít cử động", "không thấy máy",
+            "ra máu", "chảy máu", "ra dịch nâu", "rỉ ối", "vỡ ối",
         ]
         if any(kw in lower for kw in warning_keywords):
             return True
 
+        # 3. Check physical logs / metrics payload
         if metrics:
             if (metrics.systolic_bp and metrics.systolic_bp >= 135) or (metrics.diastolic_bp and metrics.diastolic_bp >= 85):
                 return True
@@ -234,6 +261,18 @@ class RagChatService:
             if metrics.fetal_movements_count is not None and metrics.fetal_movements_count < 4:
                 return True
             if metrics.symptoms:
+                return True
+
+        # 4. Check if the AI's generated response advises seeing a doctor
+        if answer_text:
+            lower_ans = answer_text.lower()
+            doctor_triggers = [
+                "đến ngay cơ sở y tế", "liên hệ với bác sĩ", "bác sĩ sản khoa",
+                "khám bác sĩ", "thăm khám trực tiếp", "dấu hiệu bất thường",
+                "rủi ro sức khỏe", "nguy hiểm cho mẹ", "cần đi khám",
+                "được kiểm tra và xử lý kịp thời", "chuyên khoa phụ sản",
+            ]
+            if any(dt in lower_ans for dt in doctor_triggers):
                 return True
 
         return False
