@@ -669,6 +669,23 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
+### Câu 20: "Cơ chế phát hiện dấu hiệu bất thường và quyết định 'Cần tham vấn Chuyên gia' (Need Expert Consultation) có phải là hardcode / if-else từ khóa không? Hệ thống làm thế nào để vừa linh hoạt vừa đảm bảo an toàn y tế tuyệt đối?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống **hoàn toàn không sử dụng hardcode hay quy tắc if-else từ khóa tĩnh thô sơ**. Thay vào đó, CareBridge áp dụng mô hình **Hybrid: LLM Semantic Reasoning kết hợp Clinical Safety Guardrails** chuẩn y khoa hiện đại:
+  > 
+  > 1. **Mô hình Suy luận Ngữ nghĩa Tự nhiên (LLM Semantic Reasoning):**
+  >    - Nhờ kỹ thuật **LLM Semantic Tagging** trên mô hình `gemini-flash-lite-latest`, AI tự động đọc hiểu toàn bộ văn cảnh trao đổi, cảm xúc và mô tả lâm sàng của người bệnh (kể cả khi thai phụ dùng ngôn ngữ dân gian, tiếng lóng hay lỗi chính tả như *'đầu đau như búa bổ'*, *'mắt nhìn một thành hai'*, *'người cứ bồng bềnh'*, hay gõ huyết áp bất kỳ *'145/95'*, *'138/88'*...).
+  >    - Trong System Prompt, mô hình được giao vai trò điều dưỡng chuyên khoa và tự động đánh giá để xuất thẻ quyết định lâm sàng: `[NEED_EXPERT_CONSULTATION]: YES / NO` một cách tự nhiên mà không phụ thuộc vào bất kỳ danh sách từ khóa cố định nào.
+  > 
+  > 2. **Tầng Bảo vệ An toàn Lâm sàng Đa lớp (Clinical Safety Guardrails):**
+  >    - Trong y tế số, một hệ thống AI nghiêm túc không thể phó mặc 100% cho xác suất ngẫu nhiên của LLM. CareBridge bổ sung lớp **Deterministic Clinical Guardrail**:
+  >      - **Huyết áp thực nghiệm:** Quét nhận diện thông số sinh hiệu ($SBP \ge 135$ hoặc $DBP \ge 85$ mmHg theo ACOG).
+  >      - **Chỉ số sinh tồn:** Sốt $\ge 37.8^\circ C$, thai ít đạp $< 4$ lần/2h, hoặc thang trầm cảm EPDS $\ge 10$.
+  >      - **Semantic Output Inspection:** Quét chính câu trả lời của AI, nếu AI đưa ra khuyến cáo khẩn (*'cần đến ngay cơ sở y tế'*, *'liên hệ bác sĩ sản khoa'*...) thì cờ tham vấn chuyên gia sẽ tự động kích hoạt bảo vệ thai phụ.
+  > 
+  > 3. **Tầng Dual-Safety Client-Side Fallback trên Mobile:**
+  >    - Ứng dụng di động tự động đồng bộ cờ cảnh báo để kích hoạt Modal Bước 11 và Bước 12A ngay lập tức sau 700ms, đảm bảo trải nghiệm tức thì và ngăn ngừa triệt để rủi ro chậm trễ do mạng."
+
 ---
 
 ## 10. Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới
