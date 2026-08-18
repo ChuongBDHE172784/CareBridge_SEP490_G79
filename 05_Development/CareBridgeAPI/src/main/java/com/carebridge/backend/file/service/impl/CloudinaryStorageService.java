@@ -67,20 +67,24 @@ public class CloudinaryStorageService implements IStorageService {
                         case PRIVATE -> "private";
                     };
 
+            String publicIdToUse = key != null ? (key.contains(".") ? key.substring(0, key.lastIndexOf('.')) : key) : null;
+            java.util.Map<String, Object> uploadParams = new java.util.HashMap<>();
+            uploadParams.put("resource_type", resourceType);
+            uploadParams.put("type", type);
+            if (publicIdToUse != null && !publicIdToUse.isBlank()) {
+                uploadParams.put("public_id", publicIdToUse);
+                uploadParams.put("overwrite", true);
+            } else {
+                uploadParams.put("folder", "carebridge");
+            }
+
             Map<?, ?> result;
             try {
-                result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                        "folder", "carebridge",
-                        "resource_type", resourceType,
-                        "type", type
-                ));
+                result = cloudinary.uploader().upload(data, uploadParams);
             } catch (Exception e) {
                 if (!"upload".equals(type)) {
-                    result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                            "folder", "carebridge",
-                            "resource_type", resourceType,
-                            "type", "upload"
-                    ));
+                    uploadParams.put("type", "upload");
+                    result = cloudinary.uploader().upload(data, uploadParams);
                     accessMode = FileAccessMode.PUBLIC;
                 } else {
                     throw e;
@@ -109,12 +113,18 @@ public class CloudinaryStorageService implements IStorageService {
     public void storePublic(String key, byte[] data, String mimeType) {
         try {
             String resourceType = getResourceType(mimeType);
+            String publicIdToUse = key != null ? (key.contains(".") ? key.substring(0, key.lastIndexOf('.')) : key) : null;
+            java.util.Map<String, Object> uploadParams = new java.util.HashMap<>();
+            uploadParams.put("resource_type", resourceType);
+            uploadParams.put("type", "upload");
+            if (publicIdToUse != null && !publicIdToUse.isBlank()) {
+                uploadParams.put("public_id", publicIdToUse);
+                uploadParams.put("overwrite", true);
+            } else {
+                uploadParams.put("folder", "carebridge");
+            }
 
-            Map<?, ?> result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                    "folder", "carebridge",
-                    "resource_type", resourceType,
-                    "type", "upload"
-            ));
+            Map<?, ?> result = cloudinary.uploader().upload(data, uploadParams);
 
             String publicId = (String) result.get("public_id");
             if (publicId == null) {
