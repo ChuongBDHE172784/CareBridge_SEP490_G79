@@ -53,7 +53,23 @@ export default function CallRecordingPlayerModal({
     getCallRecordingPresignedUrl(call.callId)
       .then((url) => {
         if (isMounted) {
-          setStreamUrl(url);
+          // Normalize Cloudinary image/upload/ to video/upload/ for video/audio streams
+          const isVideo = call.callType === 'VIDEO';
+          let normalized = url;
+          if (
+            normalized &&
+            normalized.includes('/image/upload/') &&
+            (isVideo ||
+              normalized.includes('.webm') ||
+              normalized.includes('.mp4') ||
+              normalized.includes('.mov') ||
+              normalized.includes('.m4a') ||
+              normalized.includes('.aac') ||
+              normalized.includes('.mp3'))
+          ) {
+            normalized = normalized.replace('/image/upload/', '/video/upload/');
+          }
+          setStreamUrl(normalized);
         }
       })
       .catch((err) => {
@@ -174,6 +190,9 @@ export default function CallRecordingPlayerModal({
                       controls
                       autoPlay
                       className="w-full h-full object-contain rounded-xl max-h-[380px]"
+                      onError={() => {
+                        setError('Không thể giải mã hoặc phát trực tiếp video trên trình duyệt này. Vui lòng nhấn nút "Tải file" bên dưới để xem.');
+                      }}
                     />
                   </div>
                 ) : (
@@ -187,6 +206,9 @@ export default function CallRecordingPlayerModal({
                       controls
                       autoPlay
                       className="w-full max-w-lg"
+                      onError={() => {
+                        setError('Không thể phát âm thanh trực tiếp trên trình duyệt này. Vui lòng nhấn nút "Tải file" bên dưới để nghe.');
+                      }}
                     />
                   </div>
                 )}

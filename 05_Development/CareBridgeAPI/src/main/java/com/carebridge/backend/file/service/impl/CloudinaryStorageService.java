@@ -57,11 +57,15 @@ public class CloudinaryStorageService implements IStorageService {
             String resourceType = getResourceType(mimeType);
             FileAccessMode accessMode = determineAccessMode(mimeType);
 
-            String type = switch (accessMode) {
-                case PUBLIC -> "upload";
-                case AUTHENTICATED -> "authenticated";
-                case PRIVATE -> "private";
-            };
+            // Videos and Audios on Cloudinary must use type: "upload" (standard delivery)
+            // because "private" on Cloudinary free tier blocks streaming / HTTP range requests for HTML5 <video> and <audio>
+            String type = "video".equalsIgnoreCase(resourceType) || accessMode == FileAccessMode.PUBLIC
+                    ? "upload"
+                    : switch (accessMode) {
+                        case PUBLIC -> "upload";
+                        case AUTHENTICATED -> "authenticated";
+                        case PRIVATE -> "private";
+                    };
 
             Map<?, ?> result;
             try {
@@ -202,9 +206,9 @@ public class CloudinaryStorageService implements IStorageService {
      *         signed URL, just not time-limited. Enabling true expiry is a follow-up.</p>
      */
     public String generateSignedUrl(String publicId, int ttlMinutes, FileAccessMode accessMode, String resourceType) {
-        if (accessMode == FileAccessMode.PUBLIC) {
+        if (accessMode == FileAccessMode.PUBLIC || "video".equalsIgnoreCase(resourceType)) {
             return cloudinary.url()
-                    .resourceType(resourceType)
+                    .resourceType(resourceType != null ? resourceType : "image")
                     .type("upload")
                     .secure(true)
                     .generate(publicId);
@@ -217,7 +221,7 @@ public class CloudinaryStorageService implements IStorageService {
         };
 
         return cloudinary.url()
-                .resourceType(resourceType)
+                .resourceType(resourceType != null ? resourceType : "image")
                 .type(type)
                 .secure(true)
                 .signed(true)
@@ -320,9 +324,24 @@ public class CloudinaryStorageService implements IStorageService {
     }
 
     private String fallbackGenerateUrl(String key) {
-        // Try to extract publicId from legacy key/URL
+        String resourceType = "image";
+        if (key != null) {
+            String lower = key.toLowerCase();
+            if (lower.endsWith(".webm") || lower.endsWith(".mp4") || lower.endsWith(".mov")
+                    || lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".mp3")
+                    || lower.endsWith(".wav") || lower.endsWith(".ogg") || lower.endsWith(".weba")) {
+                resourceType = "video";
+            } else if (lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx")
+                    || lower.endsWith(".xls") || lower.endsWith(".xlsx")) {
+                resourceType = "raw";
+            }
+        }
         String publicId = extractPublicId(key);
-        return cloudinary.url().secure(true).generate(publicId);
+        return cloudinary.url()
+                .resourceType(resourceType)
+                .type("upload")
+                .secure(true)
+                .generate(publicId);
     }
 
     private String extractPublicId(String url) {
