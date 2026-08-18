@@ -114,6 +114,7 @@ describe('mountZegoRoomSession', () => {
       getTracks: () => [{ stop: stopTrack }],
     });
     vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } });
+    let recorderTimeslice: number | undefined;
 
     class FakeMediaRecorder {
       static isTypeSupported = vi.fn(() => true);
@@ -121,7 +122,8 @@ describe('mountZegoRoomSession', () => {
       ondataavailable: ((event: BlobEvent) => void) | null = null;
       onstop: ((event: Event) => void) | null = null;
 
-      start() {
+      start(timeslice?: number) {
+        recorderTimeslice = timeslice;
         this.state = 'recording';
       }
 
@@ -159,6 +161,17 @@ describe('mountZegoRoomSession', () => {
     roomConfig.onJoinRoom();
     await Promise.resolve();
     await Promise.resolve();
+
+    expect(recorderTimeslice).toBeUndefined();
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: expect.objectContaining({
+        autoGainControl: true,
+        echoCancellation: true,
+        noiseSuppression: true,
+        sampleRate: { ideal: 48_000 },
+      }),
+      video: false,
+    });
 
     roomConfig.onLeaveRoom();
     roomConfig.onLeaveRoom();

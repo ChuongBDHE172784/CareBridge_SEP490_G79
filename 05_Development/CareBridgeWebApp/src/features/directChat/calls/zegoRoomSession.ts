@@ -86,8 +86,20 @@ export function mountZegoRoomSession({
     try {
       if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
       recordingStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: call.callType === 'VIDEO',
+        audio: {
+          autoGainControl: true,
+          channelCount: { ideal: 1 },
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: { ideal: 48_000 },
+        },
+        video: call.callType === 'VIDEO'
+          ? {
+              frameRate: { ideal: 24, max: 30 },
+              height: { ideal: 480 },
+              width: { ideal: 640 },
+            }
+          : false,
       });
       if (disposed) {
         recordingStream.getTracks().forEach((track) => track.stop());
@@ -95,12 +107,19 @@ export function mountZegoRoomSession({
         return;
       }
       const mimeType = call.callType === 'VIDEO' ? 'video/webm;codecs=vp8,opus' : 'audio/webm;codecs=opus';
-      const options = MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined;
+      const options: MediaRecorderOptions = {
+        audioBitsPerSecond: 96_000,
+        ...(call.callType === 'VIDEO' ? { videoBitsPerSecond: 1_500_000 } : {}),
+        ...(MediaRecorder.isTypeSupported?.(mimeType) ? { mimeType } : {}),
+      };
       mediaRecorder = new MediaRecorder(recordingStream, options);
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) recordedChunks.push(e.data);
       };
-      mediaRecorder.start(1000);
+      // A timeslice makes Chrome emit independently muxed WebM segments. Joining
+      // those segment bytes produces timestamp resets, audio gaps and a truncated
+      // container. Let stop() emit one final, valid WebM container instead.
+      mediaRecorder.start();
       callStartTime = Date.now();
     } catch (e) {
       console.warn('[zegoRoomSession] Media recording could not start:', e);
