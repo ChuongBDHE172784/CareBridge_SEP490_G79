@@ -34,14 +34,25 @@ public class CommunityQuestionController {
     private final CommunityQuestionService questionService;
     private final CommunityQuestionSearchService searchService;
 
-    // Mothers and family members may create questions under their own account.
+    /**
+     * [Bước 1: Tiếp nhận Request - Tạo câu hỏi cộng đồng]
+     * Endpoint: POST /api/v1/community/questions
+     * Phân quyền: Chỉ người dùng có vai trò 'MOTHER' hoặc 'FAMILY' mới được phép tạo câu hỏi.
+     *
+     * @param request DTO chứa thông tin câu hỏi (chủ đề, tiêu đề, nội dung, ảnh Cloudinary, giai đoạn thai kỳ/tuổi bé, mức độ khẩn cấp, ẩn danh)
+     * @param principal Thông tin định danh của người dùng đã xác thực (JWT)
+     * @return HTTP 201 CREATED kèm thông tin câu hỏi vừa được tạo (CommunityQuestionResponse)
+     */
     @PostMapping
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<CommunityQuestionResponse>> createQuestion(
             @Valid @RequestBody CreateCommunityQuestionRequest request,
             Principal principal) {
+        // Trích xuất UUID của người dùng hiện tại từ Security Context
         UUID authorId = SecurityUtils.requireCurrentUserId(principal);
+        // Gọi tầng Service để thực thi logic nghiệp vụ tạo câu hỏi
         CommunityQuestionResponse response = questionService.createQuestion(authorId, request);
+        // Trả về HTTP Status 201 Created cùng dữ liệu phản hồi đã đóng gói
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Question created"));
     }

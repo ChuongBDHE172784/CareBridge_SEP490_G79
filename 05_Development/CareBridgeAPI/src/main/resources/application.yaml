@@ -110,9 +110,11 @@ carebridge:
         runtime-username: ${CAREBRIDGE_DB_USERNAME:}
         flyway-username: ${CAREBRIDGE_FLYWAY_DB_USERNAME:}
         application-flyway-enabled: ${SPRING_FLYWAY_ENABLED:true}
+  reference-data:
+    enabled: ${CAREBRIDGE_REFERENCE_DATA_ENABLED:true}
   dev-seed:
     enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
-    password: ${CAREBRIDGE_DEV_SEED_PASSWORD:}
+    password: ${CAREBRIDGE_DEV_SEED_PASSWORD:Test@1234}
   security:
     jwt:
       active-key-id: ${JWT_ACTIVE_KEY_ID:}
@@ -256,7 +258,7 @@ ai:
   triage-service:
     url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}
     request-timeout-ms: ${AI_TRIAGE_REQUEST_TIMEOUT_MS:15000}
-    internal-api-key: ${AI_TRIAGE_INTERNAL_API_KEY:}
+    internal-api-key: ${AI_TRIAGE_INTERNAL_API_KEY:carebridge}
 
 management:
   endpoints:

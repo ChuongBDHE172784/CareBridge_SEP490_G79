@@ -86,19 +86,18 @@
       "sourceId": "BYT_1139_2026",
       "publisher": "Bộ Y tế Việt Nam (Vietnamese Ministry of Health)",
       "publisherType": "GOVERNMENT",
-      "title": "Quyết định số 1139/QĐ-BYT ngày 23/4/2026 — \"Hướng dẫn Quốc gia các dịch vụ chăm sóc sức khỏe sinh sản\"",
-      "url": null,
-      "sectionOrPage": null,
-      "verifiedAt": null,
-      "verifiedBy": null,
-      "contentHash": null,
-      "verificationStatus": "IDENTIFIED_PRIMARY_UNVERIFIED",
-      "notes": "Định danh qua trích dẫn thứ cấp trên hai site bệnh viện .gov.vn; primary trên moh.gov.vn chưa truy cập được. URL và content hash được để null, không suy đoán.",
+      "title": "Quyết định số 1139/QĐ-BYT ngày 23/4/2026 — \"Hướng dẫn Quốc gia các dịch vụ chăm sóc sức khỏe sinh sản: Chăm sóc trước khi có thai và trước khi sinh\"",
+      "url": "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf",
+      "sectionOrPage": "Mục 2.9.3, tr.16–17",
+      "verifiedAt": "2026-08-15",
+      "verifiedBy": "CareBridge development team",
+      "contentHash": "3b60b659b446ab46f0f52ec01bdc2053685c2ed1e46e402fc684ad548ba39154",
+      "verificationStatus": "SOURCE_VERIFIED",
+      "notes": "Primary document retrieved in full from vnpa.moh.gov.vn on 2026-08-15; SHA-256 hashed.",
       "intendedAudience": "Health workers delivering reproductive health services",
       "limitations": [
-        "Primary document on moh.gov.vn was not accessible for verification on 2026-08-11.",
-        "Must NOT be used to claim SOURCE_VERIFIED for any rule.",
-        "BLOCKER: rules citing this source cannot reach SOURCE_VERIFIED until the primary is retrieved and hashed."
+        "Replaces the antenatal portion of QĐ 4128/QĐ-BYT (2016); postpartum content remains under 4128.",
+        "CareBridge maps only a subset of publicly documented danger signs."
       ]
     }
   ],
@@ -107,6 +106,6 @@
     "status": "NOT_YET_MIRRORED"
   },
   "overallStatus": "PENDING",
-  "overallStatusNote": "WHO_DANGER_SIGNS_2022 and WHO_MATERNAL_2025 are nonexistent citation labels and have been removed from rule sourceIds. WHO_IITT_ADULT, WHO_PCPNC_2015 and BYT_1139_2026 are identified but remain unverified and unhashed. Therefore NO rule may derive SOURCE_VERIFIED.",
+  "overallStatusNote": "WHO_DANGER_SIGNS_2022 and WHO_MATERNAL_2025 are nonexistent citation labels and have been removed from rule sourceIds. BYT_1139_2026 is verified and hashed. WHO_IITT_ADULT and WHO_PCPNC_2015 are identified but remain unverified and unhashed.",
   "derivationRule": "Rule-level sourceVerificationStatus is DERIVED from this manifest by DevTools/sync_triage_rule_registry.py and must never be hand-edited in the registry. All required sources SOURCE_VERIFIED -> SOURCE_VERIFIED; any other non-broken/non-changed source status -> PENDING; any BROKEN -> BROKEN; any SOURCE_CHANGED -> SOURCE_CHANGED."
 }

@@ -140,7 +140,8 @@ class UnifiedTaskPolicyTest {
                 .isFalse();
 
         instance.setOrigin(ChecklistOrigin.USER_CREATED);
-        assertThat(policy.canView(instance, FAMILY, GROUP)).isFalse();
+        assertThat(policy.canView(instance, FAMILY, GROUP)).isTrue();
+        assertThat(policy.canComplete(instance, FAMILY, GROUP)).isFalse();
     }
 
     @Test

@@ -32,6 +32,9 @@ apiClient.interceptors.request.use((config) => {
   const session = (config as SessionBoundInternalConfig).carebridgeSession;
   const token = session?.accessToken ?? useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+  }
   return config;
 });
 

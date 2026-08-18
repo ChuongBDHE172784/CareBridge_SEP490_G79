@@ -63,7 +63,9 @@ void main() {
     expect(router, contains("path: '/checklists/task-detail'"));
     expect(router, contains('final task = state.extra;'));
     expect(router, contains('if (task is! TodayTask)'));
-    expect(router, contains('ChecklistTaskDetailScreen(task: task)'));
+    expect(router, contains('ChecklistTaskDetailScreen('));
+    expect(router, contains('task: task,'));
+    expect(router, contains("showSupportFunction: audience != 'family',"));
   });
 
   test('only the canonical Family Home implementation remains', () {

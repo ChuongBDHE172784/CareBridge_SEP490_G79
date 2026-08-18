@@ -15,9 +15,13 @@ class PostureCameraSource {
 
   bool get isRunning => false;
 
+  bool get isSwitching => false;
+
   String? get lastError => null;
 
   bool get hasFeedbackError => false;
+
+  bool get isFrontCamera => true;
 
   /// Native targets currently have no local skeleton renderer.  Keep this
   /// method as a no-op so the session screen can share its feedback plumbing
@@ -28,7 +32,10 @@ class PostureCameraSource {
 
   Future<void> start() async {}
 
+  Future<void> switchCamera() async {}
+
   Future<void> stop() async {}
+
 
   Future<void> dispose() => stop();
 

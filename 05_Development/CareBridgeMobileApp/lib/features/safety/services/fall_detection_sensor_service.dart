@@ -17,6 +17,14 @@ typedef AccelerometerEvents = Stream<AccelerometerEvent> Function();
 typedef GyroscopeEvents = Stream<GyroscopeEvent> Function();
 typedef CloseStaleSafetyEvent = Future<void> Function(SafetyEvent event);
 
+/// Dịch vụ quản lý luồng cảm biến phần cứng (Gia tốc kế, Con quay hồi chuyển) & đồng bộ định vị GPS khi phát hiện té ngã.
+///
+/// **Nhiệm vụ chính:**
+/// 1. Lắng nghe cảm biến gia tốc và con quay hồi chuyển với chu kỳ ~20ms (50Hz - Game Interval).
+/// 2. Đưa các mẫu IMU vào [ImuFallDetector] để phân tích theo máy trạng thái 3 pha.
+/// 3. Định kỳ cập nhật tọa độ vị trí GPS (khi có sự đồng thuận Consent & quyền từ người dùng).
+/// 4. Gửi sự kiện té ngã đã được xác nhận [FallCandidate] lên Backend (`/api/v1/safety/imu-data`) kèm tọa độ định vị.
+/// 5. Quản lý trạng thái chẩn đoán IMU (Diagnostics) và bảo vệ bằng bộ đếm Watchdog.
 class FallDetectionSensorService {
   FallDetectionSensorService._({
     AccelerometerEvents? accelerometerEvents,
@@ -53,8 +61,11 @@ class FallDetectionSensorService {
     closeStaleEvent: closeStaleEvent,
   );
 
+  /// Singleton instance của dịch vụ cảm biến phát hiện ngã.
   static final FallDetectionSensorService instance =
       FallDetectionSensorService._();
+
+  /// Chu kỳ lấy mẫu cảm biến phần cứng (SensorInterval.gameInterval ~20ms, tương đương tần số 50Hz).
   static const _samplingPeriod = SensorInterval.gameInterval;
 
   final AccelerometerEvents _accelerometerEvents;
@@ -97,11 +108,14 @@ class FallDetectionSensorService {
   String? _accelerometerStreamError;
   String? _gyroscopeStreamError;
 
+  /// Giới hạn tần suất phát chẩn đoán (tối đa 4 lần/giây = 250ms/lần) để tránh nghẽn Event Bus.
   static const _diagnosticsThrottle = Duration(milliseconds: 250);
+
+  /// Dữ liệu cảm biến bị coi là quá hạn (stale) nếu trễ hơn 2 giây so với đồng hồ hệ thống.
   static const _staleAfter = Duration(seconds: 2);
-  // Detection is suspended while an alert is on screen. The screen always
-  // pairs its rearm with that suspension, but a killed UI isolate must never
-  // be able to leave fall detection switched off for the rest of the session.
+
+  /// Bộ đếm thời gian giám sát tối đa (3 phút): nếu giao diện cảnh báo bị lỗi/tắt đột ngột mà không rearm,
+  /// dịch vụ sẽ tự động kích hoạt lại bộ phát hiện té ngã để đảm bảo an toàn cho người dùng.
   static const alertResponseWatchdog = Duration(minutes: 3);
 
   bool get isRunning => _running;
@@ -119,6 +133,7 @@ class FallDetectionSensorService {
   @visibleForTesting
   void checkDiagnosticsFreshnessForTesting() => _checkDiagnosticsFreshness();
 
+  /// Khởi động luồng giám sát cảm biến IMU và cơ chế làm mới định vị GPS (nếu được cấp phép).
   Future<void> start({bool locationSharingAllowed = false}) async {
     _locationSharingAllowed = locationSharingAllowed;
     if (!locationSharingAllowed) {
@@ -130,8 +145,7 @@ class FallDetectionSensorService {
       return;
     }
     _running = true;
-    // Epoch-based generations remain monotonic even when iOS recreates the
-    // background Dart isolate for a later foreground-task session.
+    // Epoch-based generations duy trì tính đơn điệu ngay cả khi iOS tái tạo Background Dart Isolate
     final wallClockGeneration = _now().toUtc().microsecondsSinceEpoch;
     _runGeneration = wallClockGeneration > _runGeneration
         ? wallClockGeneration
@@ -157,6 +171,7 @@ class FallDetectionSensorService {
     }
     if (_locationSharingAllowed) _scheduleLocationRefresh();
     try {
+      // Đăng ký nhận stream con quay hồi chuyển
       _gyroscopeSubscription = _gyroscopeEvents().listen(
         _handleGyroscope,
         onError: (error, stackTrace) {
@@ -170,6 +185,7 @@ class FallDetectionSensorService {
         },
         cancelOnError: false,
       );
+      // Đăng ký nhận stream gia tốc kế
       _accelerometerSubscription = _accelerometerEvents().listen(
         _handleAccelerometer,
         onError: (error, stackTrace) {
@@ -195,6 +211,7 @@ class FallDetectionSensorService {
     }
   }
 
+  /// Dừng giám sát cảm biến IMU và giải phóng các đăng ký cảm biến/timer.
   Future<void> stop() async {
     if (!_running &&
         _diagnosticsLifecycleTimer == null &&
@@ -234,11 +251,13 @@ class FallDetectionSensorService {
     }
   }
 
+  /// Xử lý mẫu gia tốc kế: kết hợp với mẫu con quay hồi chuyển gần nhất thành [ImuSample] và đưa vào bộ phân tích.
   void _handleAccelerometer(AccelerometerEvent event) {
     if (!_running) return;
     _accelerometerStreamError = null;
 
     final timestamp = event.timestamp.toUtc();
+    // Bỏ qua và reset nếu dữ liệu bị trễ hơn 2 giây
     if (_now().toUtc().difference(timestamp) > _staleAfter) {
       _detector.reset();
       return;
@@ -270,6 +289,7 @@ class FallDetectionSensorService {
     if (safetyDiagnosticsEnabled) {
       _publishSamplingDiagnostics(sample, force: sensorSelfTestDetected);
     }
+    // Định kỳ 30 giây làm mới tọa độ GPS nếu được phép chia sẻ vị trí
     if (_locationSharingAllowed &&
         (_locationReadAt == null ||
             timestamp.difference(_locationReadAt!) >
@@ -277,10 +297,12 @@ class FallDetectionSensorService {
       _scheduleLocationRefresh();
     }
     if (candidate == null) return;
+    // Nếu màn hình cảnh báo đang mở thì giữ lại ứng viên ngã chờ phản hồi
     if (_alertResponseInProgress) {
       _pendingCandidateAfterResponse = candidate;
       return;
     }
+    // Gửi sự kiện ngã lên Backend
     unawaited(_sendCandidate(candidate, _runGeneration, _responseGeneration));
   }
 
@@ -298,12 +320,14 @@ class FallDetectionSensorService {
     _detector.reset();
   }
 
+  /// Cập nhật giá trị mẫu con quay hồi chuyển mới nhất.
   void _handleGyroscope(GyroscopeEvent event) {
     if (!_running) return;
     _gyroscopeStreamError = null;
     _latestGyroscope = event;
   }
 
+  /// Bắt đầu phiên hiển thị cảnh báo (tạm dừng thu nạp cảnh báo mới để tránh pop-up chồng chéo).
   void beginAlertResponse() {
     if (!_running) return;
     _responseGeneration++;
@@ -313,6 +337,7 @@ class FallDetectionSensorService {
     _detector.reset();
   }
 
+  /// Tái kích hoạt bộ phát hiện té ngã sau khi người dùng phản hồi cảnh báo (Tôi vẫn ổn / Báo nhầm).
   void rearmAfterAlertResponse(DateTime respondedAt) {
     if (!_running) return;
     final pendingCandidate = _pendingCandidateAfterResponse;
@@ -320,9 +345,6 @@ class FallDetectionSensorService {
     _alertResponseInProgress = false;
     _alertResponseStartedAt = null;
     _detector.rearmAfterAlertResponse(respondedAt);
-    // An impact recorded while the alert was on screen belongs to the incident
-    // the user has just answered, so replaying it would raise a second alert
-    // for the same fall. Only a later impact is a new incident.
     if (pendingCandidate != null &&
         pendingCandidate.impactSample.timestamp.isAfter(respondedAt.toUtc())) {
       unawaited(
@@ -503,6 +525,8 @@ class FallDetectionSensorService {
     _diagnosticsController.add(snapshot);
   }
 
+  /// Gửi ứng viên té ngã [FallCandidate] lên API Backend `/api/v1/safety/imu-data`.
+  /// Kèm theo cờ `onDeviceFallConfirmed = true` và tọa độ GPS (Latitude, Longitude) nếu được cấp quyền.
   Future<void> _sendCandidate(
     FallCandidate candidate,
     int runGeneration,
@@ -510,6 +534,7 @@ class FallDetectionSensorService {
   ) async {
     final impact = candidate.impactSample;
     final locationReadAt = _locationReadAt;
+    // Kiểm tra độ tươi của tọa độ vị trí (phải được đọc trong vòng 30 giây gần nhất)
     final hasFreshLocation =
         _locationSharingAllowed &&
         _latestPosition != null &&
@@ -519,6 +544,7 @@ class FallDetectionSensorService {
     if (_locationSharingAllowed && !hasFreshLocation) {
       _scheduleLocationRefresh();
     }
+    // Thử gửi tối đa 3 lần với cơ chế exponential backoff nếu gặp lỗi mạng
     for (var attempt = 1; attempt <= 3; attempt++) {
       if (!_running || _runGeneration != runGeneration) return;
       try {
@@ -536,6 +562,7 @@ class FallDetectionSensorService {
           longitude: position?.longitude,
         );
         if (safetyEvent != null) {
+          // Nếu sự kiện trả về sau khi người dùng đã phản hồi xong -> Tự động đóng lại
           if (responseGeneration != _responseGeneration) {
             await _closeStaleEvent(safetyEvent);
           } else if (_publishedEventIds.add(safetyEvent.id)) {
@@ -548,9 +575,6 @@ class FallDetectionSensorService {
           debugPrint(
             '[FallDetectionSensorService] send IMU failed after retry: $error',
           );
-          // A verified fall that never reaches the backend looks exactly like
-          // a detector miss on the device, so surface the reason instead of
-          // failing silently.
           _publishSensorError('Không gửi được dữ liệu ngã: $error');
           return;
         }
@@ -559,6 +583,7 @@ class FallDetectionSensorService {
     }
   }
 
+  /// Tự động đóng sự kiện cảnh báo cũ nếu người dùng đã xử lý xong phản hồi trước đó.
   Future<void> _closeStaleEvent(SafetyEvent event) async {
     try {
       final override = _closeStaleEventOverride;
@@ -581,6 +606,7 @@ class FallDetectionSensorService {
     }
   }
 
+  /// Lên lịch tác vụ đọc vị trí ngầm nếu chưa có tác vụ nào đang chạy.
   void _scheduleLocationRefresh() {
     if (_locationRefreshInFlight != null) return;
     final operation = _refreshLocation();
@@ -594,6 +620,7 @@ class FallDetectionSensorService {
     );
   }
 
+  /// Đọc tọa độ GPS thời gian thực từ cảm biến thiết bị theo tiêu chuẩn bảo mật dữ liệu (PDPA Consent).
   Future<void> _refreshLocation() async {
     final override = _refreshLocationOverride;
     if (override != null) {
@@ -606,9 +633,9 @@ class FallDetectionSensorService {
         _locationReadAt = null;
         return;
       }
-      // Never keep using coordinates while consent freshness is being checked.
       _latestPosition = null;
       _locationReadAt = null;
+      // Kiểm tra trạng thái Consent chia sẻ vị trí của người dùng
       final consents = await PrivacyService.instance.listConsents();
       final consentActive = consents.any(
         (grant) =>
@@ -622,6 +649,7 @@ class FallDetectionSensorService {
         _locationReadAt = null;
         return;
       }
+      // Đọc tọa độ GPS từ dịch vụ định vị
       final position = await _permissionService.readConsentedLocation();
       if (!_locationSharingAllowed || position == null) {
         _latestPosition = null;
@@ -631,8 +659,6 @@ class FallDetectionSensorService {
       _latestPosition = position;
       _locationReadAt = DateTime.now();
     } catch (error) {
-      // Fire-and-forget plugin and consent failures must fail closed and must
-      // never leave previously-authorized coordinates cached.
       _latestPosition = null;
       _locationReadAt = null;
       debugPrint(

@@ -218,10 +218,16 @@ class ExerciseFeedbackAnalyzer {
   void applyFeedback(PostureFeedback feedback) {
     final severity = feedback.severity.trim().toUpperCase();
     final code = feedback.postureCode.trim().toUpperCase();
-    _feedbackError =
-        severity == 'WARNING' ||
-        severity == 'CRITICAL' ||
-        _isKnownErrorCode(code);
+    final isGood = code == 'C' ||
+        code.endsWith('/C') ||
+        code.contains('GOOD_FORM') ||
+        code.contains('CORRECT') ||
+        code == 'UP' ||
+        code == 'DOWN';
+    _feedbackError = !isGood &&
+        (severity == 'CRITICAL' ||
+            (severity == 'WARNING' && !code.contains('MODEL_UNAVAILABLE')) ||
+            _isKnownErrorCode(code));
     _feedbackStage = _stageFromCode(code, exercise);
     _metrics = _copyMetrics(
       _metrics,
@@ -229,6 +235,8 @@ class ExerciseFeedbackAnalyzer {
       stage: _feedbackStage ?? _metrics.stage,
     );
   }
+
+
 
   bool get hasFeedbackError => _feedbackError;
 
@@ -598,14 +606,22 @@ class ExerciseFeedbackAnalyzer {
 
   static bool _isKnownErrorCode(String code) {
     if (code.isEmpty ||
-        code == 'GOOD_FORM' ||
-        code == 'CORRECT' ||
+        code == 'C' ||
+        code.endsWith('/C') ||
+        code.contains('GOOD_FORM') ||
+        code.contains('CORRECT') ||
         code == 'UP' ||
-        code == 'DOWN') {
+        code == 'DOWN' ||
+        code == 'INIT' ||
+        code == 'MID') {
       return false;
     }
-    return code == 'MODEL_UNAVAILABLE' ||
-        code.contains('WARNING') ||
+    if (code.contains('RULE_FALLBACK_GOOD_FORM') ||
+        code == 'MODEL_UNAVAILABLE' ||
+        code == 'MODEL_LOW_CONFIDENCE') {
+      return false;
+    }
+    return code.contains('WARNING') ||
         code.contains('CRITICAL') ||
         code.contains('ERROR') ||
         code.contains('BAD_') ||
@@ -615,6 +631,8 @@ class ExerciseFeedbackAnalyzer {
         code.contains('NARROW') ||
         code.contains('WIDE');
   }
+
+
 }
 
 /// Backwards-compatible names for callers that describe the result as state

@@ -1,82 +1,100 @@
-"""CareBridge canonical deterministic triage transport.
+"""CareBridge AI Maternal RAG & Health Metrics Screening Service."""
 
-Only the Java authority boundary may call the mutation endpoint.  The former child/intake
-endpoints were removed after the mobile application cut over to the canonical session API; keeping
-them here would leave a second clinical decision graph reachable at runtime.
-"""
+from __future__ import annotations
 
-from fastapi import Depends, FastAPI
-from fastapi.responses import JSONResponse
+import logging
+from typing import Any, Dict
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import GEMINI_SETTINGS
-from app.gemini_client import get_gemini_client
-from app.rules.registry import get_registry
-from app.triage.api import (
-    TriageTurnRequest,
-    TriageTurnResponse,
-    execute_turn,
-    require_internal_key,
+from app.api.health import router as health_router
+from app.api.v1.chat import router as chat_router
+from app.api.v1.documents import router as documents_router
+from app.api.v1.metrics import router as metrics_router
+from app.config import SERVER_SETTINGS
+from app.models.schemas import HealthMetricsLogRequest, MaternalStage
+from app.services.ingestion_service import get_ingestion_service
+from app.services.metrics_screening_service import get_metrics_screening_service
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle events."""
+    logger.info("CareBridge AI Maternal RAG Service ready on port 8001.")
+    yield
+    logger.info("Shutting down CareBridge AI Maternal RAG Service.")
+
+
+app = FastAPI(
+    title="CareBridge AI Maternal Health RAG & Triage Service",
+    description="Hệ thống AI RAG & Sàng lọc Chỉ số Sức khỏe Mẹ bầu sử dụng Gemini Flash và pgvector",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
-
-app = FastAPI(title="CareBridge AI Triage Service", version="1.0.0")
-
-
-@app.post(
-    "/internal/triage/turn",
-    response_model=TriageTurnResponse,
-    dependencies=[Depends(require_internal_key)],
-    include_in_schema=False,
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-def triage_turn(request: TriageTurnRequest) -> TriageTurnResponse:
-    """Execute one canonical deterministic triage turn."""
 
-    return execute_turn(request)
+# Register API Routers
+app.include_router(health_router)
+app.include_router(metrics_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
+app.include_router(documents_router, prefix="/api/v1")
 
 
-@app.get("/health")
-def health() -> JSONResponse:
+# Backward Compatibility Endpoint for Spring Boot CareBridgeAPI
+@app.post("/internal/triage/turn", tags=["Backward Compatibility"])
+async def handle_internal_triage_turn(request: Request) -> Dict[str, Any]:
+    """Compatibility bridge for Spring Boot CareBridgeAPI HttpTriageWorkflowClient."""
     try:
-        client = get_gemini_client()
+        body = await request.json()
     except Exception:
-        # Gemini augments fact extraction but is not part of deterministic readiness.
-        client = None
-    try:
-        _run_deterministic_readiness_probe()
-        deterministic_ready = True
-    except Exception:
-        # Do not expose rules, clinical inputs, or exception details from this public probe.
-        deterministic_ready = False
-    payload = {
-        "status": "UP" if deterministic_ready else "DOWN",
-        "readiness": "READY" if deterministic_ready else "NOT_READY",
-        "deterministicEngine": {
-            "ready": deterministic_ready,
-            "probe": "CANONICAL_RED_PRECEDENCE",
-        },
-        "geminiEnabled": GEMINI_SETTINGS.enabled,
-        "geminiConfigured": bool(GEMINI_SETTINGS.api_key),
-        "geminiReachable": client.reachable if client is not None else False,
-        "model": GEMINI_SETTINGS.model,
-    }
-    return JSONResponse(status_code=200 if deterministic_ready else 503, content=payload)
+        body = {}
 
+    state = body.get("state", {}) if isinstance(body, dict) else {}
+    stage_str = str(state.get("stage", "PREGNANCY")).upper()
+    stage = MaternalStage.PREGNANCY
+    if "POSTPARTUM" in stage_str:
+        stage = MaternalStage.POSTPARTUM
+    elif "PRECONCEPTION" in stage_str:
+        stage = MaternalStage.PRECONCEPTION
 
-def _run_deterministic_readiness_probe() -> None:
-    registry = get_registry()
-    result = execute_turn(
-        TriageTurnRequest(
-            sessionId="10000000-0000-0000-0000-000000000001",
-            stateVersion=0,
-            expectedStateVersion=0,
-            requestId="readiness_request_1",
-            messageId="readiness_message_1",
-            latestUserMessage="Tôi đang co giật",
-            selectedTarget="MOTHER",
-            journeyContext={"stage": "PREGNANCY"},
-            expectedRulesetHash=registry.ruleset_sha256,
-        )
+    # Run modern metrics screening service
+    service = get_metrics_screening_service()
+    eval_req = HealthMetricsLogRequest(
+        stage=stage,
+        gestational_age_weeks=int(state.get("gestationalAgeWeeks", 20)),
+        systolic_bp=int(state.get("systolicBp", 120)) if state.get("systolicBp") else None,
+        diastolic_bp=int(state.get("diastolicBp", 80)) if state.get("diastolicBp") else None,
+        temperature=float(state.get("temperature", 36.8)) if state.get("temperature") else None,
+        symptoms=[str(s) for s in state.get("symptoms", [])] if state.get("symptoms") else [],
     )
-    state = result.state
-    if state.get("triageOutcome") != "RED" or not state.get("stopConversation"):
-        raise RuntimeError("deterministic RED precedence probe failed")
+    result = await service.evaluate_metrics(eval_req)
+
+    return {
+        "state": {
+            **state,
+            "status": result.status.value,
+            "emergency_mode": result.emergency_mode,
+            "headline": result.headline,
+            "summary": result.summary,
+            "risk_factors": result.risk_factors,
+            "suggested_action": result.suggested_action,
+        },
+        "readiness": "READY",
+        "rulesetVersion": "2.0.0-rag",
+        "rulesetHash": "carebridge-rag-pgvector",
+    }

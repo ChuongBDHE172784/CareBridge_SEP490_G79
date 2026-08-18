@@ -372,7 +372,7 @@ build_ai_evaluation_image:
   services: [{name: "docker:27.5.1-dind", alias: docker}]
   rules: *evaluation_rules
   script:
-    - docker build --pull --build-context ai-service=05_Development/CareBridgeAITriageService --tag "$EVALUATION_IMAGE" 06_Testing/CareBridgeAIEvaluation
+    - docker buildx build --pull --build-context ai-service=05_Development/CareBridgeAITriageService --tag "$EVALUATION_IMAGE" --load 06_Testing/CareBridgeAIEvaluation
     - docker run --rm --entrypoint python "$EVALUATION_IMAGE" -m pytest -q /opt/carebridge/evaluator/tests
     - docker save "$EVALUATION_IMAGE" --output ai-evaluation-image.tar
   artifacts: {paths: [ai-evaluation-image.tar], expire_in: 1 day}

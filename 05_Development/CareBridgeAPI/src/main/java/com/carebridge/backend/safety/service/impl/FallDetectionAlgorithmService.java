@@ -7,11 +7,21 @@ import com.carebridge.backend.safety.service.IFallDetectionAlgorithmService;
 import com.carebridge.backend.safety.service.ImuDataPayload;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service tính toán và phân tích ngưỡng gia tốc trên Backend khi không có cờ xác nhận từ thiết bị.
+ */
 @Service
 public class FallDetectionAlgorithmService implements IFallDetectionAlgorithmService {
 
+    /** Trọng lực chuẩn của Trái Đất (~9.81 m/s²). */
     private static final double GRAVITY = 9.81;
 
+    /**
+     * Phân tích độ lớn vector gia tốc $\sqrt{X^2 + Y^2 + Z^2} - 9.81$ so với ngưỡng độ nhạy [SensitivityLevel]:
+     * - LOW: Ngưỡng 15.0 m/s² (~2.5G)
+     * - MEDIUM: Ngưỡng 12.0 m/s² (~2.2G)
+     * - HIGH: Ngưỡng 9.0 m/s² (~1.9G)
+     */
     @Override
     public FallAnalysisResult analyze(ImuDataPayload payload, String sensitivityLevel) {
         double magnitude = Math.sqrt(

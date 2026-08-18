@@ -7,10 +7,12 @@ import '../models/safety_config_model.dart';
 import '../services/safety_demo_mode.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
+import '../widgets/disable_fall_detection_sheet.dart';
 import '../widgets/safety_countdown_sheet.dart';
 import 'enable_fall_detection_screen.dart';
 import '../../emergency/services/emergency_service.dart';
 
+/// Điều phối kết quả phản hồi của người dùng từ màn hình đếm ngược (An toàn, Báo nhầm, hoặc Khẩn cấp).
 Future<void> dispatchSafetyCountdownResult({
   required SafetyCountdownResult? result,
   required bool simulated,
@@ -31,6 +33,7 @@ Future<void> dispatchSafetyCountdownResult({
   }
 }
 
+/// Gửi phản hồi an toàn lên Backend, sau đó tái kích hoạt (rearm) lại bộ phát hiện té ngã.
 Future<SafetyEvent> persistSafetyResponseThenRearm({
   required void Function() beginResponse,
   required Future<SafetyEvent> Function() persistResponse,
@@ -51,6 +54,7 @@ Future<SafetyEvent> persistSafetyResponseThenRearm({
   }
 }
 
+/// Lựa chọn sự kiện té ngã tiếp theo đang ở trạng thái OPEN để hiển thị đếm ngược (ưu tiên deadline gần nhất).
 SafetyEvent? selectNextOpenSafetyEvent(
   Iterable<SafetyEvent> events, {
   required String excludingId,
@@ -73,7 +77,8 @@ SafetyEvent? selectNextOpenSafetyEvent(
 }
 
 bool isPendingSafetyCountdown(SafetyEvent event) =>
-    event.status == 'OPEN' || event.status == 'TEST_OPEN';
+    (event.status == 'OPEN' || event.status == 'TEST_OPEN') &&
+    event.responseType == null;
 
 bool isSafetyCountdownPresentationEligible(SafetyEvent event, DateTime now) {
   final deadline = event.countdownDeadlineAt;
@@ -87,8 +92,7 @@ bool shouldReleaseSafetyCountdownOwnership({
   required String completedEventId,
 }) => activeEventId == completedEventId;
 
-/// Mirrors the backend's `DUPLICATE_FALL_WINDOW`: two detections this close
-/// together describe the same physical incident.
+/// Khoảng thời gian lọc trùng (10 giây): 2 lần phát hiện ngã cách nhau dưới 10s được coi là cùng 1 cú rơi vật lý.
 const safetyDuplicateFallWindow = Duration(seconds: 10);
 
 bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {
@@ -122,6 +126,9 @@ bool isFallEventStaleAfterAlertResponse(
   SafetyEvent? answeredEvent,
   DateTime? evaluatedAt,
 }) {
+  if (answeredEvent != null && event.id == answeredEvent.id) {
+    return true;
+  }
   final detectedAt = event.detectedAt;
   final answeredAt = answeredEvent?.detectedAt;
   if (responseStartedAt == null || detectedAt == null || answeredAt == null) {
@@ -276,6 +283,8 @@ class SafetyRealEventQueue {
 class SafetyMonitoringScreen extends StatefulWidget {
   const SafetyMonitoringScreen({super.key});
 
+  static bool isMounted = false;
+
   @override
   State<SafetyMonitoringScreen> createState() => _SafetyMonitoringScreenState();
 }
@@ -321,6 +330,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   @override
   void initState() {
     super.initState();
+    SafetyMonitoringScreen.isMounted = true;
     WidgetsBinding.instance.addObserver(this);
     _detectedEventSubscription = _foregroundCoordinator.detectedEvents.listen(
       _onDetectedEvent,
@@ -337,6 +347,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   @override
   void dispose() {
+    SafetyMonitoringScreen.isMounted = false;
     WidgetsBinding.instance.removeObserver(this);
     _detectedEventSubscription?.cancel();
     _sensorSelfTestSubscription?.cancel();
@@ -344,6 +355,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _demoRecoveryTimer?.cancel();
     _demoGestureArmTimer?.cancel();
     _pendingEventRefreshTimer?.cancel();
+    SystemSafetyCountdownFeedback.stopAll();
+    SafetyCountdownGuard.reset();
     super.dispose();
   }
 
@@ -424,10 +437,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           _imuSensorActive = _foregroundCoordinator.isRunning;
         });
         final active = _countdownEvent;
-        if (active != null) {
+        if (active != null || SafetyCountdownGuard.isShowing) {
           for (final event in events) {
-            if (event.id != active.id &&
+            if ((active == null || event.id != active.id) &&
                 isPendingSafetyCountdown(event) &&
+                active != null &&
                 isLikelyDuplicateFallEvent(active, event)) {
               _suppressDuplicateEvent(event);
             }
@@ -448,7 +462,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                 suppressedIds: _suppressedDuplicateEventIds,
                 requireCanonicalIds: queuedBeforeRefresh,
               );
-          if (pending != null) {
+          if (pending != null && !SafetyCountdownGuard.isShowing) {
             for (final event in events) {
               if (event.id != pending.id &&
                   isPendingSafetyCountdown(event) &&
@@ -481,6 +495,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    if (SafetyCountdownGuard.isShowing) {
+      return;
+    }
     if (isFallEventStaleAfterAlertResponse(
       event,
       _latestAlertResponseStartedAt,
@@ -570,6 +587,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     bool simulated = false,
     bool presentAsRealAlert = false,
   }) async {
+    if (SafetyCountdownGuard.isShowing) {
+      return;
+    }
     if (!simulated &&
         isFallEventStaleAfterAlertResponse(
           event,
@@ -599,6 +619,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       isDismissible: false,
       enableDrag: false,
       isScrollControlled: true,
+      useRootNavigator: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => SafetyCountdownSheet(
         event: event,
         simulated: simulated,
@@ -835,18 +860,28 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _onFallDetectionToggle([bool? _]) async {
-    final activated = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
-    );
-    if (activated == true) await _load();
+    final currentlyEnabled = _config?.fallDetectionEnabled ?? false;
+    if (currentlyEnabled) {
+      final disabled = await showDisableFallDetectionSheet(context);
+      if (disabled == true) {
+        await _foregroundCoordinator.stop();
+        await _load();
+      }
+    } else {
+      final activated = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
+      );
+      if (activated == true) await _load();
+    }
   }
 
   Future<void> _onImuSensorToggle(bool enable) async {
     if (enable) {
       if (!(_config?.fallDetectionEnabled ?? false)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng bật phát hiện ngã trước')),
+        final activated = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
         );
+        if (activated == true) await _load();
         return;
       }
       await _load();
@@ -860,7 +895,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         );
       }
     } else {
-      await _foregroundCoordinator.stop();
+      final disabled = await showDisableFallDetectionSheet(context);
+      if (disabled == true) {
+        await _foregroundCoordinator.stop();
+        await _load();
+      }
     }
     if (mounted) {
       setState(() => _imuSensorActive = _foregroundCoordinator.isRunning);
@@ -1145,7 +1184,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           if (safetyDemoMode) ...[
             const SizedBox(height: 6),
             const Text(
-              'BẢN TRÌNH DIỄN · MÔ PHỎNG KHÔNG GỬI SOS',
+              'Thông số hiện tại',
               key: Key('safety-demo-mode-banner'),
               style: TextStyle(
                 color: _onErrorContainer,

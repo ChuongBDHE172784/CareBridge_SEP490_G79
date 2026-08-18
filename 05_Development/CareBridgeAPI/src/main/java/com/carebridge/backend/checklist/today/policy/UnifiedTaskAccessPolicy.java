@@ -72,7 +72,7 @@ public class UnifiedTaskAccessPolicy {
                     && hasCurrentGroupContext(instance, careGroupId)
                     && hasCurrentAccessEpoch(instance, actorUserId);
         }
-        if (!isCanonicalMotherInstance(instance)) {
+        if (!isCanonicalMotherInstance(instance) && !isSharedMotherUserCreatedInstance(instance)) {
             return false;
         }
         if (careGroupId == null || actorUserId == null
@@ -102,21 +102,15 @@ public class UnifiedTaskAccessPolicy {
         if (!canView(instance, actorUserId, careGroupId)) {
             return false;
         }
-        // A Mother-owned canonical row is never a Family occurrence.  The
-        // explicit care-group read route must not turn its legacy projection
-        // into a writable row; Family work is materialized separately with a
-        // retained member id and access epoch.
-        if (isCanonicalMotherInstance(instance)) {
+        // Mother-owned tasks (both system template and shared user created) cannot be completed by Family.
+        if (isCanonicalMotherInstance(instance) || isSharedMotherUserCreatedInstance(instance)) {
             return false;
         }
-        // A FAMILY member may complete/reopen their own USER_CREATED task. The
-        // separate CHECKLIST_COMPLETE grant controls mutations of the mother's
-        // shared checklist, not the member's private task.
+        // A FAMILY member may complete/reopen their own USER_CREATED task.
         if (isPersonalFamilyInstance(instance, actorUserId, careGroupId)) {
             return true;
         }
-        return careGroupAuthorizationPolicy.hasPermission(
-                careGroupId, actorUserId, PermissionFlag.CHECKLIST_COMPLETE);
+        return false;
     }
 
     private static boolean isPersonalFamilyInstance(
@@ -140,6 +134,16 @@ public class UnifiedTaskAccessPolicy {
                 && instance.getRecipientUserId().equals(instance.getContextOwnerUserId())
                 && instance.getCareGroupId() == null
                 && instance.getOrigin() == com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+                && instance.getCareContextType() != null
+                && instance.getCareContextId() != null;
+    }
+
+    private static boolean isSharedMotherUserCreatedInstance(ChecklistInstance instance) {
+        return instance != null
+                && instance.getRecipientRole() == ChecklistRecipientRole.MOTHER
+                && instance.getRecipientUserId() != null
+                && instance.getRecipientUserId().equals(instance.getContextOwnerUserId())
+                && instance.getOrigin() == com.carebridge.backend.checklist.model.ChecklistOrigin.USER_CREATED
                 && instance.getCareContextType() != null
                 && instance.getCareContextId() != null;
     }

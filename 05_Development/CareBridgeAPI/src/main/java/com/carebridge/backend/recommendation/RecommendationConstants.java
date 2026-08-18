@@ -20,8 +20,8 @@ public final class RecommendationConstants {
     public static final String POLICY_VERSION = "MOTHER_PERSONALIZED_CONTENT_V1";
     public static final String CATALOG_VERSION = "RECOMMENDATION_TAG_CATALOG_V1";
     public static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    public static final int DEFAULT_LIMIT = 3;
-    public static final int MAX_LIMIT = 3;
+    public static final int DEFAULT_LIMIT = 10;
+    public static final int MAX_LIMIT = 10;
     /** Per-pool safety bound for targeted and fallback retrieval. */
     public static final int MAX_POOL_SCAN = 500;
 

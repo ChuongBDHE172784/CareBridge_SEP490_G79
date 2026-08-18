@@ -22,11 +22,23 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
     private final Path dotenvPath;
 
     public DotenvEnvironmentPostProcessor() {
-        this(Path.of(".env"));
+        this(resolveDotenvPath());
     }
 
     DotenvEnvironmentPostProcessor(Path dotenvPath) {
         this.dotenvPath = dotenvPath;
+    }
+
+    private static Path resolveDotenvPath() {
+        Path direct = Path.of(".env");
+        if (Files.isRegularFile(direct)) {
+            return direct;
+        }
+        Path modulePath = Path.of("05_Development", "CareBridgeAPI", ".env");
+        if (Files.isRegularFile(modulePath)) {
+            return modulePath;
+        }
+        return direct;
     }
 
     @Override
@@ -49,6 +61,18 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
             propertySources.addAfter(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, dotenvPropertySource);
         } else {
             propertySources.addLast(dotenvPropertySource);
+        }
+
+        Object profiles = values.get("SPRING_PROFILES_ACTIVE");
+        if (profiles == null) {
+            profiles = values.get("spring.profiles.active");
+        }
+        if (profiles instanceof String profilesStr && !profilesStr.isBlank()) {
+            for (String profile : profilesStr.split(",")) {
+                if (!profile.trim().isEmpty()) {
+                    environment.addActiveProfile(profile.trim());
+                }
+            }
         }
     }
 

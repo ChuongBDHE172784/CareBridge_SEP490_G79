@@ -393,6 +393,22 @@ public class AdminContentServiceImpl implements AdminContentService {
             entity.setCreatedAt(Instant.now());
             entity.setUpdatedAt(Instant.now());
 
+            if (request.getType() == ContentType.ARTICLE) {
+                try {
+                    List<CommunityTopic> tags = validateTagEntities(itemReq.getTagIds());
+                    short priority = com.carebridge.backend.recommendation.service.RecommendationMetadataPolicy.validate(
+                            request.getType(), stage, itemReq.getEligibleFromWeek(), itemReq.getEligibleToWeek(),
+                            itemReq.getRecommendationPriority(), tags);
+                    entity.setTagIds(tags.stream().map(CommunityTopic::getId).collect(Collectors.toCollection(ArrayList::new)));
+                    entity.setEligibleFromWeek(itemReq.getEligibleFromWeek() == null ? null : itemReq.getEligibleFromWeek().shortValue());
+                    entity.setEligibleToWeek(itemReq.getEligibleToWeek() == null ? null : itemReq.getEligibleToWeek().shortValue());
+                    entity.setRecommendationPriority(priority);
+                } catch (Exception ex) {
+                    errors.add("Dòng " + rowIdx + ": Thông tin đối tượng gợi ý không hợp lệ (" + ex.getMessage() + ").");
+                    continue;
+                }
+            }
+
             if (itemReq.getSourceLabel() != null && !itemReq.getSourceLabel().isBlank()) {
                 String srcTitle = itemReq.getSourceLabel().trim();
                 String srcUrl = itemReq.getSourceUrl() != null && !itemReq.getSourceUrl().isBlank() ? itemReq.getSourceUrl().trim() : null;

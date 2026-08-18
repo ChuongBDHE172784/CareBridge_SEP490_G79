@@ -63,22 +63,31 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
     @Transactional
     public ApiResponse<PostureFeedbackResponse> analyzePosture(
             UUID sessionId, UUID userId, PostureEventRequest request) {
+        // =========================================================================
+        // [BƯỚC 1 & 2: Validate nghiệp vụ & Tiếp nhận Request]
+        // =========================================================================
+
+        // [2.1] Truy vấn phiên tập luyện (ExerciseSession) theo ID từ Database
         ExerciseSession session = sessionRepository
                 .findById(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException("Exercise session not found"));
 
+        // [2.2] Kiểm tra quyền sở hữu: Người gửi request phải chính là người tạo phiên tập
         if (!userId.equals(session.getUserId())) {
             throw new SessionOwnershipException();
         }
+
+        // [2.3] Kiểm tra trạng thái phiên tập: Bắt buộc phải đang ở trạng thái IN_PROGRESS mới phân tích tư thế
         if (session.getSessionStatus() != SessionStatus.IN_PROGRESS) {
             throw InvalidSessionStateException.notInProgress();
         }
 
+        // [2.4] Phân giải ngữ cảnh chăm sóc (CareContext / Care Journey) của mẹ bầu
         ExerciseCareContextResolver.CareContext careContext = careContextResolver.resolve(
                 session.getUserId(), session.getJourneyId());
 
-        // Logic Issue L2 — a missing active config is NOT an error; fall back to a
-        // RULE_BASED default and log a warning, rather than throwing PAC-004/EX-014.
+        // [2.5] Lấy cấu hình phân tích tư thế (PostureAnalysisConfig) đang ACTIVE của bài tập
+        // Nếu không có cấu hình riêng, hệ thống tự động fallback về RULE_BASED mặc định mà không làm gián đoạn bài tập
         Optional<PostureAnalysisConfig> configOpt = postureConfigRepository
                 .findActiveConfigByExerciseId(session.getExerciseId(), OffsetDateTime.now());
         if (configOpt.isEmpty()) {
@@ -90,12 +99,20 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
         String feedbackLevel = config != null && config.getFeedbackLevel() != null
                 ? config.getFeedbackLevel() : "DETAILED";
 
+        // =========================================================================
+        // [BƯỚC 3: Xử lý nghiệp vụ & Thuật toán AI phân tích tư thế]
+        // =========================================================================
+
+        // [3.1] Điều phối phân tích khung hình (Frame-level Analysis):
+        // Chạy qua AI Model (Sidecar MediaPipe/ML) hoặc Thuật toán hình học (Geometric Rule-based / Fallback)
         Analysis analysis = dispatchAnalysis(config, request, feedbackLevel);
+
+        // [3.2] Áp dụng ngữ cảnh lịch sử phiên tập (Session History Tracking):
+        // Kiểm tra chuyển động toàn chu kỳ (ví dụ: độ gập tối đa trong bicep curl, chu kỳ squat/lunge)
         analysis = applySessionHistory(sessionId, config, request, analysis, feedbackLevel);
 
-        // Upstream records an error when the pose enters it, not on every frame that
-        // holds it. Without this gate a ten-per-second stream writes hundreds of
-        // identical rows per session and skews the averaged posture score.
+        // [3.3] Lọc chống spam bản ghi (Dedup Gate / Occurrence Gate):
+        // Chỉ lưu Database khi phát hiện lỗi mới xuất hiện lần đầu trong chuỗi frame (tránh ghi hàng chục frame trùng lặp mỗi giây)
         if (!sessionTracker.isNewOccurrence(sessionId, analysis.postureCode())) {
             return ApiResponse.success(PostureFeedbackResponse.builder()
                     .postureCode(analysis.postureCode())
@@ -105,6 +122,11 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
                     .build());
         }
 
+        // =========================================================================
+        // [BƯỚC 4: Lưu trữ & Thay đổi trạng thái Database]
+        // =========================================================================
+
+        // [4.1] Khởi tạo và lưu sự kiện phản hồi tư thế vào bảng posture_feedback_events
         com.carebridge.backend.exercise.entity.PostureFeedbackEvent event =
                 com.carebridge.backend.exercise.entity.PostureFeedbackEvent.builder()
                         .exerciseSessionId(sessionId)
@@ -119,6 +141,7 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
                         .build();
         postureFeedbackEventRepository.save(event);
 
+        // [4.2] Nếu phát hiện lỗi tư thế nghiêm trọng (CRITICAL), tăng bộ đếm cảnh báo warningCount trong ExerciseSession
         if ("CRITICAL".equals(analysis.severity())) {
             int warningCount = session.getWarningCount() != null ? session.getWarningCount() : 0;
             session.setWarningCount(
@@ -126,6 +149,11 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
             sessionRepository.save(session);
         }
 
+        // =========================================================================
+        // [BƯỚC 5: Đóng gói phản hồi trả về Frontend]
+        // =========================================================================
+
+        // [5.1] Đóng gói DTO phản hồi chứa mã tư thế, điểm tin cậy, mức độ nghiêm trọng và câu hướng dẫn bằng giọng nói/UI
         PostureFeedbackResponse response = PostureFeedbackResponse.builder()
                 .postureCode(analysis.postureCode())
                 .confidenceScore(analysis.confidenceScore())
@@ -136,19 +164,28 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
         return ApiResponse.success(response);
     }
 
+    /**
+     * Phân phối luồng phân tích khung hình tư thế dựa trên chế độ cấu hình (AnalysisMode).
+     *
+     * @param config        Cấu hình phân tích tư thế bài tập (PostureAnalysisConfig)
+     * @param request       Dữ liệu khung hình gửi lên từ client chứa các điểm mốc cơ thể (Keypoint landmarks)
+     * @param feedbackLevel Mức độ chi tiết phản hồi (DETAILED, BASIC, SILENT)
+     * @return Kết quả phân tích (Analysis) gồm mã tư thế, điểm tin cậy, độ nghiêm trọng, text hướng dẫn
+     */
     private Analysis dispatchAnalysis(
             PostureAnalysisConfig config, PostureEventRequest request, String feedbackLevel) {
         AnalysisMode mode = resolveMode(config);
+        // Nếu cấu hình là thuần RULE_BASED (hình học dựa trên luật)
         if (mode == AnalysisMode.RULE_BASED) {
             return analyzeKeypoints(request.getKeypointSummaryJson(), feedbackLevel);
         }
 
-        // HYBRID runs both halves the way upstream Exercise-Correction does: the model
-        // classifies, and the geometric rules check the form errors the model was never
-        // trained to catch. MODEL_BASED stays model-only, as its name promises.
+        // Chế độ HYBRID: Kết hợp cả 2 nguồn: Model ML phân loại pha/lớp tư thế + Luật hình học kiểm tra lỗi tư thế
+        // Chế độ MODEL_BASED: Chỉ chạy qua Model AI sidecar
         boolean allowRuleFallback = mode == AnalysisMode.HYBRID;
         String exerciseKey = null;
         try {
+            // Phân giải cấu hình inference (tên model, key bài tập)
             ResolvedInferenceConfig inferenceConfig = inferenceConfigResolver.resolve(config);
             exerciseKey = inferenceConfig.exerciseKey();
             long sequenceNumber = request.getEventTimeMs() == null
@@ -156,12 +193,14 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
             Map<String, Object> landmarks = request.getKeypointSummaryJson() == null
                     ? Map.of() : new LinkedHashMap<>(request.getKeypointSummaryJson());
 
+            // Gọi sang Python Sidecar (MediaPipe Posture Correction Service) qua HTTP Port
             InferenceResult result = postureInferencePort.infer(new InferenceRequest(
                     inferenceConfig.modelVersion(),
                     inferenceConfig.exerciseKey(),
                     sequenceNumber,
                     landmarks));
 
+            // Kiểm tra ngưỡng tin cậy (Confidence Threshold): nếu AI model không chắc chắn -> fallback về luật hình học
             if (belowThreshold(result.confidence(), config.getConfidenceThreshold())
                     || providerReportedLowConfidence(result)) {
                 return allowRuleFallback
@@ -178,6 +217,7 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
                             modelAnalysis, result, request.getKeypointSummaryJson(), feedbackLevel)
                     : modelAnalysis;
         } catch (PostureInferenceUnavailableException exception) {
+            // Khi AI sidecar không khả dụng hoặc timeout -> Fallback linh hoạt sang bộ luật hình học để bảo đảm trải nghiệm mẹ bầu không bị đứt quãng
             log.warn("Posture inference unavailable: {}", exception.getReasonCode());
             return allowRuleFallback
                     ? degradedRuleFallback(
@@ -190,9 +230,9 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
     }
 
     /**
-     * Folds the frame into the session's running history and merges back anything only
-     * a full repetition could reveal — today that is upstream's weak-peak-contraction
-     * check, which needs the tightest angle reached across a whole curl.
+     * Tích hợp lịch sử chuyển động của toàn phiên tập (Session Tracker) vào kết quả phân tích.
+     * Mục đích nghiệp vụ: Phát hiện các lỗi tư thế cần theo dõi cả chu kỳ chuyển động
+     * (ví dụ: gập tay bicep curl không đủ độ co thắt cơ - WEAK_PEAK_CONTRACTION).
      */
     private Analysis applySessionHistory(
             UUID sessionId,
@@ -226,13 +266,10 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
     }
 
     /**
-     * Combines a successful model verdict with the geometric findings for the same
-     * frame. The model contributes what it can classify; the rules contribute the
-     * errors it cannot — most of the squat form checks exist only here.
-     *
-     * <p>When the model says the pose is fine but a rule disagrees, the rule wins the
-     * headline {@code postureCode}: a correct-looking class is not a reason to stay
-     * silent about a foot or knee placement the model never learned to judge.
+     * Kết hợp kết quả phân loại từ Model AI với các quy tắc hình học (Geometric Rules) cho cùng 1 khung hình.
+     * Quy tắc nghiệp vụ y tế: Nếu AI Model báo tư thế đúng nhưng bộ luật hình học phát hiện lỗi cơ học
+     * (ví dụ: góc đầu gối quá sâu gây áp lực lên ổ khớp của mẹ bầu), lỗi hình học sẽ được ưu tiên cảnh báo
+     * để đảm bảo an toàn vận động tuyệt đối cho thai phụ.
      */
     private Analysis mergeRuleFindings(
             Analysis modelAnalysis,
@@ -460,20 +497,17 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
     }
 
     /**
-     * RULE_BASED posture heuristic keyed off a "backAngle" (degrees) keypoint field.
-     * This is a deliberately simple, deterministic rule set (no ML dependency) —
-     * sufficient to satisfy BR-POSTURE-002/003 (config-driven severity + CRITICAL
-     * gating) without diagnosing or delaying emergency routing (AI provides
-     * guidance only, per CLAUDE.md).
+     * Phân tích tư thế dựa trên tập luật hình học thuần (RULE_BASED Heuristic).
      *
-     * <p>Realtime clients post named MediaPipe landmarks rather than a precomputed
-     * "backAngle", so when that field is absent the angle is derived from the
-     * shoulder/hip midpoints. Without this the HYBRID degraded path can only ever
-     * answer UNKNOWN for camera sessions.
+     * <p>Nghiệp vụ Y tế: Đánh giá góc nghiêng cột sống lưng (backAngle) để bảo vệ cột sống và vùng thắt lưng của thai phụ:
+     * - backAngle <= 15°: Tư thế lưng thẳng, chuẩn (GOOD_FORM - INFO).
+     * - 15° < backAngle <= 30°: Lưng hơi cong nhẹ (MILD_ROUNDING - WARNING).
+     * - backAngle > 30°: Lưng gù/cong gập quá mức, có nguy cơ gây chèn ép cột sống & áp lực lên thai nhi (ROUND_BACK - CRITICAL).
      */
     private Analysis analyzeKeypoints(java.util.Map<String, Object> keypoints, String feedbackLevel) {
         Object backAngleRaw = keypoints != null ? keypoints.get("backAngle") : null;
         Double backAngle = toDouble(backAngleRaw);
+        // Nếu client không gửi trường backAngle dựng sẵn, tự động tính toán góc nghiêng thân từ các mốc vai và hông
         if (backAngle == null) {
             backAngle = trunkLeanFromLandmarks(keypoints);
         }
@@ -512,14 +546,9 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
     }
 
     /**
-     * Approximates trunk lean (degrees off vertical) from the shoulder and hip
-     * midpoints of a normalized MediaPipe pose. Coordinates are normalized per
-     * axis, so the result is an approximation adequate for a degraded fallback —
-     * it is never presented as a model-grade posture assessment.
-     *
-     * <p>Returns {@code null} when any of the four landmarks is missing or is not
-     * confidently visible, so an occluded frame stays UNKNOWN instead of
-     * producing a guessed angle.
+     * Ước lượng góc nghiêng thân người (Trunk Lean tính theo độ lệch so với phương thẳng đứng)
+     * từ trung điểm của 2 vai (left_shoulder, right_shoulder) và trung điểm của 2 hông (left_hip, right_hip).
+     * Sử dụng hàm lượng giác atan2(horizontal, vertical) trên tọa độ chuẩn hóa MediaPipe.
      */
     private Double trunkLeanFromLandmarks(Map<String, Object> keypoints) {
         if (keypoints == null) {

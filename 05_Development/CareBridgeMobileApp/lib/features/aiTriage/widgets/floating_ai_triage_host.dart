@@ -6,8 +6,10 @@ final floatingAiTriageRouteObserver = FloatingAiTriageRouteObserver();
 class FloatingAiTriageRouteObserver extends NavigatorObserver
     with ChangeNotifier {
   int _popupDepth = 0;
+  String? _currentTopRouteName;
 
   bool get hasPopupRoute => _popupDepth > 0;
+  String? get currentTopRouteName => _currentTopRouteName;
 
   bool _isPopup(Route<dynamic>? route) => route is PopupRoute<dynamic>;
 
@@ -26,6 +28,7 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     if (_isPopup(route)) {
       _updatePopupDepth(1);
     } else {
+      _currentTopRouteName = route.settings.name;
       _popupDepth = 0;
       _notifyNavigationChanged();
     }
@@ -37,6 +40,7 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     if (_isPopup(route)) {
       _updatePopupDepth(-1);
     } else {
+      _currentTopRouteName = previousRoute?.settings.name;
       _popupDepth = 0;
       _notifyNavigationChanged();
     }
@@ -48,6 +52,8 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     if (_isPopup(route)) {
       _updatePopupDepth(-1);
     } else {
+      _currentTopRouteName = previousRoute?.settings.name;
+      _popupDepth = 0;
       _notifyNavigationChanged();
     }
   }
@@ -58,6 +64,7 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     if (_isPopup(oldRoute)) _updatePopupDepth(-1);
     if (_isPopup(newRoute)) _updatePopupDepth(1);
     if (!_isPopup(oldRoute) && !_isPopup(newRoute)) {
+      _currentTopRouteName = newRoute?.settings.name;
       _popupDepth = 0;
       _notifyNavigationChanged();
     }
@@ -139,6 +146,9 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
   }
 
   void _refresh() {
+    if (_isOpening && !_isExcludedPath(widget.currentPath())) {
+      _isOpening = false;
+    }
     if (!mounted || _refreshScheduled) return;
 
     if (SchedulerBinding.instance.schedulerPhase !=
@@ -163,10 +173,17 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
     if (widget.hasModal()) return false;
     final role = (widget.currentRole() ?? '').trim().toUpperCase();
     if (role != 'MOTHER' && role != 'FAMILY') return false;
-    return !_isExcludedPath(widget.currentPath());
+    final path = widget.currentPath();
+    final topRoute = floatingAiTriageRouteObserver.currentTopRouteName ?? '';
+    if (_isExcludedPath(path) || _isExcludedPath(topRoute)) {
+      return false;
+    }
+    return true;
   }
 
   bool _isExcludedPath(String path) {
+    if (path.isEmpty) return false;
+    final lower = path.toLowerCase();
     const exactPaths = {
       '/welcome',
       '/login',
@@ -179,11 +196,14 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
       '/postpartum-recovery-setup',
       '/postpartum-safety-help',
     };
-    return exactPaths.contains(path) ||
-        path.startsWith('/triage') ||
-        path.startsWith('/emergency') ||
-        path.startsWith('/family-alert') ||
-        path.startsWith('/safety');
+    if (exactPaths.contains(path)) return true;
+    return lower.startsWith('/triage') ||
+        lower.startsWith('/rag') ||
+        lower.contains('triage') ||
+        lower.contains('chat') ||
+        lower.startsWith('/emergency') ||
+        lower.startsWith('/family-alert') ||
+        lower.startsWith('/safety');
   }
 
   Offset _clampPosition(

@@ -69,12 +69,12 @@ Future<void> _emitFall({
 
   addSample(Duration.zero, 2.5);
   await Future<void>.delayed(Duration.zero);
-  addSample(const Duration(milliseconds: 80), 2.5);
+  addSample(const Duration(milliseconds: 200), 2.5);
   await Future<void>.delayed(Duration.zero);
-  addSample(const Duration(milliseconds: 100), 30);
+  addSample(const Duration(milliseconds: 400), 38);
   await Future<void>.delayed(Duration.zero);
   for (var index = 1; index <= 6; index++) {
-    addSample(Duration(milliseconds: 100 + index * 200), 9.81);
+    addSample(Duration(milliseconds: 400 + index * 200), 9.81);
     await Future<void>.delayed(Duration.zero);
   }
 }
@@ -405,7 +405,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(emitted, hasLength(cycle + 1));
 
-      final respondedAt = fallStartedAt.add(const Duration(milliseconds: 1300));
+      final respondedAt = fallStartedAt.add(const Duration(milliseconds: 1800));
       service.rearmAfterAlertResponse(respondedAt);
       // Past the post-response debounce, so each cycle is a new physical fall.
       fallStartedAt = respondedAt.add(const Duration(seconds: 4));

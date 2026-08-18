@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import apiClient from '../../../shared/api/apiClient';
 import { useAuthStore } from '../../../shared/auth/authStore';
 
@@ -211,7 +212,17 @@ export default function ExpertQuestionQueuePage() {
   const selectedSummary = questions.find((q) => q.id === selectedId);
 
   const postAnswer = async () => {
-    if (!answerText.trim() || !selectedId || submitting) return;
+    if (!selectedId || submitting) return;
+    const trimmed = answerText.trim();
+    if (!trimmed) return;
+    if (trimmed.length < 10) {
+      alert('Nội dung câu trả lời phải có ít nhất 10 ký tự.');
+      return;
+    }
+    if (trimmed.length > 3000) {
+      alert('Nội dung câu trả lời không được vượt quá 3000 ký tự.');
+      return;
+    }
     setSubmitting(true);
     try {
       const imageUrls = await Promise.all(pendingAnswerImages.map(async ({ file }) => {
@@ -220,13 +231,11 @@ export default function ExpertQuestionQueuePage() {
         form.append('kind', 'IMAGE');
         form.append('purpose', 'COMMUNITY_ANSWER_IMAGE');
         form.append('accessMode', 'PUBLIC');
-        const { data } = await apiClient.post('/api/v1/files/upload/with-purpose', form, {
-          headers: { 'Content-Type': undefined },
-        });
+        const { data } = await apiClient.post('/api/v1/files/upload/with-purpose', form);
         return data.data.presignedUrl as string;
       }));
       const payload = {
-        body: answerText.trim(),
+        body: trimmed,
         isPersonalExperience: false,
         imageUrls: [...existingAnswerImageUrls, ...imageUrls],
       };
@@ -234,16 +243,19 @@ export default function ExpertQuestionQueuePage() {
         ? await apiClient.patch(`/api/v1/community/questions/${selectedId}/answers/${editingAnswerId}`, payload)
         : await apiClient.post(`/api/v1/community/questions/${selectedId}/answers`, payload);
 
-      const newAnswer: AnswerItem = data.data ?? {
-        id: crypto.randomUUID(),
-        body: answerText.trim(),
-        authorDisplay: 'Chuyên gia',
+      const newAnswer: AnswerItem = {
+        ...(data.data ?? {}),
+        id: data.data?.id ?? crypto.randomUUID(),
+        authorId: data.data?.authorId || currentUserId || '',
+        body: trimmed,
+        authorDisplay: data.data?.authorDisplay || 'Chuyên gia',
         expertLabeled: true,
         personalExperience: false,
-        imageUrls,
-        likeCount: 0,
+        imageUrls: data.data?.imageUrls ?? [...existingAnswerImageUrls, ...imageUrls],
+        likeCount: data.data?.likeCount ?? 0,
         liked: false,
-        createdAt: new Date().toISOString(),
+        createdAt: data.data?.createdAt || new Date().toISOString(),
+        updatedAt: data.data?.updatedAt || data.data?.createdAt || new Date().toISOString(),
       };
 
       setAnswerText('');
@@ -265,8 +277,21 @@ export default function ExpertQuestionQueuePage() {
       }
       setEditingAnswerId(null);
       setExistingAnswerImageUrls([]);
-    } catch {
-      alert('Gửi câu trả lời thất bại. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      let message = 'Gửi câu trả lời thất bại. Vui lòng thử lại.';
+      if (axios.isAxiosError(err) && err.response?.data) {
+        const responseData = err.response.data as {
+          message?: string;
+          details?: Array<{ field?: string; message?: string }>;
+          error?: string;
+        };
+        if (Array.isArray(responseData.details) && responseData.details.length > 0 && responseData.details[0].message) {
+          message = responseData.details.map((d) => d.message).filter(Boolean).join('\n');
+        } else if (responseData.message) {
+          message = responseData.message;
+        }
+      }
+      alert(message);
     } finally {
       setSubmitting(false);
     }
@@ -300,8 +325,12 @@ export default function ExpertQuestionQueuePage() {
         ? { ...question, answerCount: Math.max(0, question.answerCount - 1) }
         : question));
       if (editingAnswerId === answerId) cancelEditingAnswer();
-    } catch {
-      alert('Không thể xóa câu trả lời. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      let message = 'Không thể xóa câu trả lời. Vui lòng thử lại.';
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        message = err.response.data.message;
+      }
+      alert(message);
     }
   };
 
@@ -316,8 +345,12 @@ export default function ExpertQuestionQueuePage() {
     try {
       const { data } = await apiClient.post(`/api/v1/community/questions/${selectedId}/like`);
       setDetail((current) => current ? { ...current, likeCount: data.data.likeCount, isLiked: data.data.liked } : current);
-    } catch {
-      alert('Không thể cập nhật lượt tim. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      let message = 'Không thể cập nhật lượt tim. Vui lòng thử lại.';
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        message = err.response.data.message;
+      }
+      alert(message);
     }
   };
 
@@ -330,8 +363,12 @@ export default function ExpertQuestionQueuePage() {
           ? { ...answer, likeCount: data.data.likeCount, liked: data.data.liked }
           : answer),
       } : current);
-    } catch {
-      alert('Không thể cập nhật lượt tim. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      let message = 'Không thể cập nhật lượt tim. Vui lòng thử lại.';
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        message = err.response.data.message;
+      }
+      alert(message);
     }
   };
 
@@ -776,10 +813,14 @@ export default function ExpertQuestionQueuePage() {
                 {existingAnswerImageUrls.length + pendingAnswerImages.length < 3 && <button onClick={() => imageInputRef.current?.click()} disabled={submitting} className="flex h-16 items-center gap-1 rounded-xl border border-dashed border-outline-variant px-3 text-xs text-outline hover:text-primary cursor-pointer disabled:opacity-50"><span className="material-symbols-outlined text-base">add_photo_alternate</span>Thêm ảnh</button>}
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-outline">{answerText.length} / 2 000 ký tự</span>
+                <span className="text-[11px] text-outline">
+                  {answerText.length} / 3 000 ký tự {answerText.trim().length > 0 && answerText.trim().length < 10 && (
+                    <span className="text-amber-600 font-medium ml-1">(Tối thiểu 10 ký tự)</span>
+                  )}
+                </span>
                 <button
                   onClick={postAnswer}
-                  disabled={!answerText.trim() || submitting}
+                  disabled={answerText.trim().length < 10 || submitting}
                   className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary font-semibold text-xs hover:brightness-110 disabled:opacity-50 cursor-pointer shadow-md"
                 >
                   <span className="material-symbols-outlined text-base">send</span>

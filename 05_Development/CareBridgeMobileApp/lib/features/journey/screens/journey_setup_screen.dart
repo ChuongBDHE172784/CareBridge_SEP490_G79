@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -258,6 +259,11 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     }
   }
 
+  /// [BƯỚC 1: THIẾT LẬP DỮ LIỆU THAI KỲ & GỬI LÊN BACKEND]
+  /// Tính toán ngày kinh cuối (LMP) hoặc ngày dự sinh (EDD) dựa theo phương thức mẹ đã chọn:
+  /// - `_DatingMethod.lmp`: Người dùng nhập trực tiếp ngày kinh cuối.
+  /// - `_DatingMethod.gestationalAge`: Người dùng nhập số tuần & ngày thai siêu âm -> Quy đổi ngược về ngày kinh cuối.
+  /// - `_DatingMethod.dueDate`: Người dùng nhập ngày dự sinh.
   Future<void> _submitJourney() async {
     final dueDate = _calculatedDueDate;
     if (dueDate == null) return;
@@ -271,8 +277,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
       ),
       _ => null,
     };
-    // V2 accepts exactly one dating authority. LMP sends only LMP; EDD sends
-    // only EDD. The server remains authoritative for week and plan resolution.
+    // Quy tắc V2: Chỉ gửi 1 cơ sở thẩm quyền duy nhất (LMP hoặc EDD)
     final estimatedDueDate = _datingBasis == 'EDD'
         ? _formatApiDate(dueDate)
         : null;
@@ -288,6 +293,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     try {
       await Future<void>.delayed(const Duration(milliseconds: 650));
       if (isUpdate) {
+        // [CẬP NHẬT] Gửi request cập nhật hành trình thai kỳ: PUT /api/v1/journeys/{id}
         await _service.updateJourney(
           journeyId,
           UpdateJourneyRequest(
@@ -302,6 +308,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           ),
         );
       } else {
+        // [TẠO MỚI] Gửi request tạo mới hành trình thai kỳ: POST /api/v1/journeys
         await _service.createJourney(
           CreateJourneyRequest(
             journeyType: JourneyType.pregnancy,

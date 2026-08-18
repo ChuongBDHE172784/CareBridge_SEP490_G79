@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/directChat/screens/direct_chat_location_navigation_screen.dart';
 import 'package:untitled/features/emergency/models/emergency_alert_model.dart';
 import 'package:untitled/features/emergency/screens/family_alert_detail_screen.dart';
 
@@ -54,5 +55,30 @@ void main() {
 
     expect(find.text('Không có vị trí'), findsOneWidget);
     expect(find.text('Mở chỉ đường'), findsNothing);
+  });
+
+  testWidgets('tapping Mở chỉ đường opens DirectChatLocationNavigationScreen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FamilyAlertDetailScreen(
+          sessionId: '5d80bd66-5d66-4c5b-bd23-6b3eb96a52b9',
+          initialAlert: alert(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Mở chỉ đường'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(DirectChatLocationNavigationScreen), findsOneWidget);
+    expect(find.text('Vị trí của Mother Test'), findsOneWidget);
   });
 }

@@ -22,6 +22,12 @@ public class PostureInferenceConfigResolver {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * Phân giải cấu hình PostureAnalysisConfig từ Database thành ResolvedInferenceConfig để gọi AI Sidecar:
+     * - Kiểm tra modelVersion cố định (pinned SHA256 version).
+     * - Kiểm tra ngưỡng tin cậy confidenceThreshold trong khoảng [0, 1].
+     * - Trích xuất exerciseKey từ configJson và kiểm tra xem có thuộc danh sách hỗ trợ ("bicep_curl", "plank", "squat", "lunge") hay không.
+     */
     public ResolvedInferenceConfig resolve(PostureAnalysisConfig config) {
         String modelVersion = config.getRuleOrModelVersion();
         if (!PINNED_MODEL_VERSION.equals(modelVersion)) {

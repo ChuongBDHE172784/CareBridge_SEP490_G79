@@ -10,7 +10,7 @@ from typing import Any
 from .loader import load_dataset
 from .models import BenchmarkCase, BenchmarkDataset
 
-EXPECTED_PARITY_SHA256 = "88040c7fdf1c2cd947231992547dbef76b3f73cf28e1f2f34f8fea77c6a90e4e"
+EXPECTED_PARITY_SHA256 = "fb1298a459f87d67c0133e9945c938432cd6b24e11db99a707d2e2e3435cbceb"
 
 
 def module_root() -> Path:
@@ -37,8 +37,8 @@ def load_parity_vectors(path: Path) -> list[dict[str, Any]]:
     if digest != EXPECTED_PARITY_SHA256:
         raise ValueError(f"Pediatric RED parity vectors drifted: expected {EXPECTED_PARITY_SHA256}, got {digest}")
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, list) or len(payload) != 10:
-        raise ValueError("Canonical pediatric RED parity file must contain exactly 10 vectors")
+    if not isinstance(payload, list) or len(payload) != 11:
+        raise ValueError("Canonical pediatric RED parity file must contain exactly 11 vectors")
     return payload
 
 

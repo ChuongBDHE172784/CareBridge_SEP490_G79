@@ -1,10 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchStaffContentDetail, fetchTags, updateContent, uploadContentImage } from '../services/contentApi';
-import type { CommunityTopic, ContentDetail } from '../models/content';
+import { fetchRecommendationTags, fetchStaffContentDetail, fetchTags, updateContent, uploadContentImage } from '../services/contentApi';
+import type { CommunityTopic, ContentDetail, RecommendationTag } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
+import RecommendationAudienceSelector from '../components/RecommendationAudienceSelector';
+import {
+  formatRecommendationTagLabel,
+  recommendationApiErrorCode,
+  recommendationApiErrorMessage,
+  recommendationClassification,
+  recommendationMetadataError,
+  recommendationWindowLabel,
+} from './recommendationMetadata';
 
 export default function EditContentPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,7 +24,12 @@ export default function EditContentPage() {
   const [body, setBody] = useState('');
   const [summary, setSummary] = useState('');
   const [tags, setTags] = useState<CommunityTopic[]>([]);
+  const [recommendationTags, setRecommendationTags] = useState<RecommendationTag[]>([]);
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [recommendationTagIds, setRecommendationTagIds] = useState<string[]>([]);
+  const [eligibleFromWeek, setEligibleFromWeek] = useState('');
+  const [eligibleToWeek, setEligibleToWeek] = useState('');
+  const [recommendationPriority, setRecommendationPriority] = useState('0');
   const [sourceTitle, setSourceTitle] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
@@ -30,12 +44,27 @@ export default function EditContentPage() {
     setLoadError('');
     try {
       const [data, loadedTags] = await Promise.all([fetchStaffContentDetail(id), fetchTags()]);
+      const catalog = data.type === 'ARTICLE'
+        ? await fetchRecommendationTags().catch(() => ({ catalogVersion: '', items: [] as RecommendationTag[] }))
+        : { catalogVersion: '', items: [] as RecommendationTag[] };
       setDetail(data);
       setTitle(data.title);
       setBody(data.body);
       setSummary(data.summary ?? '');
       setTags(loadedTags.filter((tag) => !tag.slug.startsWith('rec-')));
-      setTagIds(data.tagIds ?? []);
+      setRecommendationTags(catalog.items);
+      const ordinaryTagIds = new Set(
+        loadedTags.filter((tag) => !tag.slug.startsWith('rec-')).map((tag) => tag.id),
+      );
+      // Preserve any unknown non-ordinary ID in the recommendation selection.
+      // A stale/retired catalog must stay visible as an unsaved draft until the
+      // backend rejects it and the catalog can be refreshed; it must not be
+      // silently dropped by the edit form.
+      setTagIds((data.tagIds ?? []).filter((tagId) => ordinaryTagIds.has(tagId)));
+      setRecommendationTagIds((data.tagIds ?? []).filter((tagId) => !ordinaryTagIds.has(tagId)));
+      setEligibleFromWeek(data.eligibleFromWeek == null ? '' : String(data.eligibleFromWeek));
+      setEligibleToWeek(data.eligibleToWeek == null ? '' : String(data.eligibleToWeek));
+      setRecommendationPriority(String(data.recommendationPriority ?? 0));
       setSourceTitle(data.sources?.[0]?.title ?? '');
       setSourceUrl(data.sources?.[0]?.url ?? '');
     } catch {
@@ -49,10 +78,45 @@ export default function EditContentPage() {
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
 
+  const displayFrom = eligibleFromWeek === '' ? null : Number(eligibleFromWeek);
+  const displayTo = eligibleToWeek === '' ? null : Number(eligibleToWeek);
+  const displayPriority = Number(recommendationPriority);
+  const knownRecommendationTagIds = new Set(recommendationTags.map((tag) => tag.id));
+  const staleRecommendationTagIds = recommendationTagIds.filter((tagId) => !knownRecommendationTagIds.has(tagId));
+  const displayMetadataError = detail
+    ? recommendationMetadataError({
+      type: detail.type,
+      stage: detail.stage,
+      from: detail.type === 'ARTICLE' && detail.stage === 'PREGNANCY' ? displayFrom : null,
+      to: detail.type === 'ARTICLE' && detail.stage === 'PREGNANCY' ? displayTo : null,
+      priority: detail.type === 'ARTICLE' ? displayPriority : 0,
+      selectedTagIds: recommendationTagIds,
+      catalog: recommendationTags,
+    })
+    : null;
+
   const submit = async (status: 'DRAFT' | 'PENDING_REVIEW') => {
     if (!detail || !id) return;
     setSubmitting(status === 'PENDING_REVIEW' ? 'submit' : 'draft');
     setSubmitError('');
+    const from = eligibleFromWeek === '' ? null : Number(eligibleFromWeek);
+    const to = eligibleToWeek === '' ? null : Number(eligibleToWeek);
+    const priority = Number(recommendationPriority);
+    const metadataError = recommendationMetadataError({
+      type: detail.type,
+      stage: detail.stage,
+      from: detail.type === 'ARTICLE' && detail.stage === 'PREGNANCY' ? from : null,
+      to: detail.type === 'ARTICLE' && detail.stage === 'PREGNANCY' ? to : null,
+      priority: detail.type === 'ARTICLE' ? priority : 0,
+      selectedTagIds: recommendationTagIds,
+      catalog: recommendationTags,
+    });
+    if (metadataError) {
+      setSubmitError('Khoảng tuần phải cùng xuất hiện trong 0-42 và priority phải từ 0 đến 100.');
+      setSubmitting(null);
+      if (metadataError) setSubmitError(metadataError);
+      return;
+    }
     try {
       await updateContent(id, {
         title: title.trim(),
@@ -60,14 +124,29 @@ export default function EditContentPage() {
         summary: summary.trim() || undefined,
         stage: detail.stage,
         topicId: detail.topicId || undefined,
-        tagIds,
+        tagIds: [...tagIds, ...recommendationTagIds],
+        eligibleFromWeek: detail.type === 'ARTICLE' && detail.stage === 'PREGNANCY' ? from : null,
+        eligibleToWeek: detail.type === 'ARTICLE' && detail.stage === 'PREGNANCY' ? to : null,
+        recommendationPriority: detail.type === 'ARTICLE' ? priority : 0,
         status,
         sourceLabel: detail.sourceLabel || undefined,
         sources: sourceTitle.trim() ? [{ title: sourceTitle.trim(), url: sourceUrl.trim() || undefined }] : undefined,
       });
       navigate(`/content/${id}`);
-    } catch {
-      setSubmitError('Không thể cập nhật nội dung. Vui lòng thử lại.');
+    } catch (error) {
+      if (recommendationApiErrorCode(error)) {
+        if (detail.type === 'ARTICLE') {
+          try {
+            const catalog = await fetchRecommendationTags();
+            setRecommendationTags(catalog.items);
+          } catch {
+            // Keep the current draft when the catalog itself is unavailable.
+          }
+        }
+        setSubmitError(recommendationApiErrorMessage(error));
+        return;
+      }
+      setSubmitError('Cập nhật thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(null);
     }
@@ -189,6 +268,30 @@ export default function EditContentPage() {
             >
               {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
             </select>
+            {detail.type === 'ARTICLE' && (
+              <div className="mt-5 rounded-2xl border border-primary/30 bg-primary-container/10 p-4">
+                <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">Recommendation audience</p>
+                <div className="mb-4">
+                  <RecommendationAudienceSelector
+                    catalog={recommendationTags}
+                    selectedTagIds={recommendationTagIds}
+                    onChange={setRecommendationTagIds}
+                    staleTagIds={staleRecommendationTagIds}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="text-xs text-outline">Từ tuần<input type="number" min={0} max={42} value={detail.stage === 'PREGNANCY' ? eligibleFromWeek : ''} disabled={detail.stage !== 'PREGNANCY'} onChange={(e) => setEligibleFromWeek(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-sm" /></label>
+                  <label className="text-xs text-outline">Đến tuần<input type="number" min={0} max={42} value={detail.stage === 'PREGNANCY' ? eligibleToWeek : ''} disabled={detail.stage !== 'PREGNANCY'} onChange={(e) => setEligibleToWeek(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-sm" /></label>
+                  <label className="text-xs text-outline">Priority<input type="number" min={0} max={100} value={recommendationPriority} onChange={(e) => setRecommendationPriority(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-sm" /></label>
+                </div>
+                {displayMetadataError && <p role="alert" className="mt-3 text-xs text-error">{displayMetadataError}</p>}
+                {!displayMetadataError && <div className="mt-3 rounded-xl bg-surface p-3 text-xs text-on-surface-variant">
+                  <p className="font-semibold">Tóm tắt thiết lập đối tượng (Recommendation summary)</p>
+                  <p>Phân loại: {recommendationClassification(recommendationTagIds)} · {recommendationWindowLabel(detail.stage, displayFrom, displayTo)} · Độ ưu tiên {displayPriority}</p>
+                  <p>Đối tượng: {recommendationTagIds.length === 0 ? 'Không có tag chỉ định (áp dụng toàn bộ người dùng đủ điều kiện)' : recommendationTags.filter((tag) => recommendationTagIds.includes(tag.id)).map((tag) => formatRecommendationTagLabel(tag)).join(', ')}</p>
+                </div>}
+              </div>
+            )}
             <p className="text-[11px] text-outline mt-1">Giữ Ctrl/Cmd để chọn nhiều tag.</p>
           </div>
 

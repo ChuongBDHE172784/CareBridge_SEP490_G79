@@ -1,10 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createContent, fetchTags, fetchTopics, updateContent, uploadContentImage } from '../services/contentApi';
-import type { CommunityTopic, ContentStage, ContentType } from '../models/content';
+import { createContent, fetchRecommendationTags, fetchTags, fetchTopics, updateContent, uploadContentImage } from '../services/contentApi';
+import type { CommunityTopic, ContentStage, ContentType, RecommendationTag } from '../models/content';
 import { TYPE_LABELS, STAGE_OPTIONS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
 import { isRichTextEmpty } from '../components/richTextUtils';
+import RecommendationAudienceSelector from '../components/RecommendationAudienceSelector';
+import {
+  formatRecommendationTagLabel,
+  recommendationApiErrorCode,
+  recommendationApiErrorMessage,
+  recommendationClassification,
+  recommendationMetadataError,
+  recommendationWindowLabel,
+} from './recommendationMetadata';
 
 type CreatableContentType = Exclude<ContentType, 'CHECKLIST'>;
 
@@ -25,7 +34,12 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
   const [sourcePublisher, setSourcePublisher] = useState('');
   const [topics, setTopics] = useState<CommunityTopic[]>([]);
   const [tags, setTags] = useState<CommunityTopic[]>([]);
+  const [recommendationTags, setRecommendationTags] = useState<RecommendationTag[]>([]);
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [recommendationTagIds, setRecommendationTagIds] = useState<string[]>([]);
+  const [eligibleFromWeek, setEligibleFromWeek] = useState('');
+  const [eligibleToWeek, setEligibleToWeek] = useState('');
+  const [recommendationPriority, setRecommendationPriority] = useState('0');
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<{ id: string; title: string; sentForApproval: boolean } | null>(null);
@@ -40,10 +54,28 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
         setTopics([]);
         setTags([]);
       });
-  }, []);
+    if (contentType === 'ARTICLE') {
+      fetchRecommendationTags()
+        .then((catalog) => setRecommendationTags(catalog.items))
+        .catch(() => setRecommendationTags([]));
+    }
+  }, [contentType]);
 
   const contentTypeLabel = TYPE_LABELS[contentType];
-  const isValid = title.trim().length > 0 && !isRichTextEmpty(body) && stage !== '';
+  const from = eligibleFromWeek === '' ? null : Number(eligibleFromWeek);
+  const to = eligibleToWeek === '' ? null : Number(eligibleToWeek);
+  const priority = Number(recommendationPriority);
+  const metadataError = recommendationMetadataError({
+    type: contentType,
+    stage,
+    from: contentType === 'ARTICLE' && stage === 'PREGNANCY' ? from : null,
+    to: contentType === 'ARTICLE' && stage === 'PREGNANCY' ? to : null,
+    priority: contentType === 'ARTICLE' ? priority : 0,
+    selectedTagIds: recommendationTagIds,
+    catalog: recommendationTags,
+  });
+  const recommendationValid = metadataError === null;
+  const isValid = title.trim().length > 0 && !isRichTextEmpty(body) && stage !== '' && recommendationValid;
 
   const toggleTag = (tagId: string) => {
     setTagIds((selected) => selected.includes(tagId)
@@ -53,6 +85,10 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
 
   const submit = useCallback(async (sendForApproval: boolean) => {
     if (title.trim().length === 0 || isRichTextEmpty(body) || stage === '') return;
+    if (metadataError) {
+      setError(metadataError);
+      return;
+    }
     setSubmitting(sendForApproval ? 'submit' : 'draft');
     setError('');
     try {
@@ -63,21 +99,27 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
         summary: summary.trim() || undefined,
         stage,
         topicId: topicId || undefined,
-        tagIds,
+        tagIds: [...tagIds, ...recommendationTagIds],
+        eligibleFromWeek: contentType === 'ARTICLE' && stage === 'PREGNANCY' ? from : null,
+        eligibleToWeek: contentType === 'ARTICLE' && stage === 'PREGNANCY' ? to : null,
+        recommendationPriority: contentType === 'ARTICLE' ? priority : 0,
         sources: sourceLabel.trim() ? [{ title: sourceLabel.trim(), url: sourceUrl.trim() || undefined, publisher: sourcePublisher.trim() || undefined }] : undefined,
       });
       if (sendForApproval || sourceLabel.trim()) {
         try {
           await updateContent(result.id, {
-            title: title.trim(),
-            body,
-            summary: summary.trim() || undefined,
-            stage,
-            topicId: topicId || undefined,
-            tagIds,
-            status: sendForApproval ? 'PENDING_REVIEW' : 'DRAFT',
-            sourceLabel: sourceLabel.trim() || undefined,
-            sources: sourceLabel.trim() ? [{ title: sourceLabel.trim(), url: sourceUrl.trim() || undefined, publisher: sourcePublisher.trim() || undefined }] : undefined,
+          title: title.trim(),
+          body,
+          summary: summary.trim() || undefined,
+          stage,
+          topicId: topicId || undefined,
+          tagIds: [...tagIds, ...recommendationTagIds],
+          eligibleFromWeek: contentType === 'ARTICLE' && stage === 'PREGNANCY' ? from : null,
+          eligibleToWeek: contentType === 'ARTICLE' && stage === 'PREGNANCY' ? to : null,
+          recommendationPriority: contentType === 'ARTICLE' ? priority : 0,
+          status: sendForApproval ? 'PENDING_REVIEW' : 'DRAFT',
+          sourceLabel: sourceLabel.trim() || undefined,
+          sources: sourceLabel.trim() ? [{ title: sourceLabel.trim(), url: sourceUrl.trim() || undefined, publisher: sourcePublisher.trim() || undefined }] : undefined,
           });
         } catch {
           setError('Đã tạo bản nháp nhưng chưa thể cập nhật trạng thái. Bạn có thể mở bản nháp để tiếp tục.');
@@ -85,12 +127,24 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
         }
       }
       setCreated({ id: result.id, title: result.title, sentForApproval: sendForApproval });
-    } catch {
+    } catch (error) {
+      if (recommendationApiErrorCode(error)) {
+        if (contentType === 'ARTICLE') {
+          try {
+            const catalog = await fetchRecommendationTags();
+            setRecommendationTags(catalog.items);
+          } catch {
+            // Keep the current draft when the catalog itself is unavailable.
+          }
+        }
+        setError(recommendationApiErrorMessage(error));
+      } else {
       setError('Không thể tạo nội dung. Vui lòng thử lại.');
+      }
     } finally {
       setSubmitting(null);
     }
-  }, [contentType, stage, title, summary, body, topicId, tagIds, sourceLabel, sourceUrl, sourcePublisher]);
+  }, [contentType, stage, title, summary, body, topicId, tagIds, recommendationTagIds, from, to, priority, sourceLabel, sourceUrl, sourcePublisher, metadataError]);
 
   if (created) {
     return (
@@ -152,7 +206,37 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
           </select>
         </div>
 
-
+        {contentType === 'ARTICLE' && (
+          <div className="mb-5 rounded-2xl border border-primary/30 bg-primary-container/10 p-4">
+            <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-2">Recommendation audience</p>
+            <p className="text-xs text-outline mb-3">Tín hiệu kiểm soát; nội dung vẫn phải được System Admin duyệt.</p>
+            <div className="mb-4">
+              <RecommendationAudienceSelector
+                catalog={recommendationTags}
+                selectedTagIds={recommendationTagIds}
+                onChange={setRecommendationTagIds}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <label className="text-xs text-outline">Từ tuần
+                <input type="number" min={0} max={42} value={stage === 'PREGNANCY' ? eligibleFromWeek : ''} disabled={stage !== 'PREGNANCY'} onChange={(e) => setEligibleFromWeek(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-sm" />
+              </label>
+              <label className="text-xs text-outline">Đến tuần
+                <input type="number" min={0} max={42} value={stage === 'PREGNANCY' ? eligibleToWeek : ''} disabled={stage !== 'PREGNANCY'} onChange={(e) => setEligibleToWeek(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-sm" />
+              </label>
+              <label className="text-xs text-outline">Priority (0-100)
+                <input type="number" min={0} max={100} value={recommendationPriority} onChange={(e) => setRecommendationPriority(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-sm" />
+              </label>
+            </div>
+            {metadataError && <p role="alert" className="mt-3 text-xs text-error">{metadataError}</p>}
+            {!metadataError && <div className="mt-3 rounded-xl bg-surface p-3 text-xs text-on-surface-variant">
+              <p className="font-semibold">Tóm tắt thiết lập đối tượng (Recommendation summary)</p>
+              <p>Phân loại: {recommendationClassification(recommendationTagIds)} · {recommendationWindowLabel(stage, from, to)} · Độ ưu tiên {priority}</p>
+              <p>Đối tượng: {recommendationTagIds.length === 0 ? 'Không có tag chỉ định (áp dụng toàn bộ người dùng đủ điều kiện)' : recommendationTags.filter((tag) => recommendationTagIds.includes(tag.id)).map((tag) => formatRecommendationTagLabel(tag)).join(', ')}</p>
+            </div>}
+            {stage !== 'PREGNANCY' && <p className="mt-2 text-[11px] text-outline">Pre-pregnancy/postpartum luôn stage-wide; không dùng khoảng tuần.</p>}
+          </div>
+        )}
 
         <div className="mb-5">
           <div className="flex items-center justify-between mb-1.5">

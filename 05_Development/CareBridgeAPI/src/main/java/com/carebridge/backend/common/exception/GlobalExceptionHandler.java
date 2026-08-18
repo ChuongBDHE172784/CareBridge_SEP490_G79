@@ -468,7 +468,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleSpringAccessDenied(
             AccessDeniedException ex, HttpServletRequest request) {
-        return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Insufficient permissions", request);
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank() && !"Access is denied".equalsIgnoreCase(ex.getMessage()))
+                ? ex.getMessage()
+                : "Insufficient permissions";
+        return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", message, request);
     }
 
     @ExceptionHandler(AccessDeniedBusinessException.class)

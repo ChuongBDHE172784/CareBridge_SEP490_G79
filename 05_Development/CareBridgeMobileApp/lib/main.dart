@@ -9,18 +9,39 @@ import 'core/notifications/fcm_service.dart';
 import 'core/routes/app_router.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/aiTriage/widgets/floating_ai_triage_host.dart';
-import 'features/aiTriage/models/triage_entry_context.dart';
 import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
 import 'features/safety/models/safety_config_model.dart';
 import 'features/safety/services/safety_foreground_service.dart';
+import 'features/safety/widgets/safety_countdown_sheet.dart';
+import 'features/safety/screens/safety_monitoring_screen.dart';
+
+@visibleForTesting
+bool isSafetyMonitoringScreenActive(GoRouter router) {
+  final currentUri = router.routerDelegate.currentConfiguration.uri;
+  final providerUri = router.routeInformationProvider.value.uri;
+  final path1 = currentUri.path;
+  final path2 = providerUri.path;
+  return path1 == '/safety' ||
+      path1.startsWith('/safety/') ||
+      path2 == '/safety' ||
+      path2.startsWith('/safety/');
+}
 
 @visibleForTesting
 bool shouldOpenSafetyMonitoringForDetectedEvent({
   required String eventStatus,
   required String currentPath,
   bool navigationInFlight = false,
-}) => eventStatus == 'OPEN' && currentPath != '/safety' && !navigationInFlight;
+  bool countdownShowing = false,
+  bool screenMounted = false,
+}) =>
+    eventStatus == 'OPEN' &&
+    currentPath != '/safety' &&
+    !currentPath.startsWith('/safety/') &&
+    !navigationInFlight &&
+    !countdownShowing &&
+    !screenMounted;
 
 @visibleForTesting
 Future<T?> pushSafetyMonitoringRoute<T extends Object?>(GoRouter router) =>
@@ -91,6 +112,8 @@ class CareBridgeApp extends StatefulWidget {
 class _CareBridgeAppState extends State<CareBridgeApp> {
   StreamSubscription<SafetyEvent>? _detectedSafetyEventSubscription;
   bool _safetyNavigationInFlight = false;
+  DateTime? _lastSafetyRoutePoppedAt;
+  String? _lastHandledEventId;
 
   @override
   void initState() {
@@ -106,14 +129,31 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
 
   Future<void> _openSafetyMonitoringForDetectedEvent(SafetyEvent event) async {
     if (!mounted) return;
-    final currentPath = appRouter.routeInformationProvider.value.uri.path;
+    if (SafetyCountdownGuard.isShowing || SafetyMonitoringScreen.isMounted) {
+      return;
+    }
+    if (_safetyNavigationInFlight || isSafetyMonitoringScreenActive(appRouter)) {
+      return;
+    }
+    final currentPath = appRouter.routerDelegate.currentConfiguration.uri.path;
+    final now = DateTime.now();
     if (!shouldOpenSafetyMonitoringForDetectedEvent(
       eventStatus: event.status,
       currentPath: currentPath,
       navigationInFlight: _safetyNavigationInFlight,
+      countdownShowing: SafetyCountdownGuard.isShowing,
+      screenMounted: SafetyMonitoringScreen.isMounted,
     )) {
       return;
     }
+    if (_lastHandledEventId == event.id) {
+      return;
+    }
+    if (_lastSafetyRoutePoppedAt != null &&
+        now.difference(_lastSafetyRoutePoppedAt!) < const Duration(seconds: 5)) {
+      return;
+    }
+    _lastHandledEventId = event.id;
     // Preserve the screen that was active before the fall alert. Using go()
     // replaces the entire stack and leaves a black screen when Safety pops.
     _safetyNavigationInFlight = true;
@@ -121,6 +161,7 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
       await pushSafetyMonitoringRoute(appRouter);
     } finally {
       _safetyNavigationInFlight = false;
+      _lastSafetyRoutePoppedAt = DateTime.now();
     }
   }
 
@@ -165,7 +206,10 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
           manageAuthenticatedSession: widget.firebaseEnabled,
           child: FloatingAiTriageHost(
             authListenable: AuthState.instance,
-            navigationListenable: appRouter.routeInformationProvider,
+            navigationListenable: Listenable.merge([
+              appRouter.routeInformationProvider,
+              appRouter.routerDelegate,
+            ]),
             modalListenable: floatingAiTriageRouteObserver,
             isAuthenticated: () => AuthState.instance.isAuthenticated,
             currentRole: () => AuthState.instance.role,
@@ -173,10 +217,7 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
                 appRouter.routeInformationProvider.value.uri.path,
             hasModal: () => floatingAiTriageRouteObserver.hasPopupRoute,
             onOpen: () async {
-              await appRouter.push(
-                '/triage/intake',
-                extra: const TriageEntryContext(requiresStageSelection: true),
-              );
+              await appRouter.push('/triage/chat');
             },
             child: app,
           ),

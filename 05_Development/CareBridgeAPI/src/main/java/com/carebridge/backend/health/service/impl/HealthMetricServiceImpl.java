@@ -42,7 +42,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private static final java.util.Set<String> P0_MANUAL_METRICS = java.util.Set.of(
             "BMI", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "HYDRATION",
-            "EPDS_SCORE", "MATERNAL_HEART_RATE", "STRESS");
+            "EPDS_SCORE", "MATERNAL_HEART_RATE", "TEMPERATURE");
     private static final String DISCLAIMER = "Đây là dữ liệu theo dõi, không phải chẩn đoán y khoa.";
     private static final String EPDS_METRIC_CODE = "EPDS_SCORE";
 
@@ -305,6 +305,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
             case "HYDRATION" -> MetricType.HYDRATION;
             case "EPDS_SCORE" -> MetricType.EPDS_SCORE;
             case "MATERNAL_HEART_RATE" -> MetricType.MATERNAL_HEART_RATE;
+            case "TEMPERATURE" -> MetricType.TEMPERATURE;
             case "STRESS" -> MetricType.STRESS;
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-030", "Unsupported metric type");
         };

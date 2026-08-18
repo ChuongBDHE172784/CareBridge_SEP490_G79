@@ -84,7 +84,7 @@
       "dungHoi": true,
       "reasonCode": "PREG_HEAVY_BLEEDING",
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
-      "sourceId": ["WHO_IITT_ADULT", "WHO_DANGER_SIGNS_2022", "BYT_1139_2026"],
+      "sourceId": ["WHO_IITT_ADULT", "BYT_1139_2026"],
       "phienBanRule": "0.1.0",
       "trangThai": "APPROVED"
     },
@@ -101,7 +101,7 @@
       "dungHoi": true,
       "reasonCode": "PREG_NEURO_DANGER",
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
-      "sourceId": ["WHO_IITT_ADULT", "WHO_DANGER_SIGNS_2022", "WHO_MATERNAL_2025"],
+      "sourceId": ["WHO_IITT_ADULT"],
       "phienBanRule": "0.1.0",
       "trangThai": "APPROVED"
     },
@@ -118,7 +118,7 @@
       "dungHoi": false,
       "reasonCode": "PREG_BLEEDING_EARLY_REVIEW",
       "actionCode": "EARLY_CLINICAL_ASSESSMENT",
-      "sourceId": ["WHO_DANGER_SIGNS_2022", "BYT_1139_2026"],
+      "sourceId": ["BYT_1139_2026"],
       "phienBanRule": "0.1.0",
       "trangThai": "APPROVED"
     },
@@ -135,7 +135,7 @@
       "dungHoi": true,
       "reasonCode": "POSTPARTUM_HEAVY_BLEEDING",
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
-      "sourceId": ["WHO_DANGER_SIGNS_2022", "WHO_MATERNAL_2025", "WHO_PCPNC_2015"],
+      "sourceId": ["WHO_PCPNC_2015"],
       "phienBanRule": "0.1.0",
       "trangThai": "APPROVED"
     },
@@ -152,7 +152,7 @@
       "dungHoi": true,
       "reasonCode": "POSTPARTUM_CARDIO_NEURO_DANGER",
       "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
-      "sourceId": ["WHO_IITT_ADULT", "WHO_DANGER_SIGNS_2022"],
+      "sourceId": ["WHO_IITT_ADULT"],
       "phienBanRule": "0.1.0",
       "trangThai": "APPROVED"
     },

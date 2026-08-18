@@ -42,4 +42,52 @@ class CommunitySafetyPolicyTest {
                 .map(field -> field.getType().getSimpleName()))
                 .doesNotContain("TriageRedFlagPolicy");
     }
+
+    @Test
+    void requirePostingAllowed_restrictedUser_throwsAccessDenied() {
+        com.carebridge.backend.security.repository.UserRepository userRepo = org.mockito.Mockito.mock(com.carebridge.backend.security.repository.UserRepository.class);
+        com.carebridge.backend.content.repository.ModerationActionRepository modRepo = org.mockito.Mockito.mock(com.carebridge.backend.content.repository.ModerationActionRepository.class);
+        CommunitySafetyPolicy policy = new CommunitySafetyPolicy(userRepo, null, null, null, modRepo);
+
+        java.util.UUID userId = java.util.UUID.randomUUID();
+        com.carebridge.backend.security.entity.User user = com.carebridge.backend.security.entity.User.builder()
+                .id(userId)
+                .name("Test User")
+                .communityPostingRestrictedUntil(java.time.Instant.now().plusSeconds(86400))
+                .build();
+
+        org.mockito.Mockito.when(userRepo.findById(userId)).thenReturn(java.util.Optional.of(user));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> policy.requirePostingAllowed(userId))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("hạn chế đăng bài");
+    }
+
+    @Test
+    void requirePostingAllowed_activeModerationAction_throwsAccessDenied() {
+        com.carebridge.backend.security.repository.UserRepository userRepo = org.mockito.Mockito.mock(com.carebridge.backend.security.repository.UserRepository.class);
+        com.carebridge.backend.content.repository.ModerationActionRepository modRepo = org.mockito.Mockito.mock(com.carebridge.backend.content.repository.ModerationActionRepository.class);
+        CommunitySafetyPolicy policy = new CommunitySafetyPolicy(userRepo, null, null, null, modRepo);
+
+        java.util.UUID userId = java.util.UUID.randomUUID();
+        com.carebridge.backend.security.entity.User user = com.carebridge.backend.security.entity.User.builder()
+                .id(userId)
+                .name("Test User")
+                .build();
+
+        com.carebridge.backend.content.entity.ModerationAction action = com.carebridge.backend.content.entity.ModerationAction.builder()
+                .actionType(com.carebridge.backend.content.entity.ModerationActionType.RESTRICT)
+                .expiresAt(java.time.Instant.now().plusSeconds(3600))
+                .reason("Vi phạm tiêu chuẩn cộng đồng")
+                .build();
+
+        org.mockito.Mockito.when(userRepo.findById(userId)).thenReturn(java.util.Optional.of(user));
+        org.mockito.Mockito.when(modRepo.findAccountActionsByTargetId(org.mockito.ArgumentMatchers.eq(userId), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(action)));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> policy.requirePostingAllowed(userId))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("hạn chế đăng bài")
+                .hasMessageContaining("Vi phạm tiêu chuẩn cộng đồng");
+    }
 }

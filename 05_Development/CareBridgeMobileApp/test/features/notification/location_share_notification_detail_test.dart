@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/directChat/screens/direct_chat_location_navigation_screen.dart';
 import 'package:untitled/features/notification/models/notification_model.dart';
 import 'package:untitled/features/notification/screens/location_share_notification_detail_screen.dart';
 import 'package:untitled/features/notification/screens/notification_detail_screen.dart';
@@ -83,6 +84,13 @@ void main() {
       find.byKey(const Key('location-share-directions-action')),
     );
     expect(directions.onPressed, isNotNull);
+
+    await tester.tap(find.byKey(const Key('location-share-directions-action')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(DirectChatLocationNavigationScreen), findsOneWidget);
+    expect(find.text('Vị trí của Nguyễn Thị Lan'), findsOneWidget);
   });
 
   testWidgets('directions are disabled when coordinates are unavailable', (

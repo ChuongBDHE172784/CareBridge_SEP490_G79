@@ -283,43 +283,50 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                   if (_selectedCareGroupId != null &&
                       (_checklistGroupExplicitlySelected ||
                           _snapshot!.groups.length <= 1))
-                    TodayTasksPanel(
-                      service: _todayTaskService,
-                      audience: TodayTasksAudience.family,
-                      layout: TodayTasksLayout.sourceGroups,
-                      careGroupId: _selectedCareGroupId,
-                      controller: _todayTasksController,
-                      headingAction: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            key: const Key(
-                              'family-home-checklist-history-button',
+                    if (_snapshot!.selectedGroupDetail == null ||
+                        _snapshot!.selectedGroupDetail!.permissionScope.checklistView)
+                      TodayTasksPanel(
+                        service: _todayTaskService,
+                        audience: TodayTasksAudience.family,
+                        layout: TodayTasksLayout.sourceGroups,
+                        careGroupId: _selectedCareGroupId,
+                        controller: _todayTasksController,
+                        headingAction: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              key: const Key(
+                                'family-home-checklist-history-button',
+                              ),
+                              tooltip: 'Lịch sử checklist',
+                              onPressed: () {
+                                final groupId = _selectedCareGroupId;
+                                if (groupId == null) return;
+                                context.push(
+                                  '/checklists/history?careGroupId=$groupId',
+                                );
+                              },
+                              icon: const Icon(Icons.history_rounded),
+                              color: _primary,
                             ),
-                            tooltip: 'Lịch sử checklist',
-                            onPressed: () {
-                              final groupId = _selectedCareGroupId;
-                              if (groupId == null) return;
-                              context.push(
-                                '/checklists/history?careGroupId=$groupId',
-                              );
-                            },
-                            icon: const Icon(Icons.history_rounded),
-                            color: _primary,
-                          ),
-                          if (_selectedCareGroupId != null &&
-                              _snapshot!
-                                      .selectedGroupDetail
-                                      ?.permissionScope
-                                      .checklistView ==
-                                  true)
-                            AddUserChecklistTaskButton(
-                              careGroupId: _selectedCareGroupId,
-                              onCreated: _todayTasksController.refresh,
-                            ),
-                        ],
+                            if (_selectedCareGroupId != null &&
+                                _snapshot!
+                                        .selectedGroupDetail
+                                        ?.permissionScope
+                                        .checklistView ==
+                                    true)
+                              AddUserChecklistTaskButton(
+                                careGroupId: _selectedCareGroupId,
+                                onCreated: _todayTasksController.refresh,
+                              ),
+                          ],
+                        ),
+                      )
+                    else
+                      const _EmptyCard(
+                        key: Key('family-dashboard-no-checklist-permission'),
+                        message: 'Mẹ chưa cấp quyền chia sẻ việc cần làm.',
                       ),
-                    ),
                   const SizedBox(height: 28),
                   _buildRecommendationSection(),
                 ],

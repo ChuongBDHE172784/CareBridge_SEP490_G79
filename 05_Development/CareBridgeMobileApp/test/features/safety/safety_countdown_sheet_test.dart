@@ -460,4 +460,33 @@ void main() {
       expect(() => systemFeedback.stop(), returnsNormally);
     },
   );
+
+  testWidgets(
+    'SafetyCountdownGuard tracks active sheet lifecycle properly',
+    (tester) async {
+      SafetyCountdownGuard.reset();
+      expect(SafetyCountdownGuard.isShowing, isFalse);
+      expect(SafetyCountdownGuard.activeEventId, isNull);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafetyCountdownSheet(
+              event: event,
+              feedback: feedback,
+              now: () => now,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(SafetyCountdownGuard.isShowing, isTrue);
+      expect(SafetyCountdownGuard.activeEventId, event.id);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(SafetyCountdownGuard.isShowing, isFalse);
+      expect(SafetyCountdownGuard.activeEventId, isNull);
+    },
+  );
 }

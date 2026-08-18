@@ -82,6 +82,7 @@ import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
+import '../../features/aiTriage/screens/rag_chat_screen.dart';
 import '../../features/aiTriage/screens/triage_history_screen.dart';
 import '../../features/aiTriage/widgets/floating_ai_triage_host.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
@@ -353,7 +354,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final task = state.extra;
         if (task is! TodayTask) return const _InvalidRouteScreen();
-        return ChecklistTaskDetailScreen(task: task);
+        final audience = state.uri.queryParameters['audience'];
+        return ChecklistTaskDetailScreen(
+          task: task,
+          showSupportFunction: audience != 'family',
+        );
       },
     ),
     GoRoute(
@@ -937,7 +942,52 @@ final GoRouter appRouter = GoRouter(
         return SymptomIntakeScreen(
           entryContext:
               extra as TriageEntryContext? ??
-              const TriageEntryContext(requiresStageSelection: true),
+              const TriageEntryContext(
+                stage: TriageStageIntent.pregnancy,
+                requiresStageSelection: false,
+              ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/triage/chat',
+      builder: (context, state) {
+        final extra = state.extra;
+        String? initialPrompt = state.uri.queryParameters['prompt'];
+        Map<String, dynamic>? attachedContext;
+        bool autoSend = state.uri.queryParameters['autoSend'] == 'true';
+        if (extra is Map<String, dynamic>) {
+          initialPrompt ??= (extra['prompt'] ?? extra['initialMessage']) as String?;
+          attachedContext = (extra['attachedContext'] ?? extra['attachedHealthContext']) as Map<String, dynamic>?;
+          if (extra.containsKey('autoSend')) {
+            autoSend = extra['autoSend'] == true;
+          }
+        }
+        return RagChatScreen(
+          initialPrompt: initialPrompt,
+          attachedHealthContext: attachedContext,
+          autoSendInitialPrompt: autoSend,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/rag/chat',
+      builder: (context, state) {
+        final extra = state.extra;
+        String? initialPrompt = state.uri.queryParameters['prompt'] ?? state.uri.queryParameters['initialMessage'];
+        Map<String, dynamic>? attachedContext;
+        bool autoSend = state.uri.queryParameters['autoSend'] == 'true';
+        if (extra is Map<String, dynamic>) {
+          initialPrompt ??= (extra['prompt'] ?? extra['initialMessage']) as String?;
+          attachedContext = (extra['attachedContext'] ?? extra['attachedHealthContext']) as Map<String, dynamic>?;
+          if (extra.containsKey('autoSend')) {
+            autoSend = extra['autoSend'] == true;
+          }
+        }
+        return RagChatScreen(
+          initialPrompt: initialPrompt,
+          attachedHealthContext: attachedContext,
+          autoSendInitialPrompt: autoSend,
         );
       },
     ),

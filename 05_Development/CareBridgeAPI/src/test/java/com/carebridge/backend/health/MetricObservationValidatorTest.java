@@ -130,6 +130,57 @@ class MetricObservationValidatorTest {
                 .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
     }
 
+    @Test
+    void epdsAcceptsZeroAndThirtyScoreBoundariesWithVietnameseUnit() {
+        AddMetricRequest request = base(MetricType.EPDS_SCORE, "0", "điểm");
+        request.setValueSecondary(BigDecimal.ZERO);
+
+        var result = validator.normalize(request,
+                definition("EPDS_SCORE", ObservationShape.POINT, "score", List.of("score", "điểm")));
+
+        assertThat(result.metricCode()).isEqualTo("EPDS_SCORE");
+        assertThat(result.valueNumeric()).isEqualByComparingTo("0");
+        assertThat(result.valueSecondary()).isEqualByComparingTo("0");
+        assertThat(result.unit()).isEqualTo("score");
+
+        AddMetricRequest maxScore = base(MetricType.EPDS_SCORE, "30", "score");
+        maxScore.setValueSecondary(new BigDecimal("3"));
+        var maxResult = validator.normalize(maxScore,
+                definition("EPDS_SCORE", ObservationShape.POINT, "score", List.of("score", "điểm")));
+        assertThat(maxResult.valueNumeric()).isEqualByComparingTo("30");
+        assertThat(maxResult.valueSecondary()).isEqualByComparingTo("3");
+    }
+
+    @Test
+    void epdsRejectsOutOfBoundScores() {
+        AddMetricRequest scoreTooHigh = base(MetricType.EPDS_SCORE, "31", "điểm");
+        assertThatThrownBy(() -> validator.normalize(scoreTooHigh,
+                definition("EPDS_SCORE", ObservationShape.POINT, "score", List.of("score", "điểm"))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
+
+        AddMetricRequest question10TooHigh = base(MetricType.EPDS_SCORE, "15", "điểm");
+        question10TooHigh.setValueSecondary(new BigDecimal("4"));
+        assertThatThrownBy(() -> validator.normalize(question10TooHigh,
+                definition("EPDS_SCORE", ObservationShape.POINT, "score", List.of("score", "điểm"))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
+    }
+
+    @Test
+    void temperatureNormalizesCorrectly() {
+        AddMetricRequest request = base(MetricType.TEMPERATURE, "37.2", "°C");
+        request.setContext(new LinkedHashMap<>());
+        request.getContext().put("measurementSite", "ARMPIT");
+
+        var result = validator.normalize(request,
+                definition("TEMPERATURE", ObservationShape.POINT, "Cel", List.of("Cel", "°C", "°F")));
+
+        assertThat(result.metricCode()).isEqualTo("TEMPERATURE");
+        assertThat(result.valueNumeric()).isEqualByComparingTo("37.2");
+        assertThat(result.unit()).isEqualTo("Cel");
+    }
+
     private AddMetricRequest base(MetricType type, String value, String unit) {
         AddMetricRequest request = new AddMetricRequest();
         request.setMetricType(type);

@@ -216,8 +216,10 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   }
 
   Future<void> _openDetail(TodayTask task) async {
+    final audienceParam =
+        widget.audience == TodayTasksAudience.family ? '?audience=family' : '';
     final changed = await context.push<bool>(
-      '/checklists/task-detail',
+      '/checklists/task-detail$audienceParam',
       extra: task,
     );
     if (!mounted || changed != true) return;
@@ -443,6 +445,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                           onDelete: _delete,
                           allowDelete:
                               widget.audience == TodayTasksAudience.mother,
+                          allowAction:
+                              widget.audience == TodayTasksAudience.mother,
                         ),
                       if (babyCareTasks.isNotEmpty)
                         Column(
@@ -468,6 +472,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                               onDelete: _delete,
                               allowDelete:
                                   widget.audience == TodayTasksAudience.mother,
+                              allowAction:
+                                  widget.audience == TodayTasksAudience.mother,
                             );
                           }).toList(growable: false),
                         ),
@@ -482,6 +488,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                           onAction: _act,
                           onDelete: _delete,
                           allowDelete:
+                              widget.audience == TodayTasksAudience.mother,
+                          allowAction:
                               widget.audience == TodayTasksAudience.mother,
                           showTitle:
                               postpartumTasks.isNotEmpty || babyCareTasks.isNotEmpty,
@@ -506,12 +514,15 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     onAction: _act,
                     onDelete: _delete,
                     allowDelete: widget.audience == TodayTasksAudience.mother,
+                    allowAction: widget.audience == TodayTasksAudience.mother,
                     showTitle: false,
                   )
                 else
-                  const _EmptyTabState(
+                  _EmptyTabState(
                     icon: Icons.playlist_add_check_rounded,
-                    message: 'Bạn chưa tạo công việc cá nhân nào.',
+                    message: widget.audience == TodayTasksAudience.family
+                        ? 'Chưa có việc cá nhân nào được chia sẻ.'
+                        : 'Bạn chưa tạo công việc cá nhân nào.',
                   ),
               ],
             ] else ...[
@@ -524,6 +535,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
+                allowAction: widget.audience == TodayTasksAudience.mother,
               ),
               _Section(
                 title: 'Hôm nay',
@@ -534,6 +546,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
+                allowAction: widget.audience == TodayTasksAudience.mother,
               ),
               _Section(
                 title: '7 ngày tới',
@@ -544,6 +557,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
+                allowAction: widget.audience == TodayTasksAudience.mother,
               ),
               _Section(
                 title: 'Chưa xếp lịch',
@@ -554,6 +568,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
+                allowAction: widget.audience == TodayTasksAudience.mother,
               ),
             ],
           ],
@@ -990,6 +1005,7 @@ class _Section extends StatelessWidget {
     required this.onAction,
     required this.onDelete,
     required this.allowDelete,
+    this.allowAction = true,
     this.showTitle = true,
   });
 
@@ -1001,6 +1017,7 @@ class _Section extends StatelessWidget {
   final Future<void> Function(TodayTask, TodayTaskAction) onAction;
   final Future<void> Function(TodayTask) onDelete;
   final bool allowDelete;
+  final bool allowAction;
   final bool showTitle;
 
   @override
@@ -1039,6 +1056,7 @@ class _Section extends StatelessWidget {
                 onAction: (action) => onAction(task, action),
                 onDelete: () => onDelete(task),
                 allowDelete: allowDelete,
+                allowAction: allowAction,
               ),
             ),
           ),
@@ -1056,6 +1074,7 @@ class _TodayTaskCard extends StatelessWidget {
     required this.onAction,
     required this.onDelete,
     required this.allowDelete,
+    this.allowAction = true,
   });
 
   final TodayTask task;
@@ -1064,6 +1083,7 @@ class _TodayTaskCard extends StatelessWidget {
   final ValueChanged<TodayTaskAction> onAction;
   final VoidCallback onDelete;
   final bool allowDelete;
+  final bool allowAction;
 
   @override
   Widget build(BuildContext context) {
@@ -1238,6 +1258,7 @@ class _TodayTaskCard extends StatelessWidget {
       task.cadenceLabel == null ? '' : ', ${task.cadenceLabel}';
 
   TodayTaskAction? get _tapAction {
+    if (!allowAction) return null;
     if (task.isChecklist) {
       if (task.isCompleted &&
           task.allowedActions.contains(TodayTaskAction.reopen)) {

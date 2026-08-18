@@ -171,7 +171,7 @@ public class User {
     @Column(name = "suspended_until")
     private Instant suspendedUntil;
 
-    @Transient
+    @Column(name = "community_posting_restricted_until")
     private Instant communityPostingRestrictedUntil;
 
     @Builder.Default
@@ -234,7 +234,7 @@ public class User {
         // suspended_until is a real column now; fall back to the settings_jsonb mirror
         // for legacy rows where only the jsonb copy was written.
         if (suspendedUntil == null) suspendedUntil = instantSetting("suspendedUntil");
-        communityPostingRestrictedUntil = instantSetting("communityPostingRestrictedUntil");
+        if (communityPostingRestrictedUntil == null) communityPostingRestrictedUntil = instantSetting("communityPostingRestrictedUntil");
         mustChangePassword = Boolean.TRUE.equals(settings.get("mustChangePassword"));
     }
 

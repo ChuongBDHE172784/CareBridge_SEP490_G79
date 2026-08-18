@@ -108,13 +108,21 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     _messages.add(
       _ChatMessage(
         role: _ChatRole.assistant,
-        text: widget.entryContext.requiresStageSelection
-            ? 'Hãy chọn đúng giai đoạn trước khi mô tả triệu chứng. CareBridge sẽ giữ nguyên ngữ cảnh đó trong suốt phiên.'
-            : widget.entryContext.isMaternal
-            ? 'Hãy mô tả dấu hiệu bạn đang gặp. CareBridge chỉ hỗ trợ phân loại rủi ro ban đầu theo giai đoạn sức khỏe hiện tại.'
-            : 'Hãy mô tả triệu chứng của bé. CareBridge sẽ hỏi thêm nếu cần và chỉ phân loại rủi ro ban đầu.',
+        text: 'Chào bạn! Trợ lý AI CareBridge luôn sẵn sàng hỗ trợ giải đáp thắc mắc và chăm sóc sức khỏe cho mẹ và bé. Bạn có thể nhập câu hỏi ngay bên dưới hoặc chọn nhanh giai đoạn mong muốn.',
       ),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkInitialConsent();
+    });
+  }
+
+  Future<void> _checkInitialConsent() async {
+    final triageUserId = AuthState.instance.userId;
+    try {
+      await _requestTriageConsent(triageUserId);
+    } catch (_) {
+      // Ignore background failure; user will be prompted again upon submission if unconsented.
+    }
   }
 
   Map<String, dynamic> _newIntake({required String stage}) => {
@@ -189,11 +197,6 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                   consent.disclaimerText,
                   key: const Key('triage-consent-text'),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Phiên bản: ${consent.currentVersion}',
-                  style: Theme.of(dialogContext).textTheme.bodySmall,
-                ),
               ],
             ),
           ),
@@ -234,11 +237,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   Future<void> _start() async {
     if (_loading) return;
     if (!_stageConfirmed) {
-      setState(
-        () => _error =
-            'Vui lòng chọn giai đoạn sức khỏe trước khi bắt đầu AI Triage.',
-      );
-      return;
+      _stageConfirmed = true;
     }
     final text = _initialController.text.trim();
     if (text.isEmpty) return;
@@ -602,7 +601,67 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
   }
 
-  String _answersText(Map<String, dynamic> answers) {
+  static const _vietnameseOptionLabels = {
+    'UNSURE': 'Tôi không chắc',
+    'NONE': 'Không có',
+    'DANGER_NONE': 'Không có dấu hiệu nào',
+    'SEIZURE': 'Co giật',
+    'ALTERED_CONSCIOUSNESS': 'Lơ mơ, khó đánh thức hoặc ngất',
+    'SEVERE_BREATHING': 'Khó thở nghiêm trọng',
+    'SEVERE_BREATHING_DIFFICULTY': 'Khó thở nghiêm trọng',
+    'CYANOSIS': 'Tím tái môi hoặc đầu ngón',
+    'HEADACHE_SEVERE': 'Đau đầu dữ dội',
+    'HEADACHE_MILD_OR_NONE': 'Đau nhẹ hoặc không đau',
+    'VISUAL_CHANGE_YES': 'Có nhìn mờ hoặc thấy chớp sáng',
+    'VISUAL_CHANGE_NO': 'Không nhìn mờ',
+    'VISUAL_CHANGE_UNSURE': 'Tôi không chắc',
+    'BLEEDING_HEAVY': 'Ra máu nhiều (ướt đẫm băng)',
+    'BLEEDING_SPOTTING': 'Ra máu ít hoặc đốm nhỏ',
+    'BLEEDING_NONE': 'Không ra máu',
+    'BLEEDING_UNSURE': 'Tôi không chắc',
+    'CLOTS_LARGE': 'Có cục máu đông lớn',
+    'CLOTS_NONE': 'Không có cục máu đông',
+    'CLOTS_UNSURE': 'Tôi không chắc',
+    'DIZZINESS_YES': 'Có hoa mắt, chóng mặt',
+    'DIZZINESS_NO': 'Không chóng mặt',
+    'BREATHING_SEVERE': 'Khó thở nghiêm trọng',
+    'BREATHING_NORMAL': 'Thở bình thường',
+    'FEEDING_NORMAL': 'Bú/uống như bình thường',
+    'FEEDING_POOR': 'Bú ít hơn bình thường',
+    'FEEDING_NONE': 'Bỏ bú hoàn toàn, không uống được',
+    'VOMITING_ALL': 'Nôn tất cả mọi thứ',
+    'VOMITING_SOME': 'Thỉnh thoảng nôn',
+    'VOMITING_NONE': 'Không nôn',
+    'DIARRHEA_SEVERE': 'Đi ngoài nhiều lần (>5 lần/ngày)',
+    'DIARRHEA_MILD': 'Đi phân lỏng 1-2 lần',
+    'DIARRHEA_NONE': 'Không tiêu chảy',
+    'DEHYDRATION_YES': 'Có dấu hiệu mất nước',
+    'DEHYDRATION_NO': 'Không có dấu hiệu mất nước',
+    'FEVER_HIGH': 'Sốt cao (trên 38.5°C)',
+    'FEVER_MILD': 'Sốt nhẹ (37.5°C - 38.5°C)',
+    'FEVER_NONE': 'Không sốt',
+    'PREGNANT_YES': 'Que thử 2 vạch / đã khám xác định có thai',
+    'PREGNANT_NO': 'Que thử 1 vạch / không có thai',
+    'PREGNANT_UNSURE': 'Tôi không chắc',
+    'PAIN_SEVERE': 'Đau dữ dội',
+    'PAIN_MODERATE': 'Đau vừa',
+    'PAIN_MILD': 'Đau nhẹ lâm râm',
+    'PAIN_NONE': 'Không đau',
+  };
+
+  String _questionLabel(String key) {
+    final intakeQ = _questions
+        .where((q) => q.questionKey == key)
+        .firstOrNull;
+    if (intakeQ != null && intakeQ.text.isNotEmpty) {
+      return intakeQ.text;
+    }
+    final canonicalQ = _canonicalSession?.questionDetails
+        .where((q) => q.id == key)
+        .firstOrNull;
+    if (canonicalQ != null && canonicalQ.text.isNotEmpty) {
+      return canonicalQ.text;
+    }
     const labels = {
       'childAgeMonths': 'Tuổi của bé (tháng)',
       'breathingStatus': 'Tình trạng hô hấp',
@@ -618,37 +677,96 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'painSeverity': 'Mức độ đau',
       'urinarySymptoms': 'Triệu chứng tiểu tiện',
       'parentFreeText': 'Mô tả bổ sung',
+      'Q_GLOBAL_DANGER': 'Dấu hiệu nguy hiểm',
       'Q_GESTATIONAL_WEEK': 'Tuổi thai (tuần)',
       'Q_POSTPARTUM_DAY': 'Số ngày sau sinh',
       'Q_BABY_AGE_MONTHS': 'Tuổi của bé (tháng)',
+      'Q_PREGNANCY_TEST': 'Tình trạng mang thai',
+      'Q_PAIN_SEVERITY': 'Mức độ đau',
+      'Q_BLEEDING_AMOUNT': 'Lượng máu ra',
+      'Q_DIZZINESS': 'Chóng mặt',
+      'Q_HEADACHE_SEVERITY': 'Mức độ đau đầu',
+      'Q_VISUAL_CHANGE': 'Rối loạn thị giác',
+      'Q_BREATHING_SEVERITY': 'Tình trạng hô hấp',
+      'Q_FEVER_SEVERITY': 'Mức độ sốt',
+      'Q_BABY_FEEDING': 'Khả năng bú/uống của bé',
+      'Q_BABY_VOMITING': 'Tình trạng nôn của bé',
+      'Q_BABY_DIARRHEA': 'Tình trạng tiêu chảy của bé',
+      'Q_DEHYDRATION_SIGNS': 'Dấu hiệu mất nước',
+      'Q_BABY_COUGH': 'Tình trạng ho của bé',
+      'Q_BABY_RASH': 'Phát ban ở bé',
+      'Q_LOCHIA_SMELL': 'Mùi sản dịch',
+      'Q_LEG_PAIN_SWELLING': 'Sưng đau bắp chân',
+      'Q_POSTPARTUM_BLEEDING': 'Lượng sản dịch/ra máu',
+      'Q_POSTPARTUM_FEVER': 'Sốt sau sinh',
     };
+    return labels[key] ?? key;
+  }
+
+  String _answersText(Map<String, dynamic> answers) {
+    if (answers.length == 1) {
+      final entry = answers.entries.first;
+      final displayVal = _displayAnswerValue(entry.key, entry.value);
+      if (entry.key == 'Q_GESTATIONAL_WEEK' ||
+          entry.key == 'Q_POSTPARTUM_DAY' ||
+          entry.key == 'Q_BABY_AGE_MONTHS' ||
+          entry.key == 'childAgeMonths' ||
+          entry.key == 'temperatureC') {
+        return '${_questionLabel(entry.key)}: $displayVal';
+      }
+      return displayVal;
+    }
     return answers.entries
         .map(
           (entry) =>
-              '${labels[entry.key] ?? entry.key}: ${_displayAnswerValue(entry.key, entry.value)}',
+              '${_questionLabel(entry.key)}: ${_displayAnswerValue(entry.key, entry.value)}',
         )
         .join('\n');
   }
 
   String _displayAnswerValue(String questionId, dynamic value) {
+    final intakeQ = _questions
+        .where((candidate) => candidate.questionKey == questionId)
+        .firstOrNull;
+    if (intakeQ != null && intakeQ.options.isNotEmpty) {
+      String displayIntake(Object? raw) {
+        final code = raw?.toString() ?? '';
+        return intakeQ.options
+                .where((opt) => opt.code == code)
+                .map((opt) => opt.label)
+                .firstOrNull ??
+            _vietnameseOptionLabels[code] ??
+            code;
+      }
+
+      if (value is Iterable) {
+        return value.map(displayIntake).join(', ');
+      }
+      return displayIntake(value);
+    }
+
     final question = _canonicalSession?.questionDetails
         .where((candidate) => candidate.id == questionId)
         .firstOrNull;
-    if (question == null || question.options.isEmpty) return value.toString();
+    if (question != null && question.options.isNotEmpty) {
+      String displayOne(Object? raw) {
+        final code = raw?.toString() ?? '';
+        return question.options
+                .where((option) => option.optionCode == code)
+                .map((option) => option.displayText)
+                .firstOrNull ??
+            _vietnameseOptionLabels[code] ??
+            code;
+      }
 
-    String displayOne(Object? raw) {
-      final code = raw?.toString() ?? '';
-      return question.options
-              .where((option) => option.optionCode == code)
-              .map((option) => option.displayText)
-              .firstOrNull ??
-          code;
+      if (value is Iterable) {
+        return value.map(displayOne).join(', ');
+      }
+      return displayOne(value);
     }
 
-    if (value is Iterable) {
-      return value.map(displayOne).join(', ');
-    }
-    return displayOne(value);
+    final code = value?.toString() ?? '';
+    return _vietnameseOptionLabels[code] ?? code;
   }
 
   String? _validateQuestionAnswers(Map<String, dynamic> answers) {
@@ -1671,10 +1789,6 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
               if (citation.excerpt.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(citation.excerpt),
-              ],
-              if (citation.matchedRules.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text('Quy tắc liên quan: ${citation.matchedRules.join(', ')}'),
               ],
               if (citation.sourceStatus == 'PENDING_REVIEW') ...[
                 const SizedBox(height: 8),

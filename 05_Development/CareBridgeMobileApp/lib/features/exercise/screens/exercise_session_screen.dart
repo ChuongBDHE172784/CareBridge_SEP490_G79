@@ -77,6 +77,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   bool _cameraStarted = false;
   bool _cameraStarting = false;
   bool _pauseChanging = false;
+  bool _isSwitchingCamera = false;
   late final ExerciseFeedbackAnalyzer _feedbackAnalyzer;
   late final ExerciseVoiceFeedbackAnnouncer _voiceFeedbackAnnouncer;
   ExerciseFeedbackMetrics? _latestFeedbackMetrics;
@@ -195,6 +196,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     await _startCameraSource();
   }
 
+  /// [BƯỚC 1: Khởi động đường truyền Stream dữ liệu tư thế lên Backend]
+  /// Sử dụng PostureEventStreamer để điều phối gửi mốc cơ thể (Landmarks) với tần suất tối đa 10 req/s,
+  /// tự động bỏ qua (drop) các frame cũ bị chậm để tránh tắc nghẽn mạng.
   void _startPostureTransport(Stream<Map<String, dynamic>> frames) {
     final streamer = PostureEventStreamer(
       send: (eventTimeMs, landmarks) =>
@@ -213,22 +217,30 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       },
     )..start();
     _postureStreamer = streamer;
+
+    // Lắng nghe từng frame ảnh từ Camera MediaPipe
     _postureFramesSubscription = frames.listen((rawFrame) {
       if (!mounted || _isPaused || _isCompleting) return;
       final landmarks = _parseLandmarks(rawFrame);
       if (landmarks.isEmpty) return;
+
+      // Phân tích nhanh cục bộ các chỉ số góc khớp để vẽ khung xương thời gian thực
       final metrics = _feedbackAnalyzer.analyze(landmarks);
       if (!mounted || _isPaused || _isCompleting) return;
       _latestFeedbackMetrics = metrics;
       _hasValidMetricsFrame =
           _hasValidMetricsFrame || metrics.hasVisibleLandmarks;
       final now = DateTime.now();
+
+      // Giới hạn tần suất cập nhật UI cục bộ mỗi 100ms
       final lastUiUpdate = _lastMetricsUiUpdateAt;
       if (lastUiUpdate == null ||
           now.difference(lastUiUpdate) >= const Duration(milliseconds: 100)) {
         _lastMetricsUiUpdateAt = now;
         setState(() {});
       }
+
+      // Đẩy mốc cơ thể vào hàng đợi gửi Backend
       streamer.push(
         eventTimeMs: DateTime.now().millisecondsSinceEpoch,
         landmarks: landmarks,
@@ -236,6 +248,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     });
   }
 
+  /// Phân tích mốc tọa độ chuẩn hóa MediaPipe từ JSON của camera
   Map<String, PostureLandmark> _parseLandmarks(Map<String, dynamic> rawFrame) {
     final parsed = <String, PostureLandmark>{};
     for (final entry in rawFrame.entries) {
@@ -244,33 +257,50 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       try {
         parsed[entry.key] = PostureLandmark.fromPoseJson(value);
       } on FormatException {
-        // A partial pose is ignored; the sidecar only receives valid points.
+        // Bỏ qua mốc không hợp lệ / không nhận diện được
       }
     }
     return parsed;
   }
 
+  /// [BƯỚC 5: Hứng phản hồi từ Backend & Cập nhật State giao diện/Giọng nói]
   void _applyPostureFeedback(PostureFeedback feedback) {
     if (!mounted || _isPaused || _isCompleting) return;
     final severity = feedback.severity.toUpperCase();
+    final code = feedback.postureCode.toUpperCase();
     _feedbackAnalyzer.applyFeedback(feedback);
-    final warning =
-        severity == 'WARNING' ||
-        severity == 'CRITICAL' ||
-        _feedbackAnalyzer.hasFeedbackError;
-    _cameraSource?.setFeedbackError(warning);
+
+    // Xác định tư thế có đang đúng chuẩn hay không
+    final isGood = code == 'C' ||
+        code.endsWith('/C') ||
+        code.contains('GOOD_FORM') ||
+        code.contains('CORRECT') ||
+        code == 'UP' ||
+        code == 'DOWN';
+
+    // Cảnh báo nếu mức độ nghiêm trọng là WARNING / CRITICAL
+    final isWarning = !isGood &&
+        (severity == 'CRITICAL' ||
+            (severity == 'WARNING' && !code.contains('MODEL_UNAVAILABLE')) ||
+            _feedbackAnalyzer.hasFeedbackError);
+
+    // Cập nhật màu viền camera (Đỏ nếu sai tư thế, Xanh nếu đúng)
+    _cameraSource?.setFeedbackError(isWarning);
     final feedbackText = feedback.feedbackText?.trim();
+
+    final statusText = feedbackText?.isNotEmpty == true
+        ? feedbackText!
+        : (isWarning ? 'Tư thế chưa chuẩn, hãy điều chỉnh' : 'Tư thế tốt');
+
+    // Cập nhật State UI
     setState(() {
-      _postureGood = !warning;
-      // postureCode is a machine identifier (GOOD_FORM, MODEL_UNAVAILABLE, a raw
-      // model label): never show it. An empty feedbackText means the server-owned
-      // feedback level is SILENT, so only the overlay colour conveys the result.
-      _postureStatus = feedbackText?.isNotEmpty == true
-          ? feedbackText!
-          : 'Đang theo dõi tư thế...';
+      _postureGood = !isWarning;
+      _postureStatus = statusText;
     });
-    if (warning && feedbackText?.isNotEmpty == true) {
-      unawaited(_voiceFeedbackAnnouncer.announce(feedbackText!));
+
+    // Phát âm thanh hướng dẫn bằng giọng nói (TTS) tiếng Việt nếu có cảnh báo lỗi tư thế
+    if (isWarning && feedbackText != null && feedbackText.isNotEmpty) {
+      unawaited(_voiceFeedbackAnnouncer.announce(feedbackText));
     }
   }
 
@@ -296,31 +326,52 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     if (_pauseChanging || _isCompleting) return;
     final pausing = !_isPaused;
     _pauseChanging = true;
-    if (mounted) {
-      setState(() => _isPaused = pausing);
-    }
+    if (mounted) setState(() {});
+
     final streamer = _postureStreamer;
     try {
       // Invalidate any in-flight response before a pause can be followed by a
-      // resume.  PostureEventStreamer suppresses callbacks after stop(); the
+      // resume. PostureEventStreamer suppresses callbacks after stop(); the
       // same instance can be started again once the server accepts resume.
       if (pausing) {
         await _voiceFeedbackAnnouncer.stop();
         await streamer?.stop();
         await ExerciseService.instance.pauseSession(widget.sessionId);
+        if (mounted) {
+          setState(() => _isPaused = true);
+        }
       } else {
         await ExerciseService.instance.resumeSession(widget.sessionId);
+        if (mounted) {
+          setState(() => _isPaused = false);
+        }
         if (!_isCompleting) streamer?.start();
       }
-    } on ApiException {
+    } catch (error) {
       if (pausing && !_isCompleting) {
         streamer?.start();
+      } else if (!pausing) {
+        await streamer?.stop();
       }
       if (mounted) {
-        setState(() => _isPaused = !pausing);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              pausing
+                  ? 'Không thể tạm dừng bài tập. Vui lòng thử lại.'
+                  : 'Không thể tiếp tục bài tập. Vui lòng thử lại.',
+              style: const TextStyle(fontFamily: 'Lexend'),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } finally {
-      _pauseChanging = false;
+      if (mounted) {
+        setState(() => _pauseChanging = false);
+      } else {
+        _pauseChanging = false;
+      }
     }
   }
 
@@ -830,20 +881,48 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
           Positioned(
             top: 16,
             right: 16,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.flip_camera_ios_outlined,
-                color: _onSurface,
-                size: 20,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isSwitchingCamera
+                    ? null
+                    : () async {
+                        setState(() => _isSwitchingCamera = true);
+                        try {
+                          await _cameraSource?.switchCamera();
+                        } catch (_) {
+                        } finally {
+                          if (mounted) {
+                            setState(() => _isSwitchingCamera = false);
+                          }
+                        }
+                      },
+                borderRadius: BorderRadius.circular(9999),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: _isSwitchingCamera ? 0.5 : 0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: _isSwitchingCamera
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _primary,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.flip_camera_ios_outlined,
+                          color: _onSurface,
+                          size: 20,
+                        ),
+                ),
               ),
             ),
           ),
+
 
           // Safety tip overlay at bottom
           if (hasSafetyWarning)
@@ -930,7 +1009,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: _isCompleting || _pauseChanging ? null : _togglePause,
-                child: _isCompleting
+                child: _isCompleting || _pauseChanging
                     ? const Padding(
                         padding: EdgeInsets.all(20),
                         child: CircularProgressIndicator(

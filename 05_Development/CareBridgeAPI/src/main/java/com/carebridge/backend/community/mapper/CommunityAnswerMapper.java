@@ -65,8 +65,8 @@ public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorD
  .status(toResponseStatus(entity.getStatus()))
  .likeCount(entity.getLikeCount())
  .liked(liked)
- .createdAt(entity.getCreatedAt())
- .updatedAt(entity.getUpdatedAt())
+ .createdAt(entity.getCreatedAt() != null ? entity.getCreatedAt() : java.time.Instant.now())
+ .updatedAt(entity.getUpdatedAt() != null ? entity.getUpdatedAt() : (entity.getCreatedAt() != null ? entity.getCreatedAt() : java.time.Instant.now()))
  .build();
 }
 

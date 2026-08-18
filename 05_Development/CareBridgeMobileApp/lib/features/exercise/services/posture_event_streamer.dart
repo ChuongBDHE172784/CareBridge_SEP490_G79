@@ -8,12 +8,14 @@ typedef PostureEventSender =
       Map<String, PostureLandmark> landmarks,
     );
 
-/// Latest-sample-wins transport for realtime posture feedback.
+/// Cơ chế truyền tải "Mẫu mới nhất thắng" (Latest-sample-wins transport) cho phân tích tư thế thời gian thực.
 ///
-/// Camera/pose extraction can emit many frames per second, while the backend
-/// contract deliberately samples at up to ten requests per second. This
-/// class keeps at most one request in flight, drops stale frames, and never
-/// retries a failed sample automatically.
+/// Camera MediaPipe xuất hàng chục khung hình mỗi giây (30-60 FPS), trong khi Backend Spring Boot/AI
+/// xử lý tối ưu ở tần suất 10 requests/giây (khoảng cách tối thiểu 100ms).
+/// Lớp này đảm bảo:
+/// 1. Chỉ có duy nhất 1 request in-flight tại một thời điểm (tránh tràn hàng đợi mạng).
+/// 2. Tự động bỏ qua các frame cũ nếu Backend đang bận xử lý frame trước đó.
+/// 3. Không tự động retry khi lỗi mạng để tránh spam request.
 class PostureEventStreamer {
   PostureEventStreamer({
     required PostureEventSender send,
@@ -36,6 +38,7 @@ class PostureEventStreamer {
 
   bool get isRunning => _running;
 
+  /// Bắt đầu cho phép tiếp nhận và gửi dữ liệu tư thế
   void start() {
     _running = true;
   }
@@ -57,7 +60,7 @@ class PostureEventStreamer {
     _pending = null;
   }
 
-  /// Queues a frame. Older or duplicate timestamps are ignored.
+  /// Đưa khung hình vào hàng đợi. Tự động bỏ qua các frame trùng hoặc cũ hơn timestamp gần nhất.
   void push({
     required int eventTimeMs,
     required Map<String, PostureLandmark> landmarks,
@@ -87,6 +90,7 @@ class PostureEventStreamer {
     });
   }
 
+  /// Thực hiện gửi request phân tích tư thế sang Backend Spring Boot
   Future<void> _sendNext() async {
     if (!_running || _sending || _pending == null) return;
     final event = _pending;

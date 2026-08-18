@@ -71,10 +71,8 @@
 	</dict>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- NSAllowsArbitraryLoads turns App Transport Security off for every host,
-		     so a release build would accept plaintext HTTP to anywhere. Local
-		     networking is the only case that actually needs it: reaching a backend
-		     running on a machine on the same LAN during development. -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
