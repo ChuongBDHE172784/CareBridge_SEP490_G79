@@ -32,6 +32,7 @@ const NAV_LINKS: readonly NavItem[] = [
     children: [
       { to: '/admin/experts', label: 'Danh sách chuyên gia', icon: 'group', roles: ['SYSTEM_ADMIN'] },
       { to: '/admin/expert-verification-queue', label: 'Xét duyệt chuyên gia', icon: 'verified_user', roles: ['SYSTEM_ADMIN'] },
+      { to: '/admin/consultation-calls', label: 'Bản ghi tư vấn (Calls)', icon: 'record_voice_over', roles: ['SYSTEM_ADMIN'] },
     ],
   },
   {
