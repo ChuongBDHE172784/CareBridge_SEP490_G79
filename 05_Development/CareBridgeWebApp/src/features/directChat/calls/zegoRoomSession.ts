@@ -49,6 +49,8 @@ export function mountZegoRoomSession({
   let recordingStream: MediaStream | null = null;
   const recordedChunks: Blob[] = [];
   let callStartTime: number | null = null;
+  let recordingFinalizePromise: Promise<void> | null = null;
+  let leaveRequested = false;
 
   // Insert PDPA overlay badge in container
   const pdpaBanner = document.createElement('div');
@@ -87,6 +89,11 @@ export function mountZegoRoomSession({
         audio: true,
         video: call.callType === 'VIDEO',
       });
+      if (disposed) {
+        recordingStream.getTracks().forEach((track) => track.stop());
+        recordingStream = null;
+        return;
+      }
       const mimeType = call.callType === 'VIDEO' ? 'video/webm;codecs=vp8,opus' : 'audio/webm;codecs=opus';
       const options = MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined;
       mediaRecorder = new MediaRecorder(recordingStream, options);
@@ -100,25 +107,43 @@ export function mountZegoRoomSession({
     }
   };
 
-  const stopRecordingAndUpload = async () => {
-    if (!mediaRecorder) return;
-    try {
-      if (mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
+  const stopRecordingAndUpload = (): Promise<void> => {
+    if (recordingFinalizePromise) return recordingFinalizePromise;
+    if (!mediaRecorder) return Promise.resolve();
+
+    const recorder = mediaRecorder;
+    recordingFinalizePromise = (async () => {
+      try {
+        if (recorder.state !== 'inactive') {
+          await new Promise<void>((resolve) => {
+            recorder.onstop = () => resolve();
+            recorder.stop();
+          });
+        }
+
+        if (recordedChunks.length > 0 && call.conversationId && call.callId) {
+          const mimeType = call.callType === 'VIDEO' ? 'video/webm' : 'audio/webm';
+          const blob = new Blob(recordedChunks, { type: mimeType });
+          const durationSecs = callStartTime
+            ? Math.max(1, Math.round((Date.now() - callStartTime) / 1000))
+            : undefined;
+          await uploadCallRecording(
+            call.conversationId,
+            call.callId,
+            blob,
+            durationSecs,
+            true
+          );
+        }
+      } catch (error) {
+        console.warn('[zegoRoomSession] Stop/upload recording failed:', error);
+      } finally {
+        recordingStream?.getTracks().forEach((track) => track.stop());
+        recordingStream = null;
+        mediaRecorder = null;
       }
-      recordingStream?.getTracks().forEach((t) => t.stop());
-      await new Promise((r) => setTimeout(r, 400));
-      if (recordedChunks.length > 0 && call.conversationId && call.callId) {
-        const mimeType = call.callType === 'VIDEO' ? 'video/webm' : 'audio/webm';
-        const blob = new Blob(recordedChunks, { type: mimeType });
-        const durationSecs = callStartTime ? Math.round((Date.now() - callStartTime) / 1000) : undefined;
-        void uploadCallRecording(call.conversationId, call.callId, blob, durationSecs, true).catch((err) => {
-          console.warn('[zegoRoomSession] Auto upload recording failed:', err);
-        });
-      }
-    } catch (e) {
-      console.warn('[zegoRoomSession] Stop recording error:', e);
-    }
+    })();
+    return recordingFinalizePromise;
   };
 
   void loadModule()
@@ -163,9 +188,11 @@ export function mountZegoRoomSession({
           }
         },
         onLeaveRoom: () => {
-          if (!disposed) {
-            void stopRecordingAndUpload();
-            onLeave();
+          if (!disposed && !leaveRequested) {
+            leaveRequested = true;
+            void stopRecordingAndUpload().finally(() => {
+              if (!disposed) onLeave();
+            });
           }
         },
       });

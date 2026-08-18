@@ -6,7 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:universal_io/io.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 
-import '../models/conversation_call.dart';
 import '../models/zego_join_credentials.dart';
 import 'direct_call_api.dart';
 import 'rtc_error_handling.dart';
@@ -150,6 +149,7 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
       stage = RtcSetupStage.mediaPublish;
       await _syncStreamExtraInfo();
       await ZegoExpressEngine.instance.startPublishingStream(_localStreamId);
+      await _startLocalRecording();
     } on RtcSetupException catch (error, stackTrace) {
       _debugLogFailure(
         error,
@@ -186,7 +186,6 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
         case ZegoRoomStateChangedReason.Logined:
         case ZegoRoomStateChangedReason.Reconnected:
           if (mounted) setState(() => _connectionLabel = 'Đã kết nối');
-          unawaited(_startLocalRecording());
           widget.onConnected();
           break;
         case ZegoRoomStateChangedReason.Logining:
@@ -251,6 +250,13 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
             widget.onError('Không thể nhận media (mã $errorCode).');
           }
         };
+    ZegoExpressEngine
+        .onCapturedDataRecordStateUpdate = (state, errorCode, config, channel) {
+      if (state == ZegoDataRecordState.NoRecord && errorCode != 0) {
+        _isRecording = false;
+        debugPrint('[ZegoExpressCallRoom] recording failed (code $errorCode)');
+      }
+    };
   }
 
   Future<void> _startPlaying(String streamId) async {
@@ -373,7 +379,7 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
     if (kIsWeb || _isRecording) return;
     try {
       final tempDir = await getTemporaryDirectory();
-      final ext = widget.isVideo ? 'mp4' : 'm4a';
+      final ext = widget.isVideo ? 'mp4' : 'aac';
       final fileName =
           'call_rec_${widget.callId.isNotEmpty ? widget.callId : widget.credentials.roomId}_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final fullPath = '${tempDir.path}/$fileName';
@@ -385,11 +391,15 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
             ? ZegoDataRecordType.Default
             : ZegoDataRecordType.OnlyAudio,
       );
-      await ZegoExpressEngine.instance.startRecordingCapturedData(config);
       _isRecording = true;
       _callAnsweredTime = DateTime.now();
+      await ZegoExpressEngine.instance.startRecordingCapturedData(
+        config,
+        channel: ZegoPublishChannel.Main,
+      );
       if (mounted) setState(() {});
     } catch (e) {
+      _isRecording = false;
       debugPrint('[ZegoExpressCallRoom] startRecordingCapturedData error: $e');
     }
   }
@@ -397,7 +407,9 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
   Future<void> _stopLocalRecordingAndUpload() async {
     if (!_isRecording || _recordedFilePath == null) return;
     try {
-      await ZegoExpressEngine.instance.stopRecordingCapturedData();
+      await ZegoExpressEngine.instance.stopRecordingCapturedData(
+        channel: ZegoPublishChannel.Main,
+      );
       _isRecording = false;
 
       final recordedFile = File(_recordedFilePath!);
@@ -407,25 +419,14 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
             : null;
 
         if (widget.conversationId.isNotEmpty && widget.callId.isNotEmpty) {
-          unawaited(
-            DirectCallApi.instance.uploadRecording(
-              conversationId: widget.conversationId,
-              callId: widget.callId,
-              filePath: _recordedFilePath!,
-              recordedDurationSeconds: durationSeconds,
-              consentAttested: true,
-            ).catchError((err) {
-              debugPrint('[ZegoExpressCallRoom] upload recording error: $err');
-              return ConversationCall(
-                callId: widget.callId,
-                conversationId: widget.conversationId,
-                initiatedByUserId: '',
-                callType: '',
-                callStatus: '',
-                initiatedAt: DateTime.now(),
-              );
-            }),
+          await DirectCallApi.instance.uploadRecording(
+            conversationId: widget.conversationId,
+            callId: widget.callId,
+            filePath: _recordedFilePath!,
+            recordedDurationSeconds: durationSeconds,
+            consentAttested: true,
           );
+          await recordedFile.delete();
         }
       }
     } catch (e) {
@@ -442,6 +443,7 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
     ZegoExpressEngine.onRoomTokenWillExpire = null;
     ZegoExpressEngine.onPublisherStateUpdate = null;
     ZegoExpressEngine.onPlayerStateUpdate = null;
+    ZegoExpressEngine.onCapturedDataRecordStateUpdate = null;
     try {
       await ZegoExpressEngine.instance.stopPublishingStream();
       if (widget.isVideo) {
@@ -606,7 +608,8 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
                           ),
                           const SizedBox(width: 4),
                           GestureDetector(
-                            onTap: () => setState(() => _showConsentNotice = false),
+                            onTap: () =>
+                                setState(() => _showConsentNotice = false),
                             child: const Icon(
                               Icons.close,
                               color: Colors.white60,
