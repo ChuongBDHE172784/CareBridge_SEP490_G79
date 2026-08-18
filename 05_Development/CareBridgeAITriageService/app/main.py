@@ -27,16 +27,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle events."""
-    logger.info("Initializing CareBridge AI Maternal RAG Service...")
-    # Preload local knowledge documents into in-memory vector cache on startup
-    try:
-        service = get_ingestion_service()
-        result = await service.ingest_directory()
-        logger.info(
-            f"Startup knowledge preload completed: {result.total_chunks_created} chunks from {result.total_files_processed} files."
-        )
-    except Exception as e:
-        logger.warning(f"Startup knowledge preload notice: {e}")
+    logger.info("CareBridge AI Maternal RAG Service ready on port 8001.")
     yield
     logger.info("Shutting down CareBridge AI Maternal RAG Service.")
 

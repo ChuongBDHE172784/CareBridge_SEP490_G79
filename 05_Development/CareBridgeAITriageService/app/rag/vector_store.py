@@ -293,11 +293,28 @@ class PgVectorStore:
             "là", "và", "của", "cho", "các", "những", "được", "có", "trong",
             "để", "khi", "ở", "gì", "thế", "nào", "ạ", "nhé", "với", "từ",
             "ra", "vào", "thì", "cần", "nên", "hãy", "bị", "do", "về",
+            "cách", "theo", "dõi", "tại", "nhà", "cho", "làm", "sao",
         }
         clean_words = [
             w for w in re.sub(r"[^\w\s]", " ", query.lower()).split()
             if w not in stopwords and (len(w) > 1 or w.isdigit())
         ]
+
+        # Extract 2-gram and 3-gram meaningful phrases dynamically from any query
+        raw_words = re.sub(r"[^\w\s]", " ", query.lower()).split()
+        phrases_3 = []
+        for i in range(len(raw_words) - 2):
+            p = f"{raw_words[i]} {raw_words[i+1]} {raw_words[i+2]}"
+            if len(p) >= 8 and (raw_words[i] not in stopwords or raw_words[i+1] not in stopwords):
+                phrases_3.append(p)
+
+        phrases_2 = []
+        for i in range(len(raw_words) - 1):
+            w1, w2 = raw_words[i], raw_words[i+1]
+            if w1 not in stopwords and w2 not in stopwords and len(f"{w1} {w2}") >= 5:
+                phrases_2.append(f"{w1} {w2}")
+
+        key_phrases = phrases_3 + phrases_2
 
         async def _search_db(s: AsyncSession) -> List[Dict[str, Any]]:
             # 1. Query Top Dense Vector candidates
@@ -310,7 +327,7 @@ class PgVectorStore:
             if topic:
                 stmt_vec = stmt_vec.where(MaternalKnowledgeChunk.topic == topic)
 
-            stmt_vec = stmt_vec.order_by("distance").limit(20)
+            stmt_vec = stmt_vec.order_by("distance").limit(40)
             res_vec = await s.execute(stmt_vec)
             
             candidates: Dict[int, tuple[MaternalKnowledgeChunk, float]] = {}
@@ -318,21 +335,33 @@ class PgVectorStore:
                 vec_sim = 1.0 - float(dist) if dist is not None else 0.0
                 candidates[chunk.id] = (chunk, vec_sim)
 
-            # 2. Query Sparse Keyword candidates
-            if clean_words:
-                kw_filters = [MaternalKnowledgeChunk.content.ilike(f"%{w}%") for w in clean_words]
-                stmt_kw = select(MaternalKnowledgeChunk).where(or_(*kw_filters))
+            # 2. Query Exact Title Matches (highest priority)
+            if phrases_2:
+                title_filters = [MaternalKnowledgeChunk.title.ilike(f"%{p}%") for p in phrases_2]
+                stmt_title = select(MaternalKnowledgeChunk).where(or_(*title_filters)).limit(30)
                 if stage and stage != "ALL":
-                    stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
+                    stmt_title = stmt_title.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
                 if topic:
-                    stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.topic == topic)
-                stmt_kw = stmt_kw.limit(20)
-                res_kw = await s.execute(stmt_kw)
-                for chunk in res_kw.scalars():
+                    stmt_title = stmt_title.where(MaternalKnowledgeChunk.topic == topic)
+                res_title = await s.execute(stmt_title)
+                for chunk in res_title.scalars():
                     if chunk.id not in candidates:
                         candidates[chunk.id] = (chunk, 0.0)
 
-            # 3. Compute Hybrid Re-ranking Score
+            # 3. Query 3-gram Content Matches
+            if phrases_3:
+                p3_filters = [MaternalKnowledgeChunk.content.ilike(f"%{p}%") for p in phrases_3]
+                stmt_p3 = select(MaternalKnowledgeChunk).where(or_(*p3_filters)).limit(40)
+                if stage and stage != "ALL":
+                    stmt_p3 = stmt_p3.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
+                if topic:
+                    stmt_p3 = stmt_p3.where(MaternalKnowledgeChunk.topic == topic)
+                res_p3 = await s.execute(stmt_p3)
+                for chunk in res_p3.scalars():
+                    if chunk.id not in candidates:
+                        candidates[chunk.id] = (chunk, 0.0)
+
+            # 4. Compute Hybrid Re-ranking Score
             scored = []
             for chunk_id, (chunk, vec_sim) in candidates.items():
                 content_lower = chunk.content.lower()
@@ -341,22 +370,17 @@ class PgVectorStore:
                 kw_hits = sum(1 for w in clean_words if w in content_lower or w in title_lower)
                 kw_ratio = kw_hits / max(len(clean_words), 1)
 
-                phrase_boost = 0.0
-                query_lower = query.lower()
-                if "vi chất" in content_lower and "vi chất" in query_lower:
-                    phrase_boost += 0.35
-                if "3 tháng đầu" in content_lower and "3 tháng đầu" in query_lower:
-                    phrase_boost += 0.25
-                if "axit folic" in content_lower and ("axit folic" in query_lower or "vi chất" in query_lower):
-                    phrase_boost += 0.30
-                if "canxi" in content_lower and "canxi" in query_lower:
-                    phrase_boost += 0.30
-                if "tiền sản giật" in content_lower and ("tiền sản giật" in query_lower or "huyết áp" in query_lower):
-                    phrase_boost += 0.30
-                if "sau sinh" in content_lower and "sau sinh" in query_lower:
-                    phrase_boost += 0.30
+                title_boost = 0.0
+                for p in key_phrases:
+                    if p in title_lower:
+                        title_boost += 0.50
 
-                hybrid_score = (vec_sim * 0.35) + (kw_ratio * 0.45) + phrase_boost
+                content_phrase_boost = 0.0
+                for p in key_phrases:
+                    if p in content_lower:
+                        content_phrase_boost += 0.25
+
+                hybrid_score = (vec_sim * 0.35) + (kw_ratio * 0.20) + title_boost + content_phrase_boost
                 scored.append((chunk, hybrid_score))
 
             scored.sort(key=lambda x: x[1], reverse=True)

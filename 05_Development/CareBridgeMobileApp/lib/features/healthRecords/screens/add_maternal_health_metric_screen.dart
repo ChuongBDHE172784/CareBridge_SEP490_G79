@@ -1,7 +1,15 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:universal_io/io.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../emergency/services/emergency_service.dart';
+import '../../safety/services/safety_permission_service.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 
@@ -61,11 +69,51 @@ class _AddMaternalHealthMetricScreenState
   DateTime _periodEndDate = DateTime.now();
   TimeOfDay _periodEndTime = TimeOfDay.now();
   String _glucoseContext = 'FASTING';
+  String _glucoseUnit = 'mg/dL';
+  String _temperatureSite = 'ARMPIT';
   String _completionStatus = 'COMPLETED';
   List<MetricCapability> _capabilities = const [];
   bool _isLoadingCapabilities = true;
   bool _isSaving = false;
   String? _loadError;
+
+  String? _journeyType;
+  int? _journeyGestationalWeeks;
+  Map<String, dynamic>? _surveyProfile;
+  Map<String, dynamic>? _surveyDerived;
+  String? _surveyStatus;
+  List<String> _surveyRiskConditions = [];
+  MetricDataPoint? _latestBp;
+  MetricDataPoint? _latestBmi;
+  MetricDataPoint? _latestGlucose;
+  MetricDataPoint? _latestKicks;
+  MetricDataPoint? _latestHydration;
+  MetricDataPoint? _latestEpds;
+  MetricDataPoint? _latestHeartRate;
+  MetricDataPoint? _latestTemp;
+
+  List<String> get _pythonCandidates {
+    final list = <String>[];
+    try {
+      final uri = Uri.parse(apiBaseUrl);
+      if (uri.host.isNotEmpty) {
+        list.add('${uri.scheme}://${uri.host}:8001');
+      }
+    } catch (_) {}
+    if (kIsWeb) {
+      list.add('http://127.0.0.1:8001');
+    } else if (Platform.isAndroid) {
+      list.addAll(['http://10.0.2.2:8001', 'http://127.0.0.1:8001']);
+    } else {
+      list.addAll(['http://127.0.0.1:8001', 'http://localhost:8001']);
+    }
+    return list;
+  }
+
+  static const _glucoseUnits = <String, String>{
+    'mg/dL': 'mg/dL',
+    'mmol/L': 'mmol/L',
+  };
 
   static const _glucoseContexts = <String, String>{
     'FASTING': 'Lúc đói',
@@ -74,6 +122,13 @@ class _AddMaternalHealthMetricScreenState
     'POST_MEAL_2H': 'Sau ăn 2 giờ',
     'RANDOM': 'Ngẫu nhiên',
     'OTHER_APPROVED': 'Khác (đã được duyệt)',
+  };
+
+  static const _temperatureSites = <String, String>{
+    'ARMPIT': 'Nách (Chuẩn phổ biến)',
+    'FOREHEAD': 'Trán (Cảm ứng nhiệt)',
+    'ORAL': 'Miệng',
+    'EAR': 'Tai (Màng nhĩ)',
   };
 
   static const _completionStatuses = <String, String>{
@@ -86,6 +141,179 @@ class _AddMaternalHealthMetricScreenState
     super.initState();
     _service = widget.service ?? HealthMetricService();
     _loadCapabilities();
+    _loadJourneyAndSurveyContext();
+  }
+
+  Future<void> _loadJourneyAndSurveyContext() async {
+    try {
+      final journeyRes = await apiGet('/api/v1/journeys/me/dashboard');
+      if (journeyRes is Map && mounted) {
+        final data = (journeyRes['data'] is Map)
+            ? journeyRes['data']
+            : journeyRes;
+        _journeyType = data['journeyType'] as String?;
+        final week =
+            data['pregnancyWeek'] ??
+            data['completedGestationalWeek'] ??
+            data['effectivePregnancyWeek'] ??
+            data['weekNumber'] ??
+            data['currentWeek'];
+        if (week != null) {
+          final parsed = (week is int) ? week : int.tryParse(week.toString());
+          if (parsed != null) {
+            setState(() {
+              _journeyGestationalWeeks = parsed;
+              if (_gestationalAgeCtrl.text.isEmpty) {
+                _gestationalAgeCtrl.text = '$parsed';
+              }
+            });
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final profileRes = await apiGet('/api/v1/recommendations/profile');
+      if (profileRes is Map && mounted) {
+        final data = (profileRes['data'] is Map)
+            ? profileRes['data']
+            : profileRes;
+        final profile = (data['profile'] is Map)
+            ? Map<String, dynamic>.from(data['profile'] as Map)
+            : null;
+        final derived = (data['derived'] is Map)
+            ? Map<String, dynamic>.from(data['derived'] as Map)
+            : null;
+        final status = data['status'] as String?;
+        final conditions = <String>[];
+        if (profile != null) {
+          if (profile['underlyingConditions'] is Map &&
+              profile['underlyingConditions']['conditionCodes'] is List) {
+            conditions.addAll(
+              (profile['underlyingConditions']['conditionCodes'] as List).map(
+                (e) => e.toString(),
+              ),
+            );
+          }
+          if (profile['reproductiveHistory'] is Map &&
+              profile['reproductiveHistory']['conditionCodes'] is List) {
+            conditions.addAll(
+              (profile['reproductiveHistory']['conditionCodes'] as List).map(
+                (e) => e.toString(),
+              ),
+            );
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _surveyProfile = profile;
+            _surveyDerived = derived;
+            _surveyStatus = status;
+            _surveyRiskConditions = conditions;
+          });
+        }
+      }
+    } catch (_) {}
+
+    // Tự động tải snapshot các chỉ số mới nhất (Huyết áp, cử động thai, BMI, nước, nhịp tim, đường huyết, EPDS)
+    try {
+      final results = await Future.wait([
+        _service
+            .getMetricTrend(
+              journeyId: widget.journeyId,
+              metricType: 'BLOOD_PRESSURE',
+            )
+            .catchError(
+              (_) => const MetricTrend(
+                metricType: 'BLOOD_PRESSURE',
+                dataPoints: [],
+              ),
+            ),
+        _service
+            .getMetricTrend(journeyId: widget.journeyId, metricType: 'BMI')
+            .catchError(
+              (_) => const MetricTrend(metricType: 'BMI', dataPoints: []),
+            ),
+        _service
+            .getMetricTrend(
+              journeyId: widget.journeyId,
+              metricType: 'BLOOD_GLUCOSE',
+            )
+            .catchError(
+              (_) => const MetricTrend(
+                metricType: 'BLOOD_GLUCOSE',
+                dataPoints: [],
+              ),
+            ),
+        _service
+            .getMetricTrend(
+              journeyId: widget.journeyId,
+              metricType: 'FETAL_MOVEMENT_SESSION',
+            )
+            .catchError(
+              (_) => const MetricTrend(
+                metricType: 'FETAL_MOVEMENT_SESSION',
+                dataPoints: [],
+              ),
+            ),
+        _service
+            .getMetricTrend(
+              journeyId: widget.journeyId,
+              metricType: 'HYDRATION',
+            )
+            .catchError(
+              (_) => const MetricTrend(metricType: 'HYDRATION', dataPoints: []),
+            ),
+        _service
+            .getMetricTrend(
+              journeyId: widget.journeyId,
+              metricType: 'EPDS_SCORE',
+            )
+            .catchError(
+              (_) =>
+                  const MetricTrend(metricType: 'EPDS_SCORE', dataPoints: []),
+            ),
+        _service
+            .getMetricTrend(
+              journeyId: widget.journeyId,
+              metricType: 'HEART_RATE',
+            )
+            .catchError(
+              (_) =>
+                  const MetricTrend(metricType: 'HEART_RATE', dataPoints: []),
+            ),
+        _service
+            .getMetricTrend(
+              journeyId: widget.journeyId,
+              metricType: 'TEMPERATURE',
+            )
+            .catchError(
+              (_) =>
+                  const MetricTrend(metricType: 'TEMPERATURE', dataPoints: []),
+            ),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          if (results[0].dataPoints.isNotEmpty)
+            _latestBp = results[0].dataPoints.last;
+          if (results[1].dataPoints.isNotEmpty)
+            _latestBmi = results[1].dataPoints.last;
+          if (results[2].dataPoints.isNotEmpty)
+            _latestGlucose = results[2].dataPoints.last;
+          if (results[3].dataPoints.isNotEmpty)
+            _latestKicks = results[3].dataPoints.last;
+          if (results[4].dataPoints.isNotEmpty)
+            _latestHydration = results[4].dataPoints.last;
+          if (results[5].dataPoints.isNotEmpty)
+            _latestEpds = results[5].dataPoints.last;
+          if (results[6].dataPoints.isNotEmpty)
+            _latestHeartRate = results[6].dataPoints.last;
+          if (results[7].dataPoints.isNotEmpty)
+            _latestTemp = results[7].dataPoints.last;
+        });
+      }
+    } catch (_) {}
   }
 
   String get _metricType => _canonicalMetricType(widget.initialMetricType);
@@ -95,6 +323,7 @@ class _AddMaternalHealthMetricScreenState
   bool get _isGlucose => _metricType == 'BLOOD_GLUCOSE';
   bool get _isFetalMovement => _metricType == 'FETAL_MOVEMENT_SESSION';
   bool get _isHydration => _metricType == 'HYDRATION';
+  bool get _isTemperature => _metricType == 'TEMPERATURE';
 
   MetricCapability? get _capability {
     for (final capability in _capabilities) {
@@ -108,6 +337,7 @@ class _AddMaternalHealthMetricScreenState
   String get _title {
     if (_isBloodPressure) return 'Thêm huyết áp';
     if (_isFetalMovement) return 'Thêm cử động thai';
+    if (_isTemperature) return 'Thêm nhiệt độ cơ thể';
     return 'Thêm $_metricLabel';
   }
 
@@ -115,6 +345,7 @@ class _AddMaternalHealthMetricScreenState
     if (_isBloodPressure) return 'Tâm thu (mmHg)';
     if (_isBmi) return 'Cân nặng (kg)';
     if (_isFetalMovement) return 'Số cử động';
+    if (_isTemperature) return 'Nhiệt độ (°C)';
     return '$_metricLabel ($_unit)';
   }
 
@@ -123,7 +354,7 @@ class _AddMaternalHealthMetricScreenState
       case 'BLOOD_PRESSURE':
         return 'mmHg';
       case 'BLOOD_GLUCOSE':
-        return 'mg/dL';
+        return _glucoseUnit;
       case 'BMI':
         return 'kg/m²';
       case 'TEMPERATURE':
@@ -367,10 +598,41 @@ class _AddMaternalHealthMetricScreenState
       return;
     }
 
+    if (_isTemperature) {
+      final rawTemp = _primaryCtrl.text.trim();
+      final tempVal = double.tryParse(rawTemp);
+      if (tempVal == null ||
+          tempVal < 30.0 ||
+          tempVal > 45.0 ||
+          !_hasAtMostOneFractionalDigit(rawTemp)) {
+        _showError(
+          'Nhập thân nhiệt hợp lệ từ 30.0 đến 45.0 °C, tối đa 1 chữ số thập phân.',
+        );
+        return;
+      }
+    }
+
+    if (_isGlucose) {
+      final rawGlucose = _primaryCtrl.text.trim();
+      final glucoseVal = double.tryParse(rawGlucose);
+      if (_glucoseUnit == 'mg/dL') {
+        if (glucoseVal == null || glucoseVal < 20.0 || glucoseVal > 600.0) {
+          _showError('Nhập chỉ số đường huyết hợp lệ từ 20 đến 600 mg/dL.');
+          return;
+        }
+      } else {
+        if (glucoseVal == null || glucoseVal < 1.0 || glucoseVal > 35.0) {
+          _showError('Nhập chỉ số đường huyết hợp lệ từ 1.0 đến 35.0 mmol/L.');
+          return;
+        }
+      }
+    }
+
     setState(() => _isSaving = true);
     try {
       final contextPayload = <String, dynamic>{};
       if (_isGlucose) contextPayload['measurementContext'] = _glucoseContext;
+      if (_isTemperature) contextPayload['measurementSite'] = _temperatureSite;
       if (_isFetalMovement) {
         contextPayload['protocolCode'] = _protocolCtrl.text.trim();
         contextPayload['completionStatus'] = _completionStatus;
@@ -387,14 +649,18 @@ class _AddMaternalHealthMetricScreenState
           ? weightKg! / ((heightCm! / 100) * (heightCm / 100))
           : null;
 
+      final primaryVal = bmi ?? double.parse(_primaryCtrl.text.trim());
+      final secondaryVal = _isBloodPressure
+          ? double.parse(_secondaryCtrl.text.trim())
+          : null;
+
+      // 1. Lưu chỉ số vào Backend Database
       await _service.addMetric(
         widget.journeyId,
         AddMetricRequest(
           metricType: _metricType,
-          valueNumeric: bmi ?? double.parse(_primaryCtrl.text.trim()),
-          valueSecondary: _isBloodPressure
-              ? double.parse(_secondaryCtrl.text.trim())
-              : null,
+          valueNumeric: primaryVal,
+          valueSecondary: secondaryVal,
           unit: _unit,
           measuredAt: measuredAt,
           note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
@@ -404,14 +670,37 @@ class _AddMaternalHealthMetricScreenState
           definitionVersion: _capability?.version,
         ),
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã thêm chỉ số thành công'),
-          backgroundColor: _primary,
-        ),
+
+      // 2. Chạy AI Triage Sàng lọc Rủi ro Lâm sàng
+      final evalResult = await _evaluateMetricWithAi(
+        primaryVal: primaryVal,
+        secondaryVal: secondaryVal,
+        note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
       );
-      Navigator.of(context).pop(true);
+
+      if (!mounted) return;
+
+      final riskStatus = evalResult['status']?.toString();
+      final isEmergency =
+          evalResult['emergency_mode'] == true ||
+          riskStatus == 'CRITICAL_EMERGENCY';
+      final isAnomaly = riskStatus == 'ANOMALY_MONITOR';
+
+      if (isEmergency) {
+        await _showCriticalEmergencyDialog(context, evalResult);
+      } else if (isAnomaly) {
+        await _showAnomalyWarningDialog(context, evalResult);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Đã thêm chỉ số thành công. Tình trạng hoàn toàn bình thường!',
+            ),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
     } on ApiException catch (error) {
       _showError(_metricSaveError(error));
     } catch (_) {
@@ -438,6 +727,672 @@ class _AddMaternalHealthMetricScreenState
       'METRIC-004' => 'Thời điểm đo không được ở tương lai quá 5 phút.',
       _ => 'Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.',
     };
+  }
+
+  Future<Map<String, dynamic>> _evaluateMetricWithAi({
+    required double primaryVal,
+    double? secondaryVal,
+    String? note,
+  }) async {
+    final sbp = _isBloodPressure ? primaryVal.round() : null;
+    final dbp = _isBloodPressure ? (secondaryVal?.round() ?? 0) : null;
+    final glucose = _isGlucose ? primaryVal : null;
+    final kicks = _isFetalMovement ? primaryVal.round() : null;
+    final heartRate =
+        (_metricType == 'HEART_RATE' || _metricType == 'MATERNAL_HEART_RATE')
+        ? primaryVal.round()
+        : null;
+    final waterIntake = _isHydration ? primaryVal.round() : null;
+    final epds = (_metricType == 'EPDS_SCORE' || _metricType == 'EPDS')
+        ? primaryVal.round()
+        : null;
+    final temp = _isTemperature ? primaryVal : null;
+
+    final rawWeight = _isBmi ? double.tryParse(_primaryCtrl.text.trim()) : null;
+    final rawHeight = _isBmi
+        ? double.tryParse(_secondaryCtrl.text.trim())
+        : null;
+    final bmi = _isBmi
+        ? (rawWeight != null && rawHeight != null && rawHeight > 0
+              ? rawWeight / ((rawHeight / 100) * (rawHeight / 100))
+              : primaryVal)
+        : null;
+
+    final symptoms = <String>[];
+    // Kết hợp thông tin tiền sử/khảo sát survey đã lưu
+    for (final c in _surveyRiskConditions) {
+      if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
+      if (c == 'CHRONIC_HYPERTENSION')
+        symptoms.add('Bệnh nền: Tăng huyết áp mạn');
+      if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM') {
+        symptoms.add('Tiền sử Đái tháo đường');
+      }
+    }
+
+    final gestationalAge =
+        _journeyGestationalWeeks ??
+        int.tryParse(_gestationalAgeCtrl.text.replaceAll(RegExp(r'\D'), '')) ??
+        20;
+
+    final payload = {
+      'stage': 'PREGNANCY',
+      'gestational_age_weeks': gestationalAge,
+      if (sbp != null) 'systolic_bp': sbp,
+      if (dbp != null) 'diastolic_bp': dbp,
+      if (glucose != null) ...{
+        'blood_glucose': glucose,
+        'is_fasting_glucose': _glucoseContext == 'FASTING',
+      },
+      if (kicks != null) ...{
+        'fetal_movements_count': kicks,
+        'fetal_movements_duration_hours': 2,
+      },
+      if (bmi != null) 'bmi': bmi,
+      if (rawWeight != null) 'weight_kg': rawWeight,
+      if (rawHeight != null) 'height_cm': rawHeight,
+      if (heartRate != null) 'heart_rate': heartRate,
+      if (waterIntake != null) 'water_intake_ml': waterIntake,
+      if (epds != null) 'epds_score': epds,
+      if (temp != null) 'temperature': temp,
+      if (note != null && note.isNotEmpty) 'free_text_notes': note,
+      'symptoms': symptoms,
+    };
+
+    // 1. Thử gọi Python FastAPI AI Service
+    for (final base in _pythonCandidates) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$base/api/v1/metrics/evaluate'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 4));
+
+        if (res.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(res.bodyBytes));
+          if (data is Map<String, dynamic>) {
+            return data;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Dự phòng thuật toán lâm sàng cục bộ
+    final extraFactors = <String>[];
+    if (bmi != null) {
+      if (bmi >= 40.0) {
+        extraFactors.add(
+          'Béo phì độ III rất nặng (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ cao Tiền sản giật, ĐTĐ thai kỳ',
+        );
+      } else if (bmi >= 30.0) {
+        extraFactors.add(
+          'Béo phì thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần khám dinh dưỡng và theo dõi sát huyết áp, đường huyết',
+        );
+      } else if (bmi >= 25.0) {
+        extraFactors.add(
+          'Thừa cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Cần kiểm soát mức tăng cân hợp lý',
+        );
+      } else if (bmi < 18.5) {
+        extraFactors.add(
+          'Thiếu cân thai kỳ (BMI: ${bmi.toStringAsFixed(1)} kg/m²) - Nguy cơ suy dinh dưỡng bào thai hoặc sinh non',
+        );
+      }
+    }
+    if (waterIntake != null && waterIntake < 1500) {
+      extraFactors.add(
+        'Lượng nước uống ít ($waterIntake ml/ngày, chuẩn 2000-2500ml)',
+      );
+    }
+    if (epds != null && epds >= 10) {
+      extraFactors.add('Điểm trầm cảm/tâm trạng EPDS cao ($epds/30 điểm)');
+    }
+    if (heartRate != null && (heartRate > 100 || heartRate < 50)) {
+      extraFactors.add('Nhịp tim bất thường ($heartRate bpm)');
+    }
+    if (temp != null) {
+      if (temp >= 38.5) {
+        extraFactors.add(
+          'Sốt cao thai kỳ (${temp.toStringAsFixed(1)}°C) - Nguy cơ Nhiễm trùng ối hoặc Nhiễm khuẩn toàn thân',
+        );
+      } else if (temp >= 37.5) {
+        extraFactors.add(
+          'Sốt nhẹ thai kỳ (${temp.toStringAsFixed(1)}°C) - Cần bù nước, hạ sốt an toàn và theo dõi sát',
+        );
+      } else if (temp < 35.5) {
+        extraFactors.add('Thân nhiệt hạ thấp (${temp.toStringAsFixed(1)}°C)');
+      }
+    }
+
+    final hasNoteOrSymptoms =
+        symptoms.isNotEmpty || (note != null && note.trim().isNotEmpty);
+    final glucoseMmol = glucose != null
+        ? (glucose >= 25.0 ? glucose / 18.0182 : glucose)
+        : null;
+
+    final isCritical =
+        (sbp != null && sbp >= 160) ||
+        (dbp != null && dbp >= 110) ||
+        ((sbp != null && sbp >= 140 || (dbp != null && dbp >= 90)) &&
+            hasNoteOrSymptoms) ||
+        (kicks != null && kicks == 0 && gestationalAge >= 28) ||
+        (temp != null && temp >= 38.5) ||
+        (heartRate != null && heartRate >= 120);
+
+    final isAnomaly =
+        (sbp != null && sbp >= 130) ||
+        (dbp != null && dbp >= 85) ||
+        (glucoseMmol != null && glucoseMmol >= 5.1) ||
+        (kicks != null && kicks < 4 && gestationalAge >= 28) ||
+        (temp != null && (temp >= 37.5 || temp < 35.5)) ||
+        (heartRate != null && (heartRate > 100 || heartRate < 50)) ||
+        extraFactors.isNotEmpty ||
+        hasNoteOrSymptoms;
+
+    if (isCritical) {
+      return {
+        'status': 'CRITICAL_EMERGENCY',
+        'emergency_mode': true,
+        'headline': 'CẢNH BÁO: Phát hiện chỉ số / dấu hiệu nguy hiểm khẩn cấp!',
+        'summary':
+            'Chỉ số sinh hiệu hoặc triệu chứng của mẹ đang ở ngưỡng báo động cao. Cần kích hoạt chế độ khẩn cấp, liên hệ ngay cơ sở y tế hoặc khoa Cấp cứu Sản gần nhất.',
+        'risk_factors': [
+          if (sbp != null && sbp >= 160)
+            'Huyết áp rất cao ($sbp/${dbp ?? 0} mmHg) - Nguy cơ Tiền sản giật nặng / Đột quỵ thai kỳ',
+          if (kicks != null && kicks == 0)
+            'Mất cử động thai ở tuần thứ $gestationalAge',
+          if (note != null && note.trim().isNotEmpty)
+            'Ghi chú triệu chứng: ${note.trim()}',
+          ...extraFactors,
+          ...symptoms,
+        ],
+        'suggested_action':
+            'KÍCH HOẠT CHẾ ĐỘ CẤP CỨU: Gọi 115 hoặc di chuyển ngay đến Bệnh viện chuyên khoa Sản gần nhất.',
+      };
+    } else if (isAnomaly) {
+      return {
+        'status': 'ANOMALY_MONITOR',
+        'emergency_mode': false,
+        'headline': 'Lưu ý: Chỉ số có dấu hiệu bất thường nhẹ cần theo dõi',
+        'summary':
+            'Phát hiện yếu tố cần lưu ý trong các chỉ số mẹ vừa nhập. Mẹ nên trao đổi thêm với AI Nurse Assistant để được hướng dẫn chi tiết hoặc đặt lịch khám Bác sĩ.',
+        'risk_factors': [
+          if (sbp != null && sbp >= 130)
+            'Huyết áp hơi cao ($sbp/${dbp ?? 0} mmHg) so với bình thường',
+          if (glucoseMmol != null && glucoseMmol >= 5.1)
+            'Đường huyết lúc đói cao (${glucose!.toStringAsFixed(1)} $_glucoseUnit) cần theo dõi',
+          if (note != null && note.trim().isNotEmpty)
+            'Ghi chú của mẹ: ${note.trim()}',
+          ...extraFactors,
+          ...symptoms,
+        ],
+        'suggested_action':
+            'Trò chuyện với AI Nurse Assistant để làm rõ triệu chứng hoặc Đặt lịch hẹn Bác sĩ tư vấn.',
+      };
+    } else {
+      return {
+        'status': 'NORMAL',
+        'emergency_mode': false,
+        'headline': 'Tuyệt vời: Các chỉ số sinh hiệu hoàn toàn bình thường',
+        'summary':
+            'Tất cả các chỉ số sinh hiệu của mẹ đều nằm trong giới hạn an toàn theo hướng dẫn y tế thai kỳ.',
+        'risk_factors': <String>[],
+        'suggested_action':
+            'Tiếp tục theo dõi sức khỏe và thực hiện kế hoạch chăm sóc hàng ngày.',
+      };
+    }
+  }
+
+  Future<void> _showCriticalEmergencyDialog(
+    BuildContext context,
+    Map<String, dynamic> eval,
+  ) async {
+    final headline =
+        eval['headline']?.toString() ??
+        'CẢNH BÁO: Phát hiện chỉ số / dấu hiệu nguy hiểm khẩn cấp!';
+    final summary =
+        eval['summary']?.toString() ??
+        'Chỉ số sinh hiệu đang ở ngưỡng báo động cao. Cần kích hoạt cấp cứu hoặc đến Bệnh viện ngay.';
+    final riskFactors =
+        (eval['risk_factors'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: const Color(0xFFFFF8F6),
+        contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDAD6),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFBA1A1A), width: 1.5),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFBA1A1A),
+                    size: 28,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'CẢNH BÁO NGUY CẤP Y TẾ',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF410002),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              headline,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFBA1A1A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              summary,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF271812),
+                height: 1.4,
+              ),
+            ),
+            if (riskFactors.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFF1D5CF)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Yếu tố nguy cơ phát hiện:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFBA1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ...riskFactors.map(
+                      (rf) => Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '• ',
+                              style: TextStyle(
+                                color: Color(0xFFBA1A1A),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                rf,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF524440),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            // Nút 1: Mở Emergency Map Screen (115 + Còi SOS + Chia sẻ GPS Gia đình + Bệnh viện gần nhất)
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFBA1A1A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+              icon: const Icon(Icons.emergency_outlined, size: 20),
+              label: const Text(
+                'MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () async {
+                Navigator.of(dialogCtx).pop();
+                Navigator.of(context).pop(true);
+                try {
+                  final pos = await SafetyPermissionService()
+                      .readConsentedLocation();
+                  final lat = pos != null
+                      ? double.parse(pos.latitude.toStringAsFixed(7))
+                      : null;
+                  final lng = pos != null
+                      ? double.parse(pos.longitude.toStringAsFixed(7))
+                      : null;
+                  await EmergencyService().openFlow(
+                    triggerSource: 'AI_TRIAGE',
+                    latitude: lat,
+                    longitude: lng,
+                  );
+                } catch (_) {
+                  try {
+                    await EmergencyService().openFlow(
+                      triggerSource: 'AI_TRIAGE',
+                    );
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  context.push('/emergency/map?mode=triage&stage=PREGNANCY');
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            // Nút 2: Quay số 115
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFBA1A1A),
+                side: const BorderSide(color: Color(0xFFBA1A1A), width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.phone_in_talk, size: 18),
+              label: const Text(
+                'GỌI CẤP CỨU 115 NGAY',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () => launchUrl(Uri.parse('tel:115')),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                Navigator.of(context).pop(true);
+              },
+              child: const Text(
+                'Đã hiểu / Bỏ qua',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAnomalyWarningDialog(
+    BuildContext context,
+    Map<String, dynamic> eval,
+  ) async {
+    final headline =
+        eval['headline']?.toString() ??
+        'Lưu ý: Chỉ số có dấu hiệu bất thường nhẹ cần theo dõi';
+    final summary =
+        eval['summary']?.toString() ??
+        'Phát hiện yếu tố cần lưu ý trong các chỉ số mẹ vừa nhập.';
+    final riskFactors =
+        (eval['risk_factors'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
+    final gestationalAge =
+        _journeyGestationalWeeks ??
+        int.tryParse(_gestationalAgeCtrl.text.replaceAll(RegExp(r'\D'), '')) ??
+        20;
+    final metricLabel = _metricLabel;
+    String displayValue = '';
+    if (_isBloodPressure) {
+      displayValue =
+          '${_primaryCtrl.text.trim()}/${_secondaryCtrl.text.trim()} mmHg';
+    } else if (_isBmi) {
+      final w = double.tryParse(_primaryCtrl.text.trim());
+      final h = double.tryParse(_secondaryCtrl.text.trim());
+      final bmiVal = (w != null && h != null && h > 0)
+          ? (w / ((h / 100) * (h / 100)))
+          : null;
+      displayValue =
+          '${_primaryCtrl.text.trim()}kg, ${_secondaryCtrl.text.trim()}cm' +
+          (bmiVal != null ? ' (BMI: ${bmiVal.toStringAsFixed(1)})' : '');
+    } else {
+      displayValue = '${_primaryCtrl.text.trim()} $_unit';
+    }
+
+    final reasonList = riskFactors.isNotEmpty
+        ? riskFactors.join(', ')
+        : headline;
+    final promptText =
+        'Tôi vừa đo $metricLabel là $displayValue ở tuần thai thứ $gestationalAge. AI phát hiện dấu hiệu cần lưu ý: $reasonList. Bác sĩ / AI Nurse có thể tư vấn giúp tôi chế độ ăn uống, nghỉ ngơi và các dấu hiệu cần theo dõi không?';
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: const Color(0xFFFFFBF8),
+        contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1EC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFC98C7B), width: 1.5),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.health_and_safety_outlined,
+                    color: Color(0xFF845143),
+                    size: 26,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'LƯU Ý THEO DÕI SỨC KHỎE',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF845143),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              headline,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF845143),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              summary,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF271812),
+                height: 1.4,
+              ),
+            ),
+            if (riskFactors.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFF0E3DE)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Yếu tố cần lưu ý:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF845143),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ...riskFactors.map(
+                      (rf) => Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '• ',
+                              style: TextStyle(
+                                color: Color(0xFF845143),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                rf,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF524440),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            // Nút 1: Chuyển sang chat AI Nurse Assistant kèm ngữ cảnh tự động
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF845143),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.chat_bubble_outline, size: 18),
+              label: const Text(
+                'HỎI TRỢ LÝ AI NURSE',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                Navigator.of(context).pop(true);
+                final vitalsMap = <String, String>{};
+                if (_latestBp != null)
+                  vitalsMap['Huyết áp'] = '${_latestBp!.valueDisplay} mmHg';
+                if (_latestBmi != null)
+                  vitalsMap['BMI'] = _latestBmi!.valueDisplay;
+                if (_latestGlucose != null)
+                  vitalsMap['Đường huyết'] =
+                      '${_latestGlucose!.valueDisplay} mmol/L';
+                if (_latestKicks != null)
+                  vitalsMap['Cử động thai'] =
+                      '${_latestKicks!.valueDisplay} lần/2h';
+                if (_latestHydration != null)
+                  vitalsMap['Lượng nước'] =
+                      '${_latestHydration!.valueDisplay} ml';
+                if (_latestEpds != null)
+                  vitalsMap['Tâm trạng EPDS'] =
+                      '${_latestEpds!.valueDisplay}/30 đ';
+                if (_latestHeartRate != null)
+                  vitalsMap['Nhịp tim'] =
+                      '${_latestHeartRate!.valueDisplay} bpm';
+                if (_latestTemp != null)
+                  vitalsMap['Thân nhiệt'] = '${_latestTemp!.valueDisplay} °C';
+
+                context.push(
+                  '/rag/chat',
+                  extra: {
+                    'prompt': promptText,
+                    'attachedContext': {
+                      'metricLabel': metricLabel,
+                      'displayValue': displayValue,
+                      'gestationalAge': gestationalAge,
+                      'journeyType': _journeyType,
+                      'stage': _journeyType == 'PRE_PREGNANCY'
+                          ? 'PRECONCEPTION'
+                          : (_journeyType == 'POSTPARTUM' || _journeyType == 'BABY_CARE'
+                              ? 'POSTPARTUM'
+                              : 'PREGNANCY'),
+                      'riskFactors': riskFactors,
+                      'latestVitals': vitalsMap,
+                      'surveyProfile': _surveyProfile,
+                      'surveyDerived': _surveyDerived,
+                      'surveyStatus': _surveyStatus,
+                      'surveyRiskConditions': _surveyRiskConditions,
+                      'note': _noteCtrl.text.trim(),
+                    },
+                    'autoSend': false,
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF524440),
+                side: const BorderSide(color: Color(0xFFD6C2BD)),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                Navigator.of(context).pop(true);
+              },
+              child: const Text(
+                'Đã hiểu, tôi sẽ tiếp tục theo dõi',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -515,12 +1470,36 @@ class _AddMaternalHealthMetricScreenState
                       if (_isGlucose) ...[
                         const SizedBox(height: 14),
                         _buildDropdown<String>(
+                          label: 'Đơn vị đo đường huyết',
+                          value: _glucoseUnit,
+                          items: _glucoseUnits,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _glucoseUnit = value);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _buildDropdown<String>(
                           label: 'Bối cảnh đo',
                           value: _glucoseContext,
                           items: _glucoseContexts,
                           onChanged: (value) {
                             if (value != null) {
                               setState(() => _glucoseContext = value);
+                            }
+                          },
+                        ),
+                      ],
+                      if (_isTemperature) ...[
+                        const SizedBox(height: 14),
+                        _buildDropdown<String>(
+                          label: 'Vị trí đo thân nhiệt',
+                          value: _temperatureSite,
+                          items: _temperatureSites,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _temperatureSite = value);
                             }
                           },
                         ),

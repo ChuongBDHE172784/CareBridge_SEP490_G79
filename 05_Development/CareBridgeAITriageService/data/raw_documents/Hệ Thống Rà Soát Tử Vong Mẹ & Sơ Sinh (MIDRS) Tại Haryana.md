@@ -3,7 +3,7 @@ title: Mô Hình Giám Sát Chủ Động Và Bị Động Nhằm Cải Thiện 
 stage: ALL
 topic: HEALTH_MONITORING
 document_type: RESEARCH
-source: Improving reporting of infant deaths, maternal deaths and stillbirths in Haryana, India (Bulletin of the World Health Organization 2016;94:370–375)
+source: "Improving reporting of infant deaths, maternal deaths and stillbirths in Haryana, India (Bulletin of the World Health Organization 2016;94:370–375)"
 organization: WHO & Phái bộ Y tế Quốc gia Haryana (Ấn Độ)
 section: Giám sát Dịch tễ học và Thống kê Tử vong Chu sinh
 ---

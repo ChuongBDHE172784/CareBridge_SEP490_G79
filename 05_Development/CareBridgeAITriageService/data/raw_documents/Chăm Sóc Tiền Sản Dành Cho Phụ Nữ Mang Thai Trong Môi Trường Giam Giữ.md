@@ -3,7 +3,7 @@ title: Khuyến Nghị Cải Thiện Chăm Sóc Tiền Sản Dành Cho Phụ N�
 stage: PREGNANCY
 topic: HEALTH_MONITORING
 document_type: RESEARCH
-source: Improving antenatal care in prisons (Bulletin of the World Health Organization 2015;93:739–740)
+source: "Improving antenatal care in prisons (Bulletin of the World Health Organization 2015;93:739–740)"
 organization: WHO (Tổ chức Y tế Thế giới)
 section: Chăm sóc Sức khỏe Bà mẹ trong Các Hoàn cảnh Đặc biệt
 ---

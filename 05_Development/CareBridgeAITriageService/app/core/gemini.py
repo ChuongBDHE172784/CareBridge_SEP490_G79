@@ -29,6 +29,10 @@ class GeminiClient:
         self._client: Optional[genai.Client] = None
         if GEMINI_SETTINGS.enabled and GEMINI_SETTINGS.api_key:
             try:
+                import os
+                for var in ("NO_PROXY", "no_proxy"):
+                    if var in os.environ and "::" in os.environ[var]:
+                        os.environ[var] = ",".join(p.strip() for p in os.environ[var].split(",") if "::" not in p)
                 self._client = genai.Client(api_key=GEMINI_SETTINGS.api_key)
                 logger.info(
                     f"Gemini client initialized with model={GEMINI_SETTINGS.model} "

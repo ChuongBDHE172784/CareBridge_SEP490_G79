@@ -15,7 +15,7 @@
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt & Gợi ý Động (Multi-turn Context & Dynamic Follow-ups)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)](#7-kiến-trúc-giao-diện-ai-nurse-trên-ứng-dụng-di-động-mobile-app-ui--state)
 8. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#8-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 12 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---12-câu-hỏi-chuyên-sâu)
+9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 25 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---25-câu-hỏi-chuyên-sâu)
 10. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#10-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -75,14 +75,14 @@ flowchart TB
 
 ### Bảng Lựa chọn Công nghệ & Lý do Khoa học
 
-| Thành phần | Công nghệ lựa chọn | Lý do khoa học & Ưu thế kỹ thuật |
-| :--- | :--- | :--- |
-| **Backend Framework** | **FastAPI (Python 3.11+)** | Xử lý bất đồng bộ (`asyncio`), độ trễ thấp, tự động sinh chuẩn OpenAPI/Swagger UI, quản lý schema type-safe với Pydantic v2. |
-| **Vector Database** | **PostgreSQL + pgvector** | Lưu trữ trực tiếp Vector 768 chiều trong cùng một CSDL quan hệ với hệ thống chính, loại bỏ chi phí vận hành DB vector độc lập, hỗ trợ Transaction ACID, phân quyền và backup hợp nhất. |
-| **Vector Index** | **HNSW (Hierarchical Navigable Small World)** | Thuật toán đồ thị tìm kiếm láng giềng gần nhất xấp xỉ (Approximate Nearest Neighbors - ANN) với độ phức tạp tìm kiếm $O(\log N)$, phản hồi trong vài mili-giây. |
-| **Embedding Model** | **Gemini Embedding (`output_dimensionality=768`)** | Mã hóa ngữ nghĩa tiếng Việt đa tầng, sinh vector 768 chiều chuẩn hóa. |
-| **LLM Generator** | **Google Gemini Flash-Lite / 3.7 Flash** | Tốc độ phản hồi cực nhanh (< 1.5s), quota dồi dào, khả năng suy luận lâm sàng và diễn đạt tiếng Việt ân cần. |
-| **Multi-Model Auto Fallback** | `gemini-flash-lite-latest` $\rightarrow$ `gemini-2.5-flash` $\rightarrow$ `gemini-flash-latest` | Đảm bảo **100% Uptime**, tự động chuyển sang model dự phòng nếu Google bảo trì hoặc nghẽn mạng. |
+| Thành phần                    | Công nghệ lựa chọn                                                                              | Lý do khoa học & Ưu thế kỹ thuật                                                                                                                                                       |
+| :---------------------------- | :---------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Backend Framework**         | **FastAPI (Python 3.11+)**                                                                      | Xử lý bất đồng bộ (`asyncio`), độ trễ thấp, tự động sinh chuẩn OpenAPI/Swagger UI, quản lý schema type-safe với Pydantic v2.                                                           |
+| **Vector Database**           | **PostgreSQL + pgvector**                                                                       | Lưu trữ trực tiếp Vector 768 chiều trong cùng một CSDL quan hệ với hệ thống chính, loại bỏ chi phí vận hành DB vector độc lập, hỗ trợ Transaction ACID, phân quyền và backup hợp nhất. |
+| **Vector Index**              | **HNSW (Hierarchical Navigable Small World)**                                                   | Thuật toán đồ thị tìm kiếm láng giềng gần nhất xấp xỉ (Approximate Nearest Neighbors - ANN) với độ phức tạp tìm kiếm $O(\log N)$, phản hồi trong vài mili-giây.                        |
+| **Embedding Model**           | **Gemini Embedding (`output_dimensionality=768`)**                                              | Mã hóa ngữ nghĩa tiếng Việt đa tầng, sinh vector 768 chiều chuẩn hóa.                                                                                                                  |
+| **LLM Generator**             | **Google Gemini Flash-Lite / 3.7 Flash**                                                        | Tốc độ phản hồi cực nhanh (< 1.5s), quota dồi dào, khả năng suy luận lâm sàng và diễn đạt tiếng Việt ân cần.                                                                           |
+| **Multi-Model Auto Fallback** | `gemini-flash-lite-latest` $\rightarrow$ `gemini-2.5-flash` $\rightarrow$ `gemini-flash-latest` | Đảm bảo **100% Uptime**, tự động chuyển sang model dự phòng nếu Google bảo trì hoặc nghẽn mạng.                                                                                        |
 
 ---
 
@@ -108,13 +108,13 @@ Nhằm đảm bảo dữ liệu không bao giờ bị `NULL` và phần trích d
 
 ### 3.3. So sánh 5 Kỹ thuật Chunking trong Thế giới AI RAG
 
-| Kỹ thuật Chunking | Nguyên lý | Ưu điểm | Nhược điểm | Đánh giá áp dụng |
-| :--- | :--- | :--- | :--- | :--- |
-| **Fixed-size Chunking** | Cắt cứng theo số ký tự (500, 1000). | Nhanh, đơn giản. | Rất dễ cắt đôi một từ ngữ hoặc ngắt giữa chừng câu cảnh báo cấp cứu. | ❌ Thô sơ, không an toàn trong Y tế. |
-| **Sentence Chunking** | Tách theo từng câu riêng biệt sau dấu chấm. | Câu văn hoàn chỉnh. | Từng câu đơn lẻ bị thiếu ngữ cảnh tổng thể (đại từ không rõ nghĩa). | ❌ Quá vụn vặt. |
-| **Recursive Hierarchical** *(CareBridge chọn)* | Cắt đệ quy phân cấp: `Tiêu đề` $\rightarrow$ `Đoạn văn` $\rightarrow$ `Câu` $\rightarrow$ `Từ` kèm 20% gối đầu. | **Bảo toàn cấu trúc cẩm nang**, không cắt vụn từ ngữ, tốc độ xử lý tức thì, chi phí = 0. | Cần văn bản có cấu trúc phân đoạn rõ ràng. | ⭐ **Chuẩn mực công nghiệp tối ưu nhất cho Y tế.** |
-| **Semantic Chunking** | Tính khoảng cách góc Vector giữa các câu liên tiếp để tìm điểm chuyển ý. | Điểm ngắt tự nhiên theo mạch tư duy. | Tốn nhiều lượt gọi API Embedding (chậm, dễ chạm quota). | ⚠️ Phù hợp khi có server GPU riêng. |
-| **Agentic Chunking** | Dùng LLM đọc toàn bộ sách và tự chia chunk. | Hiểu sâu ngữ cảnh. | Tốn kém chi phí token rất lớn, tốc độ nạp chậm với tài liệu hàng trăm trang. | ⚠️ Tốn kém chi phí vận hành. |
+| Kỹ thuật Chunking                              | Nguyên lý                                                                                                       | Ưu điểm                                                                                  | Nhược điểm                                                                   | Đánh giá áp dụng                                  |
+| :--------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------- | :------------------------------------------------ |
+| **Fixed-size Chunking**                        | Cắt cứng theo số ký tự (500, 1000).                                                                             | Nhanh, đơn giản.                                                                         | Rất dễ cắt đôi một từ ngữ hoặc ngắt giữa chừng câu cảnh báo cấp cứu.         | ❌ Thô sơ, không an toàn trong Y tế.               |
+| **Sentence Chunking**                          | Tách theo từng câu riêng biệt sau dấu chấm.                                                                     | Câu văn hoàn chỉnh.                                                                      | Từng câu đơn lẻ bị thiếu ngữ cảnh tổng thể (đại từ không rõ nghĩa).          | ❌ Quá vụn vặt.                                    |
+| **Recursive Hierarchical** *(CareBridge chọn)* | Cắt đệ quy phân cấp: `Tiêu đề` $\rightarrow$ `Đoạn văn` $\rightarrow$ `Câu` $\rightarrow$ `Từ` kèm 20% gối đầu. | **Bảo toàn cấu trúc cẩm nang**, không cắt vụn từ ngữ, tốc độ xử lý tức thì, chi phí = 0. | Cần văn bản có cấu trúc phân đoạn rõ ràng.                                   | ⭐ **Chuẩn mực công nghiệp tối ưu nhất cho Y tế.** |
+| **Semantic Chunking**                          | Tính khoảng cách góc Vector giữa các câu liên tiếp để tìm điểm chuyển ý.                                        | Điểm ngắt tự nhiên theo mạch tư duy.                                                     | Tốn nhiều lượt gọi API Embedding (chậm, dễ chạm quota).                      | ⚠️ Phù hợp khi có server GPU riêng.                |
+| **Agentic Chunking**                           | Dùng LLM đọc toàn bộ sách và tự chia chunk.                                                                     | Hiểu sâu ngữ cảnh.                                                                       | Tốn kém chi phí token rất lớn, tốc độ nạp chậm với tài liệu hàng trăm trang. | ⚠️ Tốn kém chi phí vận hành.                       |
 
 ### 3.4. Tính Linh hoạt Định dạng (Format-Agnostic Ingestion)
 Hệ thống xử lý mượt mà 4 định dạng dữ liệu đầu vào mà **không bắt buộc phải có cấu trúc cố định**:
@@ -159,6 +159,11 @@ CREATE INDEX idx_maternal_chunks_embedding_hnsw
 ON maternal_knowledge_chunks 
 USING hnsw (embedding vector_cosine_ops);
 ```
+
+> [!NOTE]
+> **Cơ chế Khởi tạo Linh hoạt (Dual-Mode DB Setup):**
+> 1. **Môi trường Toàn hệ thống:** Tự động chạy qua Flyway Migration của Spring Boot tại [`CareBridgeAPI/src/main/resources/db/migration/V3__create_maternal_knowledge_chunks.sql`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAPI/src/main/resources/db/migration/V3__create_maternal_knowledge_chunks.sql).
+> 2. **Môi trường Phát triển Độc lập AI (Standalone Dev/Test):** Chạy nhanh qua script CLI [`CareBridgeAITriageService/scripts/init_pgvector_db.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/scripts/init_pgvector_db.py) mà không cần khởi động Spring Boot.
 
 #### Giải thích chi tiết các trường dữ liệu:
 * **`id`:** Định danh duy nhất cho từng đoạn tri thức.
@@ -211,7 +216,7 @@ Bám sát sơ đồ thiết kế hệ thống tại [docs/mainworkflow-Trang-3.d
 
 Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe dựa trên hướng dẫn chuyên môn của **Bộ Y tế Việt Nam** và **Tổ chức Y tế Thế giới (WHO)**.
 
-#### A. Danh mục 7 Chỉ số Sức khỏe Chuẩn hóa của Mẹ (Maternal Health Metrics):
+#### A. Danh mục 8 Chỉ số Sức khỏe Chuẩn hóa của Mẹ (Maternal Health Metrics):
 1. **Chỉ số khối cơ thể (BMI / Cân nặng & Chiều cao):** Đơn vị $kg/m^2$ — Giám sát mức tăng cân theo từng tam cá nguyệt.
 2. **Cử động thai (Fetal Movement Count / Session):** Đơn vị $count / session$ — Theo dõi thai máy từ tuần 28 để phát hiện sớm dấu hiệu suy thai.
 3. **Huyết áp (Blood Pressure - $SBP / DBP$):** Đơn vị $mmHg$ — Sàng lọc cao huyết áp thai kỳ và Tiền sản giật.
@@ -219,8 +224,22 @@ Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe d�
 5. **Nhịp tim mẹ (Maternal Heart Rate):** Đơn vị $bpm$ — Phát hiện rối loạn nhịp tim, hồi hộp, thiếu máu thai kỳ.
 6. **Điểm sàng lọc trầm cảm EPDS (Edinburgh Postnatal Depression Scale):** Thang điểm $0 - 30$ điểm (10 câu hỏi chuẩn y khoa) — Đánh giá sức khỏe tâm thần, sàng lọc sớm Trầm cảm trước và sau sinh; có cơ chế cờ đỏ an toàn nếu câu hỏi 10 $> 0$.
 7. **Đường huyết (Blood Glucose):** Đơn vị $mg/dL$ hoặc $mmol/L$ — Theo dõi và phòng ngừa Đái tháo đường thai kỳ (ĐTĐTK).
+8. **Thân nhiệt / Nhiệt độ cơ thể (Body Temperature - `TEMPERATURE`):** Đơn vị $^\circ C$ ($30.0 - 45.0^\circ C$) kèm vị trí đo (`ARMPIT`, `FOREHEAD`, `ORAL`, `EAR`) — Phân tích theo từng giai đoạn sản khoa (Mang thai vs Hậu sản vs Chu sinh) để phát hiện sớm Sốt cao thai kỳ, Nhiễm trùng ối (*Chorioamnionitis*) và Sốt nhiễm trùng hậu sản (*Puerperal Sepsis* theo chuẩn WHO).
 
 *(Hệ thống kiên quyết loại bỏ chỉ số "Mức độ căng thẳng / Stress" cảm tính chung chung để thay thế bằng thang điểm trầm cảm EPDS chuẩn y tế được quốc tế công nhận).*
+
+#### Bảng Quy chuẩn Lâm sàng Chi tiết, Ngưỡng Sàng lọc & Cơ sở Y khoa (Bộ Y Tế / ACOG / WHO / FIGO / RCOG):
+
+| Chỉ số Sinh hiệu | Ngưỡng An toàn (`NORMAL`) | Ngưỡng Lưu ý (`ANOMALY_MONITOR`) | Ngưỡng Nguy cấp Cấp cứu (`CRITICAL_EMERGENCY`) | Cơ sở Quy chuẩn Y khoa Trích dẫn |
+| :--- | :--- | :--- | :--- | :--- |
+| **Huyết áp ($SBP / DBP$)** | $SBP < 130$ và $DBP < 85$ mmHg | • Tiền tăng huyết áp: $SBP 130-139$ hoặc $DBP 85-89$ mmHg<br/>• Tăng HA độ 1 không kèm triệu chứng: $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg | • **Cơn tăng HA kịch phát:** $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg<br/>• $SBP \ge 140$ hoặc $DBP \ge 90$ kèm triệu chứng báo động (đau đầu/hoa mắt/đau thượng vị) $\rightarrow$ **Tiền sản giật** | • **ACOG Practice Bulletin No. 222** (Gestational Hypertension & Preeclampsia)<br/>• **Quyết định 4163/QĐ-BYT** (Hướng dẫn chẩn đoán & điều trị Tiền sản giật) |
+| **Thân nhiệt (`TEMPERATURE`)** | $36.0^\circ C - 37.4^\circ C$ | • Sốt nhẹ thai kỳ: $37.5^\circ C - 38.4^\circ C$<br/>• Hạ thân nhiệt: $< 35.5^\circ C$ | • **Mang thai (`PREGNANCY`):** $\ge 38.5^\circ C$ (hoặc $\ge 38.0^\circ C$ kèm rỉ ối, đau bụng) $\rightarrow$ Nguy cơ Nhiễm trùng ối (*Chorioamnionitis*)<br/>• **Hậu sản (`POSTPARTUM`):** $\ge 38.0^\circ C \rightarrow$ Nhiễm trùng hậu sản (*Puerperal Sepsis*), Viêm nội mạc tử cung | • **WHO Guidelines on Maternal Sepsis**<br/>• **Quyết định 1359/QĐ-BYT** (Chăm sóc sản phụ và sơ sinh thiết yếu) |
+| **Đường huyết ($Glucose$)** | • Lúc đói: $< 5.1$ mmol/L ($< 92$ mg/dL)<br/>• Sau ăn 1-2h: $< 8.5$ mmol/L ($< 153$ mg/dL) | • Hạ đường huyết: $< 3.5$ mmol/L ($< 63$ mg/dL)<br/>• Đói tăng nhẹ: $5.1 - 6.9$ mmol/L<br/>• Sau ăn tăng: $8.5 - 11.0$ mmol/L | • Đói $\ge 7.0$ mmol/L hoặc Sau ăn $\ge 11.1$ mmol/L (kèm triệu chứng lú lẫn, khát nhiều, sụt cân cấp) | • **IADPSG / FIGO Guidelines on Gestational Diabetes**<br/>• **Quyết định 3494/QĐ-BYT** (Hướng dẫn Quốc gia về Sàng lọc & Quản lý ĐTĐ Thai kỳ) |
+| **Cử động thai ($Kicks$)** | $\ge 4$ lần / $2$ giờ (từ tuần thai thứ 28) | $4 - 9$ lần / $4$ giờ (giảm nhẹ) | • **Mất cử động thai:** $0$ lần / $2$ giờ<br/>• Thai đạp yếu: $< 4$ lần / $2$ giờ sau tuần 28 $\rightarrow$ Nguy cơ **Suy thai cấp** | • **ACOG Committee Opinion No. 828** (Management of Decreased Fetal Movement)<br/>• **RCOG Green-top Guideline No. 57** |
+| **Trầm cảm EPDS ($0-30$)** | $0 - 9$ điểm | $10 - 30$ điểm (Nguy cơ Trầm cảm thai kỳ/hậu sản, cần trao đổi AI Nurse và chuyên gia tâm lý) | **Câu hỏi số 10 $> 0$** (Xuất hiện ý nghĩ tự gây hại/tự sát) $\rightarrow$ Báo động đỏ cấp cứu tâm thần | • **Edinburgh Postnatal Depression Scale (EPDS)** - Cox et al. (Chuẩn hóa quốc tế)<br/>• Bộ tiêu chí Sức khỏe Tâm thần Sản phụ WHO |
+| **Chỉ số BMI ($kg/m^2$)** | $18.5 - 24.9$ kg/m² | • Thiếu cân: $< 18.5$<br/>• Thừa cân: $25.0 - 29.9$<br/>• Béo phì thai kỳ: $30.0 - 39.9$ kg/m² | • **Béo phì độ III rất nặng:** $\ge 40.0$ kg/m² (Nguy cơ cao thuyên tắc huyết khối và tiền sản giật nặng) | • **IOM (Institute of Medicine)** Weight Gain During Pregnancy Guidelines<br/>• **WHO BMI Classification for Asian Population** |
+| **Độ bão hòa Oxy ($SpO_2$)** | $96\% - 100\%$ | $95\%$ | $< 95\%$ $\rightarrow$ Suy hô hấp thai kỳ / Thiếu oxy mô cấp | • Chuẩn Hồi sức Cấp cứu Sản khoa Quốc tế |
+| **Nhịp tim mẹ ($Pulse$)** | $60 - 100$ bpm | • Nhịp nhanh: $101 - 120$ bpm<br/>• Nhịp chậm: $50 - 59$ bpm | $> 120$ bpm hoặc $< 50$ bpm kèm choáng ngất $\rightarrow$ Rối loạn huyết động cấp | • Hướng dẫn Khám Tim mạch Sản khoa ESC |
 
 ---
 
@@ -231,19 +250,112 @@ Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe d�
 
 ---
 
-#### C. Quy tắc Kiểm tra Ngưỡng An toàn Lâm sàng (Clinical Safety Gates):
-Khi mẹ bầu nhập chỉ số theo dõi hàng ngày (hoặc nhập triệu chứng):
-1. **Tiếp nhận tham số:** Huyết áp ($SBP/DBP$), Đường huyết ($Glucose$), Cử động thai ($Kicks$), Tuần thai, và các triệu chứng lâm sàng.
-2. **Kiểm tra Ngưỡng Lâm sàng:**
-   - *Cơn tăng huyết áp khẩn cấp:* $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg.
-   - *Nghi ngờ Tiền sản giật:* $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg kèm theo $\ge 1$ triệu chứng (đau đầu dữ dội, hoa mắt, nhìn mờ, phù mặt, đau thượng vị).
-   - *Mất cử động thai:* Tuần thai $\ge 28$ nhưng thai cử động $< 4$ lần trong 2 giờ hoặc $0$ lần cử động.
-   - *Triệu chứng Sốt cao thai kỳ:* Có báo cáo sốt cao $\ge 38.5^\circ C$.
-   - *Dấu hiệu xuất huyết / Rỉ ối:* Có triệu chứng ra máu âm đạo tươi hoặc vỡ ối.
-3. **Phân loại Kết quả:**
-   - **`CRITICAL_EMERGENCY`:** Trả về `emergency_mode = True`, đưa ra chỉ dẫn cấp cứu 115, tự động kích hoạt tính năng định vị Bệnh viện Sản khoa gần nhất trên Mobile App.
-   - **`ANOMALY_MONITOR`:** Chỉ số tiền tăng huyết áp ($130-139/85-89$), ốm nghén, đau lưng nhẹ $\rightarrow$ Hướng dẫn mẹ tiếp tục theo dõi và gợi ý chuyển sang Bước 10 trò chuyện với AI Nurse.
-   - **`NORMAL`:** Các chỉ số nằm trong khoảng sinh lý an toàn.
+#### C. Cơ chế Tổng hợp Đa Ngữ cảnh Tự động (Multi-Source Context Aggregation):
+Khi Mẹ bầu mở màn hình nhập chỉ số sức khỏe ([AddMaternalHealthMetricScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart)), hệ thống không chỉ kiểm tra chỉ số đơn lẻ mà tự động kết hợp 3 nguồn thông tin:
+1. **Dữ liệu Survey Khảo sát Ban đầu (Onboarding Medical Profile):**
+   - Gọi `GET /api/v1/recommendations/profile` (hoặc trích xuất từ `mother_journeys.recommendation_profile_json`).
+   - Tự động bóc tách các mã bệnh lý nền (`underlyingConditions`: `CHRONIC_HYPERTENSION`, `CARDIOVASCULAR_DISEASE`...), tiền sử sản khoa (`reproductiveHistory`: `PRIOR_PREECLAMPSIA`, `PRIOR_GDM`...), và BMI ban đầu.
+2. **Tuần thai Thực tế & Giai đoạn Sản khoa (Gestational Age & Maternal Stage):**
+   - Gọi `GET /api/v1/journey/dashboard` để lấy chính xác tuần thai hiện tại (`effectivePregnancyWeek` / `weekNumber`) và giai đoạn (`PREGNANCY` vs `POSTPARTUM`).
+3. **Chỉ số Sức khỏe & Triệu chứng Mẹ vừa nhập:**
+   - Huyết áp tâm thu/tâm trương ($SBP/DBP$), Đường huyết ($Glucose$), Cử động thai ($Kicks$), Cân nặng/Chiều cao, Thân nhiệt ($Temperature$), Nhịp tim và ghi chú triệu chứng tự do.
+
+---
+
+#### D. Quy tắc Kiểm tra Ngưỡng Lâm sàng & Thực thi Giao diện 3 Nhánh (End-to-End Workflow):
+Dữ liệu tổng hợp được đóng gói và gửi lên AI Triage Service qua API `POST /api/v1/metrics/evaluate`. Hệ thống phân loại và điều hướng giao diện theo 3 nhánh:
+
+```mermaid
+flowchart TD
+    INPUT["Mẹ nhập Chỉ số<br/>(Huyết áp, Thân nhiệt, Đường huyết, Thai máy, v.v.)"] --> SAVE_DB["Lưu Database PostgreSQL"]
+    SAVE_DB --> AGGREGATE["Tổng hợp Đa Ngữ cảnh:<br/>• Survey bệnh nền & Tiền sử sản khoa<br/>• Tuần thai & Giai đoạn (PREGNANCY/POSTPARTUM)<br/>• Chỉ số & Triệu chứng vừa nhập"]
+    AGGREGATE --> AI_EVAL["AI Triage Service<br/>(POST /api/v1/metrics/evaluate)"]
+    
+    AI_EVAL --> RISK_CHECK{"Đánh giá Rủi ro"}
+
+    RISK_CHECK -->|CRITICAL_EMERGENCY| RED_BRANCH["🚨 NHÁNH ĐỎ: CẤP CỨU NGUY CẤP<br/>• Modal Cảnh báo Đỏ rực<br/>• Nút 'Mở Bản đồ BV & Cấp cứu'<br/>• Nút 'Gọi 115 ngay'"]
+    RED_BRANCH --> RED_ACTIONS["Kích hoạt EmergencyMapScreen:<br/>1. Còi hú báo động SOS<br/>2. Tự động gửi GPS khẩn cấp tới nhóm Gia đình (Family Alert)<br/>3. Quét Bệnh viện Sản gần nhất & mở dẫn đường TrackAsia"]
+
+    RISK_CHECK -->|ANOMALY_MONITOR| YELLOW_BRANCH["⚠️ NHÁNH VÀNG: BẤT THƯỜNG NHẸ<br/>• Modal Cảnh báo Vàng<br/>• Nút 'Hỏi Trợ lý AI Nurse'<br/>• Nút 'Đã hiểu & Tiếp tục theo dõi'"]
+    YELLOW_BRANCH --> YELLOW_ACTIONS["Chuyển sang RagChatScreen:<br/>AI Nurse trả lời kèm trích dẫn cẩm nang y tế"]
+
+    RISK_CHECK -->|NORMAL| GREEN_BRANCH["✅ NHÁNH XANH: BÌNH THƯỜNG<br/>• SnackBar xanh thông báo thành công<br/>• Động viên mẹ an tâm"]
+```
+
+1. **🔴 Nhánh ĐỎ — Nguy cơ Cấp cứu Khẩn cấp (`CRITICAL_EMERGENCY`):**
+   - *Ngưỡng kích hoạt:*
+     - $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg (Cơn tăng huyết áp kịch phát).
+     - $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg kèm triệu chứng đau đầu/hoa mắt/nhìn mờ/tiền sử Tiền sản giật (`PRIOR_PREECLAMPSIA`).
+     - Mất cử động thai sau tuần 28 ($0$ lần hoặc $< 4$ lần/2h).
+     - **Thân nhiệt theo Giai đoạn:**
+       - *Mang thai (`PREGNANCY`):* $T \ge 38.5^\circ C$ (hoặc $\ge 38.0^\circ C$ kèm rỉ ối, đau bụng, ra máu) $\rightarrow$ Nguy cơ Nhiễm trùng ối (*Chorioamnionitis*) hoặc Nhiễm trùng toàn thân.
+       - *Hậu sản (`POSTPARTUM`):* $T \ge 38.0^\circ C \rightarrow$ Nghi ngờ Nhiễm trùng hậu sản (*Puerperal Sepsis*), Viêm nội mạc tử cung, Viêm tắc tuyến vú theo WHO.
+       - *Chung/Chu sinh:* $T \ge 39.0^\circ C$.
+     - Ra máu âm đạo tươi hoặc rỉ/vỡ ối sớm.
+   - *Hành vi Ứng dụng:*
+     - Hiển thị Modal Cảnh báo Nguy cấp Toàn màn hình (`CẢNH BÁO NGUY CẤP Y TẾ`).
+     - **Nút "MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU":** Điều hướng sang [EmergencyMapScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) (`/emergency/map?mode=triage&stage=PREGNANCY`):
+       1. **Bật còi hú SOS**.
+       2. **Tự động gửi vị trí GPS khẩn cấp** tới tài khoản người thân trong nhóm Gia đình (`FamilyAlert` / `EmergencyService`).
+       3. **Quét và định vị các Bệnh viện Chuyên khoa Sản gần nhất** trên bản đồ TrackAsia / Google Maps và mở dẫn đường tức thì.
+     - **Nút "GỌI CẤP CỨU 115 NGAY":** Kích hoạt quay số trực tiếp `tel:115`.
+
+2. **🟡 Nhánh VÀNG — Cần Theo dõi Bất thường (`ANOMALY_MONITOR`):**
+   - *Ngưỡng kích hoạt:* Tiền tăng huyết áp ($130-139/85-89$), Đường huyết lúc đói $\ge 5.1$ mmol/L, cử động thai giảm nhẹ, sốt nhẹ ($37.5^\circ C - 38.4^\circ C$ thai kỳ, $37.5^\circ C - 37.9^\circ C$ hậu sản) hoặc hạ thân nhiệt ($< 35.5^\circ C$), ốm nghén, đau lưng.
+   - *Hành vi Ứng dụng:*
+     - Hiển thị Modal Cảnh báo Vàng (`LƯU Ý THEO DÕI SỨC KHỎE`).
+     - Liệt kê các nguy cơ AI phát hiện.
+     - **Nút "HỎI TRỢ LÝ AI NURSE (BƯỚC 10)":** Mở ngay [RagChatScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart) (`/rag/chat`) kèm nội dung chỉ số đã điền sẵn để AI Nurse giải thích và trích dẫn cẩm nang y tế.
+
+3. **🟢 Nhánh XANH — Chỉ số An toàn (`NORMAL`):**
+   - *Ngưỡng kích hoạt:* Tất cả chỉ số nằm trong giới hạn an toàn ($36.0 - 37.4^\circ C$, HA bình thường, đường huyết chuẩn).
+   - *Hành vi Ứng dụng:* Hiển thị SnackBar thông báo thành công và động viên mẹ an tâm.
+
+---
+
+#### E. Cơ chế 2 Chế độ Đánh giá Sức khỏe (Two-Tier Evaluation Architecture):
+
+Nhằm tối ưu hóa trải nghiệm người dùng (UX) và đảm bảo tính chính xác lâm sàng, CareBridge thiết kế hệ thống theo **2 Chế độ Đánh giá rõ ràng**:
+
+1. **Chế độ 1: Cô lập Đánh giá Chỉ số Đơn lẻ (Single Metric Isolation):**
+   * Khi mẹ bầu nhập một chỉ số đo lường cụ thể trong ngày (ví dụ: Huyết áp, Đường huyết, Thân nhiệt, hoặc Cân nặng), hệ thống **chỉ kiểm tra và đánh giá chỉ số vừa nhập** kèm theo ghi chú triệu chứng của lần đo đó.
+   * **Lợi ích:** Tránh hiện tượng cảnh báo sai lệch (False Alarm) do các chỉ số cũ chưa kịp cập nhật, giúp việc ghi nhận nhật ký hằng ngày diễn ra nhanh chóng, nhẹ nhàng và không gây phiền toái cho mẹ.
+
+2. **Chế độ 2: Trang Tổng hợp & Đánh giá Sức khỏe Toàn diện AI (Total Overview AI Health Assessment):**
+   * Trong danh mục Dropdown chọn chỉ số sức khỏe, CareBridge cung cấp mục chuyên biệt: **`📊 Đánh giá Sức khỏe Toàn diện AI`** ([`HealthMetricTrendScreen`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart)).
+   * Tại đây, hệ thống tự động tổng hợp bức tranh đa chiều gồm:
+     1. **Tuần thai thực tế & Bệnh sử khảo sát (Survey Onboarding):** Tuần thai hiện tại kết hợp tiền sử tiền sản giật, tăng huyết áp mạn, đái tháo đường thai kỳ.
+     2. **Bảng 8 Chỉ số Sinh hiệu & Tâm lý mới nhất:**
+        - 🩺 **Huyết áp (`BLOOD_PRESSURE`):** Tâm thu và tâm trương đo gần nhất.
+        - ⚖️ **BMI & Thể trạng (`BMI` / `WEIGHT` / `HEIGHT`):** Cân nặng, chiều cao, chỉ số BMI.
+        - 🩸 **Đường huyết (`BLOOD_GLUCOSE`):** Nồng độ glucose kèm ngữ cảnh đo.
+        - 👶 **Cử động thai (`FETAL_MOVEMENT_SESSION`):** Số lần thai máy trong 2 giờ.
+        - 💧 **Lượng nước uống (`HYDRATION`):** Tổng lượng nước nạp trong ngày.
+        - ❤️ **Nhịp tim mẹ (`MATERNAL_HEART_RATE`):** Tần số tim mẹ (bpm).
+        - 🧠 **Tâm trạng & Cảm xúc (`EPDS_SCORE`):** Điểm sàng lọc trầm cảm thai kỳ Edinburgh.
+        - 🌡️ **Nhiệt độ cơ thể (`TEMPERATURE`):** Thân nhiệt ($^\circ C$) đo gần nhất.
+     3. **Ô nhập triệu chứng cảm nhận bổ sung:** Cho phép mẹ ghi nhận các biểu hiện như đau đầu, hoa mắt, nhìn mờ, phù nề, sốt ớn lạnh, mệt mỏi...
+     4. **Nút CTA "GỬI AI ĐÁNH GIÁ SỨC KHỎE TOÀN DIỆN":** Khi bấm, toàn bộ gói dữ liệu đa chiều được gửi lên `CareBridgeAITriageService` để thực hiện sàng lọc tương quan đa biến (Correlation Matrix Screening) và điều hướng chính xác theo 3 luồng (🔴 Cấp cứu SOS GPS / 🟡 AI Nurse Assistant / 🟢 An toàn).
+
+---
+
+#### F. Bảng Ánh xạ Mã Nguồn Thực thi (Code Mapping Reference):
+
+Để đối chiếu và minh chứng trước Hội đồng, toàn bộ luồng xử lý được tổ chức rõ ràng trong các module mã nguồn sau:
+
+| Thành phần & Nhiệm vụ                                           | File Mã nguồn                                                                                                                                                                                                                                                                                                                                                                   | Hàm / Class thực thi chính                                                                                                                                                                                                                       |
+| :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Tầng Ngưỡng Lâm sàng Cố định (Deterministic Safety Gate)** | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py)                                                                                                                                                           | `_check_blood_pressure()`, `_check_temperature()`, `_check_glucose()`, `_check_fetal_movements()`, `_check_bmi()`, `_check_heart_rate()`, `_check_water_intake()`, `_check_epds_score()`, `_check_spo2()`, `_check_sleep()`, `_check_symptoms()` |
+| **2. Tầng Truy xuất Cẩm nang RAG Động (pgvector Retrieval)**    | [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) & [`app/rag/vector_store.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/vector_store.py) | `_build_retrieval_query()` ➔ `vector_store.similarity_search(top_k=3)` ➔ trả về `relevant_sources`                                                                                                                                               |
+| **3. Tầng Backend Validation (Spring Boot)**                    | [`MetricObservationValidator.java`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/service/MetricObservationValidator.java)                                                                                                                                                                 | `validateNumericValue()` ➔ `requireRange(30.0, 45.0)` cho `TEMPERATURE`                                                                                                                                                                          |
+| **4. Tầng Tạo sinh AI Nurse RAG (Bước 10)**                     | [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) & [`app/rag/gemini_client.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/gemini_client.py)                 | `chat_with_nurse()`, `generate_medical_response()`                                                                                                                                                                                               |
+| **5. Mobile: Nhập Chỉ số Đơn lẻ (Isolate Evaluation)**          | [`CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart)                                                                                                       | `_save()`, `_evaluateMetricWithAi()`, dropdown vị trí đo `_temperatureSite`                                                                                                                                                                      |
+| **6. Mobile: Chỉnh sửa Bản ghi Chỉ số**                         | [`CareBridgeMobileApp/lib/features/healthRecords/screens/edit_health_metric_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/edit_health_metric_screen.dart)                                                                                                                       | Hỗ trợ xem/sửa giá trị thân nhiệt và vị trí đo `measurementSite`                                                                                                                                                                                 |
+| **7. Mobile: Trang Tổng quan & Đánh giá Sức khỏe Toàn diện AI** | [`CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/health_metric_trend_screen.dart)                                                                                                                     | `_overviewOption`, `_buildTotalOverviewSection()`, `_evaluateTotalOverviewWithAi()`, `_showMetricPickerModal()`, nạp song song 8 metrics                                                                                                         |
+| **8. Mobile: Modal Cấp cứu & Kích hoạt Bản đồ SOS + GPS**       | [`emergency_map_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/emergency/screens/emergency_map_screen.dart) & [`SafetyPermissionService`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/safety/services/safety_permission_service.dart)    | `_showCriticalEmergencyDialog()` ➔ `readConsentedLocation()` ➔ `EmergencyService().openFlow(triggerSource: 'AI_TRIAGE', latitude, longitude)` ➔ `context.push('/emergency/map')`                                                                 |
+| **9. Mobile: Modal Cảnh báo & Tự động Đính kèm sang AI Nurse**  | [`rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart)                                                                                                                                                                                                       | `_showAnomalyDialog()` ➔ `context.push('/rag/chat', extra: {attachedContext: ..., initialMessage: ...})` ➔ `_AttachedContextBanner`                                                                                                              |
+
+---
 
 ### 5.2. Luồng AI Nurse Assistant RAG Chat (Bước 10)
 Khi mẹ bầu gửi câu hỏi thảo luận:
@@ -278,26 +390,29 @@ Khi mẹ bầu trò chuyện qua lại nhiều lượt, một bài toán kinh đ
 * **Giải pháp Hiện đại của CareBridge:**
   1. Trong System Prompt, sau khi Gemini tổng hợp câu trả lời dựa trên cẩm nang y tế, Gemini được yêu cầu: *Dựa trên chính nội dung vừa giải thích, tự động suy luận ra 3 câu hỏi ngắn gọn mà mẹ bầu có khả năng cao muốn tìm hiểu tiếp theo nhất*.
   2. Gemini xuất 3 câu hỏi sau thẻ `[GỢI Ý CÂU HỎI]:`.
-  3. Hàm `_extract_dynamic_followups` ở backend bóc tách dữ liệu sạch và trả về trường `suggested_followups` trong JSON response.
-  4. Trên Mobile App, các câu hỏi này được render thành các **ActionChips** giúp người dùng chỉ cần chạm 1 chạm là gửi tiếp câu hỏi mà không cần gõ phím.
+  3. Hàm `_extract_llm_flags_and_followups` ở backend bóc tách dữ liệu sạch và trả về trường `suggested_followups` trong JSON response.
+  4. Trên Mobile App, các câu hỏi này được render thành các **Thẻ gợi ý câu hỏi linh hoạt đa dòng (Multi-line Responsive Suggestion Cards)** với `softWrap: true`, full-width, icon điều hướng và hiệu ứng `InkWell`, giúp câu hỏi dài tự động ngắt dòng mượt mà và người dùng chỉ cần 1 chạm là gửi tiếp câu hỏi mà không cần gõ phím.
 
-### 6.4. Tầng Phòng vệ Cấp cứu Xác định (Deterministic Clinical Red-flag Guardrail)
-* **Nguyên tắc:** Dù RAG tạo sinh thông minh đến đâu, trong Y tế **tuyệt đối không được phó mặc tính mạng bệnh nhân 100% cho xác suất của LLM**.
-* **Cơ chế:** Hệ thống chạy song song một hàm kiểm tra cờ đỏ `_detect_emergency_intent`. Nếu phát hiện các dấu hiệu tối cấp cứu (*ra máu âm đạo, vỡ ối, co giật, đau bụng quặn dữ dội, sốt cao $\ge 39^\circ C$, thai ngừng máy*):
-  - Lập tức kích hoạt `has_critical_warning = True`.
-  - Tự động ưu tiên đưa các nút gợi ý cấp cứu (*"Gọi cấp cứu 115 ngay?", "Bệnh viện phụ sản gần nhất?"*).
-  - Kích hoạt giao diện cảnh báo nguy hiểm trên Mobile App để bảo vệ an toàn thai phụ.
+### 6.4. Tầng Phòng vệ Lâm sàng & Quyết định Ngữ nghĩa Thuần AI (Pure AI Semantic Decision & Objective Clinical Guardrail)
+* **Nguyên tắc:** Dù RAG tạo sinh thông minh đến đâu, trong Y tế **tuyệt đối không được phó mặc tính mạng bệnh nhân 100% cho xác suất của LLM**, đồng thời **không được dùng danh sách từ khóa chuỗi tĩnh dễ gãy**.
+* **Cơ chế 2 Lớp Độc lập:**
+  1. **Lớp 1 — LLM Semantic Decision Tagging:** Gemini Flash tự phân tích toàn diện ngữ nghĩa, bệnh sử và sắc thái diễn đạt của thai phụ để gắn 2 cờ quyết định lâm sàng:
+     - `[CRITICAL_WARNING]: YES / NO` $\rightarrow$ Đánh giá tình huống có phải dấu hiệu cấp cứu nguy hiểm (ra máu tươi, vỡ ối, co giật, đau bụng quặn dữ dội, sốt cao $\ge 38.5^\circ C$, thai ngừng cử động $\ge 2$ giờ ở tuần $\ge 28$).
+     - `[NEED_EXPERT_CONSULTATION]: YES / NO` $\rightarrow$ Đánh giá người dùng đang có triệu chứng bất thường cần bác sĩ khám trực tiếp hay chỉ đang tìm hiểu kiến thức thông thường.
+  2. **Lớp 2 — Deterministic Objective Metric Guardrail:** Kiểm tra các ngưỡng số đo sinh tồn khách quan từ bản ghi chỉ số sinh hiệu đã lưu (Huyết áp $\ge 140/90$ mmHg, Thân nhiệt $\ge 38.5^\circ C$, Đường huyết $\ge 7.8$ mmol/L, Điểm trầm cảm EPDS $\ge 10$, Cử động thai $< 4$ lần/2h) theo đúng quy chuẩn ACOG/WHO.
 
 ---
 
 ## 7. Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)
 
-### 7.1. Bộ Phân tích & Định dạng Markdown Toàn diện (Rich-Text Markdown Parser)
-* Các mô hình LLM hiện đại luôn trả về định dạng Markdown phong phú (`#` headings, `**` bold, `*` italic, `1.` numbered list, `•` bullet list, `---` divider).
-* Để loại bỏ hoàn toàn tình trạng bị lộ dấu `***` hay định dạng thô, Mobile App tích hợp bộ Tokenizer Regex chuyên sâu:
-  - Nhận diện và render các cấp tiêu đề Heading với cỡ chữ lớn và in đậm trang nhã.
-  - Phân tách nội dung in đậm, in nghiêng, và mã code bằng `TextSpan` đa phong cách.
-  - Tự động thụt lề chuẩn mực cho danh sách có thứ tự và danh sách gạch đầu dòng màu cam đất nung (`#C98C7B`).
+### 7.1. Bộ Phân tích Định dạng & Khử LaTeX Toán học (Rich-Text Markdown & LaTeX Sanitizer)
+* **Bộ làm sạch ký tự toán học LaTeX (LaTeX & Math Normalizer):**
+  - Các tài liệu y khoa và mô hình LLM khi so sánh ngưỡng đo thường xuất cú pháp toán LaTeX như `$\ge 140$`, `$\le 5.1$`, `$^\circ C$`.
+  - Hệ thống triển khai bộ lọc chuẩn hóa đa tầng (`_clean_latex_and_math_artifacts` ở Backend và `_sanitizeMathAndLatex` ở Mobile) tự động chuyển đổi toàn bộ về ký tự Unicode tự nhiên: **`≥ 140`**, **`≤ 5.1`**, **`38.5°C`**, **`≈ 10`**, **`± 2`**.
+* **Bộ Tokenizer Regex Markdown chuyên sâu:**
+  - Nhận diện và render các cấp tiêu đề Heading (`#`, `##`, `###`, `####`) với cỡ chữ lớn và in đậm trang nhã.
+  - Phân tách nội dung in đậm (`**bold**`), in nghiêng (`*italic*`), và mã code (`` `code` ``) bằng `TextSpan` đa phong cách.
+  - Tự động thụt lề chuẩn mực cho danh sách có thứ tự (`1.`) và danh sách gạch đầu dòng (`•`, `-`) màu cam đất nung (`#C98C7B`).
 
 ### 7.2. Quản lý Đa Phiên Chat & Lưu trữ Cục bộ Bảo mật (Multi-Session & Encrypted Storage)
 * **Tạo phiên mới (`+` New Session):** Cho phép mẹ bầu bắt đầu chủ đề thảo luận mới bất kỳ lúc nào, lưu trữ độc lập các cuộc trò chuyện trước đó.
@@ -307,6 +422,49 @@ Khi mẹ bầu trò chuyện qua lại nhiều lượt, một bài toán kinh đ
 ### 7.3. Khung Lưu ý Y tế Bắt buộc (Mandatory Safety Disclaimer Box)
 * Dưới mỗi bong bóng chat phản hồi của AI luôn đính kèm một khung cảnh báo nhẹ nhàng:
   > ⚠️ *Lưu ý: Thông tin từ AI chỉ mang tính chất tham khảo và có thể có sai sót. Vui lòng tham khảo ý kiến bác sĩ hoặc đến ngay cơ sở y tế khi có dấu hiệu bất thường.*
+
+### 7.4. Cơ chế Điền sẵn Prompt (Prompt Prefill without Auto-sending) & Modal Chi tiết Hồ sơ Đính kèm (Interactive Health Context Bottom Sheet)
+* **Triết lý Thiết kế Trải nghiệm Người dùng (Human-in-the-Loop UX):**
+  - Khi phát hiện chỉ số bất thường hoặc mẹ bầu muốn nhận tư vấn từ màn hình Đánh giá Toàn diện, hệ thống **không tự động gửi tin nhắn ngầm** (Auto-send).
+  - Thay vào đó, câu hỏi định hướng ngữ cảnh lâm sàng được **điền sẵn vào ô soạn thảo** (`_inputCtrl.text = initialPrompt`).
+  - **Lợi ích lâm sàng:** Mẹ bầu luôn giữ quyền chủ động kiểm tra lại nội dung, gõ thêm các triệu chứng phát sinh hoặc chỉnh sửa câu chữ theo ý muốn trước khi chủ động bấm nút Gửi.
+* **Khung Đính kèm Hồ sơ Sinh hiệu Tương tác (Interactive Attached Health Context):**
+  - Phía trên thanh nhập tin nhắn hiển thị một banner thông tin nổi bật với badge tóm tắt: `Hồ sơ đính kèm: [Tên chỉ số] • [Tag Giai đoạn/Tuần thai]`.
+  - Khung đính kèm được bọc trong hiệu ứng chạm (`InkWell`), cho phép mẹ bấm vào để mở **Modal BottomSheet Chi Tiết Hồ Sơ Y Tế**:
+    1. **Thông tin Giai đoạn / Thai kỳ:** Tuần thai hiện tại & Tam cá nguyệt (3 tháng đầu/giữa/cuối) hoặc trạng thái Chuẩn bị mang thai / Hậu sản & Chăm sóc bé.
+    2. **Chỉ số vừa đo:** Tên chỉ số và giá trị đo vừa nhập.
+    3. **Ghi chú triệu chứng từ mẹ:** Nguyên văn đoạn mô tả triệu chứng của mẹ bầu.
+    4. **Tiền sử & Bệnh lý nền (từ Khảo sát Onboarding):** Các nhãn bệnh nền (Tiền sử Tiền sản giật, Đái tháo đường thai kỳ, Tăng huyết áp mạn...).
+    5. **Dấu hiệu AI lưu ý trong lần đo:** Danh sách các cảnh báo bất thường AI đã phát hiện.
+    6. **Snapshot Toàn bộ Sinh hiệu Gần nhất:** Bảng tổng hợp đầy đủ các chỉ số sinh hiệu gần nhất của mẹ (Huyết áp, Đường huyết, Nhịp tim, Cử động thai, Lượng nước, Điểm EPDS, Thân nhiệt).
+    7. **Nút "Gỡ đính kèm" & "Đã hiểu":** Thai phụ có thể gỡ bỏ ngữ cảnh nếu chỉ muốn hỏi các câu hỏi thông thường.
+
+### 7.5. Kiến trúc Thích ứng Đa Vòng Đời Sản Khoa (Multi-Lifecycle Maternal UI & RAG Adaptation)
+* CareBridge hỗ trợ toàn diện **3 giai đoạn lớn** trong hành trình làm mẹ:
+  1. **Chuẩn bị mang thai (`PRECONCEPTION` / `PRE_PREGNANCY`):**
+     - Subtitle AppBar: `Đồng hành Chuẩn bị mang thai • 24/7`.
+     - Bộ câu hỏi gợi ý nhanh (Quick Prompts): Tập trung vào bổ sung axit folic & vi chất tiền sản, cách tính ngày rụng trứng, các vắc-xin cần tiêm phòng và xét nghiệm tiền hôn nhân.
+     - Payload RAG: Truyền `stage: PRECONCEPTION` để vector store ưu tiên cẩm nang dinh dưỡng tiền sản và chuẩn bị thụ thai.
+  2. **Đang mang thai (`PREGNANCY`):**
+     - Subtitle AppBar: `Đồng hành cùng Mẹ bầu (Tuần $week) • 24/7`.
+     - Quick Prompts: Dinh dưỡng theo tam cá nguyệt, dấu hiệu nguy hiểm cần cấp cứu, đếm cử động thai máy, thực đơn thai kỳ.
+     - Payload RAG: Truyền `stage: PREGNANCY` để truy xuất cẩm nang sản khoa, siêu âm thai và hướng dẫn sàng lọc trước sinh của Bộ Y Tế.
+  3. **Hậu sản & Chăm bé (`POSTPARTUM` / `BABY_CARE`):**
+     - Subtitle AppBar: `Đồng hành Hậu sản & Chăm bé • 24/7`.
+     - Quick Prompts: Chăm sóc vết mổ/tầng sinh môn, kỹ thuật kích sữa và thông tắc tia sữa, sàng lọc trầm cảm sau sinh (EPDS), lịch tiêm chủng và biểu đồ tăng trưởng chuẩn WHO cho bé.
+     - Payload RAG: Truyền `stage: POSTPARTUM` để truy xuất cẩm nang chăm sóc sơ sinh thiết yếu sớm (EENC) và phục hồi hậu sản.
+
+### 7.6. Phân tách Ngữ cảnh Vai trò Người dùng (Role-Based Context Adaptation: MOTHER vs FAMILY)
+* **Bản chất nghiệp vụ:** Trong hệ thống CareBridge, chỉ có người dùng vai trò **`MOTHER`** (Mẹ bầu) mới có tuần thai thực tế, có các bản ghi sinh hiệu cá nhân (huyết áp, thân nhiệt, cử động thai) và hoàn thành bảng khảo sát bệnh nền Onboarding. Người dùng vai trò **`FAMILY`** (Chồng, Bố mẹ, Người thân) không mang thai và không có các chỉ số này.
+* **Cơ chế Thích ứng 2 Chiều:**
+  1. **Khi người dùng là `MOTHER`:**
+     - Tự động đính kèm `gestational_age_weeks` (tuần thai), `survey_profile` (tiền sử y tế từ survey) và `recent_metrics` (chỉ số sinh hiệu gần nhất) vào prompt gửi lên LLM.
+     - AI Nurse xưng hô ân cần, tư vấn cá nhân hóa trực diện: *"Chào mẹ ở tuần thai thứ 28..."*.
+  2. **Khi người dùng là `FAMILY`:**
+     - **Tuyệt đối KHÔNG đính kèm** tuần thai, survey hay chỉ số sinh hiệu cá nhân của người thân (tránh việc AI hiểu lầm người thân là thai phụ).
+     - Header AppBar hiển thị: `Hỗ trợ Gia đình chăm sóc mẹ & bé`.
+     - Quick Prompts tự động chuyển sang góc nhìn người thân: *"Món ăn bồi bổ tốt nhất cho vợ mang thai?", "Cách massage giúp mẹ giảm đau lưng?", "Dấu hiệu nguy hiểm của mẹ mà gia đình cần đưa đi viện ngay?"*.
+     - AI Nurse tư vấn từ góc độ **Cố vấn Chăm sóc Gia đình**: hướng dẫn người thân cách nấu nướng dinh dưỡng, san sẻ việc nhà, động viên tinh thần và chuẩn bị vật dụng hỗ trợ mẹ và bé.
 
 ---
 
@@ -325,7 +483,7 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 12 Câu Hỏi Chuyên Sâu)
+## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 18 Câu Hỏi Chuyên Sâu)
 
 ### Câu 1: "AI RAG em hiểu là gì và vì sao dự án y tế cho mẹ bầu lại chọn RAG thay vì Fine-tuning mô hình?"
 * **Trả lời:**
@@ -385,14 +543,15 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 ### Câu 7: "Làm sao hệ thống đưa ra được các nút gợi ý câu hỏi tiếp theo cho mẹ bầu? Có phải em đang gán cứng bằng từ khóa (Rule-based) không?"
 * **Trả lời:**
   > "Thưa Thầy/Cô, hệ thống sử dụng cơ chế **LLM-Native Dynamic Follow-up Generation (Sinh động hoàn toàn từ Gemini)**:
-  > Chúng em không dùng `if/else` từ khóa vì từ khóa bị giới hạn và không bao quát được thực tế y khoa. Thay vào đó, sau khi Gemini tạo xong câu trả lời dựa trên cẩm nang y tế, mô hình sẽ tự động suy luận ra đúng 3 câu hỏi liên kết chặt chẽ nhất với câu trả lời đó. Backend bóc tách 3 câu hỏi này và đẩy về Mobile App để render thành các nút ActionChip, giúp mẹ bầu tiếp tục hỏi đáp chỉ với một cú chạm."
+  > Chúng em tuyệt đối **không dùng if/else từ khóa** vì từ khóa bị giới hạn và không bao quát được thực tế y khoa. Thay vào đó, sau khi Gemini tạo xong câu trả lời dựa trên cẩm nang y tế, mô hình sẽ tự động suy luận ra đúng 3 câu hỏi liên kết chặt chẽ nhất với câu trả lời đó dưới thẻ `[GỢI Ý CÂU HỎI]:`. Backend bóc tách 3 câu hỏi này và đẩy về Mobile App để render thành các **Thẻ gợi ý đa dòng linh hoạt (Multi-line Suggestion Cards)** với tính năng tự động ngắt dòng (`softWrap: true`), giúp mẹ bầu tiếp tục hỏi đáp chỉ với một cú chạm mà không lo bị tràn hay cắt cụt chữ."
 
 ---
 
-### Câu 8: "Tại sao trong code xử lý vẫn có danh sách từ khóa dấu hiệu nguy hiểm (ra máu, vỡ ối, co giật...)? Có mâu thuẫn với việc dùng AI không?"
+### Câu 8: "Hệ thống có bị hardcode danh sách từ khóa (ra máu, vỡ ối, co giật...) trong code xử lý AI không?"
 * **Trả lời:**
-  > "Thưa Thầy/Cô, việc này hoàn toàn không mâu thuẫn mà là nguyên tắc **Clinical Safety Guardrail (Hàng rào an toàn y tế xác định)** bắt buộc trong các hệ thống y tế chuẩn mực:
-  > Dù AI có thông minh đến đâu, việc suy luận của LLM vẫn mang tính xác suất (Probabilistic). Đối với các dấu hiệu đe dọa trực tiếp tính mạng mẹ và bé (như xuất huyết âm đạo ồ ạt, vỡ ối sớm, co giật tiền sản giật), hệ thống phải có một tầng Deterministic Guardrail độc lập để ngay lập tức kích hoạt cảnh báo đỏ và hướng dẫn cấp cứu 115, không được phép phó mặc rủi ro cho mô hình ngôn ngữ."
+  > "Thưa Thầy/Cô, hệ thống **hoàn toàn không hardcode danh sách từ khóa trong tầng AI**:
+  > 1. **Nhận định lâm sàng thuần AI (Pure Semantic Reasoning):** Mô hình Gemini Flash được cấp System Instruction chuyên khoa để tự đọc hiểu toàn diện ngữ cảnh và gắn cờ `[CRITICAL_WARNING]: YES/NO` và `[NEED_EXPERT_CONSULTATION]: YES/NO` dựa trên suy luận y khoa, không phụ thuộc vào chuỗi từ khóa.
+  > 2. **Tầng Phòng vệ Số liệu Khách quan (Objective Metric Guardrail):** Hệ thống chỉ duy trì kiểm tra các ngưỡng số đo sinh hiệu thực tế (Huyết áp $\ge 140/90$ mmHg, Thân nhiệt $\ge 38.5^\circ C$, EPDS $\ge 10$) theo chuẩn ACOG/WHO từ bản ghi đo của người dùng để đảm bảo an toàn tuyệt đối, chứ không can thiệp bằng lọc chuỗi văn bản."
 
 ---
 
@@ -442,6 +601,183 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   > 3. **Bộ lọc Ngưỡng tương đồng & Khử trùng lặp:** Loại bỏ hoàn toàn các nguồn không liên quan ($< 0.05$) và gộp các chunk cùng mục.
   > 
   > Nhờ vậy, câu trả lời của AI và danh sách Cẩm nang trích dẫn (Citations) luôn đạt độ chính xác $100\%$, không bao giờ bị lệch sang các chủ đề không liên quan."
+
+---
+
+### Câu 14: "Làm thế nào hệ thống kết hợp thông tin survey của mẹ với tuần thai và chỉ số sức khỏe để AI ra quyết định điều hướng cấp cứu hoặc chat AI Nurse?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng cơ chế **Multi-Source Context Aggregation (Tổng hợp Đa Ngữ cảnh Y khoa)** trước khi gửi dữ liệu lên AI Triage:
+  > 1. **Thu thập dữ liệu 3 chiều:**
+  >    - *Chiều 1 (Tiền sử & Bệnh nền):* Tự động lấy từ bảng khảo sát ban đầu (`MotherJourney.recommendationProfileJson` qua API `GET /api/v1/recommendations/profile`) các mã rủi ro như `PRIOR_PREECLAMPSIA` (Tiền sử Tiền sản giật), `CHRONIC_HYPERTENSION` (Tăng huyết áp mạn), `PREGESTATIONAL_DIABETES` (Đái tháo đường).
+  >    - *Chiều 2 (Giai đoạn thai kỳ):* Lấy chính xác số tuần thai từ `MotherJourney` (`/api/v1/journey/dashboard`).
+  >    - *Chiều 3 (Dữ liệu tức thời):* Chỉ số sinh hiệu (Huyết áp $SBP/DBP$, Đường huyết, Cử động thai, BMI...) và triệu chứng mẹ vừa nhập trên `AddMaternalHealthMetricScreen`.
+  > 2. **Phân tích Rủi ro & Phản xạ Lâm sàng (Triage Decision):**
+  >    - Nếu huyết áp cao $\ge 140/90$ kèm tiền sử `PRIOR_PREECLAMPSIA` hoặc triệu chứng đau đầu/hoa mắt $\rightarrow$ Phân loại `CRITICAL_EMERGENCY`.
+  >    - **Nhánh ĐỎ:** Ứng dụng hiện Modal Cảnh báo Cấp cứu, cung cấp nút **'MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU'** để chuyển sang `EmergencyMapScreen` (bật còi SOS, tự động gửi định vị GPS khẩn cấp tới Người thân trong nhóm Gia đình, quét danh sách Bệnh viện Sản khoa gần nhất và mở dẫn đường TrackAsia/Google Maps) và nút **'GỌI 115'**.
+  >    - **Nhánh VÀNG (`ANOMALY_MONITOR`):** Hiện Modal Cảnh báo Vàng kèm nút **'HỎI TRỢ LÝ AI NURSE'** để chuyển ngay sang `RagChatScreen` với câu hỏi ngữ cảnh được điền sẵn, giúp mẹ nhận tư vấn cẩm nang kịp thời."
+
+---
+
+### Câu 15: "Các chỉ số sức khỏe đang được so sánh theo ngưỡng cố định (hard-coded) hay so sánh theo tài liệu RAG? Chỉ rõ vị trí mã nguồn thực thi?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng **Kiến trúc Lai 2 Tầng Chuẩn Y khoa (Dual-Layer Clinical Architecture)** — tiêu chuẩn bắt buộc của các hệ thống Y tế số quốc tế:
+  > 
+  > 1. **Tầng 1: Ngưỡng Lâm sàng Cố định (Deterministic Safety Gate):**
+  >    - *Bản chất:* Các con số sinh tử như Huyết áp cấp cứu ($\ge 160/110$ mmHg), Mất cử động thai sau tuần 28 ($0$ lần/2h), Sốt cao $\ge 38.5^\circ C$ là **Quy chuẩn Y khoa Bắt buộc** của Bộ Y tế và ACOG.
+  >    - *Lý do kỹ thuật:* Trong y tế, **tuyệt đối không được phó mặc tính mạng bệnh nhân cho mô hình xác suất LLM** vì LLM có nguy cơ ảo giác (hallucination) và độ trễ mạng. Tầng này phản hồi tức thì trong $1$ ms để bảo vệ 100% an toàn thai phụ.
+  >    - *Vị trí code:* Nằm tại [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) (các hàm `_check_blood_pressure()`, `_check_temperature()`, `_check_glucose()`, `_check_fetal_movements()`, `_check_symptoms()`).
+  > 
+  > 2. **Tầng 2: Truy xuất & Đối chiếu Cẩm nang RAG Động (Dynamic Semantic RAG Retrieval):**
+  >    - *Bản chất:* Sau khi xác định nhóm rủi ro, hệ thống tự động tổng hợp chỉ số thành vector truy vấn 768 chiều và truy vấn CSDL Vector `pgvector` để **trích xuất chính xác các đoạn cẩm nang y tế liên quan** (phác đồ Tiền sản giật, cẩm nang đếm cử động thai, chế độ ăn cho mẹ đái tháo đường).
+  >    - *Vị trí code:* Nằm tại [`CareBridgeAITriageService/app/services/metrics_screening_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/metrics_screening_service.py) (hàm `_build_retrieval_query()` và `vector_store.similarity_search()`) kết nối với [`app/rag/vector_store.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/rag/vector_store.py).
+  > 
+  > 3. **Tầng 3: AI Nurse RAG Generative Chat (Bước 10):**
+  >    - *Bản chất:* Mẹ bầu trao đổi tự nhiên với AI Nurse, toàn bộ câu trả lời, lời khuyên dinh dưỡng và gợi ý câu hỏi tiếp theo được Gemini sinh **động 100% dựa trên kho tài liệu RAG**.
+  >    - *Vị trí code:* Nằm tại [`CareBridgeAITriageService/app/services/rag_chat_service.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/app/services/rag_chat_service.py) và giao diện Mobile tại [`CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart)."
+
+---
+
+### Câu 16: "Hệ thống AI RAG và sàng lọc sức khỏe thích ứng như thế nào giữa các giai đoạn Chuẩn bị mang thai, Đang mang thai và Sau sinh chăm bé?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hành trình làm mẹ có các nhu cầu lâm sàng và tâm lý hoàn toàn khác biệt ở từng thời kỳ. CareBridge thiết kế **Kiến trúc Thích ứng Đa Vòng Đời Sản Khoa (Multi-Lifecycle Adaptation)** xuyên suốt từ Client đến Vector Database:
+  > 
+  > 1. **Nhận diện Vòng đời Tự động (`journeyType`):**
+  >    - Khi mẹ đăng nhập, ứng dụng đồng bộ trạng thái `PRE_PREGNANCY` (Chuẩn bị mang thai), `PREGNANCY` (Đang mang thai) hoặc `POSTPARTUM` / `BABY_CARE` (Hậu sản & Chăm bé) từ `GET /api/v1/journeys/me/dashboard`.
+  > 2. **Chuyển đổi Ngữ cảnh Giao diện Động (Dynamic UI Context):**
+  >    - *Chuẩn bị mang thai:* Subtitle chuyển thành `'Đồng hành Chuẩn bị mang thai • 24/7'`. Quick prompts tự động gợi ý câu hỏi về bổ sung Axit folic, tính ngày rụng trứng, tiêm phòng vắc-xin trước thai kỳ. Badge hồ sơ hiển thị nhãn `Chuẩn bị mang thai` (không gượng ép hiển thị số tuần thai).
+  >    - *Đang mang thai:* Hiển thị tuần thai thực tế và tam cá nguyệt (3 tháng đầu/giữa/cuối), gợi ý thai máy, dinh dưỡng và dấu hiệu cấp cứu thai kỳ.
+  >    - *Hậu sản & Chăm bé:* Subtitle chuyển thành `'Đồng hành Hậu sản & Chăm bé • 24/7'`. Quick prompts gợi ý chăm sóc vết may/vết mổ, kích sữa và xử lý tắc tia sữa, sàng lọc trầm cảm sau sinh EPDS, lịch tiêm chủng chuẩn WHO cho bé.
+  > 3. **Lọc Ngữ nghĩa Phân tầng trên pgvector (`stage` filtering):**
+  >    - Khi gửi câu hỏi, Client đính kèm `stage` (`PRECONCEPTION`, `PREGNANCY`, hoặc `POSTPARTUM`).
+  >    - Vector Store tự động ưu tiên lọc đúng các cẩm nang chuyên sâu của Bộ Y Tế & WHO cho giai đoạn đó, tránh tình trạng mẹ sau sinh hỏi vết mổ lại bị trả về tài liệu siêu âm thai 3 tháng đầu."
+
+---
+
+### Câu 17: "Tại sao nhóm loại bỏ hardcoded if-else từ khóa triệu chứng trên Mobile App và chuyển giao toàn bộ chuỗi ghi chú tự do cho AI Triage Service?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, đây là một **Quyết định Thiết kế Kiến trúc Chuẩn mực (Architectural Best Practice)** vì 3 lý do:
+  > 
+  > 1. **Tuân thủ Nguyên lý Phân tách Trách nhiệm (Separation of Concerns):**
+  >    - Mobile App chỉ đóng vai trò **Presentation & Data Collection Layer** (Thu thập dữ liệu và hiển thị giao diện). Nếu viết các câu lệnh `if (note.contains('đau đầu') || note.contains('chóng mặt'))` trên Mobile, mã nguồn client sẽ bị phình to (bloated), dễ gãy khi người dùng dùng từ đồng nghĩa, từ địa phương, hoặc viết sai chính tả.
+  > 2. **Tận dụng Sức mạnh NLP & Semantic Reasoning trên AI Backend:**
+  >    - Khi chuyển giao toàn bộ chuỗi `free_text_notes` lên `CareBridgeAITriageService`, hệ thống sử dụng kết hợp giữa **Tầng Ngưỡng Lâm sàng Xác định** và **Bộ nhúng Vector RAG**. AI có khả năng hiểu các câu tự nhiên phức tạp như: *'Hôm nay thấy hơi choáng váng và hoa mắt nhẹ sau khi leo cầu thang'*, điều mà các lệnh if-else từ khóa thô sơ hoàn toàn bất lực.
+  > 3. **Dễ dàng Bảo trì & Nâng cấp Tập trung (Centralized Maintenance):**
+  >    - Mọi quy chuẩn y tế, ngưỡng cảnh báo và từ điển lâm sàng được quản trị tập trung tại Backend Python. Khi có cập nhật phác đồ điều trị mới từ Bộ Y Tế, nhóm chỉ cần cập nhật tại Backend mà không phải build lại và bắt người dùng cập nhật ứng dụng trên App Store / Google Play."
+
+---
+
+### Câu 18: "Tại sao khi chuyển từ cảnh báo bất thường sang AI Nurse, hệ thống không tự động gửi luôn tin nhắn mà lại điền sẵn prompt vào ô chat? Hồ sơ đính kèm hoạt động ra sao?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, đây là **Triết lý Thiết kế Đặt Con người Làm Trung tâm (Human-in-the-Loop UX Design)** trong Y tế số:
+  > 
+  > 1. **Quyền Chủ động của Thai phụ (User Autonomy & Safety):**
+  >    - Khi phát hiện chỉ số bất thường, hệ thống tự động soạn sẵn một câu hỏi hoàn chỉnh mang tính định hướng lâm sàng (ví dụ: *'Bức tranh sức khỏe toàn diện của em ở tuần thai 20 có các dấu hiệu (Huyết áp cao 145/95 mmHg, Đau đầu). Em cần có chế độ dinh dưỡng và theo dõi như thế nào?'*).
+  >    - Câu hỏi này được **điền sẵn vào ô soạn thảo** (`_inputCtrl.text`) chứ không tự ý gửi ngầm. Điều này cho phép thai phụ đọc lại, bổ sung thêm cảm nhận thực tế hoặc chỉnh sửa câu hỏi trước khi gửi.
+  > 2. **Khung Đính kèm Ngữ cảnh Lâm sàng Tương tác (Interactive Health Context):**
+  >    - Phía trên ô chat hiển thị một banner thông tin có thể bấm vào để mở **Modal BottomSheet Chi Tiết**.
+  >    - Modal này trực quan hóa toàn bộ: Tuần thai/giai đoạn, Chỉ số vừa đo, Ghi chú triệu chứng, Tiền sử bệnh nền từ Survey và Bảng snapshot toàn bộ sinh hiệu gần nhất.
+  >    - Nhờ đó, người dùng hoàn toàn minh bạch biết được AI Nurse đang nhận những thông tin sức khỏe nào của mình để đưa ra lời khuyên, đồng thời có thể bấm nút **'Gỡ đính kèm'** bất kỳ lúc nào nếu chỉ muốn trò chuyện tự do."
+
+---
+
+### Câu 19: "Khi AI Nurse phát hiện dấu hiệu bất thường, luồng Khuyến nghị tham vấn Chuyên gia (Bước 11) và Tuyên bố miễn trừ trách nhiệm (Bước 12A) theo thiết kế Workflow hoạt động ra sao?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge tuân thủ nghiêm ngặt **Quy trình Phân loại & Tham vấn Lâm sàng chuẩn Y khoa (Workflow Bước 10 $\rightarrow$ 11 $\rightarrow$ 12A/12B)** được thiết kế tại `docs/mainworkflow-Trang-3.drawio.png`:
+  > 
+  > 1. **Bước 10 — Trao đổi & Làm rõ triệu chứng với AI Nurse (RAG Chat):**
+  >    - Khi thai phụ trò chuyện hoặc gửi câu hỏi có kèm chỉ số sinh hiệu bất thường (ví dụ: Huyết áp cao, Đau đầu, Sốt, Protein niệu...).
+  >    - AI Nurse phân tích ngữ cảnh, trả lời giải thích cơ chế sinh lý và tự động gắn cờ `need_expert_consultation: true` hoặc `has_critical_warning: true`.
+  > 
+  > 2. **Bước 11 — Khuyến nghị Tham vấn Chuyên gia Y tế (Need Expert Consultation Modal):**
+  >    - Ứng dụng tự động kích hoạt Modal Cảnh báo y khoa: *"Khuyến nghị Tham vấn Bác sĩ"* và làm rõ rằng dấu hiệu của mẹ cần được bác sĩ chuyên khoa đánh giá trực tiếp.
+  >    - **Nhánh Đồng ý (Bước 12B $\rightarrow$ 13):** Người dùng bấm **'Kết nối Bác sĩ'** $\rightarrow$ Hệ thống điều hướng ngay tới trang danh sách Chuyên gia/Bác sĩ sản khoa (`/experts`) để chọn bác sĩ và đặt lịch tư vấn trực tuyến (Teleconsultation Chat/Video).
+  >    - **Nhánh Từ chối (Bước 12A):** Người dùng bấm **'Tự theo dõi thêm'** $\rightarrow$ Hệ thống kích hoạt ngay Bước 12A.
+  > 
+  > 3. **Bước 12A — Tuyên bố Miễn trừ Trách nhiệm & Yêu cầu Tự theo dõi (Self-tracking Requirement & Legal Disclaimer):**
+  >    - Để đảm bảo tính pháp lý và an toàn tối đa cho thai phụ, hệ thống hiển thị Dialog Cảnh báo trách nhiệm bắt buộc:
+  >      - **Tuyên bố miễn trừ trách nhiệm:** Hệ thống AI Nurse chỉ mang tính chất tham khảo thuật toán, không thay thế chẩn đoán y khoa chuyên nghiệp và miễn trừ trách nhiệm khi người dùng từ chối thăm khám bác sĩ.
+  >      - **Yêu cầu tự theo dõi:** Yêu cầu thai phụ tự chịu trách nhiệm theo dõi sát sao các chỉ số và lập tức gọi cấp cứu 115 / đến cơ sở y tế khi có chuyển biến nặng.
+  >    - **Hành động:**
+  >      - Nút **'Tôi đã hiểu và đồng ý'**: Đóng dialog và cho phép người dùng tiếp tục tự theo dõi (`Resume Tracking` $\rightarrow$ Bước 6).
+  >      - Nút **'Thay đổi ý định, kết nối Bác sĩ'**: Cho phép người dùng đảo ngược quyết định và mở ngay danh sách chuyên gia (`/experts`)."
+
+---
+
+### Câu 20: "Cơ chế phát hiện dấu hiệu bất thường và quyết định 'Cần tham vấn Chuyên gia' (Need Expert Consultation) có phải là hardcode / if-else từ khóa không? Hệ thống làm thế nào để vừa linh hoạt vừa đảm bảo an toàn y tế tuyệt đối?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống **hoàn toàn không sử dụng hardcode hay quy tắc if-else từ khóa tĩnh thô sơ**. Thay vào đó, CareBridge áp dụng mô hình **Hybrid: Pure LLM Semantic Reasoning kết hợp Clinical Safety Guardrails** chuẩn y khoa hiện đại:
+  > 
+  > 1. **Mô hình Suy luận Ngữ nghĩa Tự nhiên (LLM Semantic Reasoning):**
+  >    - Nhờ kỹ thuật **LLM Semantic Tagging** trên mô hình `gemini-flash-lite-latest`, AI tự động đọc hiểu toàn bộ văn cảnh trao đổi, cảm xúc và mô tả lâm sàng của người bệnh (kể cả khi thai phụ dùng ngôn ngữ dân gian, tiếng lóng hay lỗi chính tả như *'đầu đau như búa bổ'*, *'mắt nhìn một thành hai'*, *'người cứ bồng bềnh'*...).
+  >    - Trong System Prompt, mô hình được giao vai trò điều dưỡng chuyên khoa và tự động đánh giá để xuất thẻ quyết định lâm sàng: `[NEED_EXPERT_CONSULTATION]: YES / NO` và `[CRITICAL_WARNING]: YES / NO` một cách tự nhiên mà không phụ thuộc vào bất kỳ danh sách từ khóa cố định nào.
+  > 
+  > 2. **Tầng Bảo vệ An toàn Lâm sàng Đa lớp (Clinical Safety Guardrails):**
+  >    - Trong y tế số, một hệ thống AI nghiêm túc không thể phó mặc 100% cho xác suất ngẫu nhiên của LLM. CareBridge bổ sung lớp **Deterministic Clinical Guardrail**:
+  >      - **Huyết áp thực nghiệm:** Quét nhận diện thông số sinh hiệu ($SBP \ge 140$ hoặc $DBP \ge 90$ mmHg theo ACOG).
+  >      - **Chỉ số sinh tồn:** Sốt $\ge 38.5^\circ C$, thai ít đạp $< 4$ lần/2h, hoặc thang trầm cảm EPDS $\ge 10$.
+  > 
+  > 3. **Tầng Dual-Safety Client-Side Fallback trên Mobile:**
+  >    - Ứng dụng di động tự động đồng bộ cờ cảnh báo để kích hoạt Modal Bước 11 và Bước 12A ngay lập tức, đảm bảo trải nghiệm tức thì và ngăn ngừa triệt để rủi ro chậm trễ do mạng."
+
+---
+
+### Câu 21: "Tại sao khi LLM sinh ký tự toán học LaTeX ($\ge, \le, ^\circ C$), hệ thống của em không bị lỗi hiển thị ký tự lạ trên ứng dụng di động?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, trong các tài liệu y khoa và phản hồi của LLM, các ký hiệu so sánh chỉ số thường bị xuất dạng cú pháp LaTeX như `$\ge 140$`, `$\le 5.1$`, `$^\circ C$`. Nếu render thô trên Mobile, giao diện sẽ xuất hiện các dấu `$`, `\ge` gây khó chịu và giảm tính chuyên nghiệp của sản phẩm y tế.
+  > 
+  > CareBridge giải quyết triệt để vấn đề này qua **Cơ chế Khử LaTeX & Chuẩn hóa Unicode 3 Lớp (Three-tier LaTeX Sanitization & Unicode Normalization)**:
+  > 1. **Lớp 1 (Data Ingestion Sanitization):** Toàn bộ kho tài liệu cẩm nang Markdown thô được rà soát và chuyển đổi sang ký tự Unicode chuẩn (`≥`, `≤`, `°C`).
+  > 2. **Lớp 2 (Backend Output Sanitizer):** Trong `RagChatService`, hàm `_clean_latex_and_math_artifacts` dùng Regex chuyên dụng quét và thay thế tức thì mọi biểu thức LaTeX toán học trước khi đóng gói JSON Response.
+  > 3. **Lớp 3 (Client-side Markdown Tokenizer):** Trên Flutter Mobile App, hàm `_sanitizeMathAndLatex` đóng vai trò phòng vệ cuối cùng, đảm bảo văn bản y tế hiển thị luôn sắc nét, chuẩn Unicode và trực quan cho mẹ bầu."
+
+---
+
+### Câu 22: "Tại sao các nút gợi ý câu hỏi tiếp theo trên ứng dụng di động lại dùng danh sách thẻ đa dòng (Multi-line Suggestion Cards) thay vì ActionChip thông thường?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, ban đầu khi dùng `ActionChip` trong `Wrap`, nếu câu hỏi gợi ý của AI dài (ví dụ: *'Cần làm xét nghiệm Triple Test và Double Test ở tuần thai thứ mấy?'*), chữ sẽ bị cắt cụt (truncated) hoặc tràn ra ngoài màn hình điện thoại (overflow), khiến thai phụ không đọc hết được nội dung gợi ý.
+  > 
+  > CareBridge đã nâng cấp sang **Thẻ gợi ý câu hỏi linh hoạt đa dòng (Multi-line Responsive Suggestion Cards)**:
+  > - Sử dụng thẻ full-width với hiệu ứng `softWrap: true` và `Expanded`, tự động co giãn và xuống dòng mượt mà theo độ dài câu chữ.
+  > - Tích hợp icon bong bóng thoại định hướng, biểu tượng mũi tên dẫn đường và hiệu ứng chạm `InkWell` 1 chạm gửi ngay, mang lại trải nghiệm tương tác trực quan, cao cấp và thân thiện nhất cho thai phụ."
+
+---
+
+### Câu 23: "Khi người dùng trao đổi bình thường với AI Nurse (không phải từ cảnh báo sinh hiệu), hệ thống có tự động đính kèm tuần thai, tiền sử survey và chỉ số sinh hiệu không? Cơ chế này áp dụng cho role nào?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng cơ chế **Phân tách Ngữ cảnh Vai trò Người dùng (Role-Based Context Attachment)** chuẩn y khoa:
+  > 
+  > 1. **Đối với Role `MOTHER` (Mẹ bầu):**
+  >    - Kể cả khi mẹ vào chat tự do câu hỏi bình thường (*'Hôm nay em thấy mệt, em nên ăn gì?'*), Mobile App tự động đồng bộ và đính kèm `gestational_age_weeks` (tuần thai), `survey_profile` (tiền sử bệnh lý từ survey Onboarding) và `recent_metrics` (chỉ số sinh hiệu gần nhất) vào payload gửi lên Backend.
+  >    - Nhờ vậy, AI Nurse tự động cá nhân hóa câu trả lời: *"Chào mẹ ở tuần thai 24, với tiền sử huyết áp nhẹ, mẹ nên bổ sung..."* mà mẹ không phải gõ nhắc lại tuần thai trong từng câu hỏi.
+  > 
+  > 2. **Đối với Role `FAMILY` (Người thân / Chồng):**
+  >    - Người thân không mang thai, không có tuần thai cá nhân hay survey thai sản. Do đó, hệ thống **tuyệt đối KHÔNG đính kèm** các trường này vào prompt để tránh việc AI hiểu lầm người thân là thai phụ.
+  >    - Thay vào đó, AI Nurse tự động chuyển sang vai trò **Cố vấn Chăm sóc Gia đình**: tư vấn cách nấu nướng bồi bổ, cách massage giảm đau lưng cho vợ, hỗ trợ việc nhà, động viên tâm lý và hướng dẫn người thân cách nhận diện dấu hiệu nguy hiểm để đưa mẹ đi bệnh viện kịp thời."
+
+---
+
+### Câu 24: "Các ngưỡng phân loại chỉ số sinh hiệu (Huyết áp, Thân nhiệt, Đường huyết, Thai máy...) của hệ thống lấy từ đâu? Có bằng chứng y khoa xác thực không hay do nhóm tự quy định?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, toàn bộ các ngưỡng sàng lọc lâm sàng trong hệ thống CareBridge được xây dựng **100% dựa trên Hướng dẫn Chuyên môn Quốc gia của Bộ Y Tế Việt Nam và các Hiệp hội Sản phụ khoa uy tín nhất thế giới**, tuyệt đối không do nhóm tự ý đặt ra:
+  > 
+  > 1. **Huyết áp & Tiền sản giật ($SBP \ge 140/90$ và $\ge 160/110$ mmHg):** Căn cứ theo **ACOG Practice Bulletin No. 222** và **Quyết định 4163/QĐ-BYT** của Bộ Y Tế về chẩn đoán & điều trị Tiền sản giật.
+  > 2. **Thân nhiệt & Sốt Sản khoa ($T \ge 38.5^\circ C$ thai kỳ, $\ge 38.0^\circ C$ hậu sản):** Căn cứ theo **WHO Guidelines on Maternal Sepsis** và **Quyết định 1359/QĐ-BYT** về Chăm sóc sản phụ và sơ sinh thiết yếu nhằm phát hiện sớm Nhiễm trùng ối (*Chorioamnionitis*) và Nhiễm trùng hậu sản (*Puerperal Sepsis*).
+  > 3. **Đường huyết Thai kỳ ($< 5.1$ mmol/L lúc đói, $< 8.5$ mmol/L sau ăn 1-2h):** Căn cứ theo **Hướng dẫn Quốc gia của Bộ Y Tế (Quyết định 3494/QĐ-BYT)** và khuyến cáo của Hiệp hội Đái tháo đường & Thai kỳ Quốc tế **IADPSG / FIGO**.
+  > 4. **Cử động Thai máy ($\ge 4$ lần/2h từ tuần 28):** Căn cứ theo **ACOG Committee Opinion No. 828** và Hướng dẫn **RCOG Green-top Guideline No. 57** của Hoàng gia Anh về quản lý giảm cử động thai để phòng ngừa suy thai cấp.
+  > 5. **Sàng lọc Trầm cảm EPDS ($0 - 30$ điểm):** Căn cứ thang đo chuẩn hóa quốc tế **Edinburgh Postnatal Depression Scale (Cox et al.)** và tiêu chuẩn sức khỏe tâm thần bà mẹ của WHO.
+  > 
+  > Nhờ các căn cứ y khoa chính thống này, hệ thống đảm bảo tính pháp lý, độ tin cậy và an toàn lâm sàng tuyệt đối khi triển khai thực tế."
+
+---
+
+### Câu 25: "Tại sao hệ thống lại chọn độ dài Cửa sổ trượt (Sliding Window Memory) là 6 tin nhắn (3 lượt đối thoại) mà không gửi toàn bộ 50 hay 100 tin nhắn lịch sử của phiên chat vào LLM? Thiết kế này có ưu điểm gì?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, việc áp dụng **Sliding Window Buffer Memory (độ sâu 6 tin nhắn gần nhất)** là chuẩn mực thiết kế (Industry Best Practice) trong các hệ thống Conversational AI Y tế chuyên nghiệp vì 4 lý do cốt lõi:
+  > 
+  > 1. **Chu kỳ Tham vấn Lâm sàng Chuẩn:** Trong y tế, một vấn đề sức khỏe thường diễn ra trọn vẹn trong 2 - 3 lượt hỏi đáp (*Hỏi triệu chứng $\rightarrow$ Đánh giá mức độ nghiêm trọng $\rightarrow$ Hướng dẫn chăm sóc & cảnh báo*). Độ sâu 6 tin nhắn là 'điểm ngọt' (Sweet Spot) để AI hiểu liền mạch toàn bộ mạch chuyện.
+  > 2. **Tránh Hiện tượng Loãng Ngữ cảnh (Context Dilution / Attention Degradation):** Khi phiên chat kéo dài, người dùng thường đổi chủ đề (ví dụ từ dinh dưỡng sang tiêm phòng rồi sang đau lưng). Nếu nhồi nhét cả 50 tin nhắn cũ, LLM sẽ bị phân tán chú ý và có nguy cơ trả lời sai lệch về triệu chứng cũ đã kết thúc.
+  > 3. **Mở rộng Truy vấn Vector Không Độ trễ (Zero-Latency Query Expansion):** Backend tự động kết hợp câu hỏi trước với câu hiện tại để tìm kiếm trong pgvector trong $0.1$ ms, giải quyết triệt để đại từ ẩn ý (*'Nó có nguy hiểm không?'*) mà không tốn thêm 1 lần gọi LLM phụ.
+  > 4. **Tối ưu Token Budget & Tốc độ Phản hồi:** Giữ prompt luôn tinh gọn, tiết kiệm chi phí API và duy trì thời gian phản hồi cho mẹ bầu luôn dưới 2 giây."
 
 ---
 

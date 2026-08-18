@@ -1990,7 +1990,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
 
   Widget _buildMetricButtons() {
     final metrics = [
-      (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'BMI'),
+      (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'TOTAL_OVERVIEW'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
     ];
@@ -2010,7 +2010,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                 excludeSemantics: true,
                 child: GestureDetector(
                   onTap: () async {
-                    if (metric.$3 == 'BMI') {
+                    if (metric.$3 == 'TOTAL_OVERVIEW' || metric.$3 == 'BMI') {
                       await _openMetricRoute(metric.$3);
                       return;
                     }

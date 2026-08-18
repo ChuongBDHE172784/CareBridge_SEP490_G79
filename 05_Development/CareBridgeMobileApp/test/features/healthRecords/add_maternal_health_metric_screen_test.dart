@@ -23,6 +23,30 @@ class _FakeHealthMetricService extends HealthMetricService {
             'required': ['weightKg', 'heightCm'],
           },
         ),
+        MetricCapability(
+          metricCode: 'BLOOD_PRESSURE',
+          version: 1,
+          displayName: 'Huyết áp',
+          observationShape: 'COMPOUND',
+          manualEntrySupported: true,
+          deviceImportSupported: false,
+          canonicalUnit: 'mmHg',
+          acceptedInputUnits: ['mmHg'],
+          requiredContextSchema: const {},
+        ),
+        MetricCapability(
+          metricCode: 'TEMPERATURE',
+          version: 1,
+          displayName: 'Nhiệt độ cơ thể',
+          observationShape: 'POINT',
+          manualEntrySupported: true,
+          deviceImportSupported: false,
+          canonicalUnit: '°C',
+          acceptedInputUnits: ['°C', 'Cel'],
+          requiredContextSchema: const {
+            'required': ['measurementSite'],
+          },
+        ),
       ];
 
   @override
@@ -35,7 +59,7 @@ class _FakeHealthMetricService extends HealthMetricService {
       id: 'metric-1',
       journeyId: journeyId,
       metricType: MetricType.bmi,
-      metricCode: 'BMI',
+      metricCode: request.metricType,
       valueNumeric: request.valueNumeric,
       unit: request.unit,
       measuredAt: request.measuredAt,
@@ -110,5 +134,140 @@ void main() {
 
     expect(service.submitted, isNull);
     expect(find.textContaining('chiều cao 100–250 cm'), findsOneWidget);
+  });
+
+  testWidgets(
+    'severe blood pressure 165/110 triggers Critical Emergency Alert Dialog',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final service = _FakeHealthMetricService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AddMaternalHealthMetricScreen(
+            journeyId: 'journey-1',
+            initialMetricType: 'BLOOD_PRESSURE',
+            service: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('maternal-metric-primary')),
+        '165',
+      );
+      await tester.enterText(
+        find.byKey(const Key('maternal-metric-secondary')),
+        '110',
+      );
+      await tester.tap(find.byKey(const Key('maternal-metric-save')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(service.submitted, isNotNull);
+      expect(find.text('CẢNH BÁO NGUY CẤP Y TẾ'), findsOneWidget);
+      expect(find.text('MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU'), findsOneWidget);
+      expect(find.text('GỌI CẤP CỨU 115 NGAY'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'mild blood pressure 135/88 triggers Anomaly Warning Dialog to AI Nurse',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final service = _FakeHealthMetricService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AddMaternalHealthMetricScreen(
+            journeyId: 'journey-1',
+            initialMetricType: 'BLOOD_PRESSURE',
+            service: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('maternal-metric-primary')),
+        '135',
+      );
+      await tester.enterText(
+        find.byKey(const Key('maternal-metric-secondary')),
+        '88',
+      );
+      await tester.tap(find.byKey(const Key('maternal-metric-save')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(service.submitted, isNotNull);
+      expect(find.text('LƯU Ý THEO DÕI SỨC KHỎE'), findsOneWidget);
+      expect(find.text('HỎI TRỢ LÝ AI NURSE'), findsOneWidget);
+    },
+  );
+
+  testWidgets('high fever 39.0 C triggers Critical Emergency Alert Dialog', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final service = _FakeHealthMetricService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AddMaternalHealthMetricScreen(
+          journeyId: 'journey-1',
+          initialMetricType: 'TEMPERATURE',
+          service: service,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('maternal-metric-primary')),
+      '39.0',
+    );
+    await tester.tap(find.byKey(const Key('maternal-metric-save')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(service.submitted, isNotNull);
+    expect(service.submitted!.context['measurementSite'], 'ARMPIT');
+    expect(service.submitted!.valueNumeric, 39.0);
+    expect(find.text('CẢNH BÁO NGUY CẤP Y TẾ'), findsOneWidget);
+    expect(find.text('MỞ BẢN ĐỒ BỆNH VIỆN & CẤP CỨU'), findsOneWidget);
+  });
+
+  testWidgets('mild fever 37.8 C triggers Anomaly Warning Dialog to AI Nurse', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final service = _FakeHealthMetricService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AddMaternalHealthMetricScreen(
+          journeyId: 'journey-1',
+          initialMetricType: 'TEMPERATURE',
+          service: service,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('maternal-metric-primary')),
+      '37.8',
+    );
+    await tester.tap(find.byKey(const Key('maternal-metric-save')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(service.submitted, isNotNull);
+    expect(service.submitted!.context['measurementSite'], 'ARMPIT');
+    expect(service.submitted!.valueNumeric, 37.8);
+    expect(find.text('LƯU Ý THEO DÕI SỨC KHỎE'), findsOneWidget);
+    expect(find.text('HỎI TRỢ LÝ AI NURSE'), findsOneWidget);
   });
 }

@@ -41,15 +41,23 @@ class HealthMetricsLogRequest(BaseModel):
     # Vital signs
     systolic_bp: Optional[int] = Field(default=None, ge=50, le=250, description="Huyết áp tâm thu (mmHg)")
     diastolic_bp: Optional[int] = Field(default=None, ge=30, le=160, description="Huyết áp tâm trương (mmHg)")
-    blood_glucose: Optional[float] = Field(default=None, ge=1.0, le=35.0, description="Chỉ số đường huyết (mmol/L)")
+    blood_glucose: Optional[float] = Field(default=None, ge=1.0, le=600.0, description="Chỉ số đường huyết (mmol/L hoặc mg/dL)")
     is_fasting_glucose: Optional[bool] = Field(default=True, description="Đo lúc đói hay sau ăn")
     temperature: Optional[float] = Field(default=None, ge=34.0, le=43.0, description="Thân nhiệt (°C)")
     heart_rate: Optional[int] = Field(default=None, ge=30, le=220, description="Nhịp tim (lần/phút)")
-    weight_kg: Optional[float] = Field(default=None, ge=30.0, le=200.0, description="Cân nặng hiện tại (kg)")
+    weight_kg: Optional[float] = Field(default=None, ge=20.0, le=300.0, description="Cân nặng hiện tại (kg)")
+    height_cm: Optional[float] = Field(default=None, ge=50.0, le=250.0, description="Chiều cao (cm)")
+    bmi: Optional[float] = Field(default=None, ge=10.0, le=250.0, description="Chỉ số khối cơ thể BMI (kg/m²)")
     
     # Fetal movement (Kicks) - Quan trọng từ tuần 28
     fetal_movements_count: Optional[int] = Field(default=None, ge=0, le=100, description="Số lần thai cử động")
     fetal_movements_duration_hours: Optional[int] = Field(default=2, ge=1, le=12, description="Khoảng thời gian đếm (mặc định 2 giờ)")
+
+    # Lifestyle & Mental Health (Lối sống & Sức khỏe tâm thần)
+    water_intake_ml: Optional[int] = Field(default=None, ge=0, le=10000, description="Lượng nước uống trong ngày (ml)")
+    epds_score: Optional[int] = Field(default=None, ge=0, le=30, description="Điểm sàng lọc trầm cảm/tâm trạng EPDS (0-30)")
+    spo2: Optional[int] = Field(default=None, ge=50, le=100, description="Độ bão hòa oxy trong máu SpO2 (%)")
+    sleep_hours: Optional[float] = Field(default=None, ge=0.0, le=24.0, description="Thời lượng giấc ngủ (giờ)")
     
     # Symptoms reported
     symptoms: List[str] = Field(default_factory=list, description="Danh sách triệu chứng chọn (nhức đầu, phù chân, đau bụng...)")
@@ -78,16 +86,19 @@ class ChatMessage(BaseModel):
 
 
 class RagChatRequest(BaseModel):
-    message: str = Field(description="Câu hỏi hoặc chia sẻ của mẹ bầu")
+    message: str = Field(description="Câu hỏi hoặc chia sẻ của mẹ bầu hoặc người thân")
     stage: MaternalStage = Field(default=MaternalStage.PREGNANCY, description="Giai đoạn của người dùng")
-    gestational_age_weeks: Optional[int] = Field(default=None, description="Tuần thai hiện tại")
+    gestational_age_weeks: Optional[int] = Field(default=None, description="Tuần thai hiện tại (chỉ áp dụng cho MOTHER)")
+    user_role: Optional[str] = Field(default="MOTHER", description="Role của người dùng: MOTHER hoặc FAMILY")
+    survey_profile: Optional[Dict[str, Any]] = Field(default=None, description="Thông tin tiền sử y tế từ khảo sát onboarding (chỉ áp dụng cho MOTHER)")
     conversation_history: List[ChatMessage] = Field(default_factory=list, description="Lịch sử đoạn hội thoại trước đó")
-    recent_metrics: Optional[HealthMetricsLogRequest] = Field(default=None, description="Chỉ số sinh hiệu gần nhất để AI nắm bối cảnh")
+    recent_metrics: Optional[HealthMetricsLogRequest] = Field(default=None, description="Chỉ số sinh hiệu gần nhất để AI nắm bối cảnh (chỉ áp dụng cho MOTHER)")
 
 
 class RagChatResponse(BaseModel):
     answer: str = Field(description="Nội dung giải đáp chi tiết, ân cần từ AI Nurse Assistant")
     has_critical_warning: bool = Field(default=False, description="True nếu câu hỏi của mẹ chứa dấu hiệu nguy hiểm cần đi viện")
+    need_expert_consultation: bool = Field(default=False, description="True nếu phát hiện dấu hiệu hoặc chỉ số sức khỏe bất thường cần tham vấn bác sĩ chuyên khoa")
     suggested_followups: List[str] = Field(default_factory=list, description="Các câu hỏi gợi ý tiếp theo")
     sources: List[SourceCitation] = Field(default_factory=list, description="Các đoạn tài liệu cẩm nang y tế được trích dẫn")
     disclaimer: str = Field(description="Cảnh báo y tế không thay thế chẩn đoán bác sĩ")
