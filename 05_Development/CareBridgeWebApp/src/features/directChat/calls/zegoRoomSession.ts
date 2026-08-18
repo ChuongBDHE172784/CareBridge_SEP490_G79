@@ -1,4 +1,5 @@
 import type { ConversationCall, ZegoJoinCredentials } from '../models/directConversation';
+import { uploadCallRecording } from '../services/directChatApi';
 
 interface ZegoRoomInstancePort {
   autoLeaveRoomWhenOnlySelfInRoom: boolean;
@@ -44,6 +45,81 @@ export function mountZegoRoomSession({
 }: MountZegoRoomSessionOptions): () => void {
   let disposed = false;
   let room: ZegoRoomInstancePort | null = null;
+  let mediaRecorder: MediaRecorder | null = null;
+  let recordingStream: MediaStream | null = null;
+  const recordedChunks: Blob[] = [];
+  let callStartTime: number | null = null;
+
+  // Insert PDPA overlay badge in container
+  const pdpaBanner = document.createElement('div');
+  pdpaBanner.style.position = 'absolute';
+  pdpaBanner.style.top = '12px';
+  pdpaBanner.style.left = '50%';
+  pdpaBanner.style.transform = 'translateX(-50%)';
+  pdpaBanner.style.zIndex = '9999';
+  pdpaBanner.style.display = 'flex';
+  pdpaBanner.style.alignItems = 'center';
+  pdpaBanner.style.gap = '8px';
+  pdpaBanner.style.padding = '6px 14px';
+  pdpaBanner.style.background = 'rgba(15, 23, 42, 0.85)';
+  pdpaBanner.style.color = '#fff';
+  pdpaBanner.style.borderRadius = '999px';
+  pdpaBanner.style.fontSize = '12px';
+  pdpaBanner.style.fontWeight = '500';
+  pdpaBanner.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+  pdpaBanner.style.backdropFilter = 'blur(6px)';
+  pdpaBanner.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+  pdpaBanner.innerHTML = `
+    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444;"></span>
+    <span style="color:#f87171; font-weight:700; font-size:11px;">REC (PDPA)</span>
+    <span style="color:#94a3b8;">|</span>
+    <span>Cuộc gọi được ghi âm/ghi hình nhằm đảm bảo chất lượng tư vấn y tế</span>
+  `;
+  if (container && typeof container.appendChild === 'function') {
+    container.style.position = 'relative';
+    container.appendChild(pdpaBanner);
+  }
+
+  const startRecording = async () => {
+    try {
+      if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
+      recordingStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: call.callType === 'VIDEO',
+      });
+      const mimeType = call.callType === 'VIDEO' ? 'video/webm;codecs=vp8,opus' : 'audio/webm;codecs=opus';
+      const options = MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined;
+      mediaRecorder = new MediaRecorder(recordingStream, options);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+      };
+      mediaRecorder.start(1000);
+      callStartTime = Date.now();
+    } catch (e) {
+      console.warn('[zegoRoomSession] Media recording could not start:', e);
+    }
+  };
+
+  const stopRecordingAndUpload = async () => {
+    if (!mediaRecorder) return;
+    try {
+      if (mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      recordingStream?.getTracks().forEach((t) => t.stop());
+      await new Promise((r) => setTimeout(r, 400));
+      if (recordedChunks.length > 0 && call.conversationId && call.callId) {
+        const mimeType = call.callType === 'VIDEO' ? 'video/webm' : 'audio/webm';
+        const blob = new Blob(recordedChunks, { type: mimeType });
+        const durationSecs = callStartTime ? Math.round((Date.now() - callStartTime) / 1000) : undefined;
+        void uploadCallRecording(call.conversationId, call.callId, blob, durationSecs, true).catch((err) => {
+          console.warn('[zegoRoomSession] Auto upload recording failed:', err);
+        });
+      }
+    } catch (e) {
+      console.warn('[zegoRoomSession] Stop recording error:', e);
+    }
+  };
 
   void loadModule()
     .then(({ ZegoUIKitPrebuilt }) => {
@@ -81,10 +157,16 @@ export function mountZegoRoomSession({
         showLeavingView: false,
         showLeaveRoomConfirmDialog: true,
         onJoinRoom: () => {
-          if (!disposed) onJoin();
+          if (!disposed) {
+            void startRecording();
+            onJoin();
+          }
         },
         onLeaveRoom: () => {
-          if (!disposed) onLeave();
+          if (!disposed) {
+            void stopRecordingAndUpload();
+            onLeave();
+          }
         },
       });
     })
@@ -94,6 +176,10 @@ export function mountZegoRoomSession({
 
   return () => {
     disposed = true;
+    if (typeof pdpaBanner.remove === 'function') {
+      pdpaBanner.remove();
+    }
+    void stopRecordingAndUpload();
     room?.destroy();
   };
 }
