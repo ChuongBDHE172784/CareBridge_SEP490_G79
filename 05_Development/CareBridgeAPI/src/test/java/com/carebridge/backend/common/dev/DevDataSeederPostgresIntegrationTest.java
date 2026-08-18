@@ -83,6 +83,7 @@ class DevDataSeederPostgresIntegrationTest {
         assertSeedAccountsAndProfiles();
         assertNoDomainFixtures();
         assertCommunityModerationFixtures();
+        assertExpertConsultationFixtures();
 
         List<Long> domainCountsBefore = domainTableCounts();
         seeder.run(new DefaultApplicationArguments(new String[0]));
@@ -90,6 +91,7 @@ class DevDataSeederPostgresIntegrationTest {
         assertSeedAccountsAndProfiles();
         assertNoDomainFixtures();
         assertCommunityModerationFixtures();
+        assertExpertConsultationFixtures();
         assertThat(domainTableCounts()).isEqualTo(domainCountsBefore);
     }
 
@@ -115,6 +117,17 @@ class DevDataSeederPostgresIntegrationTest {
                    AND experience_tag NOT IN ('Trải nghiệm thực tế', 'Chăm sóc hằng ngày',
                                               'Hỗ trợ tinh thần', 'Thông tin tham khảo')
                 """)).isZero();
+    }
+
+    private void assertExpertConsultationFixtures() {
+        assertThat(count("SELECT count(*) FROM expert_availability WHERE availability_id::text LIKE '90000000-0000-4000-8000-%'"))
+                .isGreaterThanOrEqualTo(30L);
+        assertThat(count("SELECT count(*) FROM expert_consultation_requests WHERE id::text LIKE '94000000-0000-4000-8000-%'"))
+                .isGreaterThanOrEqualTo(8L);
+        assertThat(count("SELECT count(*) FROM consultation_bookings WHERE booking_id::text LIKE '91000000-0000-4000-8000-%'"))
+                .isGreaterThanOrEqualTo(5L);
+        assertThat(count("SELECT count(*) FROM direct_conversations WHERE conversation_id::text LIKE '93000000-0000-4000-8000-%'"))
+                .isGreaterThanOrEqualTo(2L);
     }
 
     private void assertSeedAccountsAndProfiles() {
@@ -157,7 +170,6 @@ class DevDataSeederPostgresIntegrationTest {
         assertThat(count("SELECT count(*) FROM care_tasks")).isZero();
         assertThat(count("SELECT count(*) FROM health_observations")).isZero();
         assertThat(count("SELECT count(*) FROM expert_credentials")).isZero();
-        assertThat(count("SELECT count(*) FROM expert_availability")).isZero();
     }
 
     private List<Long> domainTableCounts() {
@@ -169,7 +181,9 @@ class DevDataSeederPostgresIntegrationTest {
                 count("SELECT count(*) FROM care_tasks"),
                 count("SELECT count(*) FROM health_observations"),
                 count("SELECT count(*) FROM expert_credentials"),
-                count("SELECT count(*) FROM expert_availability"));
+                count("SELECT count(*) FROM expert_availability"),
+                count("SELECT count(*) FROM expert_consultation_requests"),
+                count("SELECT count(*) FROM consultation_bookings"));
     }
 
     private Map<String, String> seedNames() {
