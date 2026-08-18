@@ -44,10 +44,11 @@ public class R2StorageService implements IStorageService {
 
     @Override
     public String generatePresignedUrl(String key, int ttlMinutes) {
+        String cleanKey = key != null && key.contains("|") ? key.substring(0, key.indexOf('|')) : key;
         int boundedTtl = Math.max(1, Math.min(ttlMinutes, 15));
         return r2S3Presigner.presignGetObject(GetObjectPresignRequest.builder()
                         .signatureDuration(Duration.ofMinutes(boundedTtl))
-                        .getObjectRequest(request -> request.bucket(bucket).key(key))
+                        .getObjectRequest(request -> request.bucket(bucket).key(cleanKey))
                         .build())
                 .url().toExternalForm();
     }
