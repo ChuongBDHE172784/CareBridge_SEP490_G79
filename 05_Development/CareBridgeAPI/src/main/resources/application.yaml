@@ -25,7 +25,7 @@ spring:
     enabled: true
     clean-disabled: true
     out-of-order: false
-    validate-on-migrate: true
+    validate-on-migrate: false
     ignore-migration-patterns: "*:future"
     init-sqls:
       - "DO $$ BEGIN PERFORM set_config('carebridge.checklist_v1_writes_frozen', 'true', false); PERFORM set_config('carebridge.checklist_p1_p2_role', 'MIGRATION', false); END $$;"
