@@ -166,23 +166,24 @@ export default function CallRecordingPlayerModal({
 
           {/* Media Player Player Area */}
           <div className="rounded-2xl border border-outline-variant/40 bg-black/95 p-4 text-white">
-            {isLoading && (
+            {isLoading ? (
               <div className="flex h-56 flex-col items-center justify-center gap-3">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 <p className="text-sm text-slate-300">Đang chuẩn bị luồng phát trực tiếp bảo mật...</p>
               </div>
-            )}
-
-            {error && !isLoading && (
+            ) : error && !streamUrl ? (
               <div className="flex h-56 flex-col items-center justify-center gap-2 text-center p-4">
                 <span className="material-symbols-outlined text-4xl text-amber-400">warning</span>
                 <p className="text-sm text-slate-200">{error}</p>
               </div>
-            )}
-
-            {streamUrl && !isLoading && !error && (
+            ) : streamUrl ? (
               <div className="space-y-3">
-                {isVideo ? (
+                {error ? (
+                  <div className="flex h-48 flex-col items-center justify-center gap-2 text-center p-4 bg-slate-900/60 rounded-xl border border-slate-800">
+                    <span className="material-symbols-outlined text-4xl text-amber-400">warning</span>
+                    <p className="text-sm text-slate-200 max-w-md">{error}</p>
+                  </div>
+                ) : isVideo ? (
                   <div className="overflow-hidden rounded-xl bg-black flex justify-center max-h-[380px]">
                     <video
                       ref={videoRef}
@@ -191,7 +192,7 @@ export default function CallRecordingPlayerModal({
                       autoPlay
                       className="w-full h-full object-contain rounded-xl max-h-[380px]"
                       onError={() => {
-                        setError('Không thể giải mã hoặc phát trực tiếp video trên trình duyệt này. Vui lòng nhấn nút "Tải file" bên dưới để xem.');
+                        setError('Không thể phát trực tiếp video này trên trình duyệt (file có thể từ phiên bản trước hoặc định dạng chưa hỗ trợ). Vui lòng nhấn nút "Tải file" bên dưới để xem trực tiếp.');
                       }}
                     />
                   </div>
@@ -207,7 +208,7 @@ export default function CallRecordingPlayerModal({
                       autoPlay
                       className="w-full max-w-lg"
                       onError={() => {
-                        setError('Không thể phát âm thanh trực tiếp trên trình duyệt này. Vui lòng nhấn nút "Tải file" bên dưới để nghe.');
+                        setError('Không thể phát âm thanh trực tiếp trên trình duyệt. Vui lòng nhấn nút "Tải file" bên dưới để nghe.');
                       }}
                     />
                   </div>
@@ -242,18 +243,18 @@ export default function CallRecordingPlayerModal({
                     </span>
                     <a
                       href={streamUrl}
-                      download={`call_${call.callId}.${isVideo ? 'mp4' : 'm4a'}`}
+                      download={`call_${call.callId}.${isVideo ? 'webm' : 'm4a'}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 rounded bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700 hover:text-white transition-colors"
+                      className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark transition-colors shadow-sm"
                     >
                       <span className="material-symbols-outlined text-sm">download</span>
-                      Tải file
+                      Tải file ({isVideo ? 'Video' : 'Audio'})
                     </a>
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* PDPA Notice Banner */}
