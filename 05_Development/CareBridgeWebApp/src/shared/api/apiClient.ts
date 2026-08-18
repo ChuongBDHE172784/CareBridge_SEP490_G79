@@ -33,7 +33,12 @@ apiClient.interceptors.request.use((config) => {
   const token = session?.accessToken ?? useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (config.data instanceof FormData && config.headers) {
-    delete config.headers['Content-Type'];
+    if (typeof (config.headers as any).delete === 'function') {
+      (config.headers as any).delete('Content-Type');
+      (config.headers as any).delete('content-type');
+    }
+    delete (config.headers as Record<string, unknown>)['Content-Type'];
+    delete (config.headers as Record<string, unknown>)['content-type'];
   }
   return config;
 });

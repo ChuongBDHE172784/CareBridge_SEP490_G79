@@ -94,7 +94,7 @@ public class ConversationCallController {
     public ResponseEntity<ApiResponse<ConversationCallResponse>> uploadRecording(
             @PathVariable UUID conversationId,
             @PathVariable UUID callId,
-            @org.springframework.web.bind.annotation.RequestPart("file") org.springframework.web.multipart.MultipartFile file,
+            @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             @org.springframework.web.bind.annotation.RequestParam(value = "recordedDurationSeconds", required = false) Integer recordedDurationSeconds,
             @org.springframework.web.bind.annotation.RequestParam(value = "consentAttested", required = false, defaultValue = "true") Boolean consentAttested,
             Principal principal) {

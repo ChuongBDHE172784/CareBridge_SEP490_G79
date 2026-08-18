@@ -147,7 +147,12 @@ export async function uploadCallRecording(
 
   const { data } = await apiClient.post(
     `/api/v1/direct-conversations/${conversationId}/calls/${callId}/recording`,
-    formData
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
   );
   return data.data;
 }
