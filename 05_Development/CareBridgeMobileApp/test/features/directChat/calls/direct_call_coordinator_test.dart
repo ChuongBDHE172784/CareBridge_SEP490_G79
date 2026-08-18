@@ -49,6 +49,16 @@ class _FakeCallApi implements DirectCallApiPort {
     String conversationId,
     String callId,
   ) => throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> uploadRecording({
+    required String conversationId,
+    required String callId,
+    required String filePath,
+    int? recordedDurationSeconds,
+    bool consentAttested = true,
+  }) =>
+      throw UnimplementedError();
 }
 
 ConversationCall _call(String status) => ConversationCall(

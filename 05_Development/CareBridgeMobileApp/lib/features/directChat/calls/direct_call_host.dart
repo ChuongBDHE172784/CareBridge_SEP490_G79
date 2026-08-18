@@ -166,6 +166,8 @@ class _DirectCallHostState extends State<DirectCallHost>
   Widget _buildRtc(ZegoJoinCredentials credentials) {
     return ZegoExpressCallRoom(
       credentials: credentials,
+      conversationId: _state.call?.conversationId ?? '',
+      callId: _state.call?.callId ?? '',
       isVideo: _state.isVideo,
       onConnected: _coordinator.markInCall,
       onReconnecting: _coordinator.markReconnecting,

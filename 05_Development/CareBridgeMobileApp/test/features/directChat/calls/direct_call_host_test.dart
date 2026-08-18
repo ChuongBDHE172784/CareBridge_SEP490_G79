@@ -51,6 +51,16 @@ class _HostCallApi implements DirectCallApiPort {
   @override
   Future<ConversationCall> end(String conversationId, String callId) =>
       throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> uploadRecording({
+    required String conversationId,
+    required String callId,
+    required String filePath,
+    int? recordedDurationSeconds,
+    bool consentAttested = true,
+  }) =>
+      throw UnimplementedError();
 }
 
 ConversationCall _call(String status) => ConversationCall(

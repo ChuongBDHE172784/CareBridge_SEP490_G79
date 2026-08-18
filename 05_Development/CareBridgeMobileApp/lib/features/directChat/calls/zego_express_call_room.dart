@@ -1,9 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:universal_io/io.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 
+import '../models/conversation_call.dart';
 import '../models/zego_join_credentials.dart';
+import 'direct_call_api.dart';
 import 'rtc_error_handling.dart';
 import 'rtc_permissions.dart';
 import 'rtc_platform_capabilities.dart';
@@ -14,6 +19,8 @@ class ZegoExpressCallRoom extends StatefulWidget {
     super.key,
     required this.credentials,
     required this.isVideo,
+    this.conversationId = '',
+    this.callId = '',
     required this.onConnected,
     required this.onReconnecting,
     required this.onError,
@@ -23,6 +30,8 @@ class ZegoExpressCallRoom extends StatefulWidget {
 
   final ZegoJoinCredentials credentials;
   final bool isVideo;
+  final String conversationId;
+  final String callId;
   final VoidCallback onConnected;
   final VoidCallback onReconnecting;
   final ValueChanged<String> onError;
@@ -49,6 +58,12 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
   bool _speakerEnabled = false;
   String _connectionLabel = 'Đang kết nối…';
   late final RtcPlatformCapabilities _platformCapabilities;
+
+  // Local recording & PDPA consent state
+  String? _recordedFilePath;
+  DateTime? _callAnsweredTime;
+  bool _isRecording = false;
+  bool _showConsentNotice = true;
 
   @override
   void initState() {
@@ -171,6 +186,7 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
         case ZegoRoomStateChangedReason.Logined:
         case ZegoRoomStateChangedReason.Reconnected:
           if (mounted) setState(() => _connectionLabel = 'Đã kết nối');
+          unawaited(_startLocalRecording());
           widget.onConnected();
           break;
         case ZegoRoomStateChangedReason.Logining:
@@ -353,9 +369,74 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
     );
   }
 
+  Future<void> _startLocalRecording() async {
+    if (kIsWeb || _isRecording) return;
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final ext = widget.isVideo ? 'mp4' : 'm4a';
+      final fileName =
+          'call_rec_${widget.callId.isNotEmpty ? widget.callId : widget.credentials.roomId}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final fullPath = '${tempDir.path}/$fileName';
+      _recordedFilePath = fullPath;
+
+      final config = ZegoDataRecordConfig(
+        fullPath,
+        widget.isVideo
+            ? ZegoDataRecordType.Default
+            : ZegoDataRecordType.OnlyAudio,
+      );
+      await ZegoExpressEngine.instance.startRecordingCapturedData(config);
+      _isRecording = true;
+      _callAnsweredTime = DateTime.now();
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('[ZegoExpressCallRoom] startRecordingCapturedData error: $e');
+    }
+  }
+
+  Future<void> _stopLocalRecordingAndUpload() async {
+    if (!_isRecording || _recordedFilePath == null) return;
+    try {
+      await ZegoExpressEngine.instance.stopRecordingCapturedData();
+      _isRecording = false;
+
+      final recordedFile = File(_recordedFilePath!);
+      if (await recordedFile.exists() && await recordedFile.length() > 0) {
+        final durationSeconds = _callAnsweredTime != null
+            ? DateTime.now().difference(_callAnsweredTime!).inSeconds
+            : null;
+
+        if (widget.conversationId.isNotEmpty && widget.callId.isNotEmpty) {
+          unawaited(
+            DirectCallApi.instance.uploadRecording(
+              conversationId: widget.conversationId,
+              callId: widget.callId,
+              filePath: _recordedFilePath!,
+              recordedDurationSeconds: durationSeconds,
+              consentAttested: true,
+            ).catchError((err) {
+              debugPrint('[ZegoExpressCallRoom] upload recording error: $err');
+              return ConversationCall(
+                callId: widget.callId,
+                conversationId: widget.conversationId,
+                initiatedByUserId: '',
+                callType: '',
+                callStatus: '',
+                initiatedAt: DateTime.now(),
+              );
+            }),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[ZegoExpressCallRoom] stop recording error: $e');
+    }
+  }
+
   Future<void> _releaseEngine() async {
     if (!_engineCreated) return;
     _engineCreated = false;
+    await _stopLocalRecordingAndUpload();
     ZegoExpressEngine.onRoomStateChanged = null;
     ZegoExpressEngine.onRoomStreamUpdate = null;
     ZegoExpressEngine.onRoomTokenWillExpire = null;
@@ -383,12 +464,8 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_engineCreated || !widget.isVideo) return;
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      unawaited(ZegoExpressEngine.instance.enableCamera(false));
-    } else if (state == AppLifecycleState.resumed && _cameraEnabled) {
-      unawaited(ZegoExpressEngine.instance.enableCamera(true));
+    if (state == AppLifecycleState.resumed && _engineCreated) {
+      unawaited(_syncStreamExtraInfo());
     }
   }
 
@@ -402,10 +479,14 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black,
-      child: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) unawaited(widget.onHangUp());
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
           children: [
             Positioned.fill(
               child: widget.isVideo
@@ -444,23 +525,99 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
               top: 16,
               left: 16,
               right: 16,
-              child: Center(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_isRecording) ...[
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Colors.redAccent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'REC (PDPA)',
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Text(
+                              _connectionLabel,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      _connectionLabel,
-                      style: const TextStyle(color: Colors.white),
-                    ),
                   ),
-                ),
+                  if (_showConsentNotice) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC0F172A),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.verified_user,
+                            color: Color(0xFF34D399),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Cuộc gọi này sẽ được ghi âm/ghi hình nhằm đảm bảo chất lượng tư vấn y tế.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10.5,
+                                height: 1.25,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () => setState(() => _showConsentNotice = false),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white60,
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Positioned(
