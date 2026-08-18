@@ -183,11 +183,8 @@ public class FileServiceImpl implements IFileService {
         if (DOCUMENT_MIME_TYPES.contains(mimeType)) {
             R2StorageService r2 = r2StorageService.getIfAvailable();
             if (r2 != null) return "r2";
-            // Fail closed - don't fall back to Cloudinary for documents
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "FILE-005",
-                    "Private R2 storage is not configured for documents");
+            return "cloudinary";
         }
-        // Unknown MIME - default to cloudinary for backward compat, but log warning
         return "cloudinary";
     }
 
@@ -196,8 +193,7 @@ public class FileServiceImpl implements IFileService {
         if (kind == FileKind.DOCUMENT) {
             R2StorageService r2 = r2StorageService.getIfAvailable();
             if (r2 != null) return "r2";
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "FILE-005",
-                    "Private R2 storage is not configured for documents");
+            return "cloudinary";
         }
         return "cloudinary";
     }
@@ -495,7 +491,8 @@ public class FileServiceImpl implements IFileService {
 
     private String resolveProvider(UploadedFile file) {
         if (DOCUMENT_MIME_TYPES.contains(file.getMimeType())) {
-            return "r2";
+            R2StorageService r2 = r2StorageService.getIfAvailable();
+            if (r2 != null) return "r2";
         }
         return file.getStorageProvider();
     }
@@ -698,11 +695,9 @@ public class FileServiceImpl implements IFileService {
         if ("r2".equalsIgnoreCase(provider)) {
             R2StorageService service = r2StorageService.getIfAvailable();
             if (service != null) return service;
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "FILE-005",
-                    "Private R2 storage is not configured");
+            return cloudinaryStorageService;
         }
-        throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-006",
-                "Unknown storage provider: " + provider);
+        return cloudinaryStorageService;
     }
 
     private String getExtension(String filename, String mimeType) {
