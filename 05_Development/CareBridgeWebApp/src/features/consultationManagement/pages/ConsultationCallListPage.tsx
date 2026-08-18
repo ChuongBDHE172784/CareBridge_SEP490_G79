@@ -61,6 +61,7 @@ export default function ConsultationCallListPage() {
       setCalls(res.content || []);
       setTotal(res.totalElements || 0);
     } catch (err) {
+      console.error('[ConsultationCallListPage] fetchCalls error:', err);
       setError('Không thể tải danh sách cuộc gọi tư vấn. Vui lòng thử lại sau.');
     } finally {
       setIsLoading(false);

@@ -19,11 +19,23 @@ export async function searchConsultationCalls(
     size: query.size ?? 10,
   };
 
-  const response = await apiClient.get<PaginatedConsultationCalls>(
-    '/api/v1/admin/consultation-calls',
-    { params }
-  );
-  return response.data;
+  const response = await apiClient.get<{
+    success: boolean;
+    data: ConsultationCallAdminSummary[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+  }>('/api/v1/admin/consultation-calls', { params });
+
+  const body = response.data;
+  return {
+    content: body.data || [],
+    totalElements: body.totalElements || 0,
+    totalPages: body.totalPages || 0,
+    size: body.size || (query.size ?? 10),
+    number: body.page || (query.page ?? 0),
+  };
 }
 
 export async function getConsultationCallDetail(

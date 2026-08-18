@@ -77,27 +77,36 @@ public class AdminConsultationCallServiceImpl implements IAdminConsultationCallS
         // Bulk load conversations
         Set<UUID> conversationIds = callPage.getContent().stream()
                 .map(ConversationCall::getConversationId)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, DirectConversation> conversations = conversationRepository.findAllById(conversationIds).stream()
-                .collect(Collectors.toMap(DirectConversation::getId, c -> c));
+        Map<UUID, DirectConversation> conversations = conversationIds.isEmpty()
+                ? Map.of()
+                : conversationRepository.findAllById(conversationIds).stream()
+                        .collect(Collectors.toMap(DirectConversation::getId, c -> c, (a, b) -> a));
 
         // Bulk load users (mothers, experts, callers)
         Set<UUID> userIds = conversations.values().stream()
                 .flatMap(c -> java.util.stream.Stream.of(c.getMotherUserId(), c.getExpertUserId()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        callPage.getContent().forEach(c -> userIds.add(c.getInitiatedByUserId()));
+        callPage.getContent().forEach(c -> {
+            if (c.getInitiatedByUserId() != null) userIds.add(c.getInitiatedByUserId());
+        });
 
-        Map<UUID, User> users = userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(User::getId, u -> u));
+        Map<UUID, User> users = userIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
         // Bulk load expert profiles
         Set<UUID> expertUserIds = conversations.values().stream()
                 .map(DirectConversation::getExpertUserId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, ExpertProfile> expertProfiles = expertProfileRepository.findByUserIdIn(expertUserIds).stream()
-                .collect(Collectors.toMap(ExpertProfile::getExpertProfileId, ep -> ep));
+        Map<UUID, ExpertProfile> expertProfiles = expertUserIds.isEmpty()
+                ? Map.of()
+                : expertProfileRepository.findByUserIdIn(expertUserIds).stream()
+                        .collect(Collectors.toMap(ExpertProfile::getExpertProfileId, ep -> ep, (a, b) -> a));
 
         List<AdminConsultationCallSummaryResponse> dtos = callPage.getContent().stream()
                 .map(call -> mapToAdminSummary(call, conversations.get(call.getConversationId()), users, expertProfiles))
