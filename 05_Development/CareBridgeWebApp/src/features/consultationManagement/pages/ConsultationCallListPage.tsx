@@ -35,6 +35,9 @@ export default function ConsultationCallListPage() {
   const [callTypeFilter, setCallTypeFilter] = useState<CallType | ''>('');
   const [callStatusFilter, setCallStatusFilter] = useState<CallStatus | ''>('');
   const [hasRecordingFilter, setHasRecordingFilter] = useState<'' | 'true' | 'false'>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [timeFrom, setTimeFrom] = useState('');
+  const [timeTo, setTimeTo] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,8 +56,8 @@ export default function ConsultationCallListPage() {
           hasRecordingFilter === 'true'
             ? true
             : hasRecordingFilter === 'false'
-            ? false
-            : undefined,
+              ? false
+              : undefined,
         page,
         size: pageSize,
       });
@@ -83,6 +86,39 @@ export default function ConsultationCallListPage() {
       totalMinutes: totalMins,
     };
   }, [calls, total]);
+
+  // Client-side date/time filter applied on top of server results
+  const filteredCalls = useMemo(() => {
+    return calls.filter((c) => {
+      if (!c.initiatedAt) return true;
+      const d = new Date(c.initiatedAt);
+      // Filter by exact date (yyyy-MM-dd)
+      if (dateFrom) {
+        const callDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (callDate !== dateFrom) return false;
+      }
+      // Within that day, filter by time range
+      if (timeFrom) {
+        const [hh, mm] = timeFrom.split(':').map(Number);
+        const callMinutes = d.getHours() * 60 + d.getMinutes();
+        if (callMinutes < hh * 60 + mm) return false;
+      }
+      if (timeTo) {
+        const [hh, mm] = timeTo.split(':').map(Number);
+        const callMinutes = d.getHours() * 60 + d.getMinutes();
+        if (callMinutes > hh * 60 + mm) return false;
+      }
+      return true;
+    });
+  }, [calls, dateFrom, timeFrom, timeTo]);
+
+  const hasDateTimeFilter = !!(dateFrom || timeFrom || timeTo);
+
+  const clearDateTimeFilter = () => {
+    setDateFrom('');
+    setTimeFrom('');
+    setTimeTo('');
+  };
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
@@ -167,6 +203,7 @@ export default function ConsultationCallListPage() {
 
       {/* Filter & Search Bar */}
       <div className="rounded-2xl border border-outline-variant/50 bg-surface-container-low p-4 shadow-sm space-y-3">
+        {/* Row 1: keyword + type + status + recording */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Keyword Search */}
           <div className="relative">
@@ -234,6 +271,58 @@ export default function ConsultationCallListPage() {
             </select>
           </div>
         </div>
+
+        {/* Row 2: Single date + time range */}
+        <div className="flex flex-wrap items-end gap-3 pt-1 border-t border-outline-variant/30">
+          <span className="material-symbols-outlined text-base text-outline mt-4 shrink-0">calendar_month</span>
+          {/* Single Date */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-outline">Ngày</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-xl border border-outline-variant/60 bg-surface px-3 py-1.5 text-xs text-on-surface focus:border-primary focus:outline-none"
+            />
+          </div>
+
+          <span className="material-symbols-outlined text-base text-outline mt-4 shrink-0">schedule</span>
+          {/* Time From */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-outline">Từ giờ</label>
+            <input
+              type="time"
+              value={timeFrom}
+              disabled={!dateFrom}
+              onChange={(e) => setTimeFrom(e.target.value)}
+              className="rounded-xl border border-outline-variant/60 bg-surface px-3 py-1.5 text-xs text-on-surface focus:border-primary focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+          </div>
+          <span className="text-outline text-xs mt-4">—</span>
+          {/* Time To */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-outline">Đến giờ</label>
+            <input
+              type="time"
+              value={timeTo}
+              disabled={!dateFrom}
+              onChange={(e) => setTimeTo(e.target.value)}
+              className="rounded-xl border border-outline-variant/60 bg-surface px-3 py-1.5 text-xs text-on-surface focus:border-primary focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* Clear button */}
+          {hasDateTimeFilter && (
+            <button
+              type="button"
+              onClick={clearDateTimeFilter}
+              className="flex items-center gap-1 rounded-xl border border-outline-variant/60 bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors cursor-pointer mt-4"
+            >
+              <span className="material-symbols-outlined text-[14px]">close</span>
+              Xóa bộ lọc
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Table */}
@@ -254,7 +343,7 @@ export default function ConsultationCallListPage() {
               Thử lại
             </button>
           </div>
-        ) : calls.length === 0 ? (
+        ) : filteredCalls.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center gap-2 p-6 text-center">
             <span className="material-symbols-outlined text-4xl text-outline">call_end</span>
             <p className="text-sm font-semibold text-on-surface">Không tìm thấy cuộc gọi nào</p>
@@ -268,8 +357,8 @@ export default function ConsultationCallListPage() {
               <thead className="border-b border-outline-variant/50 bg-surface-container-low text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
                 <tr>
                   <th className="py-3.5 pl-6 pr-3">Mã cuộc gọi & Thời gian</th>
-                  <th className="py-3.5 px-3">Người Mẹ (Mother)</th>
-                  <th className="py-3.5 px-3">Chuyên gia (Expert)</th>
+                  <th className="py-3.5 px-3">Người Mẹ</th>
+                  <th className="py-3.5 px-3">Chuyên gia</th>
                   <th className="py-3.5 px-3">Hình thức</th>
                   <th className="py-3.5 px-3">Thời lượng</th>
                   <th className="py-3.5 px-3">Trạng thái</th>
@@ -278,7 +367,7 @@ export default function ConsultationCallListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40">
-                {calls.map((call) => {
+                {filteredCalls.map((call) => {
                   const hasRecord = !!call.recordingFileId;
                   const isVideo = call.callType === 'VIDEO';
 
@@ -316,11 +405,10 @@ export default function ConsultationCallListPage() {
                       {/* Call Type */}
                       <td className="py-4 px-3">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                            isVideo
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${isVideo
                               ? 'bg-blue-50 text-blue-700 border border-blue-200'
                               : 'bg-purple-50 text-purple-700 border border-purple-200'
-                          }`}
+                            }`}
                         >
                           <span className="material-symbols-outlined text-[14px]">
                             {isVideo ? 'videocam' : 'mic'}
@@ -337,23 +425,22 @@ export default function ConsultationCallListPage() {
                       {/* Status */}
                       <td className="py-4 px-3">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                            call.callStatus === 'ENDED' || call.callStatus === 'ANSWERED'
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${call.callStatus === 'ENDED' || call.callStatus === 'ANSWERED'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : call.callStatus === 'MISSED'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-slate-100 text-slate-700 border border-slate-200'
-                          }`}
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}
                         >
                           {call.callStatus === 'ENDED'
                             ? 'Hoàn thành'
                             : call.callStatus === 'ANSWERED'
-                            ? 'Đã kết nối'
-                            : call.callStatus === 'MISSED'
-                            ? 'Cuộc gọi nhỡ'
-                            : call.callStatus === 'DECLINED'
-                            ? 'Từ chối'
-                            : call.callStatus}
+                              ? 'Đã kết nối'
+                              : call.callStatus === 'MISSED'
+                                ? 'Cuộc gọi nhỡ'
+                                : call.callStatus === 'DECLINED'
+                                  ? 'Từ chối'
+                                  : call.callStatus}
                         </span>
                       </td>
 
@@ -389,10 +476,10 @@ export default function ConsultationCallListPage() {
         )}
 
         {/* Pagination Bar */}
-        {!isLoading && calls.length > 0 && (
+        {!isLoading && filteredCalls.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-outline-variant/50 bg-surface-container-low px-6 py-3 text-xs text-on-surface-variant">
             <div>
-              Hiển thị <strong>{calls.length}</strong> trên tổng số <strong>{total}</strong> cuộc gọi
+              Hiển thị <strong>{filteredCalls.length}</strong>{hasDateTimeFilter ? ' (đã lọc)' : ''} trên tổng số <strong>{total}</strong> cuộc gọi
             </div>
             <div className="flex items-center gap-2">
               <button

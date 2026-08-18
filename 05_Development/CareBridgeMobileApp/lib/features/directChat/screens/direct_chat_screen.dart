@@ -16,6 +16,7 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import 'direct_chat_attachment_viewer_screen.dart';
 import 'direct_chat_location_navigation_screen.dart';
+import '../calls/call_recording_consent_dialog.dart';
 import '../calls/conversation_signal_hub.dart';
 import '../calls/direct_call_host.dart';
 import '../models/timeline_item.dart';
@@ -517,6 +518,8 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _placeCall(String callType) async {
+    final acceptedRecording = await showCallRecordingConsentDialog(context);
+    if (!acceptedRecording || !mounted) return;
     try {
       await DirectCallScope.of(
         context,

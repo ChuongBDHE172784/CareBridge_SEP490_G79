@@ -1,12 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:untitled/features/directChat/calls/direct_call_api.dart';
+import 'package:untitled/features/directChat/calls/direct_call_coordinator.dart';
+import 'package:untitled/features/directChat/calls/direct_call_host.dart';
+import 'package:untitled/features/directChat/models/conversation_call.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/models/timeline_item.dart';
 import 'package:untitled/features/directChat/models/timeline_page.dart';
+import 'package:untitled/features/directChat/models/zego_join_credentials.dart';
 import 'package:untitled/features/directChat/screens/conversation_list_screen.dart';
 import 'package:untitled/features/directChat/screens/direct_chat_screen.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
+import 'package:untitled/integrations/firebaseRealtime/conversation_event_signal.dart';
 
 const _conversationId = 'conv-1';
 const _messageId = 'message-latest';
@@ -76,11 +84,109 @@ class _ScriptedDirectChatService extends DirectChatService {
   ];
 }
 
+class _OutgoingCallApi implements DirectCallApiPort {
+  int initiateCalls = 0;
+
+  @override
+  Future<ConversationCall> initiate(
+    String conversationId,
+    String callType,
+  ) async {
+    initiateCalls++;
+    return ConversationCall(
+      callId: 'call-1',
+      conversationId: conversationId,
+      initiatedByUserId: 'mother-1',
+      callType: callType,
+      callStatus: 'INITIATED',
+      initiatedAt: DateTime.utc(2026, 8, 19),
+    );
+  }
+
+  @override
+  Future<List<ConversationCall>> listActiveCalls() async => const [];
+
+  @override
+  Future<ConversationCall> getCall(String conversationId, String callId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> markRinging(String conversationId, String callId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> answer(String conversationId, String callId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> decline(String conversationId, String callId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> end(String conversationId, String callId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ZegoJoinCredentials> issueJoinCredentials(
+    String conversationId,
+    String callId,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> uploadRecording({
+    required String conversationId,
+    required String callId,
+    required String filePath,
+    int? recordedDurationSeconds,
+    bool consentAttested = true,
+  }) => throw UnimplementedError();
+}
+
 void main() {
   late DirectChatService original;
 
   setUp(() => original = DirectChatService.instance);
   tearDown(() => DirectChatService.instance = original);
+
+  testWidgets('outgoing call is not initiated before recording consent', (
+    tester,
+  ) async {
+    DirectChatService.instance = _ScriptedDirectChatService();
+    final api = _OutgoingCallApi();
+    const signals = Stream<ConversationEventSignal>.empty();
+    final coordinator = DirectCallCoordinator(
+      api: api,
+      signals: signals,
+      currentUserId: () => 'mother-1',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DirectCallScope(
+          coordinator: coordinator,
+          child: const DirectChatScreen(conversationId: _conversationId),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.phone_rounded));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Tuân thủ PDPA'), findsOneWidget);
+    expect(api.initiateCalls, 0);
+
+    await tester.tap(find.text('Không đồng ý'));
+    await tester.pumpAndSettle();
+    expect(api.initiateCalls, 0);
+
+    await tester.tap(find.byIcon(Icons.phone_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đồng ý'));
+    await tester.pumpAndSettle();
+    expect(api.initiateCalls, 1);
+
+    unawaited(coordinator.dispose());
+  });
 
   // MEDI-FL-10
   testWidgets(

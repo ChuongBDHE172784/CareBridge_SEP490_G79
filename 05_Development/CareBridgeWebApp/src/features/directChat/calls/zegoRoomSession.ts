@@ -52,16 +52,23 @@ export function mountZegoRoomSession({
   let recordingFinalizePromise: Promise<void> | null = null;
   let leaveRequested = false;
 
-  // Insert PDPA overlay badge in container
+  // Mount the PDPA notice outside the SDK-owned container. Zego replaces the
+  // container's children while rendering, which used to remove this banner.
   const pdpaBanner = document.createElement('div');
+  pdpaBanner.dataset.callRecordingNotice = 'true';
+  pdpaBanner.setAttribute('role', 'status');
+  pdpaBanner.setAttribute('aria-live', 'polite');
   pdpaBanner.style.position = 'absolute';
-  pdpaBanner.style.top = '12px';
+  pdpaBanner.style.top = '64px';
   pdpaBanner.style.left = '50%';
   pdpaBanner.style.transform = 'translateX(-50%)';
-  pdpaBanner.style.zIndex = '9999';
+  pdpaBanner.style.zIndex = '10001';
   pdpaBanner.style.display = 'flex';
   pdpaBanner.style.alignItems = 'center';
+  pdpaBanner.style.justifyContent = 'center';
   pdpaBanner.style.gap = '8px';
+  pdpaBanner.style.width = 'max-content';
+  pdpaBanner.style.maxWidth = 'calc(100% - 32px)';
   pdpaBanner.style.padding = '6px 14px';
   pdpaBanner.style.background = 'rgba(15, 23, 42, 0.85)';
   pdpaBanner.style.color = '#fff';
@@ -71,15 +78,18 @@ export function mountZegoRoomSession({
   pdpaBanner.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
   pdpaBanner.style.backdropFilter = 'blur(6px)';
   pdpaBanner.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+  pdpaBanner.style.pointerEvents = 'none';
+  pdpaBanner.style.textAlign = 'center';
   pdpaBanner.innerHTML = `
     <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444;"></span>
-    <span style="color:#f87171; font-weight:700; font-size:11px;">REC (PDPA)</span>
+    <span style="color:#f87171; font-weight:700; font-size:11px;">REC</span>
     <span style="color:#94a3b8;">|</span>
-    <span>Cuộc gọi được ghi âm/ghi hình nhằm đảm bảo chất lượng tư vấn y tế</span>
+    <span>Cuộc gọi này sẽ được ghi âm/ghi hình nhằm đảm bảo chất lượng tư vấn y tế (Tuân thủ PDPA)</span>
   `;
-  if (container && typeof container.appendChild === 'function') {
-    container.style.position = 'relative';
-    container.appendChild(pdpaBanner);
+  const pdpaHost = container?.parentElement ?? container;
+  if (pdpaHost && typeof pdpaHost.appendChild === 'function') {
+    if (pdpaHost === container) container.style.position = 'relative';
+    pdpaHost.appendChild(pdpaBanner);
   }
 
   const startRecording = async () => {

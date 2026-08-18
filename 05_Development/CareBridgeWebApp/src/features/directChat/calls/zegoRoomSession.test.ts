@@ -107,6 +107,35 @@ describe('mountZegoRoomSession', () => {
     expect(fake.create).not.toHaveBeenCalled();
   });
 
+  it('keeps the PDPA recording notice outside the SDK-owned container', async () => {
+    const fake = fakeModule();
+    const roomHost = document.createElement('div');
+    const sdkContainer = document.createElement('div');
+    roomHost.appendChild(sdkContainer);
+
+    const dispose = mountZegoRoomSession({
+      call,
+      credentials,
+      container: sdkContainer,
+      loadModule: async () => fake.module,
+      onJoin: vi.fn(),
+      onLeave: vi.fn(),
+    });
+    await Promise.resolve();
+
+    sdkContainer.replaceChildren();
+
+    const notice = roomHost.querySelector('[data-call-recording-notice="true"]');
+    expect(notice).not.toBeNull();
+    expect(notice?.parentElement).toBe(roomHost);
+    expect(notice?.textContent).toContain(
+      'Cuộc gọi này sẽ được ghi âm/ghi hình nhằm đảm bảo chất lượng tư vấn y tế (Tuân thủ PDPA)'
+    );
+
+    dispose();
+    expect(roomHost.querySelector('[data-call-recording-notice="true"]')).toBeNull();
+  });
+
   it('flushes the final recorder chunk and finishes one upload before leaving', async () => {
     const fake = fakeModule();
     const stopTrack = vi.fn();

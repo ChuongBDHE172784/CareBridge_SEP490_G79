@@ -26,6 +26,43 @@
   margin: 0 0 0.5rem;
 }
 
+.direct-call-consent-overlay {
+  z-index: 10002;
+}
+
+.direct-call-consent-card {
+  max-width: 32rem;
+}
+
+.direct-call-consent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.25rem;
+  min-height: 3.25rem;
+  margin-bottom: 0.9rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.direct-call-consent-message {
+  margin: 0.75rem 0 0;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.direct-call-consent-note {
+  margin: 0.75rem 0 0;
+  color: #71564c;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
 .direct-call-actions {
   display: flex;
   flex-wrap: wrap;
@@ -42,6 +79,7 @@
   background: #bd7665;
   color: white;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .direct-call-actions button.secondary {

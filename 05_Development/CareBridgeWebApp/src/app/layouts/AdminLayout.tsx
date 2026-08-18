@@ -32,7 +32,7 @@ const NAV_LINKS: readonly NavItem[] = [
     children: [
       { to: '/admin/experts', label: 'Danh sách chuyên gia', icon: 'group', roles: ['SYSTEM_ADMIN'] },
       { to: '/admin/expert-verification-queue', label: 'Xét duyệt chuyên gia', icon: 'verified_user', roles: ['SYSTEM_ADMIN'] },
-      { to: '/admin/consultation-calls', label: 'Bản ghi tư vấn (Calls)', icon: 'record_voice_over', roles: ['SYSTEM_ADMIN'] },
+      { to: '/admin/consultation-calls', label: 'Bản ghi tư vấn', icon: 'record_voice_over', roles: ['SYSTEM_ADMIN'] },
     ],
   },
   {
@@ -113,11 +113,10 @@ export default function AdminLayout() {
                     type="button"
                     onClick={() => setOpenGroups((groups) => ({ ...groups, [l.label]: !groupOpen }))}
                     aria-expanded={groupOpen}
-                    className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                      groupActive
+                    className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${groupActive
                         ? 'bg-primary-container text-primary'
                         : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-                    }`}
+                      }`}
                   >
                     <span className="material-symbols-outlined text-[18px]">{l.icon}</span>
                     <span className="min-w-0 flex-1 truncate text-left">{l.label}</span>
@@ -132,10 +131,9 @@ export default function AdminLayout() {
                           key={child.to}
                           to={child.to}
                           className={({ isActive }) =>
-                            `flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                              isActive
-                                ? 'bg-primary-container text-primary'
-                                : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                            `flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${isActive
+                              ? 'bg-primary-container text-primary'
+                              : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                             }`
                           }
                         >
@@ -154,10 +152,9 @@ export default function AdminLayout() {
                 key={l.to}
                 to={l.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary-container text-primary'
-                      : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                  `flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${isActive
+                    ? 'bg-primary-container text-primary'
+                    : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                   }`
                 }
               >
@@ -175,10 +172,9 @@ export default function AdminLayout() {
           <NavLink
             to={isModerator ? '/moderator/settings/password' : '/admin/settings/password'}
             className={({ isActive }) =>
-              `flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                isActive
-                  ? 'border-primary bg-primary-container text-primary'
-                  : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              `flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${isActive
+                ? 'border-primary bg-primary-container text-primary'
+                : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
               }`
             }
           >

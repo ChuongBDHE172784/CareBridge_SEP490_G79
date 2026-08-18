@@ -76,7 +76,7 @@ export default function CallRecordingPlayerModal({
         if (isMounted) {
           setError(
             err.response?.data?.message ||
-              'Không thể tải liên kết bản ghi từ hệ thống lưu trữ bảo mật.'
+            'Không thể tải liên kết bản ghi từ hệ thống lưu trữ bảo mật.'
           );
         }
       })
@@ -101,15 +101,15 @@ export default function CallRecordingPlayerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-outline-variant/60 bg-surface shadow-2xl transition-all"
+        className="relative w-full max-w-3xl flex flex-col rounded-2xl border border-outline-variant/60 bg-surface shadow-2xl transition-all my-auto max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container-low px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-outline-variant/50 bg-surface-container-low px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-container text-primary">
               <span className="material-symbols-outlined text-2xl">
@@ -134,14 +134,14 @@ export default function CallRecordingPlayerModal({
         </div>
 
         {/* Body */}
-        <div className="space-y-5 p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-5 p-6">
           {/* Participants Info Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Mother Card */}
             <div className="rounded-xl border border-outline-variant/50 bg-surface-container-lowest p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="material-symbols-outlined text-pink-600 text-lg">pregnant_woman</span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-pink-700">Người Mẹ (Mother)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-pink-700">Người Mẹ</span>
               </div>
               <p className="font-semibold text-on-surface text-sm">{call.motherName}</p>
               <div className="mt-1 text-xs text-on-surface-variant space-y-0.5">
@@ -154,7 +154,7 @@ export default function CallRecordingPlayerModal({
             <div className="rounded-xl border border-outline-variant/50 bg-surface-container-lowest p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="material-symbols-outlined text-blue-600 text-lg">medical_services</span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Chuyên gia y tế (Expert)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Chuyên gia y tế</span>
               </div>
               <p className="font-semibold text-on-surface text-sm">{call.expertName}</p>
               <div className="mt-1 text-xs text-on-surface-variant space-y-0.5">
@@ -223,11 +223,10 @@ export default function CallRecordingPlayerModal({
                         key={rate}
                         type="button"
                         onClick={() => handlePlaybackRateChange(rate)}
-                        className={`rounded px-2 py-1 font-semibold transition-colors cursor-pointer ${
-                          playbackRate === rate
-                            ? 'bg-primary text-white'
-                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        }`}
+                        className={`rounded px-2 py-1 font-semibold transition-colors cursor-pointer ${playbackRate === rate
+                          ? 'bg-primary text-white'
+                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          }`}
                       >
                         {rate}x
                       </button>
@@ -270,7 +269,7 @@ export default function CallRecordingPlayerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end border-t border-outline-variant/50 bg-surface-container-low px-6 py-3.5">
+        <div className="flex shrink-0 items-center justify-end border-t border-outline-variant/50 bg-surface-container-low px-6 py-3.5">
           <button
             type="button"
             onClick={onClose}

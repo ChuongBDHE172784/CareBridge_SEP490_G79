@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../models/zego_join_credentials.dart';
+import 'call_recording_consent_dialog.dart';
 import 'conversation_signal_hub.dart';
 import 'direct_call_api.dart';
 import 'direct_call_coordinator.dart';
@@ -58,6 +59,7 @@ class _DirectCallHostState extends State<DirectCallHost>
   String? _rtcError;
   bool _sessionStarted = false;
   bool _joining = false;
+  bool _confirmingIncomingRecording = false;
 
   @override
   void initState() {
@@ -79,6 +81,9 @@ class _DirectCallHostState extends State<DirectCallHost>
             state.phase == DirectCallPhase.failed) {
           _credentials = null;
           _joining = false;
+        }
+        if (state.phase != DirectCallPhase.incoming) {
+          _confirmingIncomingRecording = false;
         }
       });
       if (state.phase == DirectCallPhase.outgoing) {
@@ -145,6 +150,7 @@ class _DirectCallHostState extends State<DirectCallHost>
   }
 
   Future<void> _accept() async {
+    setState(() => _confirmingIncomingRecording = false);
     try {
       await _coordinator.answerCurrent();
       if (mounted) await _join();
@@ -210,6 +216,8 @@ class _DirectCallHostState extends State<DirectCallHost>
     final title = call.callType == 'VIDEO'
         ? 'Cuộc gọi video'
         : 'Cuộc gọi thoại';
+    final confirmingIncomingRecording =
+        incoming && _confirmingIncomingRecording;
     return Positioned(
       left: 16,
       right: 16,
@@ -222,17 +230,48 @@ class _DirectCallHostState extends State<DirectCallHost>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                Text(
-                  incoming
-                      ? 'Cuộc gọi đến'
-                      : ready
-                      ? 'Cuộc gọi đã được trả lời'
-                      : _state.phase == DirectCallPhase.answering
-                      ? 'Đang trả lời…'
-                      : 'Đang đổ chuông…',
-                ),
+                if (confirmingIncomingRecording) ...[
+                  const CircleAvatar(
+                    backgroundColor: Color(0xFFFEE2E2),
+                    child: Text(
+                      'REC',
+                      style: TextStyle(
+                        color: Color(0xFFB91C1C),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    callRecordingConsentTitle,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    callRecordingConsentMessage,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    callRecordingConsentNote,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ] else ...[
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    incoming
+                        ? 'Cuộc gọi đến'
+                        : ready
+                        ? 'Cuộc gọi đã được trả lời'
+                        : _state.phase == DirectCallPhase.answering
+                        ? 'Đang trả lời…'
+                        : 'Đang đổ chuông…',
+                  ),
+                ],
                 if (_rtcError != null) ...[
                   const SizedBox(height: 8),
                   Text(_rtcError!, style: const TextStyle(color: Colors.red)),
@@ -241,15 +280,29 @@ class _DirectCallHostState extends State<DirectCallHost>
                 Wrap(
                   spacing: 12,
                   children: [
-                    if (incoming)
+                    if (incoming && !confirmingIncomingRecording)
                       FilledButton(
-                        onPressed: _accept,
+                        onPressed: () =>
+                            setState(() => _confirmingIncomingRecording = true),
                         child: const Text('Chấp nhận'),
                       ),
-                    if (incoming)
+                    if (incoming && !confirmingIncomingRecording)
                       OutlinedButton(
                         onPressed: _coordinator.declineCurrent,
                         child: const Text('Từ chối'),
+                      ),
+                    if (confirmingIncomingRecording)
+                      OutlinedButton(
+                        onPressed: () => setState(
+                          () => _confirmingIncomingRecording = false,
+                        ),
+                        child: const Text('Không đồng ý'),
+                      ),
+                    if (confirmingIncomingRecording)
+                      FilledButton(
+                        autofocus: true,
+                        onPressed: _accept,
+                        child: const Text('Đồng ý'),
                       ),
                     if (ready)
                       FilledButton(
