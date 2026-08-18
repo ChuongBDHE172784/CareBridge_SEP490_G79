@@ -355,30 +355,32 @@ public class CloudinaryStorageService implements IStorageService {
     }
 
     private String extractPublicId(String url) {
-        // URL format: https://res.cloudinary.com/<cloud>/image/upload/v1234567890/carebridge/xxx.ext
+        if (url == null) return null;
+        String clean = url;
         try {
             String uploadMarker = "/upload/";
-            int idx = url.indexOf(uploadMarker);
+            int idx = clean.indexOf(uploadMarker);
             if (idx >= 0) {
-                String afterUpload = url.substring(idx + uploadMarker.length());
+                clean = clean.substring(idx + uploadMarker.length());
                 // Strip version prefix like "v1234567890/"
-                int slash = afterUpload.indexOf('/');
-                if (slash >= 0 && afterUpload.substring(0, slash).matches("v\\d+")) {
-                    afterUpload = afterUpload.substring(slash + 1);
+                int slash = clean.indexOf('/');
+                if (slash >= 0 && clean.substring(0, slash).matches("v\\d+")) {
+                    clean = clean.substring(slash + 1);
                 }
-                int queryIndex = afterUpload.indexOf('?');
-                if (queryIndex >= 0) afterUpload = afterUpload.substring(0, queryIndex);
-                int fragmentIndex = afterUpload.indexOf('#');
-                if (fragmentIndex >= 0) afterUpload = afterUpload.substring(0, fragmentIndex);
-                int lastSlash = afterUpload.lastIndexOf('/');
-                int extensionIndex = afterUpload.lastIndexOf('.');
-                if (extensionIndex > lastSlash) {
-                    afterUpload = afterUpload.substring(0, extensionIndex);
-                }
-                return afterUpload;
             }
-        } catch (Exception ignored) {}
-        return url;
+            int queryIndex = clean.indexOf('?');
+            if (queryIndex >= 0) clean = clean.substring(0, queryIndex);
+            int fragmentIndex = clean.indexOf('#');
+            if (fragmentIndex >= 0) clean = clean.substring(0, fragmentIndex);
+            int lastSlash = clean.lastIndexOf('/');
+            int extensionIndex = clean.lastIndexOf('.');
+            if (extensionIndex > lastSlash) {
+                clean = clean.substring(0, extensionIndex);
+            }
+            return clean;
+        } catch (Exception ignored) {
+            return url;
+        }
     }
 
     private static class UploadResult {
