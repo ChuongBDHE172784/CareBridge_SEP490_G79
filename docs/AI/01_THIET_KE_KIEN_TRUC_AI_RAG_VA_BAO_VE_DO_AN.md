@@ -15,7 +15,7 @@
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt & Gợi ý Động (Multi-turn Context & Dynamic Follow-ups)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)](#7-kiến-trúc-giao-diện-ai-nurse-trên-ứng-dụng-di-động-mobile-app-ui--state)
 8. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#8-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 25 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---25-câu-hỏi-chuyên-sâu)
+9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 26 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---26-câu-hỏi-chuyên-sâu)
 10. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#10-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -78,8 +78,13 @@ flowchart TB
 | Thành phần                    | Công nghệ lựa chọn                                                                              | Lý do khoa học & Ưu thế kỹ thuật                                                                                                                                                       |
 | :---------------------------- | :---------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Backend Framework**         | **FastAPI (Python 3.11+)**                                                                      | Xử lý bất đồng bộ (`asyncio`), độ trễ thấp, tự động sinh chuẩn OpenAPI/Swagger UI, quản lý schema type-safe với Pydantic v2.                                                           |
+| **RAG Architecture**          | **Native Custom RAG Pipeline**                                                                  | Tự xây dựng toàn bộ pipeline (Retrieval, Hybrid Re-ranking, Prompt Injection, Multi-turn History) bằng Python thuần + `asyncpg`, không phụ thuộc framework cồng kềnh, kiểm soát 100% logic y tế lâm sàng và tối ưu độ trễ (< 1.5s). |
+| **Text Chunking Engine**      | **`langchain-text-splitters`** (`RecursiveCharacterTextSplitter`)                              | Module chuyên dụng độc lập xử lý phân đoạn văn bản đệ quy theo tiêu đề Markdown/Điều khoản mà không kéo theo toàn bộ framework LangChain cồng kềnh.                                    |
 | **Vector Database**           | **PostgreSQL + pgvector**                                                                       | Lưu trữ trực tiếp Vector 768 chiều trong cùng một CSDL quan hệ với hệ thống chính, loại bỏ chi phí vận hành DB vector độc lập, hỗ trợ Transaction ACID, phân quyền và backup hợp nhất. |
 | **Vector Index**              | **HNSW (Hierarchical Navigable Small World)**                                                   | Thuật toán đồ thị tìm kiếm láng giềng gần nhất xấp xỉ (Approximate Nearest Neighbors - ANN) với độ phức tạp tìm kiếm $O(\log N)$, phản hồi trong vài mili-giây.                        |
+| **Embedding Model**           | **Gemini Embedding (`output_dimensionality=768`)**                                              | Mã hóa ngữ nghĩa tiếng Việt đa tầng, sinh vector 768 chiều chuẩn hóa.                                                                                                                  |
+| **LLM Generator**             | **Google Gemini Flash-Lite / 3.7 Flash**                                                        | Tốc độ phản hồi cực nhanh (< 1.5s), quota dồi dào, khả năng suy luận lâm sàng và diễn đạt tiếng Việt ân cần.                                                                           |
+| **Multi-Model Auto Fallback** | `gemini-flash-lite-latest` $\rightarrow$ `gemini-2.5-flash` $\rightarrow$ `gemini-flash-latest` | Đảm bảo **100% Uptime**, tự động chuyển sang model dự phòng nếu Google bảo trì hoặc nghẽn mạng.                                                                                        |                                                 | Thuật toán đồ thị tìm kiếm láng giềng gần nhất xấp xỉ (Approximate Nearest Neighbors - ANN) với độ phức tạp tìm kiếm $O(\log N)$, phản hồi trong vài mili-giây.                        |
 | **Embedding Model**           | **Gemini Embedding (`output_dimensionality=768`)**                                              | Mã hóa ngữ nghĩa tiếng Việt đa tầng, sinh vector 768 chiều chuẩn hóa.                                                                                                                  |
 | **LLM Generator**             | **Google Gemini Flash-Lite / 3.7 Flash**                                                        | Tốc độ phản hồi cực nhanh (< 1.5s), quota dồi dào, khả năng suy luận lâm sàng và diễn đạt tiếng Việt ân cần.                                                                           |
 | **Multi-Model Auto Fallback** | `gemini-flash-lite-latest` $\rightarrow$ `gemini-2.5-flash` $\rightarrow$ `gemini-flash-latest` | Đảm bảo **100% Uptime**, tự động chuyển sang model dự phòng nếu Google bảo trì hoặc nghẽn mạng.                                                                                        |
@@ -483,7 +488,7 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 18 Câu Hỏi Chuyên Sâu)
+## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 26 Câu Hỏi Chuyên Sâu)
 
 ### Câu 1: "AI RAG em hiểu là gì và vì sao dự án y tế cho mẹ bầu lại chọn RAG thay vì Fine-tuning mô hình?"
 * **Trả lời:**
@@ -778,6 +783,19 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   > 2. **Tránh Hiện tượng Loãng Ngữ cảnh (Context Dilution / Attention Degradation):** Khi phiên chat kéo dài, người dùng thường đổi chủ đề (ví dụ từ dinh dưỡng sang tiêm phòng rồi sang đau lưng). Nếu nhồi nhét cả 50 tin nhắn cũ, LLM sẽ bị phân tán chú ý và có nguy cơ trả lời sai lệch về triệu chứng cũ đã kết thúc.
   > 3. **Mở rộng Truy vấn Vector Không Độ trễ (Zero-Latency Query Expansion):** Backend tự động kết hợp câu hỏi trước với câu hiện tại để tìm kiếm trong pgvector trong $0.1$ ms, giải quyết triệt để đại từ ẩn ý (*'Nó có nguy hiểm không?'*) mà không tốn thêm 1 lần gọi LLM phụ.
   > 4. **Tối ưu Token Budget & Tốc độ Phản hồi:** Giữ prompt luôn tinh gọn, tiết kiệm chi phí API và duy trì thời gian phản hồi cho mẹ bầu luôn dưới 2 giây."
+
+---
+
+### Câu 26: "Hệ thống của em có sử dụng Framework LangChain hay LlamaIndex không? Tại sao CareBridge lại chọn kiến trúc Native RAG thay vì dùng Full Framework?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, hệ thống CareBridge áp dụng mô hình **Native Enterprise RAG kết hợp module chuyên dụng độc lập**:
+  > 
+  > 1. **Phạm vi sử dụng:** Chúng em chỉ sử dụng module `langchain-text-splitters` để thực hiện thuật toán **Recursive Hierarchical Chunking** (cắt văn bản đệ quy theo tiêu đề y khoa), **hoàn toàn KHÔNG dùng Full Framework LangChain/LlamaIndex** để điều phối (orchestrate) pipeline RAG.
+  > 2. **Lý do khoa học & Kỹ thuật chọn Native RAG:**
+  >    - **Triệt tiêu 'Hộp đen' (No Black-box) & Làm chủ Công nghệ:** Việc tự code toàn bộ luồng từ truy vấn vector trong `pgvector` với toán tử Cosine `<=>`, thuật toán Hybrid Re-ranking, quản lý context cửa sổ trượt đến Multi-model Fallback giúp nhóm làm chủ 100% mã nguồn, hiểu sâu sắc từng phép toán thay vì chỉ gọi các wrapper trừu tượng có sẵn.
+  >    - **Kiểm soát Tuyệt đối An toàn Lâm sàng Y tế:** Lĩnh vực Y tế mẹ bầu đòi hỏi các ràng buộc khắt khe (bộ lọc ngưỡng khoảng cách vector `Cosine Gate`, tăng điểm thực thể y khoa `Medical Phrase Boost`, cảnh báo cấp cứu độc lập, trích dẫn nguồn chuẩn chỉ). Viết Native bằng Python + Pydantic cho phép tùy biến và can thiệp sâu vào bất kỳ mắt xích nào của pipeline.
+  >    - **Tối ưu Hiệu năng & Giảm Độ trễ (Low Latency):** Giao tiếp trực tiếp thông qua `asyncio`, `asyncpg` và SDK `google-genai` chính thức giúp loại bỏ hoàn toàn các lớp middleware thừa của framework cồng kềnh, đưa thời gian phản hồi toàn trình về mức dưới 1.5 giây.
+  >    - **Độ ổn định cao & Tránh Xung đột Thư viện (No Dependency Hell):** Các framework RAG lớn thường xuyên thay đổi API (breaking changes). Kiến trúc Native giữ cho service AI của CareBridge cực kỳ tinh gọn, ổn định và dễ dàng đóng gói triển khai Docker."
 
 ---
 
