@@ -27,10 +27,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.carebridge.backend.file.dto.UploadFileResponse;
+import com.carebridge.backend.file.enums.FileAccessMode;
+import com.carebridge.backend.file.enums.FileKind;
+import com.carebridge.backend.file.enums.FilePurpose;
+import com.carebridge.backend.file.service.IFileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ConversationCallServiceImpl implements IConversationCallService {
@@ -43,6 +49,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
     private final IZegoCloudService zegoCloudService;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final IFileService fileService;
     private final Clock clock;
 
     @Autowired
@@ -54,9 +61,10 @@ public class ConversationCallServiceImpl implements IConversationCallService {
             UserRepository userRepository,
             IZegoCloudService zegoCloudService,
             ApplicationEventPublisher eventPublisher,
-            AuditService auditService) {
+            AuditService auditService,
+            IFileService fileService) {
         this(conversationRepository, callRepository, policy, expertProfileRepository,
-                userRepository, zegoCloudService, eventPublisher, auditService,
+                userRepository, zegoCloudService, eventPublisher, auditService, fileService,
                 Clock.systemDefaultZone());
     }
 
@@ -70,6 +78,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
             IZegoCloudService zegoCloudService,
             ApplicationEventPublisher eventPublisher,
             AuditService auditService,
+            IFileService fileService,
             Clock clock) {
         this.conversationRepository = conversationRepository;
         this.callRepository = callRepository;
@@ -79,6 +88,7 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         this.zegoCloudService = zegoCloudService;
         this.eventPublisher = eventPublisher;
         this.auditService = auditService;
+        this.fileService = fileService;
         this.clock = clock;
     }
 
@@ -382,6 +392,41 @@ public class ConversationCallServiceImpl implements IConversationCallService {
         return loadConversation(requestedConversationId);
     }
 
+    @Override
+    @Transactional
+    public ConversationCallResponse uploadCallRecording(
+            UUID conversationId, UUID callId, UUID currentUserId,
+            MultipartFile file, Integer recordedDurationSeconds, Boolean consentAttested) {
+        ConversationCall call = loadCall(callId);
+        DirectConversation conversation = loadCallConversation(conversationId, call);
+        policy.assertIsParticipant(currentUserId, conversation);
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Recording file is required");
+        }
+
+        // Upload to private storage with FilePurpose.CONSULTATION_CALL_RECORDING
+        UploadFileResponse uploadResponse = fileService.uploadWithPurpose(
+                file, currentUserId, FileKind.DOCUMENT, FilePurpose.CONSULTATION_CALL_RECORDING, FileAccessMode.PRIVATE);
+
+        call.setRecordingFileId(uploadResponse.getFileId());
+        call.setRecordingStatus("UPLOADED");
+        if (recordedDurationSeconds != null && recordedDurationSeconds > 0) {
+            call.setRecordedDurationSeconds(recordedDurationSeconds);
+        } else if (call.getDurationSeconds() != null) {
+            call.setRecordedDurationSeconds(call.getDurationSeconds());
+        }
+        if (consentAttested != null) {
+            call.setConsentAttested(consentAttested);
+        }
+        callRepository.save(call);
+
+        auditService.log(AuditAction.DIRECT_CALL_STATE_CHANGED, currentUserId, "CONVERSATION_CALL", callId.toString(),
+                Map.of("action", "RECORDING_UPLOADED", "fileId", uploadResponse.getFileId().toString()));
+
+        return toResponse(call);
+    }
+
     private static ConversationCallResponse toResponse(ConversationCall call) {
         return ConversationCallResponse.builder()
                 .callId(call.getId())
@@ -393,6 +438,10 @@ public class ConversationCallServiceImpl implements IConversationCallService {
                 .answeredAt(call.getAnsweredAt())
                 .endedAt(call.getEndedAt())
                 .durationSeconds(call.getDurationSeconds())
+                .recordingFileId(call.getRecordingFileId())
+                .consentAttested(call.isConsentAttested())
+                .recordingStatus(call.getRecordingStatus())
+                .recordedDurationSeconds(call.getRecordedDurationSeconds())
                 .build();
     }
 }

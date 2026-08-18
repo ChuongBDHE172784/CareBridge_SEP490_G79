@@ -88,4 +88,18 @@ public class ConversationCallController {
         return ResponseEntity.ok(ApiResponse.success(
                 callService.issueJoinCredentials(conversationId, callId, currentUserId)));
     }
+
+    @PostMapping(value = "/{callId}/recording", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
+    public ResponseEntity<ApiResponse<ConversationCallResponse>> uploadRecording(
+            @PathVariable UUID conversationId,
+            @PathVariable UUID callId,
+            @org.springframework.web.bind.annotation.RequestPart("file") org.springframework.web.multipart.MultipartFile file,
+            @org.springframework.web.bind.annotation.RequestParam(value = "recordedDurationSeconds", required = false) Integer recordedDurationSeconds,
+            @org.springframework.web.bind.annotation.RequestParam(value = "consentAttested", required = false, defaultValue = "true") Boolean consentAttested,
+            Principal principal) {
+        UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                callService.uploadCallRecording(conversationId, callId, currentUserId, file, recordedDurationSeconds, consentAttested)));
+    }
 }

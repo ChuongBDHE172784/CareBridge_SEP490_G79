@@ -53,6 +53,7 @@ class ConversationCallServiceImplTest {
     @Mock private IZegoCloudService zegoCloudService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AuditService auditService;
+    @Mock private com.carebridge.backend.file.service.IFileService fileService;
 
     private ConversationCallServiceImpl service;
     private final Instant fixedNow = Instant.parse("2026-07-15T08:03:04Z");
@@ -66,7 +67,7 @@ class ConversationCallServiceImplTest {
     void setUp() {
         service = new ConversationCallServiceImpl(conversationRepository, callRepository, policy,
                 expertProfileRepository, userRepository,
-                zegoCloudService, eventPublisher, auditService, fixedClock);
+                zegoCloudService, eventPublisher, auditService, fileService, fixedClock);
         org.mockito.Mockito.lenient()
                 .when(expertProfileRepository.findByUserIdForUpdate(EXPERT_ID))
                 .thenReturn(Optional.of(eligibleExpert()));
