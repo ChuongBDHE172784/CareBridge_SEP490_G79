@@ -745,7 +745,8 @@ class _AddMaternalHealthMetricScreenState
     final waterIntake = _isHydration ? primaryVal.round() : null;
     final epds = (_metricType == 'EPDS_SCORE' || _metricType == 'EPDS')
         ? primaryVal.round()
-        : null;
+        : _latestEpds?.valueNumeric.round();
+    final epdsQ10 = _latestEpds?.valueSecondary?.round();
     final temp = _isTemperature ? primaryVal : null;
 
     final rawWeight = _isBmi ? double.tryParse(_primaryCtrl.text.trim()) : null;
@@ -793,6 +794,7 @@ class _AddMaternalHealthMetricScreenState
       if (heartRate != null) 'heart_rate': heartRate,
       if (waterIntake != null) 'water_intake_ml': waterIntake,
       if (epds != null) 'epds_score': epds,
+      if (epdsQ10 != null) 'epds_question_10_score': epdsQ10,
       if (temp != null) 'temperature': temp,
       if (note != null && note.isNotEmpty) 'free_text_notes': note,
       'symptoms': symptoms,
@@ -844,7 +846,9 @@ class _AddMaternalHealthMetricScreenState
         'Lượng nước uống ít ($waterIntake ml/ngày, chuẩn 2000-2500ml)',
       );
     }
-    if (epds != null && epds >= 10) {
+    if (epdsQ10 != null && epdsQ10 >= 1) {
+      extraFactors.add('Cảnh báo an toàn tâm lý khẩn cấp: Câu hỏi số 10 EPDS đạt $epdsQ10/3 điểm (Xuất hiện ý nghĩ tự gây hại)');
+    } else if (epds != null && epds >= 10) {
       extraFactors.add('Điểm trầm cảm/tâm trạng EPDS cao ($epds/30 điểm)');
     }
     if (heartRate != null && (heartRate > 100 || heartRate < 50)) {

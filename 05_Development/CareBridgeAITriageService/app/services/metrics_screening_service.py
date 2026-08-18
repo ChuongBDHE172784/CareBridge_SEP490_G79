@@ -110,9 +110,14 @@ class MetricsScreeningService:
             is_anomaly = True
         risk_factors.extend(water_factors)
 
-        # 9. Evaluate EPDS Mood Score (Điểm sàng lọc trầm cảm / tâm trạng)
-        epds_status, epds_factors = self._check_epds_score(request.epds_score)
-        if epds_status == TriageRiskStatus.ANOMALY_MONITOR:
+        # 9. Evaluate EPDS Mood Score (Điểm sàng lọc trầm cảm / tâm trạng & Cờ đỏ Câu hỏi 10)
+        epds_status, epds_factors = self._check_epds_score(
+            score=request.epds_score,
+            question_10_score=request.epds_question_10_score,
+        )
+        if epds_status == TriageRiskStatus.CRITICAL_EMERGENCY:
+            is_critical = True
+        elif epds_status == TriageRiskStatus.ANOMALY_MONITOR:
             is_anomaly = True
         risk_factors.extend(epds_factors)
 
@@ -502,19 +507,31 @@ class MetricsScreeningService:
 
         return TriageRiskStatus.NORMAL, factors
 
-    def _check_epds_score(self, score: int | None) -> Tuple[TriageRiskStatus, List[str]]:
+    def _check_epds_score(
+        self,
+        score: int | None,
+        question_10_score: int | None = None,
+    ) -> Tuple[TriageRiskStatus, List[str]]:
         factors = []
+
+        # CỜ ĐỎ KHẨN CẤP: Câu hỏi số 10 EPDS (Ý nghĩ tự gây hại / tự sát theo chuẩn COPE / NSW Health / ACOG)
+        if question_10_score is not None and question_10_score >= 1:
+            factors.append(
+                f"Cảnh báo an toàn tâm lý khẩn cấp: Câu hỏi số 10 EPDS đạt {question_10_score}/3 điểm (Xuất hiện ý nghĩ tự gây hại/tự sát) - Cần liên hệ cấp cứu 115 và tìm hỗ trợ y tế khẩn cấp ngay lập tức"
+            )
+            return TriageRiskStatus.CRITICAL_EMERGENCY, factors
+
         if score is None:
             return TriageRiskStatus.NORMAL, factors
 
         if score >= 13:
             factors.append(
-                f"Điểm sàng lọc trầm cảm EPDS rất cao ({score}/30 điểm) - Nguy cơ trầm cảm thai kỳ / sau sinh mức độ nặng"
+                f"Điểm sàng lọc trầm cảm EPDS rất cao ({score}/30 điểm) - Nguy cơ trầm cảm thai kỳ / sau sinh mức độ nặng (Cần được bác sĩ hoặc chuyên gia tâm lý đánh giá chuyên sâu)"
             )
             return TriageRiskStatus.ANOMALY_MONITOR, factors
         elif score >= 10:
             factors.append(
-                f"Điểm sàng lọc EPDS ở mức rủi ro ({score}/30 điểm) - Dấu hiệu lo âu / trầm cảm nhẹ đến trung bình"
+                f"Điểm sàng lọc EPDS ở mức rủi ro ({score}/30 điểm) - Dấu hiệu lo âu / trầm cảm nhẹ đến trung bình (Cần theo dõi sát và sàng lọc lại sau 2-4 tuần)"
             )
             return TriageRiskStatus.ANOMALY_MONITOR, factors
 

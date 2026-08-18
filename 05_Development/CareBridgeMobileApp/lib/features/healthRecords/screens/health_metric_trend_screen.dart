@@ -1727,6 +1727,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     final heartRate = _latestHeartRate?.valueNumeric.round();
     final waterIntake = _latestHydration?.valueNumeric.round();
     final epds = _latestEpds?.valueNumeric.round();
+    final epdsQ10 = _latestEpds?.valueSecondary?.round();
     final bmi = _latestBmi?.valueNumeric;
     final temp = _latestTemp?.valueNumeric;
 
@@ -1758,6 +1759,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       if (heartRate != null) 'heart_rate': heartRate,
       if (waterIntake != null) 'water_intake_ml': waterIntake,
       if (epds != null) 'epds_score': epds,
+      if (epdsQ10 != null) 'epds_question_10_score': epdsQ10,
       if (temp != null) 'temperature': temp,
       if (_symptomNoteCtrl.text.isNotEmpty)
         'free_text_notes': _symptomNoteCtrl.text.trim(),
@@ -1773,7 +1775,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(payload),
             )
-            .timeout(const Duration(seconds: 5));
+            .timeout(const Duration(seconds: 4));
 
         if (res.statusCode == 200) {
           final data = jsonDecode(utf8.decode(res.bodyBytes));
@@ -1828,8 +1830,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       if (waterIntake != null && waterIntake < 1200) {
         extraFactors.add('Lượng nước uống quá ít ($waterIntake ml/ngày)');
       }
-      if (epds != null && epds >= 13) {
-        extraFactors.add('Điểm trầm cảm EPDS cao ($epds/30 điểm)');
+      if (epdsQ10 != null && epdsQ10 >= 1) {
+        extraFactors.add('Cảnh báo an toàn tâm lý khẩn cấp: Câu hỏi số 10 EPDS đạt $epdsQ10/3 điểm (Xuất hiện ý nghĩ tự gây hại)');
+      } else if (epds != null && epds >= 13) {
+        extraFactors.add('Điểm trầm cảm EPDS rất cao ($epds/30 điểm)');
+      } else if (epds != null && epds >= 10) {
+        extraFactors.add('Điểm sàng lọc EPDS ở mức cần theo dõi ($epds/30 điểm)');
       }
       if (heartRate != null && heartRate >= 120) {
         extraFactors.add('Nhịp tim mẹ rất nhanh ($heartRate bpm)');
@@ -1848,6 +1854,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
           isSevereBp ||
           (isHighBp && hasAlarmSymptoms) ||
           (heartRate != null && heartRate >= 120) ||
+          (epdsQ10 != null && epdsQ10 >= 1) ||
           (temp != null && temp >= 38.5);
 
       aiResult = {

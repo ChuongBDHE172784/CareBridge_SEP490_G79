@@ -56,6 +56,7 @@ class HealthMetricsLogRequest(BaseModel):
     # Lifestyle & Mental Health (Lối sống & Sức khỏe tâm thần)
     water_intake_ml: Optional[int] = Field(default=None, ge=0, le=10000, description="Lượng nước uống trong ngày (ml)")
     epds_score: Optional[int] = Field(default=None, ge=0, le=30, description="Điểm sàng lọc trầm cảm/tâm trạng EPDS (0-30)")
+    epds_question_10_score: Optional[int] = Field(default=None, ge=0, le=3, description="Điểm câu hỏi số 10 EPDS về ý nghĩ tự gây hại (0-3)")
     spo2: Optional[int] = Field(default=None, ge=50, le=100, description="Độ bão hòa oxy trong máu SpO2 (%)")
     sleep_hours: Optional[float] = Field(default=None, ge=0.0, le=24.0, description="Thời lượng giấc ngủ (giờ)")
     

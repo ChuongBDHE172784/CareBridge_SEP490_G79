@@ -767,6 +767,37 @@ class _EpdsScreenState extends State<EpdsScreen> {
                   color: _onSurfaceVariant,
                 ),
               ),
+              if ((_answers[9] ?? 0) == 0 && _result! >= 10) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    context.push(
+                      '/rag/chat',
+                      extra: {
+                        'prompt':
+                            'Tôi vừa làm bài sàng lọc tâm trạng EPDS đạt $_result/30 điểm, tôi cảm thấy hay lo âu và căng thẳng. AI Nurse có thể lắng nghe và cho tôi lời khuyên về tâm lý thai kỳ không?',
+                        'attachedContext': {
+                          'epds_score': _result,
+                        },
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.psychology_alt_rounded, color: _primaryContainer),
+                  label: const Text(
+                    'Tâm sự với Trợ lý AI Nurse',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: _primaryContainer),
+                    shape: const StadiumBorder(),
+                    minimumSize: const Size.fromHeight(46),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: 18),
             FilledButton(

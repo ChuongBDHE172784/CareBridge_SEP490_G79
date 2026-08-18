@@ -160,3 +160,59 @@ async def test_elevated_fasting_blood_glucose_in_mg_dl():
     assert result.status == TriageRiskStatus.ANOMALY_MONITOR
     assert any("Đường huyết lúc đói" in factor for factor in result.risk_factors)
 
+
+@pytest.mark.asyncio
+async def test_epds_normal_score():
+    service = MetricsScreeningService()
+    request = HealthMetricsLogRequest(
+        stage=MaternalStage.PREGNANCY,
+        epds_score=6,
+        epds_question_10_score=0,
+    )
+    result = await service.evaluate_metrics(request)
+    assert result.status == TriageRiskStatus.NORMAL
+    assert result.emergency_mode is False
+    assert len(result.risk_factors) == 0
+
+
+@pytest.mark.asyncio
+async def test_epds_moderate_risk_score():
+    service = MetricsScreeningService()
+    request = HealthMetricsLogRequest(
+        stage=MaternalStage.PREGNANCY,
+        epds_score=11,
+        epds_question_10_score=0,
+    )
+    result = await service.evaluate_metrics(request)
+    assert result.status == TriageRiskStatus.ANOMALY_MONITOR
+    assert result.emergency_mode is False
+    assert any("EPDS ở mức rủi ro" in factor for factor in result.risk_factors)
+
+
+@pytest.mark.asyncio
+async def test_epds_high_risk_score():
+    service = MetricsScreeningService()
+    request = HealthMetricsLogRequest(
+        stage=MaternalStage.POSTPARTUM,
+        epds_score=16,
+        epds_question_10_score=0,
+    )
+    result = await service.evaluate_metrics(request)
+    assert result.status == TriageRiskStatus.ANOMALY_MONITOR
+    assert result.emergency_mode is False
+    assert any("EPDS rất cao" in factor for factor in result.risk_factors)
+
+
+@pytest.mark.asyncio
+async def test_epds_question_10_red_flag_emergency():
+    service = MetricsScreeningService()
+    request = HealthMetricsLogRequest(
+        stage=MaternalStage.PREGNANCY,
+        epds_score=4,  # Tổng điểm thấp nhưng câu 10 có điểm
+        epds_question_10_score=1,
+    )
+    result = await service.evaluate_metrics(request)
+    assert result.status == TriageRiskStatus.CRITICAL_EMERGENCY
+    assert result.emergency_mode is True
+    assert any("Câu hỏi số 10 EPDS" in factor for factor in result.risk_factors)
+
