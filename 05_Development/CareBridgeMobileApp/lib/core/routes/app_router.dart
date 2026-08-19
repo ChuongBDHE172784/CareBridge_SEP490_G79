@@ -10,7 +10,6 @@ import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/auth/screens/account_profile_screen.dart';
 import '../../features/auth/screens/edit_profile_screen.dart';
 import '../../features/checklist/screens/checklist_roadmap_screen.dart';
-import '../../features/checklist/screens/checklist_detail_screen.dart';
 
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
