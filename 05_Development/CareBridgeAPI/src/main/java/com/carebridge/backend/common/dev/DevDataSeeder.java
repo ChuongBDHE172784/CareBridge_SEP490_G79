@@ -171,6 +171,36 @@ public class DevDataSeeder implements ApplicationRunner {
 
         seedVerifiedExpertProfiles(savedUsers);
         seedCommunityModerationDemoData();
+        seedExpertConsultationDemoData();
+    }
+
+    /**
+     * Seeds expert consultation slots, requests, bookings, and direct conversation data
+     * for dev/testing environments.
+     */
+    private void seedExpertConsultationDemoData() {
+        ClassPathResource resource = new ClassPathResource(
+                "db/data_seed/dev_expert_consultation_seed.sql");
+        if (!resource.exists()) {
+            log.warn("Expert consultation seed script is not available on the classpath");
+            return;
+        }
+
+        userRepository.flush();
+        expertProfileRepository.flush();
+        try (var inputStream = resource.getInputStream()) {
+            String script = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            int executed = 0;
+            for (String statement : splitSqlStatements(script)) {
+                if (!statement.isBlank()) {
+                    jdbcTemplate.execute(statement);
+                    executed++;
+                }
+            }
+            log.info("Replayed {} statements from the expert consultation seed script", executed);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to read expert consultation seed script", ex);
+        }
     }
 
     /**
