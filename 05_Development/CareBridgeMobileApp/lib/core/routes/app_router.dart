@@ -10,7 +10,6 @@ import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/auth/screens/account_profile_screen.dart';
 import '../../features/auth/screens/edit_profile_screen.dart';
 import '../../features/checklist/screens/checklist_history_screen.dart';
-import '../../features/checklist/screens/checklist_detail_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_home_shell.dart';
@@ -361,32 +360,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/mother-exercise',
       builder: (context, state) => const MotherExerciseScreen(),
-    ),
-    GoRoute(
-      path: '/checklists/detail',
-      builder: (context, state) {
-        final extraMap = state.extra is Map<String, dynamic>
-            ? state.extra as Map<String, dynamic>
-            : <String, dynamic>{};
-        final template = extraMap['template'] as ChecklistTemplate?;
-        if (template == null) {
-          return const Scaffold(
-            body: Center(
-              child: Text(
-                'Không tìm thấy thông tin checklist',
-                style: TextStyle(fontFamily: 'Lexend'),
-              ),
-            ),
-          );
-        }
-        return ChecklistDetailScreen(
-          template: template,
-          importedItemIds:
-              (extraMap['importedItemIds'] as Set<String>?) ?? const {},
-          journeyId: extraMap['journeyId'] as String?,
-          isLifecycleMode: extraMap['isLifecycleMode'] as bool? ?? false,
-        );
-      },
     ),
     GoRoute(
       path: '/journey-onboarding',

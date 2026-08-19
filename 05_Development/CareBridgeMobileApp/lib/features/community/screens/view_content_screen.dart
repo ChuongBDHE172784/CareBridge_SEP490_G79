@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/constants/content_stages.dart';
-import '../../checklist/models/user_checklist_item_model.dart';
-import '../../checklist/screens/checklist_detail_screen.dart';
-import '../../reminder/screens/today_tasks_screen.dart';
-import '../../checklist/services/user_checklist_service.dart';
 import '../../journey/models/journey_model.dart';
 import '../../journey/screens/mother_journey_screen.dart';
 import '../../journey/services/journey_service.dart';
@@ -15,9 +11,8 @@ import '../services/content_service.dart';
 import '../widgets/verified_content_body.dart';
 import 'verified_content_detail_screen.dart';
 
-/// CB-223 — View Content and Checklist (UC-82)
-/// Displays curated articles, FAQs, and checklists filtered by pregnancy
-/// stage and topic. Navigated to via Navigator.push from Home or Community.
+/// Displays curated articles and FAQs filtered by pregnancy stage and topic.
+/// Navigated to via Navigator.push from Home or Community.
 class ViewContentScreen extends StatefulWidget {
   const ViewContentScreen({
     super.key,
@@ -43,15 +38,12 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   static const _surfaceContainerHigh = Color(0xFFF1E6E0);
   static const _surfaceContainerLow = Color(0xFFF8EEE9);
   static const _outlineVariant = Color(0xFFE5D3CA);
-  static const _secondaryContainer = Color(0xFFF1E6E0);
   static const _onSurface = Color(0xFF2A211D);
   static const _onSurfaceVariant = Color(0xFF655650);
-  static const _error = Color(0xFFBA1A1A);
 
   late ContentService _contentService;
   late CommunityService _communityService;
   final _journeyService = JourneyService();
-  final _userChecklistService = UserChecklistService.instance;
   final _searchController = TextEditingController();
 
   // ── State ──
@@ -60,28 +52,23 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   bool _journeyLoadFailed = false;
   bool _articleLoadFailed = false;
   bool _faqLoadFailed = false;
-  bool _checklistLoadFailed = false;
   int _loadGeneration = 0;
   String? _resolvedStage;
   String? _observedAccountId;
-  int _selectedTypeIndex = 0; // 0=All, 1=Article, 2=FAQ, 3=Checklist
+  int _selectedTypeIndex = 0; // 0=All, 1=Article, 2=FAQ
   int _selectedStageIndex = -1;
   JourneyDashboard? _dashboard;
   List<CommunityTopic> _topics = [];
   List<CommunityTopic> _tags = [];
   List<ContentListItem> _articles = [];
   List<ContentListItem> _faqs = [];
-  List<ChecklistTemplate> _checklists = [];
-  List<UserChecklistItem> _userChecklistItems = [];
   String _searchKeyword = '';
   String? _selectedTopicId;
   final Set<String> _selectedTagIds = <String>{};
   String? _featuredImageUrl;
   String? _featuredImageContentId;
 
-  List<String> get _typeLabels => widget.mode == ContentBrowseMode.family
-      ? const ['Tất cả', 'Bài viết', 'FAQ']
-      : const ['Tất cả', 'Bài viết', 'FAQ', 'Checklist'];
+  static const _typeLabels = ['Tất cả', 'Bài viết', 'FAQ'];
   static final _stageLabels = contentStageOptions
       .map((stage) => stage.label)
       .toList(growable: false);
@@ -184,30 +171,16 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         _tags = [];
         _articles = [];
         _faqs = [];
-        _checklists = [];
-        _userChecklistItems = [];
       }
     });
     try {
       if (widget.mode == ContentBrowseMode.lifecycle) {
-        final userItemsFuture = _capture(_userChecklistService.listItems());
-        final results = await Future.wait<Object>([
-          _contentService.getAllLifecycleContent(
-            shouldContinue: () => _canApply(generation, accountId),
-          ),
-          _contentService.getLifecycleChecklists(),
-        ]);
+        final content = await _contentService.getAllLifecycleContent(
+          shouldContinue: () => _canApply(generation, accountId),
+        );
         if (!_canApply(generation, accountId)) return;
 
-        final userItemsResult = await userItemsFuture;
-        final content = results[0] as LifecycleEnvelope<List<ContentListItem>>;
-        final checklists =
-            results[1] as LifecycleEnvelope<List<ChecklistTemplate>>;
-        final stageMismatch =
-            content.stage != checklists.stage ||
-            content.payload.any((item) => item.stage != content.stage) ||
-            checklists.payload.any((item) => item.stage != content.stage);
-        if (stageMismatch) {
+        if (content.payload.any((item) => item.stage != content.stage)) {
           throw const FormatException('Lifecycle stage mismatch');
         }
 
@@ -222,11 +195,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _faqs = content.payload
               .where((item) => item.type == 'FAQ')
               .toList(growable: false);
-          _checklists = checklists.payload;
-          _userChecklistItems = userItemsResult.$1 ?? <UserChecklistItem>[];
           _articleLoadFailed = false;
           _faqLoadFailed = false;
-          _checklistLoadFailed = false;
           _loading = false;
         });
         return;
@@ -259,22 +229,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       final faqsFuture = _capture(
         _contentService.getAllContent(type: 'FAQ', stage: stage),
       );
-      final checklistsFuture = widget.mode == ContentBrowseMode.family
-          ? Future.value((<ChecklistTemplate>[], false))
-          : _capture(_contentService.getChecklists(stage: stage));
-      final journeyId = dashboard?.journeyId;
-      final userItemsFuture =
-          widget.mode == ContentBrowseMode.family ||
-              journeyId == null ||
-              journeyId.isEmpty
-          ? Future.value((<UserChecklistItem>[], false))
-          : _capture(_userChecklistService.listItems(journeyId: journeyId));
       final topicsResult = await topicsFuture;
       final tagsResult = await tagsFuture;
       final articlesResult = await articlesFuture;
       final faqsResult = await faqsFuture;
-      final checklistsResult = await checklistsFuture;
-      final userItemsResult = await userItemsFuture;
       if (_canApply(generation, accountId)) {
         final articles = articlesResult.$1 ?? <ContentListItem>[];
         setState(() {
@@ -285,11 +243,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _tags = tagsResult.$1 ?? <CommunityTopic>[];
           _articles = articles;
           _faqs = faqsResult.$1 ?? <ContentListItem>[];
-          _checklists = checklistsResult.$1 ?? <ChecklistTemplate>[];
-          _userChecklistItems = userItemsResult.$1 ?? <UserChecklistItem>[];
           _articleLoadFailed = articlesResult.$2;
           _faqLoadFailed = faqsResult.$2;
-          _checklistLoadFailed = checklistsResult.$2;
           _loading = false;
         });
         _loadFeaturedImage(
@@ -305,8 +260,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _tags = [];
           _articles = [];
           _faqs = [];
-          _checklists = [];
-          _userChecklistItems = [];
           _loading = false;
           _loadError = widget.mode == ContentBrowseMode.lifecycle
               ? 'Không thể tải nội dung theo giai đoạn hiện tại.'
@@ -362,8 +315,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   bool get _selectedTypeIsEmpty => switch (_selectedTypeIndex) {
     1 => _articles.isEmpty,
     2 => _faqs.isEmpty,
-    3 => _checklists.isEmpty,
-    _ => _articles.isEmpty && _faqs.isEmpty && _checklists.isEmpty,
+    _ => _articles.isEmpty && _faqs.isEmpty,
   };
 
   @override
@@ -406,9 +358,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   SliverToBoxAdapter(child: _buildArticleList()),
                 if (_selectedTypeIndex == 0 || _selectedTypeIndex == 2)
                   SliverToBoxAdapter(child: _buildFaqSection()),
-                if (widget.mode != ContentBrowseMode.family &&
-                    (_selectedTypeIndex == 0 || _selectedTypeIndex == 3))
-                  SliverToBoxAdapter(child: _buildChecklistSection()),
               ],
               if (!_loading && _loadError == null)
                 SliverToBoxAdapter(child: _buildSafetyDisclaimer()),
@@ -1403,240 +1352,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             ),
           ),
           const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  // ── Checklist section ──
-  Set<String> get _importedTemplateItemIds => _userChecklistItems
-      .map((item) => item.templateItemId)
-      .whereType<String>()
-      .toSet();
-
-  Future<void> _openChecklistTemplate(ChecklistTemplate template) async {
-    final importedIds = _importedTemplateItemIds;
-    final rawJourneyId = _dashboard?.journeyId;
-    final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
-        ? null
-        : rawJourneyId;
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ChecklistDetailScreen(
-          template: template,
-          importedItemIds: importedIds,
-          journeyId: journeyId,
-          isLifecycleMode: widget.mode == ContentBrowseMode.lifecycle,
-          userChecklistService: _userChecklistService,
-        ),
-      ),
-    );
-
-    if (mounted && journeyId != null) {
-      try {
-        final items = await _userChecklistService.listItems(
-          journeyId: journeyId,
-        );
-        if (mounted) {
-          setState(() => _userChecklistItems = items);
-        }
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Khong the tai lai danh sach checklist.'),
-          ),
-        );
-      }
-    }
-  }
-
-  // Legacy route retained for older content links; canonical checklist entry
-  // now opens ChecklistDetailScreen above.
-  // ignore: unused_element
-  Future<void> _openMyChecklist({String? journeyId}) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => TodayTasksScreen(journeyId: journeyId)),
-    );
-    if (mounted) {
-      try {
-        final items = await _userChecklistService.listItems(
-          journeyId: journeyId,
-        );
-        if (mounted) setState(() => _userChecklistItems = items);
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Không thể làm mới checklist. Dữ liệu hiện tại được giữ nguyên.',
-            ),
-            backgroundColor: _error,
-          ),
-        );
-      }
-    }
-  }
-
-  Widget _buildChecklistSection() {
-    if (_checklistLoadFailed) {
-      return _buildSectionLoadError('checklist');
-    }
-    if (_checklists.isEmpty && _selectedTypeIndex == 3) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: Center(
-          child: Text(
-            'Không có checklist nào cho giai đoạn này.',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: _onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
-    if (_checklists.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Checklist theo giai đoạn',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: _onSurface,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ..._checklists.map(
-            (cl) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => _openChecklistTemplate(cl),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: const Border(
-                      left: BorderSide(color: _primaryContainer, width: 4),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0x0F5A463F),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _surfaceContainerLow,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      _stageLabelFromValue(cl.stage),
-                                      style: const TextStyle(
-                                        fontFamily: 'Lexend',
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: _primary,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${cl.items.where((item) => _importedTemplateItemIds.contains(item.id)).length}/${cl.items.length} mục đã thêm',
-                                    style: const TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 12,
-                                      color: _onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                cl.name,
-                                style: const TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: _onSurface,
-                                ),
-                              ),
-                              if (cl.description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.verified_user,
-                                      size: 14,
-                                      color: _onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        cl.description,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontFamily: 'Lexend',
-                                          fontSize: 12,
-                                          color: _onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: const BoxDecoration(
-                            color: _secondaryContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.chevron_right,
-                            size: 22,
-                            color: _primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
         ],
       ),
     );

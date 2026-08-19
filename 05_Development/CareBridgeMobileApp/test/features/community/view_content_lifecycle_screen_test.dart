@@ -34,10 +34,6 @@ Map<String, dynamic> _contentEnvelope({
   },
 };
 
-Map<String, dynamic> _checklistEnvelope() => {
-  'data': {'stage': 'PRE_PREGNANCY', 'payload': const []},
-};
-
 ContentService _service({int failures = 0, List<String>? paths}) {
   var failuresRemaining = failures;
   return ContentService(
@@ -47,9 +43,7 @@ ContentService _service({int failures = 0, List<String>? paths}) {
         failuresRemaining--;
         throw StateError('synthetic offline');
       }
-      return path.endsWith('/checklists')
-          ? _checklistEnvelope()
-          : _contentEnvelope();
+      return _contentEnvelope();
     },
   );
 }
@@ -163,12 +157,14 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Synthetic lifecycle guidance'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Checklist'), findsNothing);
+      expect(paths.single, isNot(contains('/checklists')));
       expect(find.text('Khám phá nội dung theo lựa chọn'), findsNothing);
       expect(
         find.byKey(const Key('lifecycle-content-generic-browse')),
         findsNothing,
       );
-      expect(paths, hasLength(2));
+      expect(paths, hasLength(1));
       expect(paths.first, isNot(contains('stage=')));
       expect(tester.takeException(), isNull);
     });
@@ -177,9 +173,7 @@ void main() {
       tester,
     ) async {
       final service = ContentService(
-        getRequest: (path) async => path.endsWith('/checklists')
-            ? _checklistEnvelope()
-            : _contentEnvelope(items: const []),
+        getRequest: (path) async => _contentEnvelope(items: const []),
       );
 
       await tester.pumpWidget(
@@ -227,45 +221,37 @@ void main() {
       },
     );
 
-    testWidgets(
-      'article and checklist tabs also use the selected empty state',
-      (tester) async {
-        final service = ContentService(
-          getRequest: (path) async => path.endsWith('/checklists')
-              ? _checklistEnvelope()
-              : _contentEnvelope(
-                  items: const [
-                    {
-                      'id': 'faq-69',
-                      'type': 'FAQ',
-                      'title': 'Synthetic lifecycle FAQ',
-                      'stage': 'PRE_PREGNANCY',
-                      'topicId': 'topic-69',
-                    },
-                  ],
-                ),
-        );
-        await tester.pumpWidget(
-          MaterialApp(
-            home: ViewContentScreen(
-              mode: ContentBrowseMode.lifecycle,
-              contentService: service,
-            ),
+    testWidgets('article tab also uses the selected empty state', (
+      tester,
+    ) async {
+      final service = ContentService(
+        getRequest: (path) async => _contentEnvelope(
+          items: const [
+            {
+              'id': 'faq-69',
+              'type': 'FAQ',
+              'title': 'Synthetic lifecycle FAQ',
+              'stage': 'PRE_PREGNANCY',
+              'topicId': 'topic-69',
+            },
+          ],
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ViewContentScreen(
+            mode: ContentBrowseMode.lifecycle,
+            contentService: service,
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        for (final index in const [1, 3]) {
-          await tester.tap(find.byKey(Key('content-type-tab-$index')));
-          await tester.pump();
-          expect(
-            find.byKey(const Key('lifecycle-content-empty')),
-            findsOneWidget,
-          );
-        }
-        expect(tester.takeException(), isNull);
-      },
-    );
+      await tester.tap(find.byKey(const Key('content-type-tab-1')));
+      await tester.pump();
+      expect(find.byKey(const Key('lifecycle-content-empty')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets('failure clears stale rows and exposes a working retry', (
       tester,
@@ -288,62 +274,6 @@ void main() {
       expect(find.byKey(const Key('lifecycle-content-error')), findsNothing);
       expect(find.text('Synthetic lifecycle guidance'), findsOneWidget);
     });
-
-    testWidgets(
-      'direct lifecycle screen enables checklist action without a client journey id',
-      (tester) async {
-        final service = ContentService(
-          getRequest: (path) async {
-            if (path.endsWith('/checklists')) {
-              return {
-                'data': {
-                  'stage': 'PRE_PREGNANCY',
-                  'payload': [
-                    {
-                      'id': 'checklist-69',
-                      'name': 'Direct lifecycle checklist',
-                      'stage': 'PRE_PREGNANCY',
-                      'description': 'Server-resolved import context',
-                      'items': [
-                        {
-                          'id': 'template-item-69',
-                          'itemText': 'Prepare lifecycle item',
-                          'order': 1,
-                          'isRequired': true,
-                        },
-                      ],
-                    },
-                  ],
-                },
-              };
-            }
-            return _contentEnvelope(items: const []);
-          },
-        );
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: ViewContentScreen(
-              mode: ContentBrowseMode.lifecycle,
-              contentService: service,
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Direct lifecycle checklist'));
-        await tester.pumpAndSettle();
-
-        // The detail action bar uses ElevatedButton.icon, whose factory returns the
-        // private _ElevatedButtonWithIcon subclass. find.byType matches the exact
-        // runtime type, so it never sees that button — match on the supertype instead.
-        final action = tester.widget<ElevatedButton>(
-          find.byWidgetPredicate((widget) => widget is ElevatedButton).last,
-        );
-        expect(action.onPressed, isNotNull);
-        expect(tester.takeException(), isNull);
-      },
-    );
   });
 
   group('UC82-69-MOB-004 stale response and accessibility boundary', () {
@@ -378,7 +308,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(pending, hasLength(2));
+      expect(pending, hasLength(1));
 
       await AuthState.instance.setTokens(
         accessToken: 'synthetic-access-b',
@@ -387,20 +317,18 @@ void main() {
         role: 'MOTHER',
       );
       await tester.pump();
-      expect(pending, hasLength(4));
+      expect(pending, hasLength(2));
 
       pending[0].complete(_contentEnvelope(title: 'Account A stale content'));
-      pending[1].complete(_checklistEnvelope());
       await tester.pump();
       expect(find.text('Account A stale content'), findsNothing);
 
-      pending[2].complete(_contentEnvelope(title: 'Account B current content'));
-      pending[3].complete(_checklistEnvelope());
+      pending[1].complete(_contentEnvelope(title: 'Account B current content'));
       await tester.pumpAndSettle();
 
       expect(find.text('Account A stale content'), findsNothing);
       expect(find.text('Account B current content'), findsOneWidget);
-      expect(paths, hasLength(4));
+      expect(paths, hasLength(2));
     });
 
     testWidgets('lifecycle content remains usable at 200 percent text scale', (

@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/auth/auth_state.dart';
+import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
 import 'package:untitled/features/journey/services/journey_service.dart';
 import 'package:untitled/features/recommendation/models/recommendation_model.dart';
@@ -14,6 +15,15 @@ class _FakeJourneyService extends JourneyService {
     journeyId: 'journey-1',
     journeyType: 'PRE_PREGNANCY',
     status: 'PRE_PREGNANCY',
+  );
+}
+
+class _PostpartumJourneyService extends JourneyService {
+  @override
+  Future<JourneyDashboard> getDashboard() async => const JourneyDashboard(
+    journeyId: 'journey-postpartum',
+    journeyType: 'POSTPARTUM',
+    status: 'ACTIVE_POSTPARTUM',
   );
 }
 
@@ -90,6 +100,19 @@ class _FakeRecommendationService extends RecommendationService {
   Future<void> clearDraftFor(String userId) async => events.add('clear-draft');
 }
 
+class _ReproductiveHistoryConflictService extends _FakeRecommendationService {
+  @override
+  Future<RecommendationProfileResponse> putProfile({
+    required Map<String, dynamic> profile,
+    String? submissionId,
+  }) async {
+    throw ApiException(
+      409,
+      '{"error":"RECOMMENDATION_REPRODUCTIVE_HISTORY_CONFLICT"}',
+    );
+  }
+}
+
 Future<void> _signInForTest() async {
   FlutterSecureStorage.setMockInitialValues({});
   await AuthState.instance.clear();
@@ -104,6 +127,70 @@ Future<void> _signInForTest() async {
 void main() {
   setUp(_signInForTest);
   tearDown(() => AuthState.instance.clear());
+
+  testWidgets('postpartum does not offer never-pregnant history', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RecommendationProfileScreen(
+          service: _FakeRecommendationService(),
+          journeyService: _PostpartumJourneyService(),
+          now: () => DateTime(2026, 8, 3),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Đồng ý và tiếp tục'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bạn có tiền sử sinh sản nào dưới đây?'), findsOneWidget);
+    expect(find.text('Chưa từng mang thai'), findsNothing);
+  });
+
+  testWidgets('shows an actionable reproductive-history conflict message', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RecommendationProfileScreen(
+          service: _ReproductiveHistoryConflictService(),
+          journeyService: _FakeJourneyService(),
+          now: () => DateTime(2026, 8, 3),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Đồng ý và tiếp tục'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('Chưa từng mang thai'));
+    await tester.tap(find.byKey(const Key('recommendation-continue-button')));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 6; i++) {
+      await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(find.text('Lưu hồ sơ'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Hành trình đã ghi nhận một thai kỳ trước đó. Vui lòng cập nhật câu Tiền sử sinh sản rồi thử lại.',
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('shows one localized question and maps skip to UNKNOWN', (
     tester,
