@@ -9,7 +9,9 @@ import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/auth/screens/account_profile_screen.dart';
 import '../../features/auth/screens/edit_profile_screen.dart';
-import '../../features/checklist/screens/checklist_history_screen.dart';
+import '../../features/checklist/screens/checklist_roadmap_screen.dart';
+import '../../features/checklist/screens/checklist_detail_screen.dart';
+
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_home_shell.dart';
@@ -179,6 +181,7 @@ String? resolveAppRedirect({
     '/mother-exercise',
   };
   const motherOrFamilyChecklistRoutes = {
+    '/checklists/roadmap',
     '/checklists/history',
     '/checklists/task-detail',
   };
@@ -340,10 +343,12 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const EditProfileScreen(),
     ),
     GoRoute(
+      path: '/checklists/roadmap',
+      builder: (context, state) => const ChecklistRoadmapScreen(),
+    ),
+    GoRoute(
       path: '/checklists/history',
-      builder: (context, state) => ChecklistHistoryScreen(
-        careGroupId: state.uri.queryParameters['careGroupId'],
-      ),
+      redirect: (context, state) => '/checklists/roadmap',
     ),
     GoRoute(
       path: '/checklists/task-detail',

@@ -85,7 +85,9 @@ public class EnsureEligibleChecklistAssignmentsService {
             source.loadCandidatesForActor(actorUserId, periodDate, timezone, correlationId).stream()
                     .filter(candidate -> candidate.cadence() != null
                             && candidate.cadence().scheduleType()
-                                    != com.carebridge.backend.checklist.model.ChecklistScheduleType.DAILY)
+                                    == com.carebridge.backend.checklist.model.ChecklistScheduleType.WEEKLY
+                            && candidate.cadence().materializationPolicy()
+                                    == com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy.EACH_WEEK)
                     .map(candidate -> candidate.withCadence(candidate.cadence().catchUp()))
                     .sorted(Comparator.comparing(EnsureEligibleChecklistAssignmentsService::signature))
                     .forEach(candidate -> executeIsolated(candidate, correlationId));

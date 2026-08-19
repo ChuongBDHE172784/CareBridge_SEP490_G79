@@ -4,6 +4,18 @@ import '../../healthRecords/services/health_metric_service.dart';
 import '../../journey/services/journey_service.dart';
 import 'health_metrics_message_card.dart';
 
+enum HealthTimeRangePreset {
+  days7('7 ngày qua'),
+  days14('14 ngày qua'),
+  days30('30 ngày qua'),
+  months3('3 tháng qua'),
+  all('Toàn bộ thai kỳ'),
+  custom('Tùy chọn ngày');
+
+  final String label;
+  const HealthTimeRangePreset(this.label);
+}
+
 class ShareHealthMetricsDialog extends StatefulWidget {
   const ShareHealthMetricsDialog({super.key});
 
@@ -53,8 +65,12 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
   final HealthMetricService _healthMetricService = HealthMetricService();
   bool _loading = true;
   int? _gestationalWeek;
+  String? _journeyId;
   String _measuredDate = '';
   List<_MetricItemState> _metrics = [];
+
+  HealthTimeRangePreset _selectedPreset = HealthTimeRangePreset.days30;
+  DateTimeRange? _customDateRange;
 
   @override
   void initState() {
@@ -68,18 +84,92 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
     super.dispose();
   }
 
+  DateTime _getFromDate() {
+    final now = DateTime.now();
+    switch (_selectedPreset) {
+      case HealthTimeRangePreset.days7:
+        return now.subtract(const Duration(days: 7));
+      case HealthTimeRangePreset.days14:
+        return now.subtract(const Duration(days: 14));
+      case HealthTimeRangePreset.days30:
+        return now.subtract(const Duration(days: 30));
+      case HealthTimeRangePreset.months3:
+        return now.subtract(const Duration(days: 90));
+      case HealthTimeRangePreset.all:
+        return now.subtract(const Duration(days: 365));
+      case HealthTimeRangePreset.custom:
+        return _customDateRange?.start ?? now.subtract(const Duration(days: 30));
+    }
+  }
+
+  DateTime _getToDate() {
+    if (_selectedPreset == HealthTimeRangePreset.custom &&
+        _customDateRange != null) {
+      return _customDateRange!.end;
+    }
+    return DateTime.now();
+  }
+
+  String _getTimeRangeLabel() {
+    if (_selectedPreset == HealthTimeRangePreset.custom &&
+        _customDateRange != null) {
+      final start = _customDateRange!.start;
+      final end = _customDateRange!.end;
+      return '${start.day}/${start.month} - ${end.day}/${end.month}/${end.year}';
+    }
+    return _selectedPreset.label;
+  }
+
+  Future<void> _pickCustomDateRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now,
+      initialDateRange: _customDateRange ??
+          DateTimeRange(
+            start: now.subtract(const Duration(days: 30)),
+            end: now,
+          ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFC98C7B),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF2C2523),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedPreset = HealthTimeRangePreset.custom;
+        _customDateRange = picked;
+        _loading = true;
+      });
+      _loadMetrics();
+    }
+  }
+
   Future<void> _loadMetrics() async {
     final now = DateTime.now();
     _measuredDate =
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
 
+    final fromDate = _getFromDate();
+    final toDate = _getToDate();
+
     try {
       final dashboard = await JourneyService().getDashboard();
       _gestationalWeek =
           dashboard.effectivePregnancyWeek ?? dashboard.completedGestationalWeek;
-      final journeyId = dashboard.journeyId;
+      _journeyId = dashboard.journeyId;
 
-      if (journeyId != null && journeyId.isNotEmpty) {
+      if (_journeyId != null && _journeyId!.isNotEmpty) {
         final metricConfigs = [
           {'type': 'BLOOD_PRESSURE', 'name': 'Huyết áp', 'icon': 'favorite'},
           {
@@ -106,16 +196,14 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
           {'type': 'SPO2', 'name': 'Nồng độ Oxy SpO2', 'icon': 'air'},
         ];
 
-        final fromDate = now.subtract(const Duration(days: 365));
-
         final results = await Future.wait(
           metricConfigs.map((m) async {
             try {
               final trend = await _healthMetricService.getMetricTrend(
-                journeyId: journeyId,
+                journeyId: _journeyId!,
                 metricType: m['type']!,
                 from: fromDate,
-                to: now,
+                to: toDate,
               );
               return {'config': m, 'trend': trend};
             } catch (_) {
@@ -130,7 +218,6 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
           final cfg = res['config'] as Map<String, String>;
           final trend = res['trend'] as MetricTrend;
           if (trend.dataPoints.isNotEmpty) {
-            // Sort points from newest to oldest
             final sorted = List<MetricDataPoint>.from(trend.dataPoints)
               ..sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
             final latest = sorted.first;
@@ -376,9 +463,12 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
     }
 
     final shareData = HealthMetricsShareData(
-      title: 'Toàn bộ lịch sử chỉ số sức khỏe',
+      title: 'Lịch sử chỉ số sức khỏe',
       gestationalWeek: _gestationalWeek,
       measuredDate: _measuredDate,
+      timeRangeLabel: _getTimeRangeLabel(),
+      journeyId: _journeyId,
+      isLiveSync: true,
       note: _noteController.text.trim().isEmpty
           ? null
           : _noteController.text.trim(),
@@ -391,7 +481,8 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFC98C7B);
-    final allSelected = _metrics.isNotEmpty && _metrics.every((m) => m.isSelected);
+    final allSelected =
+        _metrics.isNotEmpty && _metrics.every((m) => m.isSelected);
     var totalRecords = 0;
     for (final m in _metrics.where((x) => x.isSelected)) {
       totalRecords += m.history.isNotEmpty ? m.history.length : 1;
@@ -432,7 +523,7 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
-                    Icons.history_rounded,
+                    Icons.history_toggle_off_rounded,
                     color: primary,
                     size: 22,
                   ),
@@ -442,19 +533,54 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Chia sẻ toàn bộ lịch sử đo',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C2523),
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            'Chia sẻ chỉ số sức khỏe',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2C2523),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.bolt_rounded,
+                                  size: 11,
+                                  color: Color(0xFF2E7D32),
+                                ),
+                                SizedBox(width: 2),
+                                Text(
+                                  'Live Sync',
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2E7D32),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         _gestationalWeek != null
-                            ? 'Tuần thai $_gestationalWeek · Sẵn sàng gửi $totalRecords bản ghi đo'
-                            : 'Gửi toàn bộ lịch sử theo dõi sức khỏe cho chuyên gia',
+                            ? 'Tuần thai $_gestationalWeek · Cập nhật thời gian thực'
+                            : 'Gửi số liệu sinh hiệu cho chuyên gia tư vấn',
                         style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
@@ -468,16 +594,106 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
             ),
             const SizedBox(height: 12),
 
+            // Time Range Presets Selector
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  ...HealthTimeRangePreset.values.map((preset) {
+                    final selected = _selectedPreset == preset;
+                    if (preset == HealthTimeRangePreset.custom) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ActionChip(
+                          avatar: Icon(
+                            Icons.date_range_rounded,
+                            size: 14,
+                            color: selected ? Colors.white : primary,
+                          ),
+                          label: Text(
+                            _customDateRange != null
+                                ? '${_customDateRange!.start.day}/${_customDateRange!.start.month} - ${_customDateRange!.end.day}/${_customDateRange!.end.month}'
+                                : 'Tùy chọn ngày',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 11,
+                              fontWeight: selected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: selected
+                                  ? Colors.white
+                                  : const Color(0xFF5A4E4B),
+                            ),
+                          ),
+                          backgroundColor:
+                              selected ? primary : const Color(0xFFFAF7F6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: selected
+                                  ? primary
+                                  : const Color(0xFFE8D5CE),
+                            ),
+                          ),
+                          onPressed: _pickCustomDateRange,
+                        ),
+                      );
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(
+                          preset.label,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            fontWeight:
+                                selected ? FontWeight.bold : FontWeight.w500,
+                            color: selected
+                                ? Colors.white
+                                : const Color(0xFF5A4E4B),
+                          ),
+                        ),
+                        selected: selected,
+                        selectedColor: primary,
+                        backgroundColor: const Color(0xFFFAF7F6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: selected
+                                ? primary
+                                : const Color(0xFFE8D5CE),
+                          ),
+                        ),
+                        onSelected: (val) {
+                          if (val) {
+                            setState(() {
+                              _selectedPreset = preset;
+                              _loading = true;
+                            });
+                            _loadMetrics();
+                          }
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
             // Select All / Deselect All Action
             if (!_loading && _metrics.isNotEmpty)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Đã chọn ${_metrics.where((m) => m.isSelected).length}/${_metrics.length} loại chỉ số ($totalRecords bản ghi)',
+                    'Đã chọn ${_metrics.where((m) => m.isSelected).length}/${_metrics.length} loại ($totalRecords bản ghi · ${_getTimeRangeLabel()})',
                     style: const TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF5A4E4B),
                     ),
@@ -493,7 +709,7 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                       allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả',
                       style: const TextStyle(
                         fontFamily: 'Lexend',
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: primary,
                       ),
@@ -513,15 +729,17 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
             else ...[
               // Metrics checklist with expandable history
               Flexible(
-                child: Container(
-                  constraints: const BoxConstraints(maxHeight: 290),
-                  decoration: BoxDecoration(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 270),
+                  child: Material(
                     color: const Color(0xFFFAF7F6),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE8D5CE)),
-                  ),
-                  child: ListView.separated(
-                    shrinkWrap: true,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: const BorderSide(color: Color(0xFFE8D5CE)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListView.separated(
+                      shrinkWrap: true,
                     itemCount: _metrics.length,
                     separatorBuilder: (ctx, index) => const Divider(
                       height: 1,
@@ -706,6 +924,7 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                   ),
                 ),
               ),
+            ),
               const SizedBox(height: 12),
 
               // Note field
@@ -744,7 +963,7 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                 onPressed: _onConfirm,
                 icon: const Icon(Icons.send_rounded, size: 18),
                 label: Text(
-                  'Gửi toàn bộ lịch sử ($totalRecords bản ghi)',
+                  'Chia sẻ $totalRecords bản ghi đo (${_getTimeRangeLabel()})',
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.bold,

@@ -95,10 +95,12 @@ void main() {
       find.byKey(const Key('user-checklist-task-text')),
       'Đặt lịch tiêm cho bé',
     );
+    await tester.ensureVisible(find.byKey(const Key('save-user-checklist-task')));
     await tester.tap(find.byKey(const Key('save-user-checklist-task')));
     await tester.pumpAndSettle();
     expect(find.text('Không thể thêm việc. Vui lòng thử lại.'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('save-user-checklist-task')));
     await tester.tap(find.byKey(const Key('save-user-checklist-task')));
     await tester.pumpAndSettle();
 
@@ -167,5 +169,59 @@ void main() {
     );
 
     expect(find.byKey(const Key('add-user-checklist-task')), findsNothing);
+  });
+
+  testWidgets('renders new fields (name, description, recurrence, duration) and excludes category', (
+    tester,
+  ) async {
+    final requests = <Map<String, dynamic>>[];
+    final service = UserChecklistService(
+      postV2Request: (path, body, headers) async {
+        requests.add(Map<String, dynamic>.from(body));
+        return _createdItem(body);
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AddUserChecklistTaskButton(
+            journeyId: '22222222-2222-4222-8222-222222222222',
+            service: service,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('add-user-checklist-task')));
+    await tester.pumpAndSettle();
+
+    // Verify fields presence
+    expect(find.byKey(const Key('user-checklist-task-text')), findsOneWidget);
+    expect(find.byKey(const Key('user-checklist-task-description')), findsOneWidget);
+    expect(find.byKey(const Key('user-checklist-task-recurrence')), findsOneWidget);
+    expect(find.byKey(const Key('user-checklist-task-duration')), findsOneWidget);
+    // Verify "Nhóm công việc" is removed
+    expect(find.text('Nhóm công việc'), findsNothing);
+
+    // Enter name & description
+    await tester.enterText(
+      find.byKey(const Key('user-checklist-task-text')),
+      'Uống vitamin bầu',
+    );
+    await tester.enterText(
+      find.byKey(const Key('user-checklist-task-description')),
+      'Uống sau bữa ăn sáng 30 phút',
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('save-user-checklist-task')));
+    await tester.tap(find.byKey(const Key('save-user-checklist-task')));
+    await tester.pumpAndSettle();
+
+    expect(requests, hasLength(1));
+    expect(
+      requests.single['itemText'],
+      'Uống vitamin bầu\nUống sau bữa ăn sáng 30 phút',
+    );
   });
 }

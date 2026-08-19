@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { label: 'Tổng quan', icon: 'dashboard', path: '/expert/dashboard' },
   { label: 'Yêu cầu tư vấn', icon: 'contact_support', path: '/expert/consultation-requests' },
   { label: 'Trò chuyện trực tiếp', icon: 'chat', path: '/expert/direct-chats' },
+  { label: 'Chỉ số & Checklist chia sẻ', icon: 'monitoring', path: '/expert/shared-records' },
   { label: 'Hồ sơ chuyên môn', icon: 'person', path: '/expert/profile' },
   { label: 'Chứng chỉ & Giấy tờ', icon: 'description', path: '/expert/credentials' },
   { label: 'Lịch rảnh làm việc', icon: 'calendar_month', path: '/expert/calendar' },

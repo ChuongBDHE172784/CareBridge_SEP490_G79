@@ -100,6 +100,31 @@ class EnsureEligibleChecklistAssignmentsServiceTest {
         verify(source, times(8)).loadCandidatesForActor(any(), any(), any(), any());
     }
 
+    @Test
+    void weeklyCatchUpProcessesOnlyEachWeekAndExcludesOncePerWindow() {
+        ChecklistReconciliationSource source = mock(ChecklistReconciliationSource.class);
+        EnsureEligibleChecklistAssignmentExecutor executor = mock(EnsureEligibleChecklistAssignmentExecutor.class);
+        ChecklistDistributionCommand weeklyEachWeek = command(1).withCadence(ChecklistCadenceMetadata.interactive(
+                ChecklistScheduleType.WEEKLY, ChecklistMaterializationPolicy.EACH_WEEK,
+                "W:G:0004:1", ZONE));
+        ChecklistDistributionCommand oncePerWindow = command(2).withCadence(ChecklistCadenceMetadata.interactive(
+                ChecklistScheduleType.WEEKLY, ChecklistMaterializationPolicy.ONCE_PER_WINDOW,
+                "O:1:20", ZONE));
+
+        when(source.loadCandidatesForActor(any(), any(), any(), any()))
+                .thenReturn(List.of(weeklyEachWeek, oncePerWindow));
+
+        service(source, executor).ensureCatchUpAssignments(ACTOR, DATE, ZONE, CORRELATION, 1);
+
+        ArgumentCaptor<ChecklistDistributionCommand> captured = ArgumentCaptor.forClass(ChecklistDistributionCommand.class);
+        verify(executor).execute(captured.capture());
+        assertThat(captured.getValue().cadence().scheduleType()).isEqualTo(ChecklistScheduleType.WEEKLY);
+        assertThat(captured.getValue().cadence().materializationPolicy()).isEqualTo(ChecklistMaterializationPolicy.EACH_WEEK);
+        assertThat(captured.getValue().cadence().periodKey()).isEqualTo("W:G:0004:1");
+        assertThat(captured.getValue().cadence().materializationMode())
+                .isEqualTo(com.carebridge.backend.checklist.model.ChecklistMaterializationMode.CATCH_UP);
+    }
+
     private static EnsureEligibleChecklistAssignmentsService service(
             ChecklistReconciliationSource source,
             EnsureEligibleChecklistAssignmentExecutor executor) {

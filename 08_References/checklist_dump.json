@@ -1,0 +1,1491 @@
+{
+  "Checklists": [
+    [
+      "checklist_code",
+      "name",
+      "description",
+      "stage",
+      "template_type",
+      "window_start",
+      "window_end",
+      "end_at_stage_exit",
+      "display_order",
+      "repeat_mode"
+    ],
+    [
+      "PRE_PREG_01",
+      "Đánh giá sức khỏe & yếu tố nguy cơ",
+      "Xem xét tiền sử mang thai, bệnh lý bản thân, gia đình và môi trường sống",
+      "PRE_PREGNANCY",
+      "MANDATORY",
+      "",
+      "",
+      "FALSE",
+      "1",
+      "NONE"
+    ],
+    [
+      "PRE_PREG_02",
+      "Khám, xét nghiệm & điều trị trước thai kỳ",
+      "Khám phụ khoa, kiểm soát bệnh mạn tính và rà soát thuốc đang dùng",
+      "PRE_PREGNANCY",
+      "MANDATORY",
+      "",
+      "",
+      "FALSE",
+      "2",
+      "NONE"
+    ],
+    [
+      "PRE_PREG_03",
+      "Điều chỉnh dinh dưỡng và lối sống",
+      "Chế độ ăn đa dạng, duy trì cân nặng hợp lý và vận động thể lực",
+      "PRE_PREGNANCY",
+      "MANDATORY",
+      "",
+      "",
+      "FALSE",
+      "3",
+      "NONE"
+    ],
+    [
+      "PRE_PREG_04",
+      "Bổ sung vi chất & hoàn thành tiêm chủng",
+      "Bổ sung sắt, axit folic và tiêm các vắc-xin cần thiết trước mang thai",
+      "PRE_PREGNANCY",
+      "MANDATORY",
+      "",
+      "",
+      "FALSE",
+      "4",
+      "NONE"
+    ],
+    [
+      "PRE_PREG_05",
+      "Chuẩn bị sẵn sàng để thụ thai",
+      "Theo dõi chu kỳ kinh nguyệt và trang bị kiến thức tiền sản",
+      "PRE_PREGNANCY",
+      "MANDATORY",
+      "",
+      "",
+      "FALSE",
+      "5",
+      "NONE"
+    ],
+    [
+      "PREG_ONCE_01",
+      "Khám và xét nghiệm 20 tuần đầu",
+      "Khám thai lần đầu, xét nghiệm máu, sàng lọc dị tật và bệnh truyền nhiễm",
+      "PREGNANCY",
+      "MANDATORY",
+      "1",
+      "20",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "PREG_ONCE_02",
+      "Theo dõi và siêu âm tuần 21 - 25",
+      "Thực hiện siêu âm hình thái học trước tuần 24 và hoàn thành xét nghiệm còn thiếu",
+      "PREGNANCY",
+      "MANDATORY",
+      "21",
+      "25",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "PREG_ONCE_03",
+      "Sàng lọc đái tháo đường & Rh tuần 26 - 29",
+      "Xét nghiệm đường huyết thai kỳ và tiêm Anti-D nếu mẹ có Rh âm",
+      "PREGNANCY",
+      "MANDATORY",
+      "26",
+      "29",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "PREG_ONCE_04",
+      "Kế hoạch sinh & chuẩn bị tuần 30 - 33",
+      "Tư vấn kế hoạch sinh, chọn nơi sinh và phương án cấp cứu",
+      "PREGNANCY",
+      "MANDATORY",
+      "30",
+      "33",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "PREG_ONCE_05",
+      "Sàng lọc GBS & nuôi con sữa mẹ tuần 36 - 37",
+      "Sàng lọc liên cầu khuẩn nhóm B (GBS) và tư vấn nuôi con bằng sữa mẹ",
+      "PREGNANCY",
+      "MANDATORY",
+      "36",
+      "37",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "PREG_ONCE_06",
+      "Chuẩn bị chuyển dạ tuần 38 - 39",
+      "Xác nhận nơi sinh, phương tiện di chuyển và nhận biết dấu hiệu chuyển dạ",
+      "PREGNANCY",
+      "MANDATORY",
+      "38",
+      "39",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "PREG_ONCE_07",
+      "Chờ sinh & theo dõi từ tuần 40",
+      "Rà soát lần cuối kế hoạch sinh và kế hoạch theo dõi y tế nếu quá ngày dự sinh",
+      "PREGNANCY",
+      "MANDATORY",
+      "40",
+      "42",
+      "TRUE",
+      "0",
+      "NONE"
+    ],
+    [
+      "PREG_WEEKLY_01",
+      "Theo dõi chỉ số mẹ bầu hàng tuần",
+      "Đo huyết áp, cân nặng và cập nhật BMI hàng tuần trong suốt thai kỳ",
+      "PREGNANCY",
+      "MANDATORY",
+      "1",
+      "42",
+      "TRUE",
+      "0",
+      "WEEKLY"
+    ],
+    [
+      "PREG_WEEKLY_02",
+      "Sàng lọc tiền sản giật hàng tuần (từ tuần 21)",
+      "Kiểm tra protein niệu để sàng lọc nguy cơ tiền sản giật từ tuần 21",
+      "PREGNANCY",
+      "MANDATORY",
+      "21",
+      "42",
+      "TRUE",
+      "0",
+      "WEEKLY"
+    ],
+    [
+      "PREG_WEEKLY_03",
+      "Đếm cử động thai hàng tuần (từ tuần 30)",
+      "Theo dõi và ghi nhận cử động của thai nhi từ tuần 30",
+      "PREGNANCY",
+      "MANDATORY",
+      "30",
+      "42",
+      "TRUE",
+      "0",
+      "WEEKLY"
+    ],
+    [
+      "PREG_DAILY_01",
+      "Uống Axit Folic hàng ngày (20 tuần đầu)",
+      "Bổ sung Axit Folic 400mcg/ngày trong 20 tuần đầu thai kỳ",
+      "PREGNANCY",
+      "MANDATORY",
+      "1",
+      "20",
+      "FALSE",
+      "0",
+      "DAILY"
+    ],
+    [
+      "PREG_DAILY_02",
+      "Uống Axit Folic hàng ngày (từ tuần 21)",
+      "Bổ sung Axit Folic 600mcg/ngày từ tuần 21 đến khi sinh",
+      "PREGNANCY",
+      "MANDATORY",
+      "21",
+      "42",
+      "TRUE",
+      "0",
+      "DAILY"
+    ],
+    [
+      "POST_WEEK_01",
+      "Chăm sóc mẹ sau sinh — Tuần 1",
+      "Sàng lọc trầm cảm, theo dõi hồi phục vết may/mổ và tư vấn tránh thai",
+      "POSTPARTUM",
+      "MANDATORY",
+      "1",
+      "1",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "POST_WEEK_02",
+      "Chăm sóc mẹ sau sinh — Tuần 2",
+      "Đánh giá dấu hiệu sinh tồn, co hồi tử cung, kiểm tra nhiễm trùng và dinh dưỡng",
+      "POSTPARTUM",
+      "MANDATORY",
+      "2",
+      "2",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "POST_WEEK_06",
+      "Khám kiểm tra sau sinh — Tuần 6",
+      "Khám sức khỏe toàn diện, đánh giá tâm thần và chăm sóc sức khỏe dài hạn",
+      "POSTPARTUM",
+      "MANDATORY",
+      "6",
+      "6",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_0_28D",
+      "Chăm sóc trẻ sơ sinh 0–28 ngày",
+      "Khám sơ sinh, bú mẹ, giữ ấm, tiêm chủng viêm gan B/BCG và theo dõi rốn/vàng da",
+      "BABY_CARE",
+      "MANDATORY",
+      "1",
+      "4",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_1_2M",
+      "Chăm sóc trẻ 1–<2 tháng",
+      "Khám mốc 6 tuần, duy trì bú mẹ hoàn toàn và chuẩn bị tiêm chủng mốc 2 tháng",
+      "BABY_CARE",
+      "MANDATORY",
+      "5",
+      "8",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_2_3M",
+      "Chăm sóc trẻ 2–3 tháng",
+      "Khám sức khỏe, tiêm chủng vắc xin phối hợp liều 1/Rota/bại liệt và theo dõi tăng trưởng",
+      "BABY_CARE",
+      "MANDATORY",
+      "9",
+      "13",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_4_6M",
+      "Chăm sóc trẻ 4–6 tháng",
+      "Tiêm chủng cơ bản liều tiếp theo, bú mẹ hoàn toàn và chuẩn bị ăn dặm mốc 6 tháng",
+      "BABY_CARE",
+      "MANDATORY",
+      "14",
+      "26",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_7_9M",
+      "Chăm sóc trẻ 7–9 tháng",
+      "Khám sức khỏe, ăn bổ sung 2-3 bữa/ngày, tiêm sởi/IPV2 và chuyển kết cấu thức ăn",
+      "BABY_CARE",
+      "MANDATORY",
+      "27",
+      "39",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_10_12M",
+      "Chăm sóc trẻ 10–12 tháng",
+      "Khám sức khỏe, rà soát lịch tiêm chủng và chuẩn bị kiểm tra toàn diện mốc 12 tháng",
+      "BABY_CARE",
+      "MANDATORY",
+      "40",
+      "52",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_12M",
+      "Mốc 12 tháng (1 tuổi)",
+      "Khám mốc 1 tuổi, tiêm Viêm não Nhật Bản B liều 1 và dinh dưỡng sau 1 tuổi",
+      "BABY_CARE",
+      "MANDATORY",
+      "52",
+      "52",
+      "FALSE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_13_18M",
+      "Chăm sóc trẻ 13–18 tháng",
+      "Khám sức khỏe, chăm sóc răng miệng, phát triển ngôn ngữ và tiêm nhắc mốc 18 tháng",
+      "BABY_CARE",
+      "MANDATORY",
+      "52",
+      "52",
+      "TRUE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_19_24M",
+      "Chăm sóc trẻ 19–24 tháng",
+      "Khám sức khỏe, tiêm Viêm não Nhật Bản B liều 3 và chuẩn bị kiểm tra mốc 24 tháng",
+      "BABY_CARE",
+      "MANDATORY",
+      "52",
+      "52",
+      "TRUE",
+      "0",
+      "NONE"
+    ],
+    [
+      "BABY_SAFETY_0_24M",
+      "Dấu hiệu nguy hiểm cần cấp cứu (0–24 tháng)",
+      "Nhận biết các dấu hiệu nguy kịch để đưa trẻ đi cấp cứu/khám ngay lập tức",
+      "BABY_CARE",
+      "MANDATORY",
+      "1",
+      "52",
+      "TRUE",
+      "0",
+      "NONE"
+    ]
+  ],
+  "Checklist_Items": [
+    [
+      "checklist_code",
+      "order",
+      "item_text",
+      "description",
+      "is_required",
+      "support_function",
+      "source_url"
+    ],
+    [
+      "PRE_PREG_01",
+      "1",
+      "Xem xét tiền sử mang thai và sinh con trước",
+      "Xem xét đầy đủ tiền sử mang thai và sinh con trước đây.",
+      "TRUE",
+      "",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_01",
+      "2",
+      "Xem xét tiền sử bệnh bản thân và gia đình",
+      "Xem xét tiền sử bệnh của bản thân và gia đình.",
+      "TRUE",
+      "",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_01",
+      "3",
+      "Đánh giá nguy cơ bệnh mạn tính và di truyền",
+      "Đánh giá nguy cơ bệnh mạn tính, bệnh di truyền, bệnh lây truyền qua đường tình dục và các nhiễm khuẩn.",
+      "TRUE",
+      "",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_01",
+      "4",
+      "Rà soát yếu tố nghề nghiệp và môi trường",
+      "Xem xét thuốc đã sử dụng, nghề nghiệp, môi trường sống, làm việc và tiếp xúc hóa chất độc hại.",
+      "FALSE",
+      "",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_02",
+      "1",
+      "Khám sức khỏe và khám phụ khoa định kỳ",
+      "Khám sức khỏe và khám phụ khoa định kỳ mỗi năm.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_02",
+      "2",
+      "Điều trị bệnh phụ khoa và nhiễm khuẩn (nếu có)",
+      "Điều trị bệnh phụ khoa, nhiễm khuẩn đường sinh sản và bệnh lây truyền qua đường tình dục nếu có.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_02",
+      "3",
+      "Kiểm soát bệnh mạn tính tiền thai kỳ",
+      "Kiểm soát tăng huyết áp, bệnh tim mạch, đái tháo đường và các bệnh mạn tính nếu có.",
+      "TRUE",
+      "",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_02",
+      "4",
+      "Rà soát thuốc và thực phẩm chức năng đang dùng",
+      "Rà soát thuốc đang dùng; thông báo đầy đủ thuốc, vitamin và thực phẩm chức năng để được đánh giá.",
+      "TRUE",
+      "",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_03",
+      "1",
+      "Ăn uống đa dạng, đủ chất và sử dụng muối iod",
+      "Ăn đa dạng, đủ chất và sử dụng muối hoặc bột canh có iod.",
+      "TRUE",
+      "CONTENT_LIBRARY",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_03",
+      "2",
+      "Duy trì cân nặng và chỉ số BMI hợp lý",
+      "Đạt và duy trì cân nặng phù hợp; tài liệu đưa ra BMI 18,5–24 kg/m².",
+      "TRUE",
+      "MATERNAL_HEALTH_METRICS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_03",
+      "3",
+      "Tập thể dục thường xuyên, nghỉ ngơi hợp lý",
+      "Tập thể dục thường xuyên; bố trí lao động và nghỉ ngơi hợp lý.",
+      "FALSE",
+      "MATERNAL_EXERCISES",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_03",
+      "4",
+      "Tránh rượu bia, thuốc lá và chất kích thích",
+      "Không uống rượu bia, hút thuốc, sử dụng chất gây nghiện; tránh hít khói thuốc.",
+      "TRUE",
+      "CONTENT_LIBRARY",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_03",
+      "5",
+      "Tránh tiếp xúc hóa chất độc hại",
+      "Tránh hóa chất độc hại, thuốc mạnh và thực phẩm chức năng không rõ nguồn gốc.",
+      "TRUE",
+      "CONTENT_LIBRARY",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_03",
+      "6",
+      "Giữ vệ sinh và tẩy giun định kỳ",
+      "Giữ vệ sinh cá nhân, vệ sinh môi trường và tẩy giun 1–2 lần mỗi năm.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_04",
+      "1",
+      "Bổ sung Sắt và Axit Folic trước thai kỳ",
+      "Bổ sung sắt 30–60 mg/ngày và axit folic 400–800 mcg/ngày, ít nhất 3 tháng trước khi có thai.",
+      "TRUE",
+      "REMINDERS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_04",
+      "2",
+      "Tư vấn Axit Folic liều cao nếu có tiền sử dị tật",
+      "Nếu từng có thai hoặc sinh con bị dị tật ống thần kinh, trao đổi với bác sĩ về axit folic 4 mg/ngày.",
+      "FALSE",
+      "EXPERT_CONSULTATION",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_04",
+      "3",
+      "Rà soát lịch sử tiêm chủng cá nhân",
+      "Xác định mình đã từng tiêm các vắc-xin được khuyến cáo hay chưa và hoàn thành liều còn thiếu theo tư vấn.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_04",
+      "4",
+      "Tiêm các vắc-xin thiết yếu trước mang thai",
+      "Xem xét các vắc-xin tài liệu đề cập: uốn ván, cúm, rubella, thủy đậu, bạch hầu, ho gà, HPV và viêm gan B.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_04",
+      "5",
+      "Tuân thủ khoảng cách sau tiêm MMR và thủy đậu",
+      "Với MMR và thủy đậu, tiêm trước khi mang thai và tuân thủ thời gian chờ theo nhà sản xuất.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_05",
+      "1",
+      "Trang bị kiến thức làm mẹ và chăm sóc trẻ",
+      "Trang bị kiến thức làm mẹ và chăm sóc trẻ.",
+      "TRUE",
+      "CONTENT_LIBRARY",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_05",
+      "2",
+      "Theo dõi chu kỳ kinh nguyệt để nhận biết ngày rụng trứng",
+      "Theo dõi chu kỳ kinh nguyệt, nhiệt độ cơ thể và chất nhầy âm đạo để nhận biết thời gian dễ thụ thai.",
+      "TRUE",
+      "JOURNEY",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_05",
+      "3",
+      "Khuyến khích bạn đời duy trì lối sống lành mạnh",
+      "Khuyến khích người chồng tránh rượu, thuốc lá, chất gây nghiện và tránh quần áo quá chật, nóng.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PRE_PREG_05",
+      "4",
+      "Hoàn tất sàng lọc và chuẩn bị tâm lý",
+      "Hoàn tất tư vấn, sàng lọc và quản lý nguy cơ; nếu bệnh lý phức tạp, đến bệnh viện chuyên khoa phù hợp.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf"
+    ],
+    [
+      "PREG_ONCE_01",
+      "1",
+      "Đi khám thai lần đầu",
+      "Khám thai định kỳ xác định vị trí và tình trạng thai ban đầu.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_01",
+      "2",
+      "Xét nghiệm haemoglobin phát hiện thiếu máu",
+      "Xét nghiệm haemoglobin để phát hiện thiếu máu.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_01",
+      "3",
+      "Xác định nhóm máu và tình trạng Rh",
+      "Xác định nhóm máu ABO và tình trạng Rh (+/-).",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_01",
+      "4",
+      "Sàng lọc HIV, giang mai, viêm gan B",
+      "Sàng lọc các bệnh truyền nhiễm lây truyền từ mẹ sang con.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_01",
+      "5",
+      "Sàng lọc dị tật bẩm sinh",
+      "Sàng lọc dị tật bẩm sinh theo chỉ định của bác sĩ.",
+      "FALSE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_02",
+      "1",
+      "Thực hiện siêu âm hình thái học trước tuần 24",
+      "Thực hiện hoặc xác nhận đã thực hiện siêu âm trước tuần 24.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_02",
+      "2",
+      "Hoàn thành xét nghiệm/sàng lọc còn thiếu",
+      "Hoàn thành các xét nghiệm hoặc sàng lọc còn thiếu từ lần đầu.",
+      "FALSE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_03",
+      "1",
+      "Xét nghiệm đường huyết thai kỳ (OGTT)",
+      "Xét nghiệm đường huyết để sàng lọc đái tháo đường thai kỳ.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_03",
+      "2",
+      "Kiểm tra lại kết quả nhóm máu & Rh",
+      "Kiểm tra kết quả nhóm máu và tình trạng Rh.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_03",
+      "3",
+      "Lên lịch tiêm Anti-D (nếu mẹ có Rh âm)",
+      "(Nếu mẹ có Rh âm) Lên lịch tiêm globulin miễn dịch Anti-D vào khoảng tuần 28.",
+      "FALSE",
+      "APPOINTMENTS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_03",
+      "4",
+      "Theo dõi hướng dẫn y tế cho mẹ Rh âm",
+      "(Nếu mẹ có Rh âm) Theo dõi và thực hiện các hướng dẫn tiếp theo của cơ sở y tế.",
+      "FALSE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_04",
+      "1",
+      "Tư vấn chi tiết về kế hoạch sinh",
+      "Bắt đầu tư vấn chi tiết về kế hoạch sinh với bác sĩ.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_04",
+      "2",
+      "Xác định cơ sở dự kiến sinh",
+      "Lựa chọn và xác định bệnh viện/cơ sở y tế dự kiến sinh.",
+      "TRUE",
+      "JOURNEY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_04",
+      "3",
+      "Lên kế hoạch xử trí tình huống khẩn cấp",
+      "Chuẩn bị danh bạ, số cấp cứu và kế hoạch xử trí khi có tình huống khẩn cấp.",
+      "TRUE",
+      "AI_TRIAGE",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_04",
+      "4",
+      "Tư vấn kế hoạch hóa gia đình sau sinh",
+      "Bắt đầu tìm hiểu và tư vấn kế hoạch hóa gia đình sau sinh.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_05",
+      "1",
+      "Sàng lọc liên cầu khuẩn nhóm B (GBS)",
+      "Sàng lọc liên cầu khuẩn nhóm B — GBS, nếu được áp dụng tại cơ sở y tế.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_05",
+      "2",
+      "Ghi nhận kết quả GBS và phác đồ xử trí",
+      "Ghi nhận kết quả GBS và kế hoạch xử trí khi sinh nếu kết quả dương tính.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_05",
+      "3",
+      "Tư vấn nuôi con bằng sữa mẹ",
+      "Bắt đầu tư vấn nuôi con bằng sữa mẹ và chuẩn bị sau sinh.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_06",
+      "1",
+      "Xác nhận cơ sở dự kiến sinh lần cuối",
+      "Xác nhận cơ sở dự kiến sinh và hồ sơ đăng ký sinh.",
+      "TRUE",
+      "JOURNEY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_06",
+      "2",
+      "Xác nhận phương tiện di chuyển khi chuyển dạ",
+      "Xác nhận phương tiện di chuyển sẵn sàng 24/7.",
+      "TRUE",
+      "JOURNEY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_06",
+      "3",
+      "Xác nhận người hỗ trợ khi chuyển dạ",
+      "Xác nhận người thân đồng hành và hỗ trợ khi chuyển dạ.",
+      "TRUE",
+      "JOURNEY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_06",
+      "4",
+      "Tìm hiểu các dấu hiệu chuyển dạ cần đến viện",
+      "Tìm hiểu các dấu hiệu cần đến cơ sở y tế ngay (vỡ ối, ra máu, co thắt dồn dập).",
+      "TRUE",
+      "AI_TRIAGE",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_07",
+      "1",
+      "Rà soát lần cuối kế hoạch sinh",
+      "Rà soát đồ dùng đi sinh và kế hoạch sinh.",
+      "TRUE",
+      "JOURNEY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_07",
+      "2",
+      "Rà soát phương án đi lại và hỗ trợ",
+      "Rà soát phương án đi lại và người hỗ trợ khi chuyển dạ.",
+      "TRUE",
+      "JOURNEY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_ONCE_07",
+      "3",
+      "Trao đổi kế hoạch theo dõi nếu chưa sinh",
+      "Trao đổi với nhân viên y tế về kế hoạch theo dõi tiếp theo nếu quá ngày dự sinh.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_WEEKLY_01",
+      "1",
+      "Đo huyết áp hàng tuần",
+      "Đo huyết áp và ghi nhận vào nhật ký sức khỏe.",
+      "TRUE",
+      "MATERNAL_HEALTH_METRICS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_WEEKLY_01",
+      "2",
+      "Đo cân nặng và cập nhật chỉ số BMI",
+      "Đo cân nặng và cập nhật BMI hàng tuần.",
+      "TRUE",
+      "MATERNAL_HEALTH_METRICS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_WEEKLY_02",
+      "1",
+      "Kiểm tra protein niệu sàng lọc tiền sản giật",
+      "Kiểm tra protein niệu để sàng lọc tiền sản giật.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_WEEKLY_03",
+      "1",
+      "Theo dõi và đếm cử động của thai nhi",
+      "Theo dõi cử động của thai nhi hàng tuần/hàng ngày từ tuần 30.",
+      "TRUE",
+      "MATERNAL_HEALTH_METRICS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_DAILY_01",
+      "1",
+      "Bổ sung Axit Folic 400mcg/ngày",
+      "Uống Axit Folic 400mcg/ngày đều đặn.",
+      "TRUE",
+      "REMINDERS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "PREG_DAILY_02",
+      "1",
+      "Bổ sung Axit Folic 600mcg/ngày",
+      "Uống Axit Folic 600mcg/ngày từ tuần 21 đến khi sinh.",
+      "TRUE",
+      "REMINDERS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_01",
+      "1",
+      "Đánh giá tâm trạng & sàng lọc trầm cảm sau sinh",
+      "Đánh giá tâm trạng, sàng lọc chứng trầm cảm sau sinh.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_01",
+      "2",
+      "Theo dõi hồi phục vết may tầng sinh môn / vết mổ",
+      "Theo dõi quá trình hồi phục quá trình lành vết thương tầng sinh môn hoặc vết mổ lấy thai.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_01",
+      "3",
+      "Tư vấn kế hoạch hóa gia đình sau sinh",
+      "Tư vấn về kế hoạch hóa gia đình và các lựa chọn tránh thai.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_02",
+      "1",
+      "Đánh giá sức khỏe thể chất của mẹ",
+      "Đánh giá sức khỏe thể chất của mẹ (dấu hiệu sinh tồn, sự co hồi tử cung).",
+      "TRUE",
+      "MATERNAL_HEALTH_METRICS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_02",
+      "2",
+      "Sàng lọc sức khỏe tinh thần và trầm cảm",
+      "Sàng lọc chứng trầm cảm sau sinh và sức khỏe tinh thần.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_02",
+      "3",
+      "Kiểm tra dấu hiệu nhiễm trùng sau sinh",
+      "Kiểm tra xem mẹ có bị nhiễm trùng không (nhiệt độ, dấu hiệu viêm vú, vết mổ lấy thai).",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_02",
+      "4",
+      "Tư vấn dinh dưỡng, vệ sinh & cho con bú",
+      "Tư vấn về dinh dưỡng sau sinh, vệ sinh và hỗ trợ cho con bú.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_06",
+      "1",
+      "Khám sức khỏe toàn diện cho mẹ mốc 6 tuần",
+      "Khám sức khỏe toàn diện cho mẹ tại cơ sở y tế.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_06",
+      "2",
+      "Đánh giá sức khỏe tâm thần mốc 6 tuần",
+      "Đánh giá sức khỏe tâm thần của mẹ.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_06",
+      "3",
+      "Tư vấn biện pháp tránh thai phù hợp",
+      "Tư vấn về kế hoạch hóa gia đình và các lựa chọn tránh thai.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "POST_WEEK_06",
+      "4",
+      "Tìm hiểu chăm sóc sức khỏe dài hạn",
+      "Tìm hiểu thêm về chăm sóc sức khỏe dài hạn và vận động phục hồi.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal"
+    ],
+    [
+      "BABY_0_28D",
+      "1",
+      "Khám và theo dõi sơ sinh",
+      "Xác nhận trẻ được đánh giá hô hấp, thân nhiệt, bú/ngậm bắt vú, da/vàng da, rốn, cân nặng và khám toàn thân.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_0_28D",
+      "2",
+      "Bú mẹ và giữ ấm",
+      "Da kề da, giữ ấm và cho bú theo nhu cầu. Duy trì bú mẹ hoàn toàn; không tự thêm nước hoặc thức ăn.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_0_28D",
+      "3",
+      "Tiêm chủng sơ sinh (Viêm gan B, BCG)",
+      "Lưu mũi viêm gan B sơ sinh theo chỉ định và kiểm tra kế hoạch BCG để hoàn thành trong tháng đầu.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_0_28D",
+      "4",
+      "Theo dõi tăng trưởng, vàng da và rốn",
+      "Theo dõi xu hướng cân nặng/chiều dài từ các lần đo đúng kỹ thuật; quan sát vàng da, rốn, mức tỉnh táo, nhịp thở và thân nhiệt.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_0_28D",
+      "5",
+      "Tương tác sớm cùng bé",
+      "Mỗi ngày ôm, giao tiếp mắt, nói chuyện, hát và đáp lại tín hiệu của trẻ khi trẻ tỉnh táo.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_1_2M",
+      "1",
+      "Khám mốc 6 tuần",
+      "Tại lần chăm sóc tuần 6, yêu cầu đánh giá bú mẹ, tăng trưởng, phát triển, tiêm chủng và các quan ngại của gia đình.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_1_2M",
+      "2",
+      "Duy trì bú mẹ hoàn toàn",
+      "Tiếp tục bú mẹ hoàn toàn theo nhu cầu ngày và đêm, chưa thêm nước hoặc thức ăn.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_1_2M",
+      "3",
+      "Chuẩn bị mốc 2 tháng",
+      "Xác định ngày trẻ đủ 2 tháng theo ngày sinh thực tế; chuẩn bị sổ tiêm/giấy hẹn và đặt lịch tiêm chủng.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_1_2M",
+      "4",
+      "Giao tiếp và phát triển",
+      "Nói chuyện, mỉm cười, hát, chơi mặt đối mặt và đáp lại tín hiệu của trẻ.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_2_3M",
+      "1",
+      "Khám sức khỏe 2–3 tháng",
+      "Thực hiện đánh giá dấu hiệu sinh tồn, tăng trưởng–dinh dưỡng, phát triển, tình trạng tiêm chủng và khám lâm sàng trong cửa sổ 2–3 tháng.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_2_3M",
+      "2",
+      "Tiêm chủng liều cơ bản mốc 2 tháng",
+      "Khi đủ 2 tháng, thực hiện vắc xin phối hợp (viêm gan B, bạch hầu-ho gà-uốn ván, Hib), bại liệt uống liều 1 và Rota liều 1.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_2_3M",
+      "3",
+      "Bú mẹ hoàn toàn",
+      "Tiếp tục bú mẹ hoàn toàn theo nhu cầu ngày và đêm, không cho ăn bổ sung trước 6 tháng.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_2_3M",
+      "4",
+      "Theo dõi tăng trưởng và tương tác",
+      "Ghi cân nặng/chiều dài tại các lần khám và xem biểu đồ tăng trưởng. Tăng thời gian trò chuyện, mỉm cười, hát.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_4_6M",
+      "1",
+      "Khám sức khỏe 4–6 tháng",
+      "Đánh giá tăng trưởng, dinh dưỡng, phát triển, tiêm chủng và khám lâm sàng trong cửa sổ 4–6 tháng.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_4_6M",
+      "2",
+      "Hoàn thiện tiêm chủng giai đoạn đầu",
+      "Đối chiếu các liều vắc xin cơ bản còn thiếu/trễ (vắc xin phối hợp liều 2, 3, bại liệt uống, IPV liều 1 khi đủ 5 tháng).",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_4_6M",
+      "3",
+      "Bú mẹ hoàn toàn đến đủ 6 tháng",
+      "Tiếp tục bú mẹ hoàn toàn theo nhu cầu đến đủ khoảng 6 tháng/180 ngày.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_4_6M",
+      "4",
+      "Chuẩn bị ăn bổ sung (ăn dặm)",
+      "Trước mốc 6 tháng, chuẩn bị dụng cụ sạch, thức ăn mềm/đặc phù hợp và nguyên tắc cho ăn đáp ứng.",
+      "FALSE",
+      "CONTENT_LIBRARY",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_4_6M",
+      "5",
+      "Bắt đầu ăn bổ sung khi đủ 6 tháng",
+      "Bắt đầu với lượng nhỏ, thức ăn nghiền hoặc đặc mềm rồi tăng dần. Giai đoạn 6–8 tháng duy trì 2–3 bữa/ngày.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_7_9M",
+      "1",
+      "Khám sức khỏe 7–9 tháng",
+      "Thực hiện đánh giá tăng trưởng–dinh dưỡng, phát triển tinh thần–vận động, tiêm chủng và khám lâm sàng.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_7_9M",
+      "2",
+      "Ăn bổ sung 6–8 tháng",
+      "Duy trì 2–3 bữa ăn bổ sung mỗi ngày và bú mẹ theo nhu cầu. Tăng lượng và kết cấu từ từ, đa dạng nhóm thực phẩm.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_7_9M",
+      "3",
+      "Tăng kết cấu và tự ăn có giám sát",
+      "Chuyển dần từ nghiền mịn sang đặc mềm/nghiền thô; nếu trẻ sẵn sàng có thể thử thức ăn cầm tay mềm dưới sự giám sát.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_7_9M",
+      "4",
+      "Tiêm chủng mốc 9 tháng (Sởi, IPV2)",
+      "Rà soát ngày trẻ đủ 9 tháng; thực hiện vắc xin có thành phần sởi và IPV liều 2 tại cơ sở tiêm chủng.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_7_9M",
+      "5",
+      "Chuyển tần suất ăn sau 9 tháng",
+      "Khi trẻ đủ khoảng 9 tháng, chuyển sang 3–4 bữa/ngày; có thể thêm 1–2 bữa phụ theo nhu cầu.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_10_12M",
+      "1",
+      "Khám sức khỏe 10–12 tháng",
+      "Đánh giá dấu hiệu sinh tồn, tăng trưởng–dinh dưỡng, phát triển, tiêm chủng và khám lâm sàng.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_10_12M",
+      "2",
+      "Dinh dưỡng và bú mẹ mốc 10–12 tháng",
+      "Duy trì 3–4 bữa/ngày, thêm 1–2 bữa phụ khi cần và tiếp tục bú mẹ. Tăng đa dạng thực phẩm giàu dinh dưỡng.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_10_12M",
+      "3",
+      "Chuyển dần sang thức ăn gia đình",
+      "Tăng dần tới thức ăn gia đình lành mạnh được cắt hoặc nghiền phù hợp khả năng nhai nuốt.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_10_12M",
+      "4",
+      "Rà soát lịch sử tiêm chủng",
+      "Mở sổ tiêm từ sơ sinh đến 11 tháng, đánh dấu mũi đã tiêm, mũi trễ và mũi cần bù.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_10_12M",
+      "5",
+      "Chuẩn bị kiểm tra mốc 12 tháng",
+      "Đặt lịch kiểm tra khi trẻ đủ 12 tháng để đánh giá tăng trưởng, phát triển và rà soát lịch Viêm não Nhật Bản B.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_12M",
+      "1",
+      "Khám mốc 12 tháng (1 tuổi)",
+      "Đo cân nặng/chiều dài, đánh giá phát triển, dinh dưỡng, răng miệng và các quan ngại của gia đình.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_12M",
+      "2",
+      "Tiêm Viêm não Nhật Bản B liều 1",
+      "Thực hiện liều 1 khi trẻ đủ 12 tháng; ghi ngày và tên vắc xin, sau đó đặt lời nhắc liều 2 sau 1–2 tuần.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_12M",
+      "3",
+      "Dinh dưỡng sau 1 tuổi",
+      "Duy trì 3–4 bữa chính và 1–2 bữa phụ giàu dinh dưỡng, nước sạch và bú mẹ theo nhu cầu đến 2 tuổi.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_12M",
+      "4",
+      "Vận động, giấc ngủ và tương tác",
+      "Tăng cơ hội vận động hằng ngày (~180 phút); duy trì 11–14 giờ ngủ/ngày; tránh màn hình thụ động ở trẻ 1 tuổi.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_13_18M",
+      "1",
+      "Khám sức khỏe 13–18 tháng",
+      "Thực hiện đánh giá dấu hiệu sinh tồn, tăng trưởng–dinh dưỡng, phát triển tinh thần–vận động và tiêm chủng.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_13_18M",
+      "2",
+      "Ăn uống và tự ăn độc lập",
+      "Duy trì 3–4 bữa chính và 1–2 bữa phụ; cho trẻ tự xúc/cầm thức ăn mềm dưới sự giám sát.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_13_18M",
+      "3",
+      "Vận động và giấc ngủ đều đặn",
+      "Tạo ít nhất khoảng 180 phút vận động đa dạng trong không gian an toàn; duy trì khoảng 11–14 giờ ngủ/ngày.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_13_18M",
+      "4",
+      "Ngôn ngữ, chơi và phát triển giao tiếp",
+      "Mỗi ngày đọc sách, nói tên đồ vật, hát, chơi giả vờ và khuyến khích trẻ dùng từ/cử chỉ để giao tiếp.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_13_18M",
+      "5",
+      "Chăm sóc răng miệng với kem có fluor",
+      "Người lớn chải răng cho trẻ 2 lần/ngày bằng lượng kem đánh răng có fluor cỡ hạt gạo; không để trẻ tự nuốt kem.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_13_18M",
+      "6",
+      "Tiêm chủng mốc 18 tháng (Sởi-Rubella, DPT nhắc lại)",
+      "Khi đủ 18 tháng, thực hiện mũi sởi–rubella và bạch hầu–ho gà–uốn ván nhắc lại tại cơ sở tiêm chủng.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_19_24M",
+      "1",
+      "Khám sức khỏe 19–<24 tháng",
+      "Đánh giá tăng trưởng–dinh dưỡng, phát triển tinh thần–vận động, tiêm chủng và khám lâm sàng.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_19_24M",
+      "2",
+      "Dinh dưỡng và bú mẹ đến 2 tuổi",
+      "Duy trì 3–4 bữa chính, 1–2 bữa phụ đa dạng; ưu tiên thực phẩm giàu dinh dưỡng và tiếp tục bú mẹ nếu phù hợp.",
+      "TRUE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_19_24M",
+      "3",
+      "Vận động, chơi và mở rộng giao tiếp",
+      "Duy trì khoảng 180 phút vận động mỗi ngày; đọc truyện, hát, chơi giả vờ và mở rộng vốn từ của trẻ.",
+      "FALSE",
+      "BABY_CARE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_19_24M",
+      "4",
+      "Chăm sóc răng miệng hàng ngày",
+      "Tiếp tục chải răng 2 lần/ngày bằng lượng kem fluor cỡ hạt gạo; hạn chế đồ ngọt giữa các bữa.",
+      "TRUE",
+      "",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_19_24M",
+      "5",
+      "Chuẩn bị và thực hiện kiểm tra 24 tháng",
+      "Đặt lịch mốc 24 tháng để đánh giá tăng trưởng, phát triển, dinh dưỡng, răng miệng, nghe/nhìn và rà soát tiêm chủng.",
+      "TRUE",
+      "APPOINTMENTS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_19_24M",
+      "6",
+      "Tiêm Viêm não Nhật Bản B liều 3",
+      "Kiểm tra ngày liều 2; tiêm liều 3 sau đúng khoảng 1 năm sau liều 2 theo lịch cơ sở tiêm chủng.",
+      "TRUE",
+      "HEALTH_RECORDS",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ],
+    [
+      "BABY_SAFETY_0_24M",
+      "1",
+      "Dấu hiệu cần đưa trẻ đi khám/cấp cứu ngay",
+      "Đưa trẻ đi cấp cứu/khám ngay khi có khó thở, tím tái, co giật, li bì/khó đánh thức, bỏ bú, sốt cao kéo dài hoặc mất nước.",
+      "TRUE",
+      "AI_TRIAGE",
+      "https://drmarie.edu.vn/wp-content/uploads/wpcfto_files/66fddfd926be72172548f4fac68be4d7HD%20Quoc%20Gia%20ve%20DVCSSKSS%202016.pdf"
+    ]
+  ],
+  "Huong_dan": [
+    [
+      "STT / Mục",
+      "Nội dung hướng dẫn chi tiết"
+    ],
+    [
+      "1. Cấu trúc file Excel",
+      "File gồm 3 sheet: \"Checklists\" (danh sách checklist cha), \"Checklist_Items\" (các mục con thuộc checklist) và \"Huong_dan\" (tài liệu quy chuẩn)."
+    ],
+    [
+      "",
+      "Tuyệt đối KHÔNG thay đổi tên sheet, thứ tự hoặc tên các cột tiêu đề ở dòng 1."
+    ],
+    [
+      "2. Liên kết cha - con",
+      "Mỗi mục trong sheet \"Checklist_Items\" liên kết với checklist tương ứng trong sheet \"Checklists\" qua cột \"checklist_code\" (không phân biệt hoa/thường)."
+    ],
+    [
+      "3. Cột stage",
+      "Các giá trị hợp lệ: PRE_PREGNANCY (Trước thai kỳ), PREGNANCY (Trong thai kỳ), POSTPARTUM (Sau sinh), BABY_CARE (Chăm sóc bé)."
+    ],
+    [
+      "4. Cột template_type",
+      "Các giá trị hợp lệ: MANDATORY (Bắt buộc), OPTIONAL (Tùy chọn)."
+    ],
+    [
+      "5. Cột repeat_mode",
+      "Các giá trị hợp lệ: NONE (Không lặp), WEEKLY (Hàng tuần), DAILY (Hàng ngày). Lưu ý: PRE_PREGNANCY không hỗ trợ WEEKLY."
+    ],
+    [
+      "6. Cột end_at_stage_exit",
+      "TRUE: checklist kết thúc khi kết thúc giai đoạn. FALSE: checklist kết thúc tại window_end."
+    ],
+    [
+      "7. window_start / window_end",
+      "Tuần hiển thị tính từ 1 đến 52. Khi end_at_stage_exit = TRUE, có thể để trống window_end."
+    ],
+    [
+      "",
+      "Đối với PRE_PREGNANCY, để trống cả window_start và window_end."
+    ],
+    [
+      "8. Cột display_order",
+      "Số nguyên không âm (0, 1, 2...). Đối với PRE_PREGNANCY loại MANDATORY, display_order phải từ 1 trở lên."
+    ],
+    [
+      "9. Cột is_required (ở Items)",
+      "TRUE: Mục con bắt buộc phải hoàn thành. FALSE: Mục con tùy chọn."
+    ],
+    [
+      "10. Cột support_function",
+      "Chức năng tích hợp trong ứng dụng CareBridge (để trống nếu không liên kết):"
+    ],
+    [
+      "",
+      "• HEALTH_RECORDS: Hồ sơ sức khỏe (tiêm chủng, xét nghiệm, hồ sơ bệnh án)"
+    ],
+    [
+      "",
+      "• MATERNAL_HEALTH_METRICS: Chỉ số sức khỏe mẹ (huyết áp, cân nặng, cử động thai)"
+    ],
+    [
+      "",
+      "• MATERNAL_EXERCISES: Bài tập cho mẹ bầu / phục hồi sau sinh"
+    ],
+    [
+      "",
+      "• APPOINTMENTS: Đặt lịch khám bệnh / tiêm chủng"
+    ],
+    [
+      "",
+      "• REMINDERS: Nhắc nhở uống thuốc / bổ sung vi chất hàng ngày"
+    ],
+    [
+      "",
+      "• JOURNEY: Hành trình làm mẹ (chu kỳ, kế hoạch sinh, nhật ký bé)"
+    ],
+    [
+      "",
+      "• BABY_CARE: Nhật ký chăm sóc bé (cữ bú, tã, giấc ngủ, vệ sinh)"
+    ],
+    [
+      "",
+      "• EXPERT_CONSULTATION: Tư vấn chuyên gia"
+    ],
+    [
+      "",
+      "• CONTENT_LIBRARY: Thư viện kiến thức"
+    ],
+    [
+      "",
+      "• AI_TRIAGE: Trợ lý AI sàng lọc / dấu hiệu cấp cứu"
+    ],
+    [
+      "11. Cột source_url",
+      "Đường dẫn tham khảo uy tín (bắt đầu bằng http:// hoặc https://, tối đa 2048 ký tự). Để trống nếu chưa có URL."
+    ],
+    [
+      "12. Quy tắc thẩm định (Validation)",
+      "• Một mục con bị lỗi sẽ khiến toàn bộ checklist cha đó bị báo lỗi và không được import."
+    ],
+    [
+      "",
+      "• Mã checklist không được trùng lặp trong sheet Checklists."
+    ],
+    [
+      "",
+      "• Thứ tự (order) của các mục con trong cùng một checklist không được trùng nhau."
+    ],
+    [
+      "",
+      "• Mỗi lần import hỗ trợ tối đa 100 checklist hợp lệ, dung lượng file tối đa 5MB."
+    ]
+  ]
+}

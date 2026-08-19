@@ -18,6 +18,7 @@ import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.DeviceTokenRepository;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
 import com.carebridge.backend.notification.repository.NotificationPreferenceRepository;
+import com.carebridge.backend.directchat.repository.DirectMessageRepository;
 import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -90,6 +91,33 @@ class DirectMessageNotificationServiceImplTest {
         assertThat(saved.getReferenceId()).isEqualTo(MESSAGE_ID);
         assertThat(saved.getReferenceType()).isEqualTo("DIRECT_MESSAGE");
         assertThat(saved.getMetadata()).containsEntry("conversationId", CONVERSATION_ID.toString());
+    }
+
+    @Test
+    void notifyNewMessage_checklistShareMessage_customTitleAndBody() {
+        DirectMessageRepository mockMsgRepo = org.mockito.Mockito.mock(DirectMessageRepository.class);
+        DirectMessageNotificationServiceImpl customService = new DirectMessageNotificationServiceImpl(
+                userRepository, deviceTokenRepository, notificationRecordRepository, preferenceRepository, notificationRecordWriter,
+                fcmService, auditService, mockMsgRepo, fixedClock);
+
+        when(userRepository.findById(SENDER_ID))
+                .thenReturn(Optional.of(User.builder().id(SENDER_ID).name("BS. Trần Thị B").build()));
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(RECIPIENT_ID)).thenReturn(List.of(token("tok")));
+        when(fcmService.sendWithRetry(eq("tok"), any(), any(), eq(3))).thenReturn(FcmDeliveryResult.success("fcm-1", 1));
+        when(mockMsgRepo.findById(MESSAGE_ID)).thenReturn(Optional.of(
+                com.carebridge.backend.directchat.entity.DirectMessage.builder()
+                        .id(MESSAGE_ID)
+                        .messageBody("[CAREBRIDGE_CHECKLIST_SHARE]\n{\"items\":[]}")
+                        .build()
+        ));
+
+        customService.notifyNewMessage(RECIPIENT_ID, SENDER_ID, CONVERSATION_ID, MESSAGE_ID);
+
+        ArgumentCaptor<NotificationRecord> captor = ArgumentCaptor.forClass(NotificationRecord.class);
+        verify(notificationRecordWriter).complete(captor.capture());
+        NotificationRecord saved = captor.getValue();
+        assertThat(saved.getTitle()).isEqualTo("Cập nhật Checklist thai kỳ");
+        assertThat(saved.getBody()).contains("BS. Trần Thị B đã cập nhật danh sách việc cần làm cho bạn.");
     }
 
     // C10 — duplicate insert (listener ran twice) short-circuits before FCM is ever called.
