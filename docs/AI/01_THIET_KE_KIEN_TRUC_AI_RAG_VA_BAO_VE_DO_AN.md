@@ -15,7 +15,7 @@
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt & Gợi ý Động (Multi-turn Context & Dynamic Follow-ups)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)](#7-kiến-trúc-giao-diện-ai-nurse-trên-ứng-dụng-di-động-mobile-app-ui--state)
 8. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#8-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 26 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---26-câu-hỏi-chuyên-sâu)
+9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 27 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---27-câu-hỏi-chuyên-sâu)
 10. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#10-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -233,29 +233,56 @@ Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe d�
 
 *(Hệ thống kiên quyết loại bỏ chỉ số "Mức độ căng thẳng / Stress" cảm tính chung chung để thay thế bằng thang điểm trầm cảm EPDS chuẩn y tế được quốc tế công nhận).*
 
-#### Bảng Quy chuẩn Lâm sàng Chi tiết, Ngưỡng Sàng lọc & Cơ sở Y khoa (Bộ Y Tế / ACOG / WHO / FIGO / RCOG):
+#### Bảng Quy chuẩn Lâm sàng Chi tiết, Ngưỡng Sàng lọc & Cơ sở Y khoa (Bộ Y Tế / ACOG / WHO / ADA / RCOG / IOM):
 
-| Chỉ số Sinh hiệu | Ngưỡng An toàn (`NORMAL`) | Ngưỡng Lưu ý (`ANOMALY_MONITOR`) | Ngưỡng Nguy cấp Cấp cứu (`CRITICAL_EMERGENCY`) | Cơ sở Quy chuẩn Y khoa Trích dẫn |
+| Chỉ số Sinh hiệu | Ngưỡng An toàn (`NORMAL`) | Ngưỡng Lưu ý (`ANOMALY_MONITOR`) | Ngưỡng Nguy cấp Cấp cứu (`CRITICAL_EMERGENCY`) | Cơ sở Quy chuẩn Y khoa Trích dẫn & Link Tham khảo |
 | :--- | :--- | :--- | :--- | :--- |
-| **Huyết áp ($SBP / DBP$)** | $SBP < 130$ và $DBP < 85$ mmHg | • Tiền tăng huyết áp: $SBP 130-139$ hoặc $DBP 85-89$ mmHg<br/>• Tăng HA độ 1 không kèm triệu chứng: $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg | • **Cơn tăng HA kịch phát:** $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg<br/>• $SBP \ge 140$ hoặc $DBP \ge 90$ kèm triệu chứng báo động (đau đầu/hoa mắt/đau thượng vị) $\rightarrow$ **Tiền sản giật** | • **ACOG Practice Bulletin No. 222** (Gestational Hypertension & Preeclampsia)<br/>• **Quyết định 4163/QĐ-BYT** (Hướng dẫn chẩn đoán & điều trị Tiền sản giật) |
-| **Thân nhiệt (`TEMPERATURE`)** | $36.0^\circ C - 37.4^\circ C$ | • Sốt nhẹ thai kỳ: $37.5^\circ C - 38.4^\circ C$<br/>• Hạ thân nhiệt: $< 35.5^\circ C$ | • **Mang thai (`PREGNANCY`):** $\ge 38.5^\circ C$ (hoặc $\ge 38.0^\circ C$ kèm rỉ ối, đau bụng) $\rightarrow$ Nguy cơ Nhiễm trùng ối (*Chorioamnionitis*)<br/>• **Hậu sản (`POSTPARTUM`):** $\ge 38.0^\circ C \rightarrow$ Nhiễm trùng hậu sản (*Puerperal Sepsis*), Viêm nội mạc tử cung | • **WHO Guidelines on Maternal Sepsis**<br/>• **Quyết định 1359/QĐ-BYT** (Chăm sóc sản phụ và sơ sinh thiết yếu) |
-| **Đường huyết ($Glucose$)** | • Lúc đói: $< 5.1$ mmol/L ($< 92$ mg/dL)<br/>• Sau ăn 1-2h: $< 8.5$ mmol/L ($< 153$ mg/dL) | • Hạ đường huyết: $< 3.5$ mmol/L ($< 63$ mg/dL)<br/>• Đói tăng nhẹ: $5.1 - 6.9$ mmol/L<br/>• Sau ăn tăng: $8.5 - 11.0$ mmol/L | • Đói $\ge 7.0$ mmol/L hoặc Sau ăn $\ge 11.1$ mmol/L (kèm triệu chứng lú lẫn, khát nhiều, sụt cân cấp) | • **IADPSG / FIGO Guidelines on Gestational Diabetes**<br/>• **Quyết định 3494/QĐ-BYT** (Hướng dẫn Quốc gia về Sàng lọc & Quản lý ĐTĐ Thai kỳ) |
-| **Cử động thai ($Kicks$)** | $\ge 4$ lần / $2$ giờ (từ tuần thai thứ 28) | $4 - 9$ lần / $4$ giờ (giảm nhẹ) | • **Mất cử động thai:** $0$ lần / $2$ giờ<br/>• Thai đạp yếu: $< 4$ lần / $2$ giờ sau tuần 28 $\rightarrow$ Nguy cơ **Suy thai cấp** | • **ACOG Committee Opinion No. 828** (Management of Decreased Fetal Movement)<br/>• **RCOG Green-top Guideline No. 57** |
-| **Trầm cảm EPDS ($0-30$)** | $0 - 9$ điểm | $10 - 30$ điểm (Nguy cơ Trầm cảm thai kỳ/hậu sản, cần trao đổi AI Nurse và chuyên gia tâm lý) | **Câu hỏi số 10 $> 0$** (Xuất hiện ý nghĩ tự gây hại/tự sát) $\rightarrow$ Báo động đỏ cấp cứu tâm thần | • **Edinburgh Postnatal Depression Scale (EPDS)** - Cox et al. (Chuẩn hóa quốc tế)<br/>• Bộ tiêu chí Sức khỏe Tâm thần Sản phụ WHO |
-| **Chỉ số BMI ($kg/m^2$)** | $18.5 - 24.9$ kg/m² | • Thiếu cân: $< 18.5$<br/>• Thừa cân: $25.0 - 29.9$<br/>• Béo phì thai kỳ: $30.0 - 39.9$ kg/m² | • **Béo phì độ III rất nặng:** $\ge 40.0$ kg/m² (Nguy cơ cao thuyên tắc huyết khối và tiền sản giật nặng) | • **IOM (Institute of Medicine)** Weight Gain During Pregnancy Guidelines<br/>• **WHO BMI Classification for Asian Population** |
-| **Độ bão hòa Oxy ($SpO_2$)** | $96\% - 100\%$ | $95\%$ | $< 95\%$ $\rightarrow$ Suy hô hấp thai kỳ / Thiếu oxy mô cấp | • Chuẩn Hồi sức Cấp cứu Sản khoa Quốc tế |
-| **Nhịp tim mẹ ($Pulse$)** | $60 - 100$ bpm | • Nhịp nhanh: $101 - 120$ bpm<br/>• Nhịp chậm: $50 - 59$ bpm | $> 120$ bpm hoặc $< 50$ bpm kèm choáng ngất $\rightarrow$ Rối loạn huyết động cấp | • Hướng dẫn Khám Tim mạch Sản khoa ESC |
+| **Huyết áp ($SBP / DBP$)** | $SBP < 130$ và $DBP < 85$ mmHg *(Yêu cầu hợp lệ: $SBP > DBP$)* | • Tiền tăng huyết áp: $SBP 130-139$ hoặc $DBP 85-89$ mmHg<br/>• Tăng HA độ 1 không kèm triệu chứng: $SBP \ge 140$ hoặc $DBP \ge 90$ mmHg | • **Cơn tăng HA kịch phát:** $SBP \ge 160$ hoặc $DBP \ge 110$ mmHg<br/>• $SBP \ge 140$ hoặc $DBP \ge 90$ kèm triệu chứng báo động (đau đầu/hoa mắt/nhìn mờ/đau thượng vị) $\rightarrow$ **Tiền sản giật** | • [Quyết định 1154/QĐ-BYT (04/05/2024 - Bộ Y Tế)](https://thuvienphapluat.vn/van-ban/The-thao-Y-te/Quyet-dinh-1154-QD-BYT-2024-tai-lieu-Huong-dan-xu-tri-tang-huyet-ap-o-phu-nu-mang-thai-643196.aspx)<br/>• [ACOG Practice Bulletin No. 222 (PubMed)](https://pubmed.ncbi.nlm.nih.gov/32443079/) |
+| **Thân nhiệt (`TEMPERATURE`)** | $36.0^\circ C - 37.4^\circ C$ | • Sốt nhẹ thai kỳ: $37.5^\circ C - 38.4^\circ C$<br/>• Hạ thân nhiệt: $< 35.5^\circ C$ | • **Mang thai (`PREGNANCY`):** $\ge 38.5^\circ C$ (hoặc $\ge 38.0^\circ C$ kèm rỉ ối, đau bụng) $\rightarrow$ Nguy cơ **Nhiễm trùng ối** (*Chorioamnionitis*)<br/>• **Hậu sản (`POSTPARTUM`):** $\ge 38.0^\circ C \rightarrow$ **Nhiễm trùng hậu sản** (*Puerperal Sepsis*), Viêm nội mạc tử cung | • [WHO Maternal Peripartum Infection Guidelines (WHO IRIS)](https://apps.who.int/iris/handle/10665/186171)<br/>• [PubMed PMID: 26512398](https://pubmed.ncbi.nlm.nih.gov/26512398/)<br/>• Quyết định 1359/QĐ-BYT (Bộ Y Tế) |
+| **Đường huyết ($Glucose$)**<br/>*(Đầy đủ 6 ngữ cảnh đo Dropdown)* | • **Lúc đói (`FASTING`):** $< 5.1$ mmol/L ($< 92$ mg/dL)<br/>• **Trước ăn (`PRE_MEAL`):** $< 5.3$ mmol/L ($< 95$ mg/dL)<br/>• **Sau ăn 1h (`POST_MEAL_1H`):** $< 7.8$ mmol/L ($< 140$ mg/dL)<br/>• **Sau ăn 2h (`POST_MEAL_2H`):** $< 6.7$ mmol/L ($< 120$ mg/dL) hoặc OGTT $< 8.5$ mmol/L<br/>• **Ngẫu nhiên (`RANDOM`):** $< 8.5$ mmol/L | • **Hạ đường huyết chung:** $< 3.5$ mmol/L ($< 63$ mg/dL)<br/>• Đói tăng: $5.1 - 6.9$ mmol/L<br/>• Trước ăn tăng: $\ge 5.3$ mmol/L<br/>• Sau ăn 1h tăng: $\ge 7.8$ mmol/L<br/>• Sau ăn 2h tăng: $\ge 8.5$ mmol/L<br/>• Ngẫu nhiên tăng: $8.5 - 11.0$ mmol/L | • Đói $\ge 7.0$ mmol/L ($126$ mg/dL)<br/>• Sau ăn 1h $\ge 10.0$ mmol/L<br/>• Sau ăn 2h / Ngẫu nhiên $\ge 11.1$ mmol/L ($200$ mg/dL)<br/>*(Tự động phát hiện đơn vị mg/dL vs mmol/L và chặn lỗi nhập phi lý $\ge 35\text{ mmol/L}$)* | • [Quyết định 1470/QĐ-BYT (29/05/2024 - Bộ Y Tế)](https://bvdkbaclieu.gov.vn/van-ban-phap-quy/quyet-dinh-1470-qd-byt-cua-bo-y-te-ve-viec-ban-hanh-tai-lieu.html)<br/>• [ADA Standards of Care in Diabetes (2024)](https://diabetesjournals.org/care/article/47/Supplement_1/S282/153957/15-Management-of-Diabetes-in-Pregnancy-Standards) |
+| **Cử động thai ($Kicks$)**<br/>*(Bắt đầu từ tuần 28)* | $\ge 4$ lần / phiên $2$ giờ *(áp dụng cho mẹ mang thai từ tuần thứ 28)* | $4 - 9$ lần / phiên $4$ giờ | • **Mất cử động thai:** $0$ lần / $2$ giờ<br/>• Thai đạp yếu: $< 4$ lần / $2$ giờ sau tuần 28 $\rightarrow$ Nguy cơ **Suy thai cấp** *(Bỏ qua cảnh báo nếu ở tuần $< 24$ hoặc giai đoạn Chưa mang thai / Sau sinh)* | • [RCOG Green-top Guideline No. 57 (Reduced Fetal Movements)](https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/reduced-fetal-movements-green-top-guideline-no-57/)<br/>• [ACOG PB 229 (PubMed)](https://pubmed.ncbi.nlm.nih.gov/34011892/) |
+| **Trầm cảm EPDS ($0-30$)** | $0 - 9$ điểm | $10 - 30$ điểm (Nguy cơ Trầm cảm thai kỳ/hậu sản, cần trao đổi AI Nurse và chuyên gia tâm lý) | **Câu hỏi số 10 $\ge 1$** (Xuất hiện ý nghĩ tự gây hại/tự sát) $\rightarrow$ Báo động đỏ an toàn tâm lý khẩn cấp | • [Edinburgh Postnatal Depression Scale (EPDS)](https://www.cope.org.au/health-professionals/health-professional-guidelines/) (Cox et al.)<br/>• Hướng dẫn Sức khỏe Tâm thần Sản phụ COPE / NSW Health |
+| **Chỉ số BMI ($kg/m^2$)**<br/>*(Đánh giá theo từng Giai đoạn Hành trình)* | • **`PRECONCEPTION`:** $18.5 - 22.9$ kg/m² (Chuẩn WHO Châu Á)<br/>• **`PREGNANCY`:** Tăng cân đều theo tuần thai chuẩn IOM<br/>• **`POSTPARTUM`:** Hồi phục thể trạng an toàn | • **`PRECONCEPTION`:** Thiếu cân $< 18.5$ hoặc Tiền thừa cân $23.0 - 24.9$ / Béo phì $\ge 25.0$ kg/m²<br/>• **`PREGNANCY`:** Thiếu cân $< 18.5$ hoặc Thừa cân $\ge 25.0$ / Béo phì $\ge 30.0$ kg/m²<br/>• **`POSTPARTUM`:** Cảnh báo không ăn kiêng cực đoan gây mất sữa | • **Béo phì độ III rất nặng:** $\ge 40.0$ kg/m² (Nguy cơ cao thuyên tắc huyết khối và tiền sản giật nặng) | • [WHO Asian BMI Consultation (Lancet 2004 - PubMed)](https://pubmed.ncbi.nlm.nih.gov/14726461/)<br/>• [IOM Guidelines: Weight Gain During Pregnancy (2009)](https://www.ncbi.nlm.nih.gov/books/NBK32813/) |
+| **Lượng nước uống ($Hydration$)**<br/>*(Đánh giá theo từng Giai đoạn Hành trình)* | • **`PRECONCEPTION`:** $1500 - 2000$ ml/ngày<br/>• **`PREGNANCY`:** $2000 - 2500$ ml/ngày<br/>• **`POSTPARTUM`:** $2500 - 3000$ ml/ngày *(tiết sữa mẹ)* | • `PRECONCEPTION` $< 1500$ ml<br/>• `PREGNANCY` $< 1800$ ml *(nguy cơ thiểu ối, táo bón)*<br/>• `POSTPARTUM` $< 2200$ ml *(nguy cơ thiếu sữa mẹ)*<br/>• Uống quá nhiều $\ge 4500$ ml *(tầm soát đa niệu/ĐTĐ)* | • `PREGNANCY` $< 1200$ ml/ngày kèm triệu chứng mất nước nghiêm trọng | • Khuyến nghị Dinh dưỡng Viện Dinh Dưỡng Quốc Gia & WHO |
+| **Độ bão hòa Oxy ($SpO_2$)** | $96\% - 100\%$ | $95\%$ | $< 92\%$ $\rightarrow$ Suy hô hấp thai kỳ / Thiếu oxy bào thai cấp | • Chuẩn Hồi sức Cấp cứu Sản khoa Quốc tế |
+| **Nhịp tim mẹ ($Pulse$)** | $60 - 100$ bpm | • Nhịp nhanh: $101 - 119$ bpm<br/>• Nhịp chậm: $50 - 59$ bpm | $\ge 120$ bpm hoặc $< 50$ bpm kèm choáng ngất $\rightarrow$ Rối loạn huyết động cấp | • Hướng dẫn Khám Tim mạch Sản khoa ESC |
 
 ---
 
-#### B. Chỉ số Phát triển của Bé (Giai đoạn Sau sinh — UC-31):
+#### C. Cơ chế Kiểm soát Tính Hợp lý Sinh lý Y tế (Physiological Sanity & Unit Plausibility Validation)
+Để ngăn chặn các trường hợp người dùng nhập nhầm số liệu phi lý y học hoặc chọn nhầm đơn vị (như nhập đường huyết $300\text{ mmol/L}$ thay vì $300\text{ mg/dL}$):
+1. **Đường huyết ($Glucose$):**
+   - Tự động nhận diện đơn vị: Nếu giá trị $\ge 25.0$, hệ thống tự hiểu là đơn vị $mg/dL$ và quy đổi tương đương sang $mmol/L$ theo công thức $\text{mmol/L} = \text{mg/dL} / 18.0182$.
+   - Giới hạn sinh lý tối đa của que thử/máy đo lâm sàng là $35.0\text{ mmol/L}$ (hoặc $600\text{ mg/dL}$). Nếu người dùng cố tình nhập giá trị $300$ nhưng hệ thống đo bằng $mmol/L$, hệ thống tự động nhận diện và cảnh báo lỗi nhập liệu để mẹ điều chỉnh.
+2. **Huyết áp ($BP$):** Bắt buộc Huyết áp tâm thu ($SBP$) phải lớn hơn Huyết áp tâm trương ($DBP$). Nếu $SBP \le DBP$, hệ thống thông báo dữ liệu không hợp lệ.
+3. **Thân nhiệt ($Temperature$):** Giới hạn từ $34.0^\circ C$ đến $43.0^\circ C$.
+4. **Cử động thai ($Kicks$):** Giới hạn từ $0$ đến $60$ lần/phiên. Tự động kiểm tra điều kiện tuần thai $\ge 24-28$ tuần, không cảnh báo mất tim thai giả đối với phụ nữ giai đoạn chưa mang thai hoặc sau sinh.
+
+---
+
+#### D. Kiến trúc Hybrid 2 Lớp: Deterministic Safety Guardrails (Const & Enum) + Probabilistic AI RAG
+
+Trong các hệ thống phần mềm y tế phục vụ sản khoa (SaMD), CareBridge **tuyệt đối không phó mặc 100% việc sàng lọc cấp cứu cho LLM/AI** vì rủi ro ảo giác (Hallucination) và tính bất định (Non-deterministic). Thay vào đó, hệ thống triển khai kiến trúc **Hybrid 2 Lớp**:
+
+1. **Lớp 1 — Rào chắn An toàn Lâm sàng Cứng (Deterministic Safety Guardrails):**
+   - Định nghĩa tập trung toàn bộ các ngưỡng lâm sàng sản khoa tại module `app/constants/vital_thresholds.py` dưới dạng các hằng số `const` và `Enum`.
+   - Thực thi với độ trễ siêu tốc **$< 1\text{ ms}$**, không phụ thuộc mạng, không qua trung gian AI.
+   - Khi phát hiện các dấu hiệu sinh hiệu vượt ngưỡng nguy kịch ($SBP \ge 160$, Thai máy $= 0$, Thân nhiệt $\ge 38.5^\circ C$, EPDS Câu 10 $\ge 1$, $SpO_2 < 92\%$), hệ thống **lập tức kích hoạt trạng thái cấp cứu `CRITICAL_EMERGENCY`** với độ tin cậy tuyệt đối 100%.
+
+2. **Lớp 2 — Tăng cường Tri thức & Giải thích Y khoa Cá nhân hóa (Probabilistic AI RAG):**
+   - Đóng vai trò Trợ lý Điều dưỡng (AI Nurse Consultant).
+   - Tiếp nhận danh sách các yếu tố rủi ro (`risk_factors`) đã được Lớp 1 trích xuất, thực hiện truy vấn đối chiếu cẩm nang y tế từ CSDL Vector `pgvector`, trích dẫn nguồn tài liệu đối chứng (`SourceCitation`) và sinh lời giải thích khoa học, dễ hiểu, ân cần và hướng dẫn mẹ chế độ chăm sóc phù hợp theo tuần thai.
+
+---
+
+#### D. Chỉ số Phát triển của Bé (Giai đoạn Sau sinh — UC-31):
 * **Cân nặng bé ($Baby Weight$):** Đơn vị $kg$.
 * **Chiều dài lúc sinh / Chiều cao bé ($Baby Length$):** Đơn vị $cm$.
 * *So sánh đối chiếu trực tiếp với biểu đồ chuẩn tăng trưởng của WHO ($Z-Score$).*
 
 ---
 
-#### C. Cơ chế Tổng hợp Đa Ngữ cảnh Tự động (Multi-Source Context Aggregation):
+#### E. Cơ chế Tổng hợp Đa Ngữ cảnh Tự động (Multi-Source Context Aggregation):
 Khi Mẹ bầu mở màn hình nhập chỉ số sức khỏe ([AddMaternalHealthMetricScreen](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart)), hệ thống không chỉ kiểm tra chỉ số đơn lẻ mà tự động kết hợp 3 nguồn thông tin:
 1. **Dữ liệu Survey Khảo sát Ban đầu (Onboarding Medical Profile):**
    - Gọi `GET /api/v1/recommendations/profile` (hoặc trích xuất từ `mother_journeys.recommendation_profile_json`).
@@ -267,7 +294,7 @@ Khi Mẹ bầu mở màn hình nhập chỉ số sức khỏe ([AddMaternalHealt
 
 ---
 
-#### D. Quy tắc Kiểm tra Ngưỡng Lâm sàng & Thực thi Giao diện 3 Nhánh (End-to-End Workflow):
+#### F. Quy tắc Kiểm tra Ngưỡng Lâm sàng & Thực thi Giao diện 3 Nhánh (End-to-End Workflow):
 Dữ liệu tổng hợp được đóng gói và gửi lên AI Triage Service qua API `POST /api/v1/metrics/evaluate`. Hệ thống phân loại và điều hướng giao diện theo 3 nhánh:
 
 ```mermaid
@@ -796,6 +823,23 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   >    - **Kiểm soát Tuyệt đối An toàn Lâm sàng Y tế:** Lĩnh vực Y tế mẹ bầu đòi hỏi các ràng buộc khắt khe (bộ lọc ngưỡng khoảng cách vector `Cosine Gate`, tăng điểm thực thể y khoa `Medical Phrase Boost`, cảnh báo cấp cứu độc lập, trích dẫn nguồn chuẩn chỉ). Viết Native bằng Python + Pydantic cho phép tùy biến và can thiệp sâu vào bất kỳ mắt xích nào của pipeline.
   >    - **Tối ưu Hiệu năng & Giảm Độ trễ (Low Latency):** Giao tiếp trực tiếp thông qua `asyncio`, `asyncpg` và SDK `google-genai` chính thức giúp loại bỏ hoàn toàn các lớp middleware thừa của framework cồng kềnh, đưa thời gian phản hồi toàn trình về mức dưới 1.5 giây.
   >    - **Độ ổn định cao & Tránh Xung đột Thư viện (No Dependency Hell):** Các framework RAG lớn thường xuyên thay đổi API (breaking changes). Kiến trúc Native giữ cho service AI của CareBridge cực kỳ tinh gọn, ổn định và dễ dàng đóng gói triển khai Docker."
+
+---
+
+### Câu 27: "Tại sao phần lưu trữ các ngưỡng phân loại sinh hiệu (Huyết áp, Thân nhiệt, Thai máy, Đường huyết...) lại dùng `const` & `Enum` mà không để AI/RAG tự suy luận và phân loại hoàn toàn? Cơ chế Hybrid Triage của CareBridge hoạt động như thế nào?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, đây là nguyên lý thiết kế sống còn trong **Kỹ nghệ Hệ thống Y tế & Phần mềm Thiết bị Y tế (SaMD - Software as a Medical Device)**. CareBridge áp dụng **Kiến trúc Hybrid 2 Lớp (Deterministic Safety Guardrails + Probabilistic AI RAG)** vì các lý do sau:
+  > 
+  > 1. **Triệt tiêu Rủi ro Ảo giác (Zero Hallucination Risk trong Cấp cứu):**
+  >    - LLM mang bản chất xác suất (Probabilistic). Trong các trường hợp nguy cấp như Cơn tăng huyết áp kịch phát ($SBP \ge 160\text{ mmHg}$), Mất cử động thai ($Kicks = 0$), Sốt cao nhiễm trùng ối ($\ge 38.5^\circ C$), hoặc Ý nghĩ tự hại (EPDS Câu 10 $\ge 1$), nếu giao 100% cho AI thì luôn tiềm ẩn rủi ro AI hiểu nhầm ngữ cảnh hoặc phản hồi chậm trễ, gây nguy hiểm đến tính mạng của mẹ và bé.
+  >    - Việc dùng **`const` & `Enum`** trong module `app/constants/vital_thresholds.py` đóng vai trò **Rào chắn An toàn Cứng (Safety Gate)**, thực thi trong **$< 1\text{ ms}$** với tính tất định 100%.
+  > 
+  > 2. **Ngưỡng Lâm sàng Đã được Chuyên biệt hóa cho Sinh lý Sản khoa:**
+  >    - Các hằng số này không phải là chỉ số của người bình thường mà được nhóm quy chuẩn chính xác theo **Hướng dẫn Quốc gia của Bộ Y Tế, ACOG và WHO dành riêng cho thai kỳ** (ví dụ: Đường huyết đói thai kỳ phải $< 5.1\text{ mmol/L}$ thay vì $< 7.0$ như người thường; Tiền sản giật khởi phát từ $\ge 140/90\text{ mmHg}$ kèm triệu chứng đau đầu/nhìn mờ).
+  > 
+  > 3. **Phân định Trách nhiệm Hoàn hảo giữa Rule-based và AI RAG:**
+  >    - **Lớp 1 (Rule-based `const/enum`):** Giữ vai trò **'Trọng tài Cấp cứu'** — Quyết định ngay lập tức trạng thái `CRITICAL_EMERGENCY` / `ANOMALY_MONITOR` / `NORMAL` và trích xuất danh sách `risk_factors`.
+  >    - **Lớp 2 (AI + RAG):** Giữ vai trò **'Bác sĩ / Nữ hộ sinh Tư vấn'** — Nhận các yếu tố rủi ro từ Lớp 1, tra cứu cẩm nang y tế từ `pgvector`, trích dẫn nguồn chuẩn chỉ và diễn giải ân cần, hướng dẫn mẹ chế độ dinh dưỡng, nghỉ ngơi được cá nhân hóa theo tuần thai."
 
 ---
 

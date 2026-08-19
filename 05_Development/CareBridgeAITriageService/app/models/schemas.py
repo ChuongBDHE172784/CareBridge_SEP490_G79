@@ -21,6 +21,16 @@ class MaternalStage(str, Enum):
     ALL = "ALL"
 
 
+class GlucoseMeasurementContext(str, Enum):
+    """Contexts for blood glucose measurement matching the Mobile/Web Dropdown."""
+    FASTING = "FASTING"                 # Lúc đói (chuẩn thai kỳ < 5.1 mmol/L / < 92 mg/dL)
+    PRE_MEAL = "PRE_MEAL"               # Trước ăn (chuẩn thai kỳ < 5.3 mmol/L / < 95 mg/dL)
+    POST_MEAL_1H = "POST_MEAL_1H"       # Sau ăn 1 giờ (chuẩn thai kỳ < 7.8 mmol/L / < 140 mg/dL)
+    POST_MEAL_2H = "POST_MEAL_2H"       # Sau ăn 2 giờ (chuẩn thai kỳ < 6.7 mmol/L / < 120 mg/dL)
+    RANDOM = "RANDOM"                   # Ngẫu nhiên (chuẩn thai kỳ < 11.1 mmol/L / < 200 mg/dL)
+    OTHER_APPROVED = "OTHER_APPROVED"   # Khác (theo chỉ định riêng của Bác sĩ)
+
+
 class SourceCitation(BaseModel):
     title: str = Field(description="Tiêu đề tài liệu nguồn")
     source: str = Field(description="Tác giả / Nhà xuất bản / Cơ quan y tế (Bộ Y Tế, WHO, Vinmec...)")
@@ -39,10 +49,14 @@ class HealthMetricsLogRequest(BaseModel):
     gestational_age_weeks: Optional[int] = Field(default=None, ge=1, le=44, description="Tuần thai (1 - 42 tuần)")
     
     # Vital signs
-    systolic_bp: Optional[int] = Field(default=None, ge=50, le=250, description="Huyết áp tâm thu (mmHg)")
+    systolic_bp: Optional[int] = Field(default=None, ge=50, le=260, description="Huyết áp tâm thu (mmHg)")
     diastolic_bp: Optional[int] = Field(default=None, ge=30, le=160, description="Huyết áp tâm trương (mmHg)")
     blood_glucose: Optional[float] = Field(default=None, ge=1.0, le=600.0, description="Chỉ số đường huyết (mmol/L hoặc mg/dL)")
-    is_fasting_glucose: Optional[bool] = Field(default=True, description="Đo lúc đói hay sau ăn")
+    glucose_context: Optional[GlucoseMeasurementContext | str] = Field(
+        default=None,
+        description="Ngữ cảnh đo đường huyết: FASTING, PRE_MEAL, POST_MEAL_1H, POST_MEAL_2H, RANDOM, OTHER_APPROVED"
+    )
+    is_fasting_glucose: Optional[bool] = Field(default=None, description="Đo lúc đói hay sau ăn (Backward-compatible)")
     temperature: Optional[float] = Field(default=None, ge=34.0, le=43.0, description="Thân nhiệt (°C)")
     heart_rate: Optional[int] = Field(default=None, ge=30, le=220, description="Nhịp tim (lần/phút)")
     weight_kg: Optional[float] = Field(default=None, ge=20.0, le=300.0, description="Cân nặng hiện tại (kg)")
