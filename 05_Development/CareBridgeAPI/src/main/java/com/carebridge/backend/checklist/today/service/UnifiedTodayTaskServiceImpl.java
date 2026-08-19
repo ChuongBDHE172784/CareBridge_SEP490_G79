@@ -138,7 +138,7 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
 
         Map<String, TodayTaskItemResponse> unique = new LinkedHashMap<>();
         for (TodayTaskCandidate candidate : candidates) {
-                TaskTimeBucket bucket = bucket(candidate.status(), candidate.dueAt(), candidate.terminalAt(),
+                TaskTimeBucket bucket = bucket(candidate.taskKind(), candidate.status(), candidate.dueAt(), candidate.terminalAt(),
                         dayStart, nextDayStart, horizonEnd);
                 if (bucket == null) {
                     continue;
@@ -182,7 +182,7 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
                 .toList();
     }
 
-    private static TaskTimeBucket bucket(String status, Instant dueAt, Instant terminalAt,
+    private static TaskTimeBucket bucket(TaskKind taskKind, String status, Instant dueAt, Instant terminalAt,
                                          Instant dayStart, Instant nextDayStart, Instant horizonEnd) {
         if ("CANCELLED".equals(status)) {
             return null;
@@ -193,14 +193,18 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
             if (!terminal) {
                 return TaskTimeBucket.UNSCHEDULED;
             }
-            return terminalAt != null
+            if (terminalAt != null
                     && !terminalAt.isBefore(dayStart)
-                    && terminalAt.isBefore(nextDayStart)
-                    ? TaskTimeBucket.TODAY
-                    : null;
+                    && terminalAt.isBefore(nextDayStart)) {
+                return TaskTimeBucket.TODAY;
+            }
+            return taskKind == TaskKind.CHECKLIST ? TaskTimeBucket.UNSCHEDULED : null;
         }
         if (dueAt.isBefore(dayStart)) {
-            return terminal ? null : TaskTimeBucket.OVERDUE;
+            if (terminal) {
+                return taskKind == TaskKind.CHECKLIST ? TaskTimeBucket.TODAY : null;
+            }
+            return TaskTimeBucket.OVERDUE;
         }
         if (dueAt.isBefore(nextDayStart)) {
             return TaskTimeBucket.TODAY;

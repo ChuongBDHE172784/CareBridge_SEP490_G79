@@ -1255,4 +1255,47 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'expert-assigned tasks appear in Gợi ý CareBridge tab with Chuyên gia chỉ định badge',
+    (tester) async {
+      final envelope = {
+        'asOf': '2026-08-03T01:00:00Z',
+        'zoneId': 'Asia/Ho_Chi_Minh',
+        'horizonDays': 7,
+        'sections': {
+          'overdue': <Map<String, dynamic>>[],
+          'today': <Map<String, dynamic>>[
+            {
+              'taskKind': 'CHECKLIST',
+              'taskId': 'sys-1',
+              'title': 'Uống vitamin và canxi',
+              'origin': 'SYSTEM_TEMPLATE',
+              'targetSubject': 'MOTHER',
+              'status': 'PENDING',
+              'timeBucket': 'TODAY',
+              'allowedActions': <String>['COMPLETE'],
+            },
+          ],
+          'upcoming': <Map<String, dynamic>>[],
+          'unscheduled': <Map<String, dynamic>>[],
+        },
+        'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
+        'correlationId': 'expert-task-test',
+      };
+
+      await tester.pumpWidget(
+        _wrap(
+          TodayTasksPanel(
+            service: _service(() async => {'data': envelope}),
+            layout: TodayTasksLayout.sourceGroups,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('tab-system-tasks')), findsOneWidget);
+      expect(find.text('Uống vitamin và canxi'), findsOneWidget);
+    },
+  );
 }

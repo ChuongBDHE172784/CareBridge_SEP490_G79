@@ -45,10 +45,10 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
         actions: [
           if (widget.audience == TodayTasksAudience.mother)
             IconButton(
-              key: const Key('today-checklist-history-button'),
-              tooltip: 'Lịch sử checklist',
-              onPressed: () => context.push('/checklists/history'),
-              icon: const Icon(Icons.history_rounded),
+              key: const Key('today-checklist-roadmap-button'),
+              tooltip: 'Lộ trình checklist',
+              onPressed: () => context.push('/checklists/roadmap'),
+              icon: const Icon(Icons.alt_route_rounded),
             ),
         ],
         title: const Text(

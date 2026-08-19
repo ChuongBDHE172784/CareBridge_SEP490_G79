@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../healthRecords/models/health_metric_model.dart';
+import '../../healthRecords/services/health_metric_service.dart';
 
 class HealthMetricMeasurementRecord {
   final String measuredAt;
@@ -92,6 +94,9 @@ class HealthMetricsShareData {
   final String title;
   final int? gestationalWeek;
   final String? measuredDate;
+  final String? timeRangeLabel;
+  final String? journeyId;
+  final bool isLiveSync;
   final String? note;
   final List<HealthMetricItemData> metrics;
 
@@ -99,6 +104,9 @@ class HealthMetricsShareData {
     this.title = 'Lịch sử chỉ số sức khỏe',
     this.gestationalWeek,
     this.measuredDate,
+    this.timeRangeLabel,
+    this.journeyId,
+    this.isLiveSync = true,
     this.note,
     required this.metrics,
   });
@@ -122,6 +130,9 @@ class HealthMetricsShareData {
         title: decoded['title'] as String? ?? 'Lịch sử chỉ số sức khỏe',
         gestationalWeek: (decoded['gestationalWeek'] as num?)?.toInt(),
         measuredDate: decoded['measuredDate'] as String?,
+        timeRangeLabel: decoded['timeRangeLabel'] as String?,
+        journeyId: decoded['journeyId'] as String?,
+        isLiveSync: decoded['isLiveSync'] as bool? ?? true,
         note: decoded['note'] as String?,
         metrics: metricsList,
       );
@@ -134,6 +145,9 @@ class HealthMetricsShareData {
     'title': title,
     'gestationalWeek': gestationalWeek,
     'measuredDate': measuredDate,
+    'timeRangeLabel': timeRangeLabel,
+    'journeyId': journeyId,
+    'isLiveSync': isLiveSync,
     'note': note,
     'metrics': metrics.map((m) => m.toJson()).toList(),
   })}';
@@ -156,10 +170,149 @@ class HealthMetricsMessageCard extends StatefulWidget {
 
 class _HealthMetricsMessageCardState extends State<HealthMetricsMessageCard> {
   final Set<String> _expandedMetrics = {};
+  late List<HealthMetricItemData> _liveMetrics;
+  bool _isRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _liveMetrics = List.from(widget.data.metrics);
+    if (widget.data.isLiveSync == true && widget.data.journeyId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refreshLiveMetrics();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant HealthMetricsMessageCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.data.metrics != oldWidget.data.metrics) {
+      _liveMetrics = List.from(widget.data.metrics);
+    }
+    if (widget.data.isLiveSync == true && widget.data.journeyId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refreshLiveMetrics();
+      });
+    }
+  }
+
+  Future<void> _refreshLiveMetrics() async {
+    final journeyId = widget.data.journeyId;
+    if (journeyId == null || journeyId.isEmpty || _isRefreshing) return;
+
+    setState(() => _isRefreshing = true);
+    try {
+      final service = HealthMetricService();
+      final updatedList = <HealthMetricItemData>[];
+
+      for (final m in _liveMetrics) {
+        try {
+          final trend = await service.getMetricTrend(
+            journeyId: journeyId,
+            metricType: m.code,
+          );
+          if (trend.dataPoints.isNotEmpty) {
+            final sorted = List<MetricDataPoint>.from(trend.dataPoints)
+              ..sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+            final latest = sorted.first;
+            final unit = trend.unit ?? m.unit;
+            final dt = latest.measuredAt;
+            final timeStr =
+                '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+            final history = sorted.map((p) {
+              final pTime =
+                  '${p.measuredAt.day.toString().padLeft(2, '0')}/${p.measuredAt.month.toString().padLeft(2, '0')} ${p.measuredAt.hour.toString().padLeft(2, '0')}:${p.measuredAt.minute.toString().padLeft(2, '0')}';
+              return HealthMetricMeasurementRecord(
+                measuredAt: pTime,
+                value: p.valueDisplay,
+                unit: unit,
+                status: _evaluateStatus(m.code, p),
+                note: p.note,
+              );
+            }).toList();
+
+            updatedList.add(
+              HealthMetricItemData(
+                code: m.code,
+                name: m.name,
+                value: latest.valueDisplay,
+                unit: unit,
+                status: _evaluateStatus(m.code, latest),
+                icon: m.icon,
+                measuredTime: timeStr,
+                history: history,
+              ),
+            );
+          } else {
+            updatedList.add(m);
+          }
+        } catch (_) {
+          updatedList.add(m);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _liveMetrics = updatedList;
+          _isRefreshing = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
+  }
+
+  String _evaluateStatus(String code, MetricDataPoint point) {
+    if (code == 'BLOOD_PRESSURE') {
+      final sys = point.valueNumeric;
+      final dia = point.valueSecondary ?? 80;
+      if (sys >= 140 || dia >= 90) return 'CRITICAL';
+      if (sys >= 130 || dia >= 85) return 'WARNING';
+      if (sys < 90 || dia < 60) return 'WARNING';
+      return 'NORMAL';
+    }
+    if (code == 'BLOOD_GLUCOSE') {
+      final val = point.valueNumeric;
+      if (val > 140) return 'CRITICAL';
+      if (val > 95) return 'WARNING';
+      if (val < 60) return 'WARNING';
+      return 'NORMAL';
+    }
+    if (code == 'HEART_RATE') {
+      final val = point.valueNumeric;
+      if (val > 120 || val < 50) return 'CRITICAL';
+      if (val > 100 || val < 60) return 'WARNING';
+      return 'NORMAL';
+    }
+    if (code == 'TEMPERATURE') {
+      final val = point.valueNumeric;
+      if (val >= 38.5) return 'CRITICAL';
+      if (val >= 37.5) return 'WARNING';
+      if (val < 35.5) return 'WARNING';
+      return 'NORMAL';
+    }
+    if (code == 'FETAL_MOVEMENT_SESSION') {
+      final val = point.valueNumeric;
+      if (val < 4) return 'CRITICAL';
+      if (val < 10) return 'WARNING';
+      return 'NORMAL';
+    }
+    if (code == 'SPO2') {
+      final val = point.valueNumeric;
+      if (val < 92) return 'CRITICAL';
+      if (val < 95) return 'WARNING';
+      return 'NORMAL';
+    }
+    return 'NORMAL';
+  }
 
   int get _totalHistoryPoints {
     var count = 0;
-    for (final m in widget.data.metrics) {
+    for (final m in _liveMetrics) {
       count += m.history.isNotEmpty ? m.history.length : 1;
     }
     return count;
@@ -214,24 +367,76 @@ class _HealthMetricsMessageCardState extends State<HealthMetricsMessageCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.data.title,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: textDark,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.data.title,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: textDark,
+                              ),
+                            ),
+                          ),
+                          if (widget.data.isLiveSync)
+                            InkWell(
+                              onTap: _refreshLiveMetrics,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 1.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _isRefreshing
+                                        ? const SizedBox(
+                                            width: 10,
+                                            height: 10,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.5,
+                                              color: Color(0xFF2E7D32),
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.bolt_rounded,
+                                            size: 11,
+                                            color: Color(0xFF2E7D32),
+                                          ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      'Live',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF2E7D32),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       Text(
                         [
                           if (widget.data.gestationalWeek != null)
-                            'Tuần thai: ${widget.data.gestationalWeek}',
-                          '$_totalHistoryPoints bản ghi đo',
+                            'Tuần thai ${widget.data.gestationalWeek}',
+                          if (widget.data.timeRangeLabel != null)
+                            widget.data.timeRangeLabel,
+                          '$_totalHistoryPoints bản ghi',
                         ].join(' · '),
                         style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 11,
+                          fontSize: 10.5,
                           color: textMuted,
                         ),
                       ),
@@ -246,7 +451,7 @@ class _HealthMetricsMessageCardState extends State<HealthMetricsMessageCard> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Column(
-              children: widget.data.metrics.map((metric) {
+              children: _liveMetrics.map((metric) {
                 return _buildMetricGroup(metric);
               }).toList(),
             ),

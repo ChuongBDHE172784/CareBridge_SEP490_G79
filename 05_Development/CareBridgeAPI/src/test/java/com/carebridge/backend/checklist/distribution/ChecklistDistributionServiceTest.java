@@ -728,6 +728,91 @@ class ChecklistDistributionServiceTest {
                  1L);
     }
 
+    @Test
+    void reopensCatchUpClosedOccurrenceWhenInteractiveCommandDistributed() {
+        var base = command(
+                ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(new ChecklistDistributionRecipient(ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER, true, true, true)),
+                null);
+        var interactiveCommand = base.withCadence(ChecklistCadenceMetadata.interactive(
+                ChecklistScheduleType.WEEKLY, ChecklistMaterializationPolicy.ONCE_PER_WINDOW,
+                "O:1:20", ZoneId.of("UTC")));
+
+        UUID instanceId = UUID.randomUUID();
+        ChecklistInstance catchUpClosed = ChecklistInstance.builder()
+                .id(instanceId)
+                .distributionKey(ChecklistDistributionKeyFactory.cadenceInstanceKey(
+                        interactiveCommand.templateVersionId(), ChecklistDistributionTestFactory.RECIPIENT_ID,
+                        ChecklistRecipientRole.MOTHER.name(), null,
+                        interactiveCommand.contextType().name(), interactiveCommand.contextId(),
+                        ChecklistScheduleType.WEEKLY.name(), ChecklistMaterializationPolicy.ONCE_PER_WINDOW.name(),
+                        "O:1:20", "UTC", 1L))
+                .templateLineageId(interactiveCommand.templateLineageId())
+                .templateVersionId(interactiveCommand.templateVersionId())
+                .recipientUserId(ChecklistDistributionTestFactory.RECIPIENT_ID)
+                .recipientRole(ChecklistRecipientRole.MOTHER)
+                .careGroupId(null)
+                .careContextType(interactiveCommand.contextType())
+                .careContextId(interactiveCommand.contextId())
+                .contextOwnerUserId(interactiveCommand.contextOwnerUserId())
+                .origin(com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE)
+                .gestationalDatingRevision(1L)
+                .periodKey("O:1:20")
+                .scheduleZoneId("UTC")
+                .checklistContractVersion((short) 2)
+                .materializationMode(ChecklistMaterializationMode.CATCH_UP)
+                .wasActionable(false)
+                .windowStart(LocalDate.of(2026, 1, 1))
+                .windowEnd(LocalDate.of(2026, 1, 8))
+                .status(ChecklistInstanceStatus.CANCELLED)
+                .cancelledAt(clock.instant())
+                .cancellationReasonCode("CADENCE_PERIOD_CLOSED")
+                .historicalAt(clock.instant())
+                .historyReasonCode("CADENCE_PERIOD_CLOSED")
+                .build();
+
+        Instant dueAt = new ChecklistLifecycleEligibilityService().dueAt(
+                ChecklistAnchorType.LMP, interactiveCommand.lifecycleDates(), 0, ChecklistRangeUnit.DAY,
+                interactiveCommand.timezone());
+
+        ChecklistTaskInstance closedTask = ChecklistTaskInstance.builder()
+                .id(UUID.randomUUID())
+                .checklistInstanceId(instanceId)
+                .templateVersionId(interactiveCommand.templateVersionId())
+                .templateItemVersionId(ChecklistDistributionTestFactory.ITEM_VERSION_ID)
+                .taskKey(ChecklistDistributionKeyFactory.childKey(instanceId, ChecklistDistributionTestFactory.ITEM_VERSION_ID))
+                .status(ChecklistTaskStatus.CANCELLED)
+                .cancelledAt(clock.instant())
+                .actionReasonCode("CADENCE_PERIOD_CLOSED")
+                .titleSnapshot("Task A")
+                .displayOrder(1)
+                .required(true)
+                .checklistContractVersion((short) 2)
+                .targetSubject(ChecklistTargetSubject.MOTHER)
+                .dueAt(dueAt)
+                .build();
+
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.of(catchUpClosed));
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instanceId)).thenReturn(List.of(closedTask));
+        when(tasks.findByTaskKey(any())).thenReturn(Optional.empty());
+
+        var result = service.distribute(interactiveCommand);
+
+        assertThat(result.conflicts()).isZero();
+        assertThat(result.existingInstances()).isOne();
+        assertThat(catchUpClosed.getStatus()).isEqualTo(ChecklistInstanceStatus.PENDING);
+        assertThat(catchUpClosed.getHistoricalAt()).isNull();
+        assertThat(catchUpClosed.getHistoryReasonCode()).isNull();
+        assertThat(catchUpClosed.getCancellationReasonCode()).isNull();
+        assertThat(catchUpClosed.getMaterializationMode()).isEqualTo(ChecklistMaterializationMode.INTERACTIVE);
+        assertThat(closedTask.getStatus()).isEqualTo(ChecklistTaskStatus.PENDING);
+        assertThat(closedTask.getCancelledAt()).isNull();
+        assertThat(closedTask.getActionReasonCode()).isNull();
+    }
+
     private static ChecklistInstance matchingInstance(ChecklistDistributionCommand command, UUID id) {
         return ChecklistInstance.builder()
                 .id(id)

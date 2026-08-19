@@ -20,7 +20,6 @@ import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -257,13 +256,20 @@ public class ChecklistDistributionService {
                     return;
                 }
                 if (isCatchUpInstance(instance)) {
-                    counters.existingInstances++;
-                    return;
+                    if (!isCatchUp(command)
+                            && instance.getStatus() == ChecklistInstanceStatus.CANCELLED
+                            && CADENCE_PERIOD_CLOSED.equals(instance.getCancellationReasonCode())) {
+                        reopenClosedCatchUpOccurrence(instance, command, recipient);
+                    } else {
+                        counters.existingInstances++;
+                        return;
+                    }
                 }
+            } else {
+                recordFailure(command, KEY_CONFLICT, instance.getId());
+                counters.conflicts++;
+                return;
             }
-            recordFailure(command, KEY_CONFLICT, instance.getId());
-            counters.conflicts++;
-            return;
         }
 
         // Nếu chưa tồn tại -> Tạo mới ChecklistInstance (Đợt việc cần làm cha)
@@ -734,6 +740,39 @@ public class ChecklistDistributionService {
         instance.setHistoryReasonCode(CADENCE_PERIOD_CLOSED);
         instanceRepository.save(instance);
         counters.cancelledInstances++;
+    }
+
+    /**
+     * Phục hồi instance từng bị đóng nhầm bởi luồng catch-up khi người dùng đang ở chu kỳ hợp lệ.
+     */
+    private void reopenClosedCatchUpOccurrence(
+            ChecklistInstance instance,
+            ChecklistDistributionCommand command,
+            ChecklistDistributionRecipient recipient) {
+        instance.setMaterializationMode(materializedMode(command));
+        instance.setWasActionable(materializedWasActionable(command));
+        instance.setStatus(ChecklistInstanceStatus.PENDING);
+        instance.setCompletedAt(null);
+        instance.setCancelledAt(null);
+        instance.setCancellationReasonCode(null);
+        instance.setHistoricalAt(null);
+        instance.setHistoryReasonCode(null);
+        instanceRepository.save(instance);
+
+        List<ChecklistTaskInstance> lockedTasks = taskRepository
+                .findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instance.getId());
+        for (ChecklistTaskInstance task : lockedTasks) {
+            if (task.getStatus() == ChecklistTaskStatus.CANCELLED
+                    && CADENCE_PERIOD_CLOSED.equals(task.getActionReasonCode())) {
+                task.setStatus(ChecklistTaskStatus.PENDING);
+                task.setCancelledAt(null);
+                task.setActionReasonCode(null);
+                taskRepository.save(task);
+            }
+        }
+        auditWriter.write(event(AuditAction.CHECKLIST_DISTRIBUTED, command, recipient.userId(),
+                ChecklistAuditResourceType.CHECKLIST_INSTANCE, instance.getId(),
+                null, ChecklistInstanceStatus.CANCELLED.name(), ChecklistInstanceStatus.PENDING.name(), "REOPENED_FROM_CATCH_UP"));
     }
 
     private static boolean sameWindow(ChecklistInstance instance, ChecklistEligibilityDecision decision) {

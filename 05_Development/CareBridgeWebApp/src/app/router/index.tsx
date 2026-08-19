@@ -28,6 +28,7 @@ import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCa
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
 import ExpertConsultationRequestsPage from '../../features/expert/pages/ExpertConsultationRequestsPage';
 import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
+import ExpertSharedRecordsPage from '../../features/expert/pages/ExpertSharedRecordsPage';
 
 // Contribution screens
 
@@ -258,6 +259,8 @@ export const router = createBrowserRouter([
                       { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
                       // CB-064: Consultation Requests
                       { path: '/expert/consultation-requests', element: <ExpertConsultationRequestsPage /> },
+                      // Shared Maternal Health Records & Checklists
+                      { path: '/expert/shared-records', element: <ExpertSharedRecordsPage /> },
                       // UC-144D: Direct Consult Chat & Call
                       { path: '/expert/direct-chats', element: <ConversationListPage /> },
                       { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },

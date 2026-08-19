@@ -7,6 +7,9 @@ import * as directChatApi from '../services/directChatApi';
 import { mergeTimelineItems, optimisticMessage, type TimelineItem } from '../models/timelineItem';
 import { useDirectCall } from '../calls/directCallContext';
 import LocationMessageBubble from './LocationMessageBubble';
+import { SharedHealthMetricsBubble } from './SharedHealthMetricsBubble';
+import { SharedChecklistBubble } from './SharedChecklistBubble';
+import { parseHealthMetricsShare, parseChecklistShare } from '../../expert/services/expertSharedRecordsService';
 
 interface ChatPanelProps {
   conversationId: string;
@@ -566,32 +569,74 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
                       M
                     </div>
                   )}
-                  <div
-                    className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                      isOwn
-                        ? 'bg-primary text-on-primary rounded-tr-xs'
-                        : 'bg-surface border border-outline-variant/60 text-on-surface rounded-tl-xs'
-                    }`}
-                  >
-                    {item.messageType === 'IMAGE' || item.messageType === 'FILE' ? (
-                      <AttachmentBubble
-                        item={item}
-                        conversationId={conversationId}
-                        isOwn={isOwn}
-                        onPreview={(url, name) => setPreview({ url, name })}
-                        onRecall={handleRecall}
-                        onError={setError}
-                      />
-                    ) : item.messageType === 'LOCATION' && !item.recalledAt ? (
-                      <LocationMessageBubble
-                        item={item}
-                        isOwn={isOwn}
-                        onRecall={handleRecall}
-                      />
-                    ) : item.recalledAt ? (
-                      <span className="italic text-on-surface-variant">Tin nhắn đã được thu hồi</span>
-                    ) : item.messageBody}
-                  </div>
+                  {(() => {
+                    if (item.recalledAt) {
+                      return (
+                        <div className="p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm bg-surface border border-outline-variant/60 text-on-surface">
+                          <span className="italic text-on-surface-variant">Tin nhắn đã được thu hồi</span>
+                        </div>
+                      );
+                    }
+                    if (item.messageType === 'IMAGE' || item.messageType === 'FILE') {
+                      return (
+                        <div
+                          className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                            isOwn
+                              ? 'bg-primary text-on-primary rounded-tr-xs'
+                              : 'bg-surface border border-outline-variant/60 text-on-surface rounded-tl-xs'
+                          }`}
+                        >
+                          <AttachmentBubble
+                            item={item}
+                            conversationId={conversationId}
+                            isOwn={isOwn}
+                            onPreview={(url, name) => setPreview({ url, name })}
+                            onRecall={handleRecall}
+                            onError={setError}
+                          />
+                        </div>
+                      );
+                    }
+                    if (item.messageType === 'LOCATION') {
+                      return (
+                        <div
+                          className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                            isOwn
+                              ? 'bg-primary text-on-primary rounded-tr-xs'
+                              : 'bg-surface border border-outline-variant/60 text-on-surface rounded-tl-xs'
+                          }`}
+                        >
+                          <LocationMessageBubble
+                            item={item}
+                            isOwn={isOwn}
+                            onRecall={handleRecall}
+                          />
+                        </div>
+                      );
+                    }
+
+                    const healthData = parseHealthMetricsShare(item.messageBody);
+                    if (healthData) {
+                      return <SharedHealthMetricsBubble data={healthData} isOwn={isOwn} />;
+                    }
+
+                    const checklistData = parseChecklistShare(item.messageBody);
+                    if (checklistData) {
+                      return <SharedChecklistBubble data={checklistData} isOwn={isOwn} />;
+                    }
+
+                    return (
+                      <div
+                        className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                          isOwn
+                            ? 'bg-primary text-on-primary rounded-tr-xs'
+                            : 'bg-surface border border-outline-variant/60 text-on-surface rounded-tl-xs'
+                        }`}
+                      >
+                        {item.messageBody}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {!item.sendStatus && (

@@ -34,11 +34,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class CurrentChecklistController {
     private final CurrentChecklistService checklistService;
     private final UnifiedTaskActionFacade actionFacade;
+    private final com.carebridge.backend.journey.repository.MotherJourneyRepository motherJourneyRepository;
 
     public CurrentChecklistController(
-            CurrentChecklistService checklistService, UnifiedTaskActionFacade actionFacade) {
+            CurrentChecklistService checklistService,
+            UnifiedTaskActionFacade actionFacade,
+            com.carebridge.backend.journey.repository.MotherJourneyRepository motherJourneyRepository) {
         this.checklistService = checklistService;
         this.actionFacade = actionFacade;
+        this.motherJourneyRepository = motherJourneyRepository;
     }
 
     /**
@@ -63,6 +67,38 @@ public class CurrentChecklistController {
 
         // Chuyển tiếp tới Service để tự động đối soát vòng đời (reconcile) và nạp danh sách việc cần làm
         return checklistService.getCurrentTasks(actorId, date, timezone);
+    }
+
+    /**
+     * [LẤY DANH SÁCH VIỆC CẦN LÀM THEO HÀNH TRÌNH PHỤC VỤ REALTIME SYNC CHO CHUYÊN GIA]
+     * Endpoint: GET /api/v1/checklists/journeys/{journeyId}/tasks
+     * Quyền hạn: MOTHER, FAMILY, EXPERT, ADMIN
+     */
+    @GetMapping("/journeys/{journeyId}/tasks")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT', 'ADMIN')")
+    public CurrentChecklistResponse getJourneyTasks(
+            @PathVariable UUID journeyId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestHeader(value = "X-User-Timezone", required = false) String timezone) {
+        var journey = motherJourneyRepository.findById(journeyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "JOURNEY_NOT_FOUND", "Journey not found"));
+        return checklistService.getCurrentTasks(journey.getOwnerUserId(), date, timezone);
+    }
+
+    /**
+     * [LẤY DANH SÁCH VIỆC CẦN LÀM THEO USER ID PHỤC VỤ CHUYÊN GIA / ADMIN]
+     * Endpoint: GET /api/v1/checklists/users/{userId}/tasks
+     * Quyền hạn: EXPERT, ADMIN
+     */
+    @GetMapping("/users/{userId}/tasks")
+    @PreAuthorize("hasAnyRole('EXPERT', 'ADMIN')")
+    public CurrentChecklistResponse getUserTasks(
+            @PathVariable UUID userId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestHeader(value = "X-User-Timezone", required = false) String timezone) {
+        return checklistService.getCurrentTasks(userId, date, timezone);
     }
 
     /**
