@@ -7,6 +7,8 @@ import 'package:untitled/features/directChat/models/timeline_page.dart';
 import 'package:untitled/features/directChat/screens/conversation_list_screen.dart';
 import 'package:untitled/features/directChat/screens/direct_chat_screen.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
+import 'package:untitled/features/directChat/widgets/checklist_message_card.dart';
+import 'package:untitled/features/directChat/widgets/health_metrics_message_card.dart';
 
 const _conversationId = 'conv-1';
 const _messageId = 'message-latest';
@@ -156,5 +158,112 @@ void main() {
     expect(find.text('Cổng bệnh viện'), findsOneWidget);
     expect(find.text('Chạm để dẫn đường'), findsOneWidget);
     expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
+  });
+
+  testWidgets('renders shared health metrics as an interactive health card', (
+    tester,
+  ) async {
+    final healthShare = HealthMetricsShareData(
+      title: 'Chỉ số sức khỏe mẹ bầu',
+      gestationalWeek: 28,
+      measuredDate: '18/08/2026',
+      note: 'Huyết áp sáng nay của em',
+      metrics: const [
+        HealthMetricItemData(
+          code: 'BLOOD_PRESSURE',
+          name: 'Huyết áp',
+          value: '120/80',
+          unit: 'mmHg',
+          status: 'NORMAL',
+        ),
+        HealthMetricItemData(
+          code: 'BLOOD_GLUCOSE',
+          name: 'Đường huyết đói',
+          value: '90',
+          unit: 'mg/dL',
+          status: 'NORMAL',
+        ),
+      ],
+    );
+
+    DirectChatService.instance = _ScriptedDirectChatService(
+      timelineItems: [
+        TimelineItem.fromJson({
+          'kind': 'MESSAGE',
+          'messageId': 'health-share-msg',
+          'clientMessageId': 'health-share-client',
+          'senderUserId': 'mother-1',
+          'messageType': 'TEXT',
+          'messageBody': healthShare.serialize(),
+          'createdAt': '2026-08-18T08:00:00Z',
+        }),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DirectChatScreen(conversationId: _conversationId),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chỉ số sức khỏe mẹ bầu'), findsOneWidget);
+    expect(find.text('Huyết áp'), findsOneWidget);
+    expect(find.text('Đường huyết đói'), findsOneWidget);
+    expect(find.text('Huyết áp sáng nay của em'), findsOneWidget);
+    expect(find.byIcon(Icons.monitor_heart_outlined), findsWidgets);
+  });
+
+  testWidgets('renders shared checklist as an interactive progress card', (
+    tester,
+  ) async {
+    final checklistShare = ChecklistShareData(
+      title: 'Danh sách việc cần làm (Checklist)',
+      gestationalWeek: 28,
+      completedCount: 3,
+      totalCount: 4,
+      progressPercent: 75,
+      note: 'Các việc em đã hoàn thành',
+      items: const [
+        ChecklistItemShareData(
+          text: 'Khám thai định kỳ tuần 28',
+          completed: true,
+          category: 'Khám thai',
+        ),
+        ChecklistItemShareData(
+          text: 'Tiêm uốn ván mũi 1',
+          completed: false,
+          category: 'Tiêm chủng',
+        ),
+      ],
+    );
+
+    DirectChatService.instance = _ScriptedDirectChatService(
+      timelineItems: [
+        TimelineItem.fromJson({
+          'kind': 'MESSAGE',
+          'messageId': 'checklist-share-msg',
+          'clientMessageId': 'checklist-share-client',
+          'senderUserId': 'mother-1',
+          'messageType': 'TEXT',
+          'messageBody': checklistShare.serialize(),
+          'createdAt': '2026-08-18T08:00:00Z',
+        }),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DirectChatScreen(conversationId: _conversationId),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Danh sách việc cần làm (Checklist)'), findsOneWidget);
+    expect(find.text('3/4 (75%)'), findsOneWidget);
+    expect(find.text('Khám thai định kỳ tuần 28'), findsOneWidget);
+    expect(find.text('Tiêm uốn ván mũi 1'), findsOneWidget);
+    expect(find.text('Các việc em đã hoàn thành'), findsOneWidget);
+    expect(find.byIcon(Icons.checklist_rtl_rounded), findsWidgets);
   });
 }
