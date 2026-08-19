@@ -22,6 +22,10 @@ import '../calls/direct_call_host.dart';
 import '../models/timeline_item.dart';
 import '../services/direct_chat_service.dart';
 import '../services/conversation_refresh_bus.dart';
+import '../widgets/checklist_message_card.dart';
+import '../widgets/health_metrics_message_card.dart';
+import '../widgets/share_checklist_dialog.dart';
+import '../widgets/share_health_metrics_dialog.dart';
 
 class DirectChatScreen extends StatefulWidget {
   final String conversationId;
@@ -368,7 +372,6 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 
   Future<void> _shareCurrentLocation() async {
     if (_sending || !_expertAvailable) return;
-    Navigator.of(context).pop();
     setState(() => _sending = true);
     String? optimisticClientMessageId;
     try {
@@ -429,6 +432,86 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           });
         }
         _showError(error.toString().replaceFirst('FormatException: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _openShareHealthMetrics() async {
+    if (_sending || !_expertAvailable) return;
+    final result = await ShareHealthMetricsDialog.show(context);
+    if (result == null || !mounted) return;
+    final clientMessageId = _uuid.v4();
+    final currentUserId = AuthState.instance.userId ?? '';
+    final serialized = result.serialize();
+    final optimistic = TimelineItem.optimisticMessage(
+      clientMessageId: clientMessageId,
+      senderUserId: currentUserId,
+      messageBody: serialized,
+    );
+    setState(() {
+      _items = mergeTimelineItems(_items, [optimistic]);
+      _sending = true;
+    });
+    try {
+      final confirmed = await DirectChatService.instance.sendMessage(
+        widget.conversationId,
+        clientMessageId: clientMessageId,
+        messageBody: serialized,
+        messageType: 'TEXT',
+      );
+      if (mounted) {
+        setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _items = _items
+              .where((item) => item.clientMessageId != clientMessageId)
+              .toList(growable: false);
+        });
+        _showError('Không thể gửi chỉ số sức khỏe. Vui lòng thử lại.');
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _openShareChecklist() async {
+    if (_sending || !_expertAvailable) return;
+    final result = await ShareChecklistDialog.show(context);
+    if (result == null || !mounted) return;
+    final clientMessageId = _uuid.v4();
+    final currentUserId = AuthState.instance.userId ?? '';
+    final serialized = result.serialize();
+    final optimistic = TimelineItem.optimisticMessage(
+      clientMessageId: clientMessageId,
+      senderUserId: currentUserId,
+      messageBody: serialized,
+    );
+    setState(() {
+      _items = mergeTimelineItems(_items, [optimistic]);
+      _sending = true;
+    });
+    try {
+      final confirmed = await DirectChatService.instance.sendMessage(
+        widget.conversationId,
+        clientMessageId: clientMessageId,
+        messageBody: serialized,
+        messageType: 'TEXT',
+      );
+      if (mounted) {
+        setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _items = _items
+              .where((item) => item.clientMessageId != clientMessageId)
+              .toList(growable: false);
+        });
+        _showError('Không thể gửi danh sách việc cần làm. Vui lòng thử lại.');
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -784,6 +867,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
+                    tooltip: 'Đính kèm tệp',
                     icon: const Icon(
                       Icons.add_photo_alternate_rounded,
                       color: _primary,
@@ -857,21 +941,39 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                   ),
                                   ListTile(
                                     leading: const Icon(
-                                      Icons.location_on_outlined,
+                                      Icons.monitor_heart_outlined,
                                       color: _primary,
                                     ),
                                     title: const Text(
-                                      'Chia sẻ vị trí hiện tại',
-                                      style: TextStyle(
-                                        fontFamily: 'Lexend',
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    subtitle: const Text(
-                                      'Người nhận có thể bấm để dẫn đường',
+                                      'Chia sẻ chỉ số sức khỏe',
                                       style: TextStyle(fontFamily: 'Lexend'),
                                     ),
-                                    onTap: _shareCurrentLocation,
+                                    subtitle: const Text(
+                                      'Gửi số liệu huyết áp, đường huyết, BMI...',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _openShareHealthMetrics();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.checklist_rtl_rounded,
+                                      color: _primary,
+                                    ),
+                                    title: const Text(
+                                      'Chia sẻ việc cần làm (Checklist)',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    subtitle: const Text(
+                                      'Gửi tiến độ và các việc chăm sóc thai kỳ',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _openShareChecklist();
+                                    },
                                   ),
                                   const SizedBox(height: 12),
                                 ],
@@ -880,7 +982,58 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                           ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerLow,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    tooltip: 'Chia sẻ chỉ số sức khỏe',
+                    icon: const Icon(
+                      Icons.monitor_heart_outlined,
+                      color: _primary,
+                    ),
+                    onPressed: _sending || !_expertAvailable
+                        ? null
+                        : _openShareHealthMetrics,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerLow,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    tooltip: 'Chia sẻ việc cần làm',
+                    icon: const Icon(
+                      Icons.checklist_rtl_rounded,
+                      color: _primary,
+                    ),
+                    onPressed: _sending || !_expertAvailable
+                        ? null
+                        : _openShareChecklist,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerLow,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    tooltip: 'Chia sẻ vị trí hiện tại',
+                    icon: const Icon(
+                      Icons.location_on_outlined,
+                      color: _primary,
+                    ),
+                    onPressed: _sending || !_expertAvailable
+                        ? null
+                        : _shareCurrentLocation,
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -975,6 +1128,11 @@ class _TimelineTile extends StatelessWidget {
     }
     final failed = item.sendStatus == ChatSendStatus.failed;
     final sending = item.sendStatus == ChatSendStatus.sending;
+    final healthData = HealthMetricsShareData.parse(item.messageBody);
+    final checklistData = ChecklistShareData.parse(item.messageBody);
+    final isRichCard = (healthData != null || checklistData != null) &&
+        item.recalledAt == null;
+
     return Align(
       alignment: isOwnMessage ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
@@ -1023,29 +1181,34 @@ class _TimelineTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             child: Container(
               margin: const EdgeInsets.symmetric(vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              padding: EdgeInsets.symmetric(
+                horizontal: isRichCard ? 0 : 14,
+                vertical: isRichCard ? 0 : 11,
+              ),
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
+                maxWidth: MediaQuery.of(context).size.width * 0.78,
               ),
-              decoration: BoxDecoration(
-                color: isOwnMessage ? _primary : _surface,
-                border: isOwnMessage
-                    ? null
-                    : Border.all(color: _outlineVariant),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isOwnMessage ? 18 : 4),
-                  bottomRight: Radius.circular(isOwnMessage ? 4 : 18),
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0A845143),
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
+              decoration: isRichCard
+                  ? null
+                  : BoxDecoration(
+                      color: isOwnMessage ? _primary : _surface,
+                      border: isOwnMessage
+                          ? null
+                          : Border.all(color: _outlineVariant),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(18),
+                        topRight: const Radius.circular(18),
+                        bottomLeft: Radius.circular(isOwnMessage ? 18 : 4),
+                        bottomRight: Radius.circular(isOwnMessage ? 4 : 18),
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0A845143),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
               child: item.recalledAt != null
                   ? Text(
                       'Tin nhắn đã được thu hồi',
@@ -1127,15 +1290,7 @@ class _TimelineTile extends StatelessWidget {
                       label: item.locationLabel,
                       isOwnMessage: isOwnMessage,
                     )
-                  : Text(
-                      item.messageBody ?? '',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        color: isOwnMessage ? Colors.white : _onSurface,
-                        fontSize: 14,
-                        height: 1.4,
-                      ),
-                    ),
+                  : _buildTextOrRichContent(item, isOwnMessage),
             ),
           ),
           if (!failed && !sending)
@@ -1176,6 +1331,32 @@ class _TimelineTile extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextOrRichContent(TimelineItem item, bool isOwnMessage) {
+    final healthData = HealthMetricsShareData.parse(item.messageBody);
+    if (healthData != null) {
+      return HealthMetricsMessageCard(
+        data: healthData,
+        isOwnMessage: isOwnMessage,
+      );
+    }
+    final checklistData = ChecklistShareData.parse(item.messageBody);
+    if (checklistData != null) {
+      return ChecklistMessageCard(
+        data: checklistData,
+        isOwnMessage: isOwnMessage,
+      );
+    }
+    return Text(
+      item.messageBody ?? '',
+      style: TextStyle(
+        fontFamily: 'Lexend',
+        color: isOwnMessage ? Colors.white : _onSurface,
+        fontSize: 14,
+        height: 1.4,
       ),
     );
   }
