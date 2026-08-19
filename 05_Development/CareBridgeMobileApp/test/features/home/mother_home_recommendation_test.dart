@@ -38,27 +38,31 @@ JourneyDashboard _dashboard({
   pregnancyWeek: journeyType == 'PREGNANCY' ? 12 : null,
 );
 
-RecommendationContentResponse _response(String id, String title) =>
-    RecommendationContentResponse(
+RecommendationContentResponse _response(
+  String id,
+  String title, {
+  RecommendationProfileStatus profileStatus =
+      RecommendationProfileStatus.active,
+}) => RecommendationContentResponse(
+  stage: 'PREGNANCY',
+  pregnancyWeek: 12,
+  weekEligibilityMode: 'BOUNDED_AND_STAGE_WIDE',
+  profileStatus: profileStatus,
+  selectionMode: 'TARGETED_ONLY',
+  coverageStatus: 'COMPLETE',
+  fallbackUsed: false,
+  items: [
+    RecommendationContentItem(
+      rank: 1,
+      selectionType: RecommendationSelectionType.targeted,
+      reasonLabel: 'Phù hợp với ngữ cảnh chăm sóc của bạn',
+      id: id,
+      title: title,
+      summary: 'Actionable and approved guidance.',
       stage: 'PREGNANCY',
-      pregnancyWeek: 12,
-      weekEligibilityMode: 'BOUNDED_AND_STAGE_WIDE',
-      profileStatus: RecommendationProfileStatus.active,
-      selectionMode: 'TARGETED_ONLY',
-      coverageStatus: 'COMPLETE',
-      fallbackUsed: false,
-      items: [
-        RecommendationContentItem(
-          rank: 1,
-          selectionType: RecommendationSelectionType.targeted,
-          reasonLabel: 'Phù hợp với ngữ cảnh chăm sóc của bạn',
-          id: id,
-          title: title,
-          summary: 'Actionable and approved guidance.',
-          stage: 'PREGNANCY',
-        ),
-      ],
-    );
+    ),
+  ],
+);
 
 Widget _host({
   required Future<RecommendationContentResponse> Function() loader,
@@ -75,6 +79,34 @@ Widget _host({
 }
 
 void main() {
+  testWidgets(
+    'keeps personalization invitation visible after an empty profile is declined',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          loader: () async => _response(
+            'fallback-article',
+            'Nội dung theo giai đoạn',
+            profileStatus: RecommendationProfileStatus.declined,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.dragUntilVisible(
+        find.byKey(const Key('mother-home-recommendation-personalize')),
+        find.byType(CustomScrollView),
+        const Offset(0, -300),
+      );
+
+      expect(
+        find.byKey(const Key('mother-home-recommendation-personalize')),
+        findsOneWidget,
+      );
+      expect(find.text('Cá nhân hóa nội dung'), findsOneWidget);
+    },
+  );
+
   testWidgets('renders independent recommendation loading and cards', (
     tester,
   ) async {
