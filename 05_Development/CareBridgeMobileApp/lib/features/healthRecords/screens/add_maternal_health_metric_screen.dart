@@ -11,6 +11,7 @@ import '../../../core/network/api_client.dart';
 import '../../emergency/services/emergency_service.dart';
 import '../../safety/services/safety_permission_service.dart';
 import '../models/health_metric_model.dart';
+import '../models/maternal_metric_lifecycle_policy.dart';
 import '../services/health_metric_service.dart';
 
 class AddMaternalHealthMetricScreen extends StatefulWidget {
@@ -324,6 +325,8 @@ class _AddMaternalHealthMetricScreenState
   bool get _isFetalMovement => _metricType == 'FETAL_MOVEMENT_SESSION';
   bool get _isHydration => _metricType == 'HYDRATION';
   bool get _isTemperature => _metricType == 'TEMPERATURE';
+  bool get _isHeartRate =>
+      _metricType == 'MATERNAL_HEART_RATE' || _metricType == 'HEART_RATE';
 
   MetricCapability? get _capability {
     for (final capability in _capabilities) {
@@ -338,6 +341,7 @@ class _AddMaternalHealthMetricScreenState
     if (_isBloodPressure) return 'Thêm huyết áp';
     if (_isFetalMovement) return 'Thêm cử động thai';
     if (_isTemperature) return 'Thêm nhiệt độ cơ thể';
+    if (_isHeartRate) return 'Thêm nhịp tim';
     return 'Thêm $_metricLabel';
   }
 
@@ -346,6 +350,7 @@ class _AddMaternalHealthMetricScreenState
     if (_isBmi) return 'Cân nặng (kg)';
     if (_isFetalMovement) return 'Số cử động';
     if (_isTemperature) return 'Nhiệt độ (°C)';
+    if (_isHeartRate) return 'Nhịp tim (bpm)';
     return '$_metricLabel ($_unit)';
   }
 
@@ -551,6 +556,14 @@ class _AddMaternalHealthMetricScreenState
   }
 
   Future<void> _save() async {
+    final restrictionMessage = maternalMetricEntryRestrictionMessage(
+      metricType: _metricType,
+      journeyType: _journeyType,
+    );
+    if (restrictionMessage != null) {
+      _showError(restrictionMessage);
+      return;
+    }
     if (!_isSupported) {
       _showError('Chỉ số này không được hỗ trợ nhập thủ công.');
       return;
@@ -575,6 +588,24 @@ class _AddMaternalHealthMetricScreenState
       final diastolic = double.tryParse(_secondaryCtrl.text.trim());
       if (systolic == null || diastolic == null || systolic <= diastolic) {
         _showError('Huyết áp tâm thu phải lớn hơn huyết áp tâm trương.');
+        return;
+      }
+      if (systolic < 60 ||
+          systolic > 260 ||
+          diastolic < 40 ||
+          diastolic > 160) {
+        _showError(
+          'Chỉ số huyết áp ngoài dải sinh lý hợp lý (Tâm thu: 60–260 mmHg, Tâm trương: 40–160 mmHg).',
+        );
+        return;
+      }
+    }
+
+    if (_isHeartRate) {
+      final rawHr = _primaryCtrl.text.trim();
+      final hrVal = int.tryParse(rawHr);
+      if (hrVal == null || hrVal < 30 || hrVal > 250) {
+        _showError('Nhập nhịp tim hợp lệ từ 30 đến 250 bpm (số nguyên).');
         return;
       }
     }
@@ -671,7 +702,7 @@ class _AddMaternalHealthMetricScreenState
         ),
       );
 
-      // 2. Chạy AI Triage Sàng lọc Rủi ro Lâm sàng
+      // 2. Chạy dịch vụ sàng lọc rủi ro lâm sàng
       final evalResult = await _evaluateMetricWithAi(
         primaryVal: primaryVal,
         secondaryVal: secondaryVal,
@@ -720,12 +751,24 @@ class _AddMaternalHealthMetricScreenState
   }
 
   String _metricSaveError(ApiException error) {
+    if (error.message.isNotEmpty &&
+        !error.message.toLowerCase().startsWith('internal') &&
+        !error.message.toLowerCase().startsWith('failed')) {
+      return error.message;
+    }
     return switch (error.errorCode) {
       'METRIC-032' => 'Huyết áp tâm thu phải lớn hơn huyết áp tâm trương.',
       'METRIC-033' => 'Đơn vị đo không hợp lệ. Vui lòng thử lại.',
       'METRIC-038' => 'Giá trị chỉ số phải lớn hơn 0.',
+      'METRIC-039' =>
+        error.message.isNotEmpty
+            ? error.message
+            : 'Giá trị chỉ số nằm ngoài giới hạn sinh lý hợp lệ.',
       'METRIC-004' => 'Thời điểm đo không được ở tương lai quá 5 phút.',
-      _ => 'Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.',
+      _ =>
+        error.message.isNotEmpty
+            ? error.message
+            : 'Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.',
     };
   }
 
@@ -847,7 +890,9 @@ class _AddMaternalHealthMetricScreenState
       );
     }
     if (epdsQ10 != null && epdsQ10 >= 1) {
-      extraFactors.add('Cảnh báo an toàn tâm lý khẩn cấp: Câu hỏi số 10 EPDS đạt $epdsQ10/3 điểm (Xuất hiện ý nghĩ tự gây hại)');
+      extraFactors.add(
+        'Cảnh báo an toàn tâm lý khẩn cấp: Câu hỏi số 10 EPDS đạt $epdsQ10/3 điểm (Xuất hiện ý nghĩ tự gây hại)',
+      );
     } else if (epds != null && epds >= 10) {
       extraFactors.add('Điểm trầm cảm/tâm trạng EPDS cao ($epds/30 điểm)');
     }
@@ -1358,9 +1403,10 @@ class _AddMaternalHealthMetricScreenState
                       'journeyType': _journeyType,
                       'stage': _journeyType == 'PRE_PREGNANCY'
                           ? 'PRECONCEPTION'
-                          : (_journeyType == 'POSTPARTUM' || _journeyType == 'BABY_CARE'
-                              ? 'POSTPARTUM'
-                              : 'PREGNANCY'),
+                          : (_journeyType == 'POSTPARTUM' ||
+                                    _journeyType == 'BABY_CARE'
+                                ? 'POSTPARTUM'
+                                : 'PREGNANCY'),
                       'riskFactors': riskFactors,
                       'latestVitals': vitalsMap,
                       'surveyProfile': _surveyProfile,

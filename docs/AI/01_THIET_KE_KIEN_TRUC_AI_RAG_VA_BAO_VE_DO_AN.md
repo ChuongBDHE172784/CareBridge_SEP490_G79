@@ -244,19 +244,22 @@ Hệ thống CareBridge chuẩn hóa danh mục các chỉ số sức khỏe d�
 | **Trầm cảm EPDS ($0-30$)** | $0 - 9$ điểm | $10 - 30$ điểm (Nguy cơ Trầm cảm thai kỳ/hậu sản, cần trao đổi AI Nurse và chuyên gia tâm lý) | **Câu hỏi số 10 $\ge 1$** (Xuất hiện ý nghĩ tự gây hại/tự sát) $\rightarrow$ Báo động đỏ an toàn tâm lý khẩn cấp | • [Edinburgh Postnatal Depression Scale (EPDS)](https://www.cope.org.au/health-professionals/health-professional-guidelines/) (Cox et al.)<br/>• Hướng dẫn Sức khỏe Tâm thần Sản phụ COPE / NSW Health |
 | **Chỉ số BMI ($kg/m^2$)**<br/>*(Đánh giá theo từng Giai đoạn Hành trình)* | • **`PRECONCEPTION`:** $18.5 - 22.9$ kg/m² (Chuẩn WHO Châu Á)<br/>• **`PREGNANCY`:** Tăng cân đều theo tuần thai chuẩn IOM<br/>• **`POSTPARTUM`:** Hồi phục thể trạng an toàn | • **`PRECONCEPTION`:** Thiếu cân $< 18.5$ hoặc Tiền thừa cân $23.0 - 24.9$ / Béo phì $\ge 25.0$ kg/m²<br/>• **`PREGNANCY`:** Thiếu cân $< 18.5$ hoặc Thừa cân $\ge 25.0$ / Béo phì $\ge 30.0$ kg/m²<br/>• **`POSTPARTUM`:** Cảnh báo không ăn kiêng cực đoan gây mất sữa | • **Béo phì độ III rất nặng:** $\ge 40.0$ kg/m² (Nguy cơ cao thuyên tắc huyết khối và tiền sản giật nặng) | • [WHO Asian BMI Consultation (Lancet 2004 - PubMed)](https://pubmed.ncbi.nlm.nih.gov/14726461/)<br/>• [IOM Guidelines: Weight Gain During Pregnancy (2009)](https://www.ncbi.nlm.nih.gov/books/NBK32813/) |
 | **Lượng nước uống ($Hydration$)**<br/>*(Đánh giá theo từng Giai đoạn Hành trình)* | • **`PRECONCEPTION`:** $1500 - 2000$ ml/ngày<br/>• **`PREGNANCY`:** $2000 - 2500$ ml/ngày<br/>• **`POSTPARTUM`:** $2500 - 3000$ ml/ngày *(tiết sữa mẹ)* | • `PRECONCEPTION` $< 1500$ ml<br/>• `PREGNANCY` $< 1800$ ml *(nguy cơ thiểu ối, táo bón)*<br/>• `POSTPARTUM` $< 2200$ ml *(nguy cơ thiếu sữa mẹ)*<br/>• Uống quá nhiều $\ge 4500$ ml *(tầm soát đa niệu/ĐTĐ)* | • `PREGNANCY` $< 1200$ ml/ngày kèm triệu chứng mất nước nghiêm trọng | • Khuyến nghị Dinh dưỡng Viện Dinh Dưỡng Quốc Gia & WHO |
-| **Độ bão hòa Oxy ($SpO_2$)** | $96\% - 100\%$ | $95\%$ | $< 92\%$ $\rightarrow$ Suy hô hấp thai kỳ / Thiếu oxy bào thai cấp | • Chuẩn Hồi sức Cấp cứu Sản khoa Quốc tế |
 | **Nhịp tim mẹ ($Pulse$)** | $60 - 100$ bpm | • Nhịp nhanh: $101 - 119$ bpm<br/>• Nhịp chậm: $50 - 59$ bpm | $\ge 120$ bpm hoặc $< 50$ bpm kèm choáng ngất $\rightarrow$ Rối loạn huyết động cấp | • Hướng dẫn Khám Tim mạch Sản khoa ESC |
 
 ---
 
 #### C. Cơ chế Kiểm soát Tính Hợp lý Sinh lý Y tế (Physiological Sanity & Unit Plausibility Validation)
-Để ngăn chặn các trường hợp người dùng nhập nhầm số liệu phi lý y học hoặc chọn nhầm đơn vị (như nhập đường huyết $300\text{ mmol/L}$ thay vì $300\text{ mg/dL}$):
+Để ngăn chặn các trường hợp người dùng nhập nhầm số liệu phi lý y học hoặc chọn nhầm đơn vị (như nhập đường huyết $300\text{ mmol/L}$ thay vì $300\text{ mg/dL}$, hay huyết áp $600/500\text{ mmHg}$):
 1. **Đường huyết ($Glucose$):**
    - Tự động nhận diện đơn vị: Nếu giá trị $\ge 25.0$, hệ thống tự hiểu là đơn vị $mg/dL$ và quy đổi tương đương sang $mmol/L$ theo công thức $\text{mmol/L} = \text{mg/dL} / 18.0182$.
    - Giới hạn sinh lý tối đa của que thử/máy đo lâm sàng là $35.0\text{ mmol/L}$ (hoặc $600\text{ mg/dL}$). Nếu người dùng cố tình nhập giá trị $300$ nhưng hệ thống đo bằng $mmol/L$, hệ thống tự động nhận diện và cảnh báo lỗi nhập liệu để mẹ điều chỉnh.
-2. **Huyết áp ($BP$):** Bắt buộc Huyết áp tâm thu ($SBP$) phải lớn hơn Huyết áp tâm trương ($DBP$). Nếu $SBP \le DBP$, hệ thống thông báo dữ liệu không hợp lệ.
-3. **Thân nhiệt ($Temperature$):** Giới hạn từ $34.0^\circ C$ đến $43.0^\circ C$.
-4. **Cử động thai ($Kicks$):** Giới hạn từ $0$ đến $60$ lần/phiên. Tự động kiểm tra điều kiện tuần thai $\ge 24-28$ tuần, không cảnh báo mất tim thai giả đối với phụ nữ giai đoạn chưa mang thai hoặc sau sinh.
+2. **Huyết áp ($BP$):** 
+   - Bắt buộc Huyết áp tâm thu ($SBP$) phải lớn hơn Huyết áp tâm trương ($DBP$).
+   - Giới hạn sinh lý hợp lý: $SBP \in [50, 260]\text{ mmHg}$ và $DBP \in [30, 160]\text{ mmHg}$. Nếu vượt quá dải này (ví dụ $600/500$), hệ thống sẽ từ chối và yêu cầu kiểm tra lại.
+3. **Nhịp tim mẹ ($Heart Rate$):** Giới hạn từ $30$ đến $250\text{ bpm}$ (số nguyên).
+4. **Thân nhiệt ($Temperature$):** Giới hạn từ $34.0^\circ C$ đến $43.0^\circ C$.
+5. **Cân nặng & Chiều cao:** Cân nặng $20 - 300\text{ kg}$, chiều cao $100 - 250\text{ cm}$.
+6. **Cử động thai ($Kicks$):** Giới hạn từ $0$ đến $60$ lần/phiên. Tự động kiểm tra điều kiện tuần thai $\ge 24-28$ tuần, không cảnh báo mất tim thai giả đối với phụ nữ giai đoạn chưa mang thai hoặc sau sinh.
 
 ---
 
@@ -267,7 +270,7 @@ Trong các hệ thống phần mềm y tế phục vụ sản khoa (SaMD), CareB
 1. **Lớp 1 — Rào chắn An toàn Lâm sàng Cứng (Deterministic Safety Guardrails):**
    - Định nghĩa tập trung toàn bộ các ngưỡng lâm sàng sản khoa tại module `app/constants/vital_thresholds.py` dưới dạng các hằng số `const` và `Enum`.
    - Thực thi với độ trễ siêu tốc **$< 1\text{ ms}$**, không phụ thuộc mạng, không qua trung gian AI.
-   - Khi phát hiện các dấu hiệu sinh hiệu vượt ngưỡng nguy kịch ($SBP \ge 160$, Thai máy $= 0$, Thân nhiệt $\ge 38.5^\circ C$, EPDS Câu 10 $\ge 1$, $SpO_2 < 92\%$), hệ thống **lập tức kích hoạt trạng thái cấp cứu `CRITICAL_EMERGENCY`** với độ tin cậy tuyệt đối 100%.
+   - Khi phát hiện các dấu hiệu sinh hiệu vượt ngưỡng nguy kịch ($SBP \ge 160$, Thai máy $= 0$, Thân nhiệt $\ge 38.5^\circ C$, EPDS Câu 10 $\ge 1$, Nhịp tim $\ge 120\text{ bpm}$), hệ thống **lập tức kích hoạt trạng thái cấp cứu `CRITICAL_EMERGENCY`** với độ tin cậy tuyệt đối 100%.
 
 2. **Lớp 2 — Tăng cường Tri thức & Giải thích Y khoa Cá nhân hóa (Probabilistic AI RAG):**
    - Đóng vai trò Trợ lý Điều dưỡng (AI Nurse Consultant).

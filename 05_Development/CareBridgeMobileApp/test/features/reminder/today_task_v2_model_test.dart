@@ -87,7 +87,7 @@ void main() {
               'careContextId': 'baby-1',
               'careContextLabel': 'Bé An',
               'title': 'Chuẩn bị bình sữa',
-      'targetSubject': 'BABY',
+              'targetSubject': 'BABY',
               'stage': 'BABY_CARE',
               'origin': 'SYSTEM_TEMPLATE',
               'status': 'PENDING',
@@ -237,7 +237,7 @@ void main() {
       'BABY_CARE': '/babies',
       'EXPERT_CONSULTATION': '/experts',
       'CONTENT_LIBRARY': '/content',
-      'AI_TRIAGE': '/triage/intake',
+      'AI_TRIAGE': '/rag/chat',
     };
 
     for (final entry in expectedRoutes.entries) {

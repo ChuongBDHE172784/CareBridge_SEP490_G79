@@ -80,7 +80,7 @@ void main() {
     );
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsOneWidget);
 
-    path = '/triage/intake';
+    path = '/triage/expert-handoff';
     navigationChanges.value++;
     await tester.pump();
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsNothing);
@@ -91,11 +91,6 @@ void main() {
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsNothing);
 
     path = '/journey-setup';
-    navigationChanges.value++;
-    await tester.pump();
-    expect(find.byKey(const Key('floating-ai-triage-robot')), findsNothing);
-
-    path = '/postpartum-safety-help';
     navigationChanges.value++;
     await tester.pump();
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsNothing);

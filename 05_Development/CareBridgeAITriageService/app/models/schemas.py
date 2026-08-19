@@ -58,7 +58,7 @@ class HealthMetricsLogRequest(BaseModel):
     )
     is_fasting_glucose: Optional[bool] = Field(default=None, description="Đo lúc đói hay sau ăn (Backward-compatible)")
     temperature: Optional[float] = Field(default=None, ge=34.0, le=43.0, description="Thân nhiệt (°C)")
-    heart_rate: Optional[int] = Field(default=None, ge=30, le=220, description="Nhịp tim (lần/phút)")
+    heart_rate: Optional[int] = Field(default=None, ge=30, le=250, description="Nhịp tim (lần/phút)")
     weight_kg: Optional[float] = Field(default=None, ge=20.0, le=300.0, description="Cân nặng hiện tại (kg)")
     height_cm: Optional[float] = Field(default=None, ge=50.0, le=250.0, description="Chiều cao (cm)")
     bmi: Optional[float] = Field(default=None, ge=10.0, le=250.0, description="Chỉ số khối cơ thể BMI (kg/m²)")
@@ -71,7 +71,6 @@ class HealthMetricsLogRequest(BaseModel):
     water_intake_ml: Optional[int] = Field(default=None, ge=0, le=10000, description="Lượng nước uống trong ngày (ml)")
     epds_score: Optional[int] = Field(default=None, ge=0, le=30, description="Điểm sàng lọc trầm cảm/tâm trạng EPDS (0-30)")
     epds_question_10_score: Optional[int] = Field(default=None, ge=0, le=3, description="Điểm câu hỏi số 10 EPDS về ý nghĩ tự gây hại (0-3)")
-    spo2: Optional[int] = Field(default=None, ge=50, le=100, description="Độ bão hòa oxy trong máu SpO2 (%)")
     sleep_hours: Optional[float] = Field(default=None, ge=0.0, le=24.0, description="Thời lượng giấc ngủ (giờ)")
     
     # Symptoms reported

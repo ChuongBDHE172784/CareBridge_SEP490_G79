@@ -14,6 +14,7 @@ import '../../../core/network/api_client.dart';
 import '../../emergency/services/emergency_service.dart';
 import '../../safety/services/safety_permission_service.dart';
 import '../models/health_metric_model.dart';
+import '../models/maternal_metric_lifecycle_policy.dart';
 import '../services/health_metric_service.dart';
 import '../services/watch_metric_import_service.dart';
 import 'epds_screen.dart';
@@ -526,26 +527,49 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       await _showMetricPickerModal();
       return;
     }
+    await _openMetricEntry(_selectedMetric);
+  }
 
-    if (_selectedMetric.apiValue == 'EPDS_SCORE') {
+  Future<void> _ensureJourneyTypeLoaded() async {
+    if (_journeyType != null) return;
+    try {
+      final response = await apiGet('/api/v1/journeys/me/dashboard');
+      if (response is! Map || !mounted) return;
+      final data = response['data'] is Map ? response['data'] as Map : response;
+      _journeyType = data['journeyType'] as String?;
+    } catch (_) {}
+  }
+
+  Future<void> _openMetricEntry(_MetricOption option) async {
+    await _ensureJourneyTypeLoaded();
+    if (!mounted) return;
+
+    final restrictionMessage = maternalMetricEntryRestrictionMessage(
+      metricType: option.apiValue,
+      journeyType: _journeyType,
+    );
+    if (restrictionMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(restrictionMessage)));
+      return;
+    }
+
+    if (option.apiValue == 'EPDS_SCORE') {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => EpdsScreen(journeyId: widget.journeyId),
         ),
       );
-      if (mounted) {
-        await _loadTrend();
-      }
+      if (mounted) await _loadTrend();
       return;
     }
 
     final changed = await context.push<bool>(
       '/journeys/${Uri.encodeComponent(widget.journeyId)}/metrics/add'
-      '?metricType=${Uri.encodeQueryComponent(_selectedMetric.apiValue)}',
+      '?metricType=${Uri.encodeQueryComponent(option.apiValue)}',
     );
-    if (changed == true && mounted) {
-      await _loadTrend();
-    }
+    if (changed == true && mounted) await _loadTrend();
   }
 
   Future<void> _showMetricPickerModal() async {
@@ -632,23 +656,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       },
     );
 
-    if (selected != null && mounted) {
-      if (selected.apiValue == 'EPDS_SCORE') {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => EpdsScreen(journeyId: widget.journeyId),
-          ),
-        );
-      } else {
-        await context.push<bool>(
-          '/journeys/${Uri.encodeComponent(widget.journeyId)}/metrics/add'
-          '?metricType=${Uri.encodeQueryComponent(selected.apiValue)}',
-        );
-      }
-      if (mounted) {
-        await _loadTrend();
-      }
-    }
+    if (selected != null && mounted) await _openMetricEntry(selected);
   }
 
   Future<void> _openWatchMeasurement() async {
@@ -1831,11 +1839,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         extraFactors.add('Lượng nước uống quá ít ($waterIntake ml/ngày)');
       }
       if (epdsQ10 != null && epdsQ10 >= 1) {
-        extraFactors.add('Cảnh báo an toàn tâm lý khẩn cấp: Câu hỏi số 10 EPDS đạt $epdsQ10/3 điểm (Xuất hiện ý nghĩ tự gây hại)');
+        extraFactors.add(
+          'Cảnh báo an toàn tâm lý khẩn cấp: Câu hỏi số 10 EPDS đạt $epdsQ10/3 điểm (Xuất hiện ý nghĩ tự gây hại)',
+        );
       } else if (epds != null && epds >= 13) {
         extraFactors.add('Điểm trầm cảm EPDS rất cao ($epds/30 điểm)');
       } else if (epds != null && epds >= 10) {
-        extraFactors.add('Điểm sàng lọc EPDS ở mức cần theo dõi ($epds/30 điểm)');
+        extraFactors.add(
+          'Điểm sàng lọc EPDS ở mức cần theo dõi ($epds/30 điểm)',
+        );
       }
       if (heartRate != null && heartRate >= 120) {
         extraFactors.add('Nhịp tim mẹ rất nhanh ($heartRate bpm)');
@@ -1878,8 +1890,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         (aiResult['status'] ?? aiResult['triage_status'])?.toString() ??
         'NORMAL';
     final isEmergency =
-        aiResult['emergency_mode'] == true ||
-        status == 'CRITICAL_EMERGENCY';
+        aiResult['emergency_mode'] == true || status == 'CRITICAL_EMERGENCY';
     final isAnomaly = status == 'ANOMALY_MONITOR';
     final reasons =
         (aiResult['risk_factors'] as List?)
@@ -2223,13 +2234,14 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
 
                   final isPrePregnancy = _journeyType == 'PRE_PREGNANCY';
                   final isPostpartum =
-                      _journeyType == 'POSTPARTUM' || _journeyType == 'BABY_CARE';
+                      _journeyType == 'POSTPARTUM' ||
+                      _journeyType == 'BABY_CARE';
 
                   final promptMessage = isPrePregnancy
                       ? 'Bức tranh sức khỏe giai đoạn chuẩn bị mang thai của em có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ dinh dưỡng, nghỉ ngơi và theo dõi như thế nào?'
                       : (isPostpartum
-                          ? 'Bức tranh sức khỏe giai đoạn hậu sản & chăm bé của em có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ phục hồi, dinh dưỡng và chăm sóc như thế nào?'
-                          : 'Bức tranh sức khỏe toàn diện của em ở tuần thai ${_journeyGestationalWeeks ?? 20} có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ dinh dưỡng, nghỉ ngơi và theo dõi như thế nào?');
+                            ? 'Bức tranh sức khỏe giai đoạn hậu sản & chăm bé của em có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ phục hồi, dinh dưỡng và chăm sóc như thế nào?'
+                            : 'Bức tranh sức khỏe toàn diện của em ở tuần thai ${_journeyGestationalWeeks ?? 20} có các dấu hiệu (${reasons.join(', ')}). Em cần có chế độ dinh dưỡng, nghỉ ngơi và theo dõi như thế nào?');
 
                   context.push(
                     '/rag/chat',

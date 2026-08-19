@@ -114,8 +114,8 @@
       - Cử động thai máy ($\ge 4$ lần/2h từ tuần 28) theo RCOG Green-top 57 & ACOG PB 229 (PubMed: 34011892).
       - Phân tầng thể trạng BMI theo 3 giai đoạn (`PRECONCEPTION` theo WHO Asian Lancet 2004 $18.5 - 22.9$, `PREGNANCY` theo IOM 2009, `POSTPARTUM` bảo vệ nguồn sữa mẹ).
       - Nhu cầu nước uống theo 3 giai đoạn (`PRECONCEPTION` 1.5-2L, `PREGNANCY` 2-2.5L, `POSTPARTUM` 2.5-3L).
-      - $SpO_2 < 92\%$, Nhịp tim $> 120$ bpm, Cờ đỏ câu 10 thang trầm cảm EPDS...
-    - **`SANITY_RANGES`:** Bộ giới hạn dải sinh lý y tế hợp lý để bắt lỗi người dùng gõ nhầm đơn vị hoặc số liệu phi lý (ví dụ: gõ nhầm 300 mmol/L, $SBP \le DBP$).
+      - Nhịp tim $\ge 120$ bpm hoặc $< 50$ bpm, Cờ đỏ câu 10 thang trầm cảm EPDS...
+    - **`SANITY_RANGES`:** Bộ giới hạn dải sinh lý y tế hợp lý để bắt lỗi người dùng gõ nhầm đơn vị hoặc số liệu phi lý (ví dụ: gõ nhầm 300 mmol/L, $SBP \le DBP$ hoặc HA $600/500$, nhịp tim ngoài dải $30-250$).
     - **Danh mục từ khóa báo động (Keywords Catalog):** Tiền sản giật, Nhiễm trùng ối, Vỡ ối, Ra máu tươi... theo chuẩn Bộ Y Tế, WHO và ACOG.
 * **`app/constants/__init__.py`:**
   - *Chức năng:* Package export thuận tiện cho toàn bộ service và tests tái sử dụng nhất quán.

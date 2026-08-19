@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/network/api_client.dart';
 import '../models/health_metric_model.dart';
+import '../models/maternal_metric_lifecycle_policy.dart';
 import '../services/health_metric_service.dart';
 
 class EditHealthMetricScreen extends StatefulWidget {
@@ -37,17 +39,47 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
 
   bool _isSaving = false;
   bool _isDeleting = false;
+  bool _lifecycleLoaded = false;
+  String? _journeyType;
 
   late bool _isDualValue;
-  bool get _isBmi => widget.metric.metricCode == 'BMI' || widget.metric.metricType == MetricType.bmi;
+  bool get _isBmi =>
+      widget.metric.metricCode == 'BMI' ||
+      widget.metric.metricType == MetricType.bmi;
   bool get _isGlucose => widget.metric.metricCode == 'BLOOD_GLUCOSE';
-  bool get _isTemperature => widget.metric.metricCode == 'TEMPERATURE' || widget.metric.metricType == MetricType.temperature;
+  bool get _isTemperature =>
+      widget.metric.metricCode == 'TEMPERATURE' ||
+      widget.metric.metricType == MetricType.temperature;
+  bool get _isFetalMovement => const {
+    'FETAL_MOVEMENT',
+    'FETAL_MOVEMENT_COUNT',
+    'FETAL_MOVEMENT_SESSION',
+  }.contains(widget.metric.metricCode.toUpperCase());
+
+  String? get _lifecycleRestrictionMessage {
+    if (!_isFetalMovement || !_lifecycleLoaded) return null;
+    return maternalMetricEntryRestrictionMessage(
+      metricType: widget.metric.metricCode,
+      journeyType: _journeyType,
+    );
+  }
+
+  bool get _canEdit =>
+      _isWithinEditWindow &&
+      (!_isFetalMovement || _lifecycleLoaded) &&
+      _lifecycleRestrictionMessage == null;
 
   String _glucoseContext = 'FASTING';
   String _glucoseUnit = 'mg/dL';
   static const _glucoseUnits = [
-    DropdownMenuItem(value: 'mg/dL', child: Text('mg/dL (Máy đo đường huyết cá nhân)')),
-    DropdownMenuItem(value: 'mmol/L', child: Text('mmol/L (Chuẩn xét nghiệm y khoa)')),
+    DropdownMenuItem(
+      value: 'mg/dL',
+      child: Text('mg/dL (Máy đo đường huyết cá nhân)'),
+    ),
+    DropdownMenuItem(
+      value: 'mmol/L',
+      child: Text('mmol/L (Chuẩn xét nghiệm y khoa)'),
+    ),
   ];
   static const _glucoseContexts = [
     DropdownMenuItem(value: 'FASTING', child: Text('Lúc đói')),
@@ -55,7 +87,10 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     DropdownMenuItem(value: 'POST_MEAL_1H', child: Text('Sau ăn 1 giờ')),
     DropdownMenuItem(value: 'POST_MEAL_2H', child: Text('Sau ăn 2 giờ')),
     DropdownMenuItem(value: 'RANDOM', child: Text('Ngẫu nhiên')),
-    DropdownMenuItem(value: 'OTHER_APPROVED', child: Text('Khác (đã được duyệt)')),
+    DropdownMenuItem(
+      value: 'OTHER_APPROVED',
+      child: Text('Khác (đã được duyệt)'),
+    ),
   ];
 
   String _temperatureSite = 'ARMPIT';
@@ -78,10 +113,14 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
       final weight = m.context['weightKg'] as num?;
       final height = m.context['heightCm'] as num?;
       if (weight != null) {
-        _valuePrimaryCtrl.text = weight % 1 == 0 ? weight.toStringAsFixed(0) : weight.toStringAsFixed(1);
+        _valuePrimaryCtrl.text = weight % 1 == 0
+            ? weight.toStringAsFixed(0)
+            : weight.toStringAsFixed(1);
       }
       if (height != null) {
-        _valueSecondaryCtrl.text = height % 1 == 0 ? height.toStringAsFixed(0) : height.toStringAsFixed(1);
+        _valueSecondaryCtrl.text = height % 1 == 0
+            ? height.toStringAsFixed(0)
+            : height.toStringAsFixed(1);
       }
     } else {
       _valuePrimaryCtrl.text = m.valueNumeric % 1 == 0
@@ -107,6 +146,28 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     _noteCtrl.text = m.note ?? '';
     _measuredDate = m.measuredAt;
     _measuredTime = TimeOfDay.fromDateTime(m.measuredAt);
+    _loadLifecyclePolicy();
+  }
+
+  Future<void> _loadLifecyclePolicy() async {
+    if (!_isFetalMovement) {
+      _lifecycleLoaded = true;
+      return;
+    }
+
+    try {
+      final response = await apiGet('/api/v1/journeys/me/dashboard');
+      final data = response['data'];
+      _journeyType = data is Map<String, dynamic>
+          ? data['journeyType'] as String?
+          : null;
+    } catch (_) {
+      _journeyType = null;
+    } finally {
+      if (mounted) {
+        setState(() => _lifecycleLoaded = true);
+      }
+    }
   }
 
   @override
@@ -174,6 +235,15 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   }
 
   Future<void> _save() async {
+    if (_isFetalMovement && !_lifecycleLoaded) {
+      _showError('Đang kiểm tra giai đoạn hành trình. Vui lòng thử lại.');
+      return;
+    }
+    final lifecycleRestriction = _lifecycleRestrictionMessage;
+    if (lifecycleRestriction != null) {
+      _showError(lifecycleRestriction);
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     if (!_isWithinEditWindow) {
       _showError('Đã quá 24 giờ kể từ khi tạo. Không thể chỉnh sửa.');
@@ -186,7 +256,12 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     if (_isBmi) {
       final weightKg = double.tryParse(_valuePrimaryCtrl.text.trim());
       final heightCm = double.tryParse(_valueSecondaryCtrl.text.trim());
-      if (weightKg == null || weightKg < 20 || weightKg > 300 || heightCm == null || heightCm < 100 || heightCm > 230) {
+      if (weightKg == null ||
+          weightKg < 20 ||
+          weightKg > 300 ||
+          heightCm == null ||
+          heightCm < 100 ||
+          heightCm > 230) {
         _showError('Nhập cân nặng 20–300 kg và chiều cao 100–230 cm.');
         return;
       }
@@ -229,8 +304,12 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     try {
       final contextPayload = Map<String, dynamic>.from(widget.metric.context);
       if (_isBmi) {
-        contextPayload['weightKg'] = double.tryParse(_valuePrimaryCtrl.text.trim());
-        contextPayload['heightCm'] = double.tryParse(_valueSecondaryCtrl.text.trim());
+        contextPayload['weightKg'] = double.tryParse(
+          _valuePrimaryCtrl.text.trim(),
+        );
+        contextPayload['heightCm'] = double.tryParse(
+          _valueSecondaryCtrl.text.trim(),
+        );
         contextPayload['pregnancyBasis'] = 'CURRENT_MEASUREMENT';
       }
       if (_isGlucose) {
@@ -360,6 +439,10 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
             children: [
               _buildPreviousValueCard(),
               const SizedBox(height: 16),
+              if (_isFetalMovement && !_lifecycleLoaded)
+                const LinearProgressIndicator(color: _primaryContainer),
+              if (_lifecycleRestrictionMessage case final message?)
+                _buildLifecycleRestrictionWarning(message),
               if (!_isWithinEditWindow) _buildEditWindowWarning(),
               _buildFormCard(),
               const SizedBox(height: 16),
@@ -464,8 +547,35 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     );
   }
 
+  Widget _buildLifecycleRestrictionWarning(String message) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: _primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: _onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFormCard() {
-    final enabled = _isWithinEditWindow;
+    final enabled = _canEdit;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -507,7 +617,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                         label: 'Cân nặng',
                         suffix: 'kg',
                         enabled: enabled,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
@@ -518,7 +630,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                         label: 'Chiều cao',
                         suffix: 'cm',
                         enabled: enabled,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
@@ -527,7 +641,10 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                 if (_bmiPreview != null) ...[
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: _surfaceContainer.withAlpha(80),
                       borderRadius: BorderRadius.circular(16),
@@ -592,19 +709,33 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                       color: _onSurfaceVariant,
                     ),
                     filled: true,
-                    fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    fillColor: enabled
+                        ? Colors.white
+                        : _surfaceContainer.withAlpha(60),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _surfaceContainer,
+                        width: 2,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _surfaceContainer,
+                        width: 2,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _primaryContainer,
+                        width: 2,
+                      ),
                     ),
                   ),
                   items: _glucoseUnits,
@@ -616,7 +747,10 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: _glucoseContexts.any((item) => item.value == _glucoseContext)
+                  value:
+                      _glucoseContexts.any(
+                        (item) => item.value == _glucoseContext,
+                      )
                       ? _glucoseContext
                       : 'FASTING',
                   decoration: InputDecoration(
@@ -627,25 +761,40 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                       color: _onSurfaceVariant,
                     ),
                     filled: true,
-                    fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    fillColor: enabled
+                        ? Colors.white
+                        : _surfaceContainer.withAlpha(60),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _surfaceContainer,
+                        width: 2,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _surfaceContainer,
+                        width: 2,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _primaryContainer,
+                        width: 2,
+                      ),
                     ),
                   ),
                   items: _glucoseContexts,
                   onChanged: enabled
                       ? (val) {
-                          if (val != null) setState(() => _glucoseContext = val);
+                          if (val != null)
+                            setState(() => _glucoseContext = val);
                         }
                       : null,
                 ),
@@ -653,7 +802,10 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
               if (_isTemperature) ...[
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: _temperatureSites.any((item) => item.value == _temperatureSite)
+                  value:
+                      _temperatureSites.any(
+                        (item) => item.value == _temperatureSite,
+                      )
                       ? _temperatureSite
                       : 'ARMPIT',
                   decoration: InputDecoration(
@@ -664,25 +816,40 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                       color: _onSurfaceVariant,
                     ),
                     filled: true,
-                    fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    fillColor: enabled
+                        ? Colors.white
+                        : _surfaceContainer.withAlpha(60),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _surfaceContainer,
+                        width: 2,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _surfaceContainer,
+                        width: 2,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+                      borderSide: const BorderSide(
+                        color: _primaryContainer,
+                        width: 2,
+                      ),
                     ),
                   ),
                   items: _temperatureSites,
                   onChanged: enabled
                       ? (val) {
-                          if (val != null) setState(() => _temperatureSite = val);
+                          if (val != null)
+                            setState(() => _temperatureSite = val);
                         }
                       : null,
                 ),
@@ -751,7 +918,8 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   double? get _bmiPreview {
     final weight = double.tryParse(_valuePrimaryCtrl.text.trim());
     final height = double.tryParse(_valueSecondaryCtrl.text.trim());
-    if (weight == null || weight <= 0 || height == null || height <= 0) return null;
+    if (weight == null || weight <= 0 || height == null || height <= 0)
+      return null;
     return weight / ((height / 100) * (height / 100));
   }
 
@@ -981,7 +1149,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   }
 
   Widget _buildActionButtons() {
-    final enabled = _isWithinEditWindow;
+    final enabled = _canEdit;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1026,7 +1194,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         ),
         const SizedBox(height: 10),
         ElevatedButton.icon(
-          onPressed: enabled && !_isDeleting ? _delete : null,
+          onPressed: _isWithinEditWindow && !_isDeleting ? _delete : null,
           icon: _isDeleting
               ? const SizedBox(
                   width: 18,

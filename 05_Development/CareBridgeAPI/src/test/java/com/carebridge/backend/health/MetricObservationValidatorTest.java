@@ -181,6 +181,27 @@ class MetricObservationValidatorTest {
         assertThat(result.unit()).isEqualTo("Cel");
     }
 
+    @Test
+    void bloodPressureRejectsPhysiologicallyImpossibleValues() {
+        AddMetricRequest request = base(MetricType.BLOOD_PRESSURE, "600", "mmHg");
+        request.setValueSecondary(new BigDecimal("500"));
+
+        assertThatThrownBy(() -> validator.normalize(request,
+                definition("BLOOD_PRESSURE", ObservationShape.PAIRED_POINT, "mmHg", List.of("mmHg"))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
+    }
+
+    @Test
+    void heartRateRejectsOutOfRangeValues() {
+        AddMetricRequest request = base(MetricType.MATERNAL_HEART_RATE, "29", "bpm");
+
+        assertThatThrownBy(() -> validator.normalize(request,
+                definition("MATERNAL_HEART_RATE", ObservationShape.POINT, "bpm", List.of("bpm"))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
+    }
+
     private AddMetricRequest base(MetricType type, String value, String unit) {
         AddMetricRequest request = new AddMetricRequest();
         request.setMetricType(type);

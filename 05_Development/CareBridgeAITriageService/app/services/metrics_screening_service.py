@@ -89,9 +89,6 @@ from app.constants.vital_thresholds import (
     EPDS_QUESTION_10_RED_FLAG_THRESHOLD,
     EPDS_HIGH_RISK_DEPRESSION_THRESHOLD,
     EPDS_MILD_RISK_DEPRESSION_THRESHOLD,
-    # SpO2 constants
-    SPO2_CRITICAL_LOW_THRESHOLD,
-    SPO2_WARNING_LOW_THRESHOLD,
     # Sleep constants
     SLEEP_MIN_HOURS_THRESHOLD,
     # Sanity validation
@@ -231,14 +228,7 @@ class MetricsScreeningService:
             is_anomaly = True
         risk_factors.extend(epds_factors)
 
-        # 10. Evaluate SpO2 & Sleep (Oxy máu và giấc ngủ)
-        spo2_status, spo2_factors = self._check_spo2(request.spo2)
-        if spo2_status == TriageRiskStatus.CRITICAL_EMERGENCY:
-            is_critical = True
-        elif spo2_status == TriageRiskStatus.ANOMALY_MONITOR:
-            is_anomaly = True
-        risk_factors.extend(spo2_factors)
-
+        # 10. Evaluate Sleep (Giấc ngủ)
         sleep_status, sleep_factors = self._check_sleep(request.sleep_hours)
         if sleep_status == TriageRiskStatus.ANOMALY_MONITOR:
             is_anomaly = True
@@ -326,6 +316,14 @@ class MetricsScreeningService:
         # Plausibility check: SBP must be > DBP
         if sbp is not None and dbp is not None and sbp <= dbp:
             factors.append(f"Chỉ số huyết áp không hợp lệ ({sbp}/{dbp} mmHg: Huyết áp tâm thu phải lớn hơn tâm trương)")
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+
+        # Plausibility range check (Sanity check: SBP 50-260, DBP 30-160)
+        if sbp is not None and (sbp < 50 or sbp > 260):
+            factors.append(f"Chỉ số huyết áp tâm thu ngoài dải sinh lý hợp lý ({sbp} mmHg, dải chuẩn: 50–260 mmHg)")
+            return TriageRiskStatus.ANOMALY_MONITOR, factors
+        if dbp is not None and (dbp < 30 or dbp > 160):
+            factors.append(f"Chỉ số huyết áp tâm trương ngoài dải sinh lý hợp lý ({dbp} mmHg, dải chuẩn: 30–160 mmHg)")
             return TriageRiskStatus.ANOMALY_MONITOR, factors
 
         symptom_text = (" ".join(symptoms) + " " + (free_text_notes or "")).lower()
@@ -797,24 +795,8 @@ class MetricsScreeningService:
         return TriageRiskStatus.NORMAL, factors
 
     # -------------------------------------------------------------------------
-    # 10. SpO2 Oxy máu & Giấc ngủ
+    # 10. Giấc ngủ
     # -------------------------------------------------------------------------
-    def _check_spo2(self, spo2: int | None) -> Tuple[TriageRiskStatus, List[str]]:
-        factors = []
-        if spo2 is None:
-            return TriageRiskStatus.NORMAL, factors
-
-        if spo2 < SPO2_CRITICAL_LOW_THRESHOLD:
-            factors.append(
-                f"Độ bão hòa oxy SpO2 rất thấp ({spo2}%) - Suy hô hấp cấp, nguy cơ thiếu oxy bào thai nghiêm trọng"
-            )
-            return TriageRiskStatus.CRITICAL_EMERGENCY, factors
-        elif spo2 < SPO2_WARNING_LOW_THRESHOLD:
-            factors.append(f"Độ bão hòa oxy SpO2 giảm ({spo2}%, chuẩn >= 95%)")
-            return TriageRiskStatus.ANOMALY_MONITOR, factors
-
-        return TriageRiskStatus.NORMAL, factors
-
     def _check_sleep(self, sleep_hours: float | None) -> Tuple[TriageRiskStatus, List[str]]:
         factors = []
         if sleep_hours is None:

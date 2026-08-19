@@ -697,8 +697,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           _buildJourneyTimelineCard(),
         ],
         const SizedBox(height: 16),
-        _buildPostpartumRecoveryActions(dashboard),
-        const SizedBox(height: 16),
         _buildLifecycleContentEntry(),
       ];
     }
@@ -961,73 +959,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPostpartumRecoveryActions(JourneyDashboard dashboard) {
-    return Column(
-      children: [
-        _postpartumAction(
-          key: const Key('postpartum-open-logs'),
-          icon: Icons.menu_book_outlined,
-          title: 'Nhật ký hồi phục',
-          description: 'Ghi nhận sức khỏe và xem lại các ngày trước.',
-          onTap: dashboard.journeyId == null
-              ? null
-              : () => context.push(
-                  '/postpartum-logs?journeyId=${Uri.encodeComponent(dashboard.journeyId!)}',
-                ),
-        ),
-        const SizedBox(height: 12),
-        _postpartumAction(
-          key: const Key('postpartum-safety-help'),
-          icon: Icons.health_and_safety_outlined,
-          title: 'Dấu hiệu cần hỗ trợ khẩn cấp',
-          description: 'Xem lựa chọn hỗ trợ dành riêng cho giai đoạn hậu sản.',
-          onTap: () => context.push('/postpartum-safety-help'),
-          urgent: true,
-        ),
-      ],
-    );
-  }
-
-  Widget _postpartumAction({
-    required Key key,
-    required IconData icon,
-    required String title,
-    required String description,
-    required VoidCallback? onTap,
-    bool urgent = false,
-  }) {
-    return Semantics(
-      button: true,
-      label: '$title. $description',
-      child: Card(
-        key: key,
-        margin: EdgeInsets.zero,
-        elevation: 0,
-        color: urgent ? const Color(0xFFFFF0ED) : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: BorderSide(
-            color: urgent ? const Color(0xFFE9A69A) : const Color(0xFFE8DDD6),
-          ),
-        ),
-        child: ListTile(
-          minTileHeight: 72,
-          onTap: onTap,
-          leading: Icon(
-            icon,
-            color: urgent ? const Color(0xFF93000A) : _primary,
-          ),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          subtitle: Text(description),
-          trailing: const Icon(Icons.chevron_right_rounded),
-        ),
       ),
     );
   }

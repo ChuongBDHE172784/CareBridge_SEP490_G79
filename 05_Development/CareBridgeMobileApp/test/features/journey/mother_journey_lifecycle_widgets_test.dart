@@ -209,7 +209,7 @@ void main() {
     expect(find.text('250 cm'), findsOneWidget);
   });
 
-  testWidgets('maternal journey keeps AI Triage as a single floating entry', (
+  testWidgets('maternal journey does not show the retired triage action', (
     tester,
   ) async {
     const dashboard = JourneyDashboard(
@@ -235,6 +235,8 @@ void main() {
 
     expect(find.text('Kiểm tra triệu chứng'), findsNothing);
     expect(find.text('AI Triage - Kiểm tra triệu chứng'), findsNothing);
+    expect(find.text('Nhật ký hồi phục'), findsNothing);
+    expect(find.byKey(const Key('postpartum-open-logs')), findsNothing);
   });
 
   testWidgets('shows loading feedback only while the first journey loads', (

@@ -29,14 +29,8 @@ import '../../features/healthRecords/screens/add_maternal_health_metric_screen.d
 import '../../features/healthRecords/screens/hydration_tracker_screen.dart';
 import '../../features/healthRecords/screens/fetal_movement_tracker_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
-import '../../features/healthRecords/screens/postpartum_log_list_screen.dart';
-import '../../features/healthRecords/screens/postpartum_log_detail_screen.dart';
-import '../../features/healthRecords/screens/postpartum_log_form_screen.dart';
-import '../../features/healthRecords/screens/postpartum_safety_help_screen.dart';
-import '../../features/healthRecords/models/postpartum_log_model.dart';
 import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
 import '../../features/emergency/models/emergency_session_model.dart';
-import '../../features/aiTriage/models/triage_result_model.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
 import '../../features/baby/screens/edit_baby_profile_screen.dart';
 import '../../features/baby/screens/edit_baby_daily_log_screen.dart';
@@ -78,14 +72,10 @@ import '../../features/healthRecords/screens/growth_measurement_history_screen.d
 import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
 import '../../features/community/models/content_model.dart';
-import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
-import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/rag_chat_screen.dart';
-import '../../features/aiTriage/screens/triage_history_screen.dart';
 import '../../features/aiTriage/widgets/floating_ai_triage_host.dart';
-import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
 import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
 import '../../features/emergency/screens/family_alert_detail_screen.dart';
@@ -119,6 +109,13 @@ Widget _buildHomeForRole(String? role, {required int initialIndex}) {
       return const _UnsupportedRoleHome();
   }
 }
+
+const _supportedEmergencyStages = {
+  'PRECONCEPTION',
+  'PREGNANCY',
+  'POSTPARTUM',
+  'INFANT',
+};
 
 bool _isUuid(String? value) =>
     value != null &&
@@ -467,51 +464,6 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const Scaffold(
         body: Center(child: Text('Update Mother Journey Screen (3.3.1.2)')),
       ),
-    ),
-    GoRoute(
-      path: '/postpartum-logs',
-      builder: (context, state) {
-        final journeyId = state.uri.queryParameters['journeyId'];
-        return _isUuid(journeyId)
-            ? PostpartumLogListScreen(journeyId: journeyId!)
-            : const _InvalidRouteScreen();
-      },
-    ),
-    GoRoute(
-      path: '/postpartum-logs/new',
-      builder: (context, state) {
-        final journeyId = state.uri.queryParameters['journeyId'];
-        return _isUuid(journeyId)
-            ? PostpartumLogFormScreen(journeyId: journeyId!)
-            : const _InvalidRouteScreen();
-      },
-    ),
-    GoRoute(
-      path: '/postpartum-logs/:logId',
-      builder: (context, state) {
-        final logId = state.pathParameters['logId'];
-        return _isUuid(logId)
-            ? PostpartumLogDetailScreen(logId: logId!)
-            : const _InvalidRouteScreen();
-      },
-    ),
-    GoRoute(
-      path: '/postpartum-logs/:logId/edit',
-      builder: (context, state) {
-        final logId = state.pathParameters['logId'];
-        final initial = state.extra as PostpartumLog?;
-        return _isUuid(logId) && initial != null
-            ? PostpartumLogFormScreen(
-                journeyId: initial.journeyId,
-                logId: logId,
-                initialLog: initial,
-              )
-            : const _InvalidRouteScreen();
-      },
-    ),
-    GoRoute(
-      path: '/postpartum-safety-help',
-      builder: (context, state) => const PostpartumSafetyHelpScreen(),
     ),
     GoRoute(
       path: '/health-metrics/:id',
@@ -933,53 +885,20 @@ final GoRouter appRouter = GoRouter(
           const ViewContentScreen(mode: ContentBrowseMode.lifecycle),
     ),
     GoRoute(
-      path: '/triage/intake',
-      builder: (context, state) {
-        final extra = state.extra;
-        if (extra != null && extra is! TriageEntryContext) {
-          return const _InvalidRouteScreen();
-        }
-        return SymptomIntakeScreen(
-          entryContext:
-              extra as TriageEntryContext? ??
-              const TriageEntryContext(
-                stage: TriageStageIntent.pregnancy,
-                requiresStageSelection: false,
-              ),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/triage/chat',
-      builder: (context, state) {
-        final extra = state.extra;
-        String? initialPrompt = state.uri.queryParameters['prompt'];
-        Map<String, dynamic>? attachedContext;
-        bool autoSend = state.uri.queryParameters['autoSend'] == 'true';
-        if (extra is Map<String, dynamic>) {
-          initialPrompt ??= (extra['prompt'] ?? extra['initialMessage']) as String?;
-          attachedContext = (extra['attachedContext'] ?? extra['attachedHealthContext']) as Map<String, dynamic>?;
-          if (extra.containsKey('autoSend')) {
-            autoSend = extra['autoSend'] == true;
-          }
-        }
-        return RagChatScreen(
-          initialPrompt: initialPrompt,
-          attachedHealthContext: attachedContext,
-          autoSendInitialPrompt: autoSend,
-        );
-      },
-    ),
-    GoRoute(
       path: '/rag/chat',
       builder: (context, state) {
         final extra = state.extra;
-        String? initialPrompt = state.uri.queryParameters['prompt'] ?? state.uri.queryParameters['initialMessage'];
+        String? initialPrompt =
+            state.uri.queryParameters['prompt'] ??
+            state.uri.queryParameters['initialMessage'];
         Map<String, dynamic>? attachedContext;
         bool autoSend = state.uri.queryParameters['autoSend'] == 'true';
         if (extra is Map<String, dynamic>) {
-          initialPrompt ??= (extra['prompt'] ?? extra['initialMessage']) as String?;
-          attachedContext = (extra['attachedContext'] ?? extra['attachedHealthContext']) as Map<String, dynamic>?;
+          initialPrompt ??=
+              (extra['prompt'] ?? extra['initialMessage']) as String?;
+          attachedContext =
+              (extra['attachedContext'] ?? extra['attachedHealthContext'])
+                  as Map<String, dynamic>?;
           if (extra.containsKey('autoSend')) {
             autoSend = extra['autoSend'] == true;
           }
@@ -989,17 +908,6 @@ final GoRouter appRouter = GoRouter(
           attachedHealthContext: attachedContext,
           autoSendInitialPrompt: autoSend,
         );
-      },
-    ),
-    GoRoute(
-      path: '/triage/history',
-      builder: (context, state) => const TriageHistoryScreen(),
-    ),
-    GoRoute(
-      path: '/triage/result/:sessionId',
-      builder: (context, state) {
-        final sessionId = state.pathParameters['sessionId'] ?? '';
-        return RiskTriageResultScreen(sessionId: sessionId);
       },
     ),
     GoRoute(
@@ -1022,7 +930,7 @@ final GoRouter appRouter = GoRouter(
         final mode = state.uri.queryParameters['mode'];
         final stage = state.uri.queryParameters['stage'] ?? 'INFANT';
         if ((mode != null && mode != 'manual' && mode != 'triage') ||
-            !TriageResult.supportedStages.contains(stage)) {
+            !_supportedEmergencyStages.contains(stage)) {
           return const _InvalidRouteScreen();
         }
         return EmergencyMapScreen(

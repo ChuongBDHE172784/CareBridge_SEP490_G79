@@ -37,7 +37,6 @@ class VitalSignType(str, Enum):
     FETAL_MOVEMENT = "FETAL_MOVEMENT"
     HEART_RATE = "HEART_RATE"
     BMI = "BMI"
-    SPO2 = "SPO2"
     WATER_INTAKE = "WATER_INTAKE"
     SLEEP = "SLEEP"
     EPDS_MOOD = "EPDS_MOOD"
@@ -196,18 +195,12 @@ EPDS_HIGH_RISK_DEPRESSION_THRESHOLD = 13   # >= 13 điểm: Trầm cảm mức �
 EPDS_MILD_RISK_DEPRESSION_THRESHOLD = 10   # >= 10 điểm: Nguy cơ trầm cảm nhẹ/trung bình
 
 # ============================================================================
-# 9. SpO2 Oxy máu (%) - Căn cứ: Chuẩn Hồi sức Cấp cứu Sản khoa
-# ============================================================================
-SPO2_CRITICAL_LOW_THRESHOLD = 92           # < 92%: Suy hô hấp cấp, nguy cơ thiếu oxy bào thai nặng
-SPO2_WARNING_LOW_THRESHOLD = 95            # < 95%: Giảm oxy mô
-
-# ============================================================================
-# 10. Giấc ngủ (Giờ/ngày)
+# 9. Giấc ngủ (Giờ/ngày)
 # ============================================================================
 SLEEP_MIN_HOURS_THRESHOLD = 5.0
 
 # ============================================================================
-# 11. Giới hạn Sinh lý Y tế Hợp lý (Plausibility / Sanity Validation Ranges)
+# 10. Giới hạn Sinh lý Y tế Hợp lý (Plausibility / Sanity Validation Ranges)
 # Ngăn chặn lỗi nhập liệu phi lý y khoa (như Glucose 300 mmol/L, HA 500 mmHg...)
 # ============================================================================
 SANITY_RANGES = {
@@ -216,10 +209,9 @@ SANITY_RANGES = {
     "glucose_mmol_l": (1.0, 35.0),         # mmol/L: Tối đa trên máy đo lâm sàng ~33.3-35.0 mmol/L
     "glucose_mg_dl": (20.0, 600.0),        # mg/dL: Tối đa trên máy đo ~600 mg/dL
     "temperature": (34.0, 43.0),           # °C: Cặp nhiệt độ lâm sàng sống 34.0 - 43.0°C
-    "heart_rate": (30, 220),               # bpm
+    "heart_rate": (30, 250),               # bpm
     "fetal_kicks_session": (0, 60),        # Lần/phiên (tối đa ~60 lần trong 2h)
-    "spo2": (50, 100),                     # %
-    "weight_kg": (25.0, 250.0),            # kg
+    "weight_kg": (20.0, 300.0),            # kg
     "height_cm": (100.0, 250.0),           # cm
     "water_ml": (0, 10000),                # ml/ngày
     "sleep_hours": (0.0, 24.0),            # giờ/ngày
