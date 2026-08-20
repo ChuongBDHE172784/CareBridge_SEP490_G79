@@ -15,7 +15,7 @@ const _supportRoutes = <String, String>{
   'BABY_CARE': '/babies',
   'EXPERT_CONSULTATION': '/experts',
   'CONTENT_LIBRARY': '/content',
-  'AI_TRIAGE': '/triage/intake',
+  'AI_TRIAGE': '/rag/chat',
 };
 
 TodayTask _task({

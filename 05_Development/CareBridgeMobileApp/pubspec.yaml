@@ -55,6 +55,7 @@ dependencies:
   image_picker: ^1.1.2
   image_gallery_saver_plus: ^5.1.1
   zego_express_engine: 3.24.1
+  path_provider: ^2.1.2
 
   http_parser: ^4.1.2
   uuid: ^4.5.1

@@ -283,6 +283,14 @@ class _RecommendationProfileScreenState
   }
 
   void _normalizeStageConditionedInputs() {
+    if (_stage == 'POSTPARTUM') {
+      final reproductiveHistory = _map('reproductiveHistory');
+      final codes = reproductiveHistory['codes'];
+      if (codes is List && codes.contains('NO_PRIOR_PREGNANCY')) {
+        _profile['reproductiveHistory'] = <String, dynamic>{'state': 'UNKNOWN'};
+      }
+    }
+
     final bmi = _map('bmi');
     if (bmi['state'] != 'KNOWN') return;
     if (!_allowedContexts.contains(bmi['weightContext'])) {
@@ -790,6 +798,12 @@ class _RecommendationProfileScreenState
     final selected = (value['codes'] is List
         ? (value['codes'] as List).whereType<String>()
         : const <String>[]);
+    final options =
+        RecommendationQuestionnaire.codeOptions[question.domain] ?? const [];
+    final visibleOptions =
+        question.domain == 'reproductiveHistory' && _stage == 'POSTPARTUM'
+        ? options.where((code) => code != 'NO_PRIOR_PREGNANCY').toList()
+        : options;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -803,9 +817,7 @@ class _RecommendationProfileScreenState
         ),
         const SizedBox(height: 10),
         _choiceWrap(
-          values:
-              RecommendationQuestionnaire.codeOptions[question.domain] ??
-              const [],
+          values: visibleOptions,
           selected: selected.toSet(),
           multiSelect: true,
           onSelected: (code) => _toggleCode(question.domain, code),
@@ -1720,6 +1732,8 @@ class _RecommendationProfileScreenState
         return 'Chính sách cá nhân hóa đã thay đổi. Vui lòng tải lại biểu mẫu.';
       case 'RECOMMENDATION_PROFILE_REVIEW_REQUIRED':
         return 'Hồ sơ cần được xem lại theo giai đoạn hiện tại trước khi lưu.';
+      case 'RECOMMENDATION_REPRODUCTIVE_HISTORY_CONFLICT':
+        return 'Hành trình đã ghi nhận một thai kỳ trước đó. Vui lòng cập nhật câu Tiền sử sinh sản rồi thử lại.';
       case 'RECOMMENDATION_CONTEXT_UNAVAILABLE':
         return 'Chưa thể xác định ngữ cảnh hành trình an toàn. Vui lòng thử lại sau.';
       case 'PRF-002':

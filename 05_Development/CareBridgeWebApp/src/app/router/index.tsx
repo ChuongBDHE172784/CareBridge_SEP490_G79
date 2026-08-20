@@ -32,6 +32,7 @@ import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCa
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
 import ExpertConsultationRequestsPage from '../../features/expert/pages/ExpertConsultationRequestsPage';
 import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
+import ExpertSharedRecordsPage from '../../features/expert/pages/ExpertSharedRecordsPage';
 
 // Contribution screens
 
@@ -52,6 +53,7 @@ import AccountLockAppealsPage from '../../features/admin/pages/AccountLockAppeal
 import AccountLockAppealDetailPage from '../../features/admin/pages/AccountLockAppealDetailPage';
 import ExpertListPage from '../../features/admin/pages/ExpertListPage';
 import ExpertDetailPage from '../../features/admin/pages/ExpertDetailPage';
+import ConsultationCallListPage from '../../features/consultationManagement/pages/ConsultationCallListPage';
 
 // Security & admin screens (TV1 Sprint 0)
 import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
@@ -175,6 +177,7 @@ export const router = createBrowserRouter([
               { path: '/admin/experts', element: <ExpertListPage /> },
               { path: '/admin/experts/:expertProfileId', element: <ExpertDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
+              { path: '/admin/consultation-calls', element: <ConsultationCallListPage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
               // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
               // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly
@@ -262,6 +265,8 @@ export const router = createBrowserRouter([
                       { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
                       // CB-064: Consultation Requests
                       { path: '/expert/consultation-requests', element: <ExpertConsultationRequestsPage /> },
+                      // Shared Maternal Health Records & Checklists
+                      { path: '/expert/shared-records', element: <ExpertSharedRecordsPage /> },
                       // UC-144D: Direct Consult Chat & Call
                       { path: '/expert/direct-chats', element: <ConversationListPage /> },
                       { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },

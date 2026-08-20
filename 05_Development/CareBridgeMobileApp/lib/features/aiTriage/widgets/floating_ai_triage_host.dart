@@ -194,7 +194,6 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
       '/journey-setup',
       '/mother-stage-selection',
       '/postpartum-recovery-setup',
-      '/postpartum-safety-help',
     };
     if (exactPaths.contains(path)) return true;
     return lower.startsWith('/triage') ||
@@ -290,7 +289,7 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
       await widget.onOpen();
     } catch (error) {
       debugPrint(
-        '[FloatingAiTriageHost] failed to open CareBridge AI: '
+        '[FloatingAiTriageHost] failed to open AI Nurse: '
         '${error.runtimeType}',
       );
     } finally {
@@ -323,7 +322,7 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                 height: _size,
                 child: Semantics(
                   button: true,
-                  label: 'Mở trợ lý AI Triage',
+                  label: 'Mở trợ lý AI Nurse',
                   child: GestureDetector(
                     key: const Key('floating-ai-triage-robot'),
                     behavior: HitTestBehavior.opaque,

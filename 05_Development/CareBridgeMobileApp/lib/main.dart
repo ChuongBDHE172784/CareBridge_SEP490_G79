@@ -132,7 +132,8 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
     if (SafetyCountdownGuard.isShowing || SafetyMonitoringScreen.isMounted) {
       return;
     }
-    if (_safetyNavigationInFlight || isSafetyMonitoringScreenActive(appRouter)) {
+    if (_safetyNavigationInFlight ||
+        isSafetyMonitoringScreenActive(appRouter)) {
       return;
     }
     final currentPath = appRouter.routerDelegate.currentConfiguration.uri.path;
@@ -150,7 +151,8 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
       return;
     }
     if (_lastSafetyRoutePoppedAt != null &&
-        now.difference(_lastSafetyRoutePoppedAt!) < const Duration(seconds: 5)) {
+        now.difference(_lastSafetyRoutePoppedAt!) <
+            const Duration(seconds: 5)) {
       return;
     }
     _lastHandledEventId = event.id;
@@ -217,7 +219,7 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
                 appRouter.routeInformationProvider.value.uri.path,
             hasModal: () => floatingAiTriageRouteObserver.hasPopupRoute,
             onOpen: () async {
-              await appRouter.push('/triage/chat');
+              await appRouter.push('/rag/chat');
             },
             child: app,
           ),

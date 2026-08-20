@@ -40,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DirectMessageServiceImpl implements IDirectMessageService {
 
-    private static final int MAX_BODY_LENGTH = 2000;
+    private static final int MAX_BODY_LENGTH = 20000;
 
     private final DirectConversationRepository conversationRepository;
     private final DirectMessageRepository messageRepository;

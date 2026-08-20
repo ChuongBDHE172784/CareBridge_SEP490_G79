@@ -1470,6 +1470,12 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
     }
     if (response == null) return const SizedBox.shrink();
     final items = response.items;
+    final shouldOfferPersonalization = switch (response.profileStatus) {
+      RecommendationProfileStatus.notStarted ||
+      RecommendationProfileStatus.declined ||
+      RecommendationProfileStatus.revoked => true,
+      _ => false,
+    };
     // (3) Xác định tiêu đề động theo tuần thai hoặc giai đoạn hiện tại của mẹ
     final title = switch (response.stage) {
       'PRE_PREGNANCY' => 'Gợi ý cho chuẩn bị mang thai',
@@ -1493,6 +1499,20 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
             color: _MotherHomeScreenState._onSurfaceVariant,
           ),
         ),
+        if (shouldOfferPersonalization) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('mother-home-recommendation-personalize'),
+              onPressed: () => context.push(
+                '/recommendation-profile',
+                extra: response.stage,
+              ),
+              child: const Text('Cá nhân hóa nội dung'),
+            ),
+          ),
+        ],
         // (4) Nhắc nhở cập nhật hồ sơ cá nhân hóa nếu trạng thái là REVIEW_REQUIRED hoặc RECONSENT_REQUIRED
         if (response.profileStatus ==
                 RecommendationProfileStatus.reviewRequired ||

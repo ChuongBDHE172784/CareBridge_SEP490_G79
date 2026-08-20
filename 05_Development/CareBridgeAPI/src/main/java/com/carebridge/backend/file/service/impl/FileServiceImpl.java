@@ -40,12 +40,18 @@ import java.util.stream.Collectors;
 @Transactional
 public class FileServiceImpl implements IFileService {
 
-    private static final long MAX_SIZE_BYTES = 20L * 1024 * 1024;
+    private static final long MAX_SIZE_BYTES = 100L * 1024 * 1024;
     private static final long MAX_FILES_PER_ACCOUNT = 500L;
 
     // IMAGE MIME types → Cloudinary
     private static final Set<String> IMAGE_MIME_TYPES = Set.of(
             "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif"
+    );
+
+    // MEDIA MIME types (Video / Audio recordings) → R2
+    private static final Set<String> MEDIA_MIME_TYPES = Set.of(
+            "video/mp4", "video/webm", "video/quicktime",
+            "audio/mp4", "audio/x-m4a", "audio/m4a", "audio/aac", "audio/mpeg", "audio/wav", "audio/ogg", "audio/webm"
     );
 
     // DOCUMENT MIME types → R2
@@ -56,19 +62,20 @@ public class FileServiceImpl implements IFileService {
     private static final String MIME_XLSX =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    private static final Set<String> DOCUMENT_MIME_TYPES = Set.of(
-            "application/pdf", MIME_DOC, MIME_DOCX, MIME_XLS, MIME_XLSX
-    );
+    private static final Set<String> DOCUMENT_MIME_TYPES = java.util.stream.Stream.concat(
+            Set.of("application/pdf", MIME_DOC, MIME_DOCX, MIME_XLS, MIME_XLSX).stream(),
+            MEDIA_MIME_TYPES.stream()
+    ).collect(Collectors.toUnmodifiableSet());
 
     private static final Set<String> HEALTH_RECORD_MIME_TYPES = Set.of(
             "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif",
             "application/pdf"
     );
 
-    private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif",
-            "application/pdf", MIME_DOC, MIME_DOCX, MIME_XLS, MIME_XLSX
-    );
+    private static final Set<String> ALLOWED_MIME_TYPES = java.util.stream.Stream.of(
+            IMAGE_MIME_TYPES,
+            DOCUMENT_MIME_TYPES
+    ).flatMap(Set::stream).collect(Collectors.toUnmodifiableSet());
 
     private final UploadedFileRepository fileRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
@@ -176,11 +183,8 @@ public class FileServiceImpl implements IFileService {
         if (DOCUMENT_MIME_TYPES.contains(mimeType)) {
             R2StorageService r2 = r2StorageService.getIfAvailable();
             if (r2 != null) return "r2";
-            // Fail closed - don't fall back to Cloudinary for documents
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "FILE-005",
-                    "Private R2 storage is not configured for documents");
+            return "cloudinary";
         }
-        // Unknown MIME - default to cloudinary for backward compat, but log warning
         return "cloudinary";
     }
 
@@ -189,8 +193,7 @@ public class FileServiceImpl implements IFileService {
         if (kind == FileKind.DOCUMENT) {
             R2StorageService r2 = r2StorageService.getIfAvailable();
             if (r2 != null) return "r2";
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "FILE-005",
-                    "Private R2 storage is not configured for documents");
+            return "cloudinary";
         }
         return "cloudinary";
     }
@@ -488,7 +491,8 @@ public class FileServiceImpl implements IFileService {
 
     private String resolveProvider(UploadedFile file) {
         if (DOCUMENT_MIME_TYPES.contains(file.getMimeType())) {
-            return "r2";
+            R2StorageService r2 = r2StorageService.getIfAvailable();
+            if (r2 != null) return "r2";
         }
         return file.getStorageProvider();
     }
@@ -691,11 +695,9 @@ public class FileServiceImpl implements IFileService {
         if ("r2".equalsIgnoreCase(provider)) {
             R2StorageService service = r2StorageService.getIfAvailable();
             if (service != null) return service;
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "FILE-005",
-                    "Private R2 storage is not configured");
+            return cloudinaryStorageService;
         }
-        throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE-006",
-                "Unknown storage provider: " + provider);
+        return cloudinaryStorageService;
     }
 
     private String getExtension(String filename, String mimeType) {
@@ -712,6 +714,15 @@ public class FileServiceImpl implements IFileService {
             case "application/pdf" -> ".pdf";
             case "application/msword" -> ".doc";
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> ".docx";
+            case "video/mp4" -> ".mp4";
+            case "video/webm" -> ".webm";
+            case "video/quicktime" -> ".mov";
+            case "audio/mp4", "audio/x-m4a", "audio/m4a" -> ".m4a";
+            case "audio/aac" -> ".aac";
+            case "audio/mpeg" -> ".mp3";
+            case "audio/wav" -> ".wav";
+            case "audio/ogg" -> ".ogg";
+            case "audio/webm" -> ".weba";
             default -> "";
         };
     }

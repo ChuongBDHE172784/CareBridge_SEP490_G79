@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../aiTriage/models/triage_entry_context.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 
@@ -456,14 +455,8 @@ class _EpdsScreenState extends State<EpdsScreen> {
             child: const Text('Gọi 115'),
           ),
           FilledButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.push(
-                '/triage/intake',
-                extra: const TriageEntryContext(requiresStageSelection: true),
-              );
-            },
-            child: const Text('Mở hỗ trợ khẩn cấp'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Đã hiểu'),
           ),
         ],
       ),
@@ -767,6 +760,38 @@ class _EpdsScreenState extends State<EpdsScreen> {
                   color: _onSurfaceVariant,
                 ),
               ),
+              if ((_answers[9] ?? 0) == 0 && _result! >= 10) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    context.push(
+                      '/rag/chat',
+                      extra: {
+                        'prompt':
+                            'Tôi vừa làm bài sàng lọc tâm trạng EPDS đạt $_result/30 điểm, tôi cảm thấy hay lo âu và căng thẳng. AI Nurse có thể lắng nghe và cho tôi lời khuyên về tâm lý thai kỳ không?',
+                        'attachedContext': {'epds_score': _result},
+                      },
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.psychology_alt_rounded,
+                    color: _primaryContainer,
+                  ),
+                  label: const Text(
+                    'Tâm sự với Trợ lý AI Nurse',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: _primaryContainer),
+                    shape: const StadiumBorder(),
+                    minimumSize: const Size.fromHeight(46),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: 18),
             FilledButton(

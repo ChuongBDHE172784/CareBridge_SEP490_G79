@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/network/api_client.dart';
 import '../models/health_metric_model.dart';
+import '../models/maternal_metric_lifecycle_policy.dart';
 import '../services/health_metric_service.dart';
 
 class FetalMovementTrackerScreen extends StatefulWidget {
@@ -28,6 +30,7 @@ class _FetalMovementTrackerScreenState
   DateTime _historyDate = DateTime.now();
   bool _loading = true;
   String? _savingType;
+  String? _journeyType;
 
   static const _movementTypes = [
     ('KICK', 'Đạp', Icons.directions_run_rounded),
@@ -39,7 +42,30 @@ class _FetalMovementTrackerScreenState
   @override
   void initState() {
     super.initState();
-    _loadToday();
+    _initialize();
+  }
+
+  String? get _restrictionMessage => maternalMetricEntryRestrictionMessage(
+    metricType: 'FETAL_MOVEMENT_SESSION',
+    journeyType: _journeyType,
+  );
+
+  Future<void> _initialize() async {
+    try {
+      final response = await apiGet('/api/v1/journeys/me/dashboard');
+      if (response is Map && mounted) {
+        final data = response['data'] is Map
+            ? response['data'] as Map
+            : response;
+        _journeyType = data['journeyType'] as String?;
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    if (_restrictionMessage != null) {
+      setState(() => _loading = false);
+      return;
+    }
+    await _loadToday();
   }
 
   Future<void> _loadToday() async {
@@ -69,6 +95,13 @@ class _FetalMovementTrackerScreenState
   }
 
   Future<void> _record(String type, String label) async {
+    final restrictionMessage = _restrictionMessage;
+    if (restrictionMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(restrictionMessage)));
+      return;
+    }
     if (_savingType != null) return;
     setState(() => _savingType = type);
     final now = DateTime.now();
@@ -157,185 +190,225 @@ class _FetalMovementTrackerScreenState
         style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
       ),
     ),
-    body: RefreshIndicator(
-      color: _primaryContainer,
-      onRefresh: _loadToday,
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            '${DateUtils.isSameDay(_historyDate, DateTime.now()) ? 'Hôm nay' : 'Ngày đã chọn'}: ${_today.length} cử động đã ghi nhận',
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: _onSurface,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Ghi nhận khi bạn cảm nhận bé cử động. Điều quan trọng nhất là nhận biết thay đổi so với nhịp cử động quen thuộc của bé.',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 13,
-              height: 1.45,
-              color: _onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _surfaceContainerHigh),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline_rounded, color: _primary),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Nếu bé cử động ít hơn thường ngày, thay đổi rõ rệt hoặc bạn không cảm nhận được cử động, hãy liên hệ cơ sở sản khoa ngay — không chờ đến ngày mai.',
-                    style: TextStyle(
+    body: _restrictionMessage != null
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    color: _primary,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _restrictionMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 13,
+                      fontSize: 16,
                       height: 1.45,
                       color: _onSurface,
                     ),
                   ),
+                ],
+              ),
+            ),
+          )
+        : RefreshIndicator(
+            color: _primaryContainer,
+            onRefresh: _loadToday,
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                Text(
+                  '${DateUtils.isSameDay(_historyDate, DateTime.now()) ? 'Hôm nay' : 'Ngày đã chọn'}: ${_today.length} cử động đã ghi nhận',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                    letterSpacing: -0.3,
+                  ),
                 ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Ghi nhận khi bạn cảm nhận bé cử động. Điều quan trọng nhất là nhận biết thay đổi so với nhịp cử động quen thuộc của bé.',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    height: 1.45,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _surfaceContainerHigh),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: _primary),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Nếu bé cử động ít hơn thường ngày, thay đổi rõ rệt hoặc bạn không cảm nhận được cử động, hãy liên hệ cơ sở sản khoa ngay — không chờ đến ngày mai.',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            height: 1.45,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.45,
+                  children: _movementTypes
+                      .map(
+                        (item) => FilledButton.tonalIcon(
+                          onPressed: _savingType == null
+                              ? () => _record(item.$1, item.$2)
+                              : null,
+                          icon: _savingType == item.$1
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(item.$3),
+                          label: Text(
+                            '${item.$2}\n${_countFor(item.$1)} lần',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _surface,
+                            foregroundColor: _primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: const BorderSide(
+                                color: _surfaceContainerHigh,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Lịch sử',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _pickHistoryDate,
+                      icon: const Icon(
+                        Icons.calendar_month_rounded,
+                        color: _primary,
+                      ),
+                      label: Text(
+                        '${_historyDate.day.toString().padLeft(2, '0')}/${_historyDate.month.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w600,
+                          color: _primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_loading)
+                  const Center(
+                    child: CircularProgressIndicator(color: _primaryContainer),
+                  )
+                else if (_today.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text(
+                      'Chưa có cử động nào trong ngày đã chọn.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else
+                  ..._today.map(
+                    (point) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: _surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _surfaceContainerHigh),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            color: _surfaceContainerLow,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.schedule_rounded,
+                            color: _primary,
+                            size: 18,
+                          ),
+                        ),
+                        title: Text(
+                          _labelFor(point.note),
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w600,
+                            color: _onSurface,
+                          ),
+                        ),
+                        trailing: Text(
+                          TimeOfDay.fromDateTime(
+                            point.measuredAt,
+                          ).format(context),
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.45,
-            children: _movementTypes
-                .map(
-                  (item) => FilledButton.tonalIcon(
-                    onPressed: _savingType == null
-                        ? () => _record(item.$1, item.$2)
-                        : null,
-                    icon: _savingType == item.$1
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(item.$3),
-                    label: Text(
-                      '${item.$2}\n${_countFor(item.$1)} lần',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _surface,
-                      foregroundColor: _primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: _surfaceContainerHigh),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                    ),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Lịch sử',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: _onSurface,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: _pickHistoryDate,
-                icon: const Icon(Icons.calendar_month_rounded, color: _primary),
-                label: Text(
-                  '${_historyDate.day.toString().padLeft(2, '0')}/${_historyDate.month.toString().padLeft(2, '0')}',
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontWeight: FontWeight.w600,
-                    color: _primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_loading)
-            const Center(
-              child: CircularProgressIndicator(color: _primaryContainer),
-            )
-          else if (_today.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Text(
-                'Chưa có cử động nào trong ngày đã chọn.',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  color: _onSurfaceVariant,
-                ),
-              ),
-            )
-          else
-            ..._today.map(
-              (point) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                decoration: BoxDecoration(
-                  color: _surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _surfaceContainerHigh),
-                ),
-                child: ListTile(
-                  leading: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: _surfaceContainerLow,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.schedule_rounded, color: _primary, size: 18),
-                  ),
-                  title: Text(
-                    _labelFor(point.note),
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      color: _onSurface,
-                    ),
-                  ),
-                  trailing: Text(
-                    TimeOfDay.fromDateTime(point.measuredAt).format(context),
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      color: _onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    ),
   );
 }

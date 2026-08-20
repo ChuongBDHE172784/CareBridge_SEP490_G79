@@ -32,7 +32,9 @@ export function DirectCallProvider({ children }: PropsWithChildren) {
   const [credentials, setCredentials] = useState<ZegoJoinCredentials | null>(null);
   const [joining, setJoining] = useState(false);
   const [rtcError, setRtcError] = useState<string | null>(null);
+  const [showRecordingConsent, setShowRecordingConsent] = useState(false);
   const coordinatorRef = useRef<DirectCallCoordinator | null>(null);
+  const recordingConsentResolverRef = useRef<((accepted: boolean) => void) | null>(null);
   const renewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rtcContainerRef = useRef<HTMLDivElement | null>(null);
   const joinGenerationRef = useRef(0);
@@ -45,6 +47,29 @@ export function DirectCallProvider({ children }: PropsWithChildren) {
     setJoining(false);
     ringtonePlayer.stop();
   }, []);
+
+  const requestRecordingConsent = useCallback(() => {
+    if (recordingConsentResolverRef.current) return Promise.resolve(false);
+    setShowRecordingConsent(true);
+    return new Promise<boolean>((resolve) => {
+      recordingConsentResolverRef.current = resolve;
+    });
+  }, []);
+
+  const settleRecordingConsent = useCallback((accepted: boolean) => {
+    const resolve = recordingConsentResolverRef.current;
+    recordingConsentResolverRef.current = null;
+    setShowRecordingConsent(false);
+    resolve?.(accepted);
+  }, []);
+
+  useEffect(
+    () => () => {
+      recordingConsentResolverRef.current?.(false);
+      recordingConsentResolverRef.current = null;
+    },
+    []
+  );
 
   useEffect(() => {
     if (!userId || !accessToken) {
@@ -188,13 +213,15 @@ export function DirectCallProvider({ children }: PropsWithChildren) {
 
   const initiate = useCallback(
     async (conversationId: string, callType: 'VOICE' | 'VIDEO') => {
+      if (!(await requestRecordingConsent())) return;
       setRtcError(null);
       await coordinatorRef.current?.initiate(conversationId, callType);
     },
-    []
+    [requestRecordingConsent]
   );
 
   const accept = async () => {
+    if (!(await requestRecordingConsent())) return;
     try {
       await coordinatorRef.current?.answerCurrent();
       await beginJoin();
@@ -220,7 +247,7 @@ export function DirectCallProvider({ children }: PropsWithChildren) {
   return (
     <DirectCallContext.Provider value={{ initiate }}>
       {children}
-      {showPrompt && (
+      {showPrompt && !showRecordingConsent && (
         <div className="direct-call-overlay" role="dialog" aria-modal="true">
           <div className="direct-call-card">
             <h2>{call.callType === 'VIDEO' ? 'Cuộc gọi video' : 'Cuộc gọi thoại'}</h2>
@@ -251,6 +278,28 @@ export function DirectCallProvider({ children }: PropsWithChildren) {
                   {ready ? 'Kết thúc' : 'Huỷ'}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showRecordingConsent && (
+        <div className="direct-call-overlay direct-call-consent-overlay" role="dialog" aria-modal="true" aria-labelledby="direct-call-consent-title">
+          <div className="direct-call-card direct-call-consent-card">
+            <div className="direct-call-consent-icon" aria-hidden="true">REC</div>
+            <h2 id="direct-call-consent-title">Xác nhận ghi âm/ghi hình</h2>
+            <p className="direct-call-consent-message">
+              Cuộc gọi này sẽ được ghi âm/ghi hình nhằm đảm bảo chất lượng tư vấn y tế (Tuân thủ PDPA)
+            </p>
+            <p className="direct-call-consent-note">
+              Cuộc gọi chỉ được bắt đầu hoặc chấp nhận sau khi bạn đồng&nbsp;ý.
+            </p>
+            <div className="direct-call-actions">
+              <button className="secondary" onClick={() => settleRecordingConsent(false)}>
+                Không đồng ý
+              </button>
+              <button autoFocus onClick={() => settleRecordingConsent(true)}>
+                Đồng ý
+              </button>
             </div>
           </div>
         </div>

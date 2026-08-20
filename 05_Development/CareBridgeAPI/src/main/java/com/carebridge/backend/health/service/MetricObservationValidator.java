@@ -79,6 +79,12 @@ public class MetricObservationValidator {
             requirePositive(primary, "Metric value must be positive");
         }
 
+        if ("BLOOD_PRESSURE".equals(metricCode)) {
+            requireRange(primary, new BigDecimal("60"), new BigDecimal("260"),
+                    "Systolic blood pressure must be between 60 and 260 mmHg");
+            requireRange(secondary, new BigDecimal("40"), new BigDecimal("160"),
+                    "Diastolic blood pressure must be between 40 and 160 mmHg");
+        }
         if ("BLOOD_GLUCOSE".equals(metricCode)) {
             requireGlucoseContext(context);
         }

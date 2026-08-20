@@ -94,3 +94,27 @@ describe('session-bound request isolation', () => {
     expect(useAuthStore.getState().accessToken).toBe('access-new');
   });
 });
+
+describe('multipart request headers', () => {
+  it('leaves Content-Type unset so the browser can append the multipart boundary', async () => {
+    const body = new FormData();
+    body.append('file', new Blob(['recording'], { type: 'video/webm' }), 'call.webm');
+    let observedContentType: unknown = 'not-observed';
+
+    await apiClient.post('/api/v1/direct-conversations/conversation/calls/call/recording', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      adapter: async (config) => {
+        observedContentType = config.headers.get('Content-Type');
+        return {
+          data: {},
+          status: 200,
+          statusText: 'OK',
+          headers: new AxiosHeaders(),
+          config,
+        };
+      },
+    });
+
+    expect(observedContentType).toBe(false);
+  });
+});

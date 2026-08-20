@@ -5,12 +5,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-public interface ConversationCallRepository extends JpaRepository<ConversationCall, UUID> {
+public interface ConversationCallRepository extends JpaRepository<ConversationCall, UUID>, JpaSpecificationExecutor<ConversationCall> {
 
     // ADR-DCC-005: conditional UPDATE, never load-then-save — rowsAffected is the sole
     // race oracle between PATCH /answer and CallTimeoutReconciliationJob.

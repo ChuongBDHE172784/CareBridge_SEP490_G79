@@ -19,4 +19,8 @@ public class ConversationCallResponse {
     private final Instant answeredAt;
     private final Instant endedAt;
     private final Integer durationSeconds;
+    private final UUID recordingFileId;
+    private final Boolean consentAttested;
+    private final String recordingStatus;
+    private final Integer recordedDurationSeconds;
 }

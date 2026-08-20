@@ -10,6 +10,7 @@ import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.DeviceTokenRepository;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
 import com.carebridge.backend.notification.repository.NotificationPreferenceRepository;
+import com.carebridge.backend.directchat.repository.DirectMessageRepository;
 import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.notification.service.IDirectMessageNotificationService;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -35,6 +36,7 @@ public class DirectMessageNotificationServiceImpl implements IDirectMessageNotif
     private final NotificationRecordWriter notificationRecordWriter;
     private final FcmService fcmService;
     private final AuditService auditService;
+    private final DirectMessageRepository messageRepository;
     private final Clock clock;
 
     @Autowired
@@ -45,9 +47,10 @@ public class DirectMessageNotificationServiceImpl implements IDirectMessageNotif
             NotificationPreferenceRepository preferenceRepository,
             NotificationRecordWriter notificationRecordWriter,
             FcmService fcmService,
-            AuditService auditService) {
+            AuditService auditService,
+            @Autowired(required = false) DirectMessageRepository messageRepository) {
         this(userRepository, deviceTokenRepository, notificationRecordRepository, preferenceRepository, notificationRecordWriter,
-                fcmService, auditService, Clock.systemDefaultZone());
+                fcmService, auditService, messageRepository, Clock.systemDefaultZone());
     }
 
     /** Test constructor — allows injecting a fixed Clock for deterministic time calculations. */
@@ -60,6 +63,20 @@ public class DirectMessageNotificationServiceImpl implements IDirectMessageNotif
             FcmService fcmService,
             AuditService auditService,
             Clock clock) {
+        this(userRepository, deviceTokenRepository, notificationRecordRepository, preferenceRepository, notificationRecordWriter,
+                fcmService, auditService, null, clock);
+    }
+
+    public DirectMessageNotificationServiceImpl(
+            UserRepository userRepository,
+            DeviceTokenRepository deviceTokenRepository,
+            NotificationRecordRepository notificationRecordRepository,
+            NotificationPreferenceRepository preferenceRepository,
+            NotificationRecordWriter notificationRecordWriter,
+            FcmService fcmService,
+            AuditService auditService,
+            DirectMessageRepository messageRepository,
+            Clock clock) {
         this.userRepository = userRepository;
         this.deviceTokenRepository = deviceTokenRepository;
         this.notificationRecordRepository = notificationRecordRepository;
@@ -67,6 +84,7 @@ public class DirectMessageNotificationServiceImpl implements IDirectMessageNotif
         this.notificationRecordWriter = notificationRecordWriter;
         this.fcmService = fcmService;
         this.auditService = auditService;
+        this.messageRepository = messageRepository;
         this.clock = clock;
     }
 
@@ -79,8 +97,18 @@ public class DirectMessageNotificationServiceImpl implements IDirectMessageNotif
                 .map(u -> u.getName())
                 .orElse("một người dùng");
         String title = "Tin nhắn mới";
-        // C4 — never includes the message body itself, only the sender's name.
+        // C4 — never includes the raw payload, only the sender's name.
         String body = "Bạn có tin nhắn mới từ " + senderDisplayName;
+
+        if (messageRepository != null && messageId != null) {
+            String msgBody = messageRepository.findById(messageId)
+                    .map(com.carebridge.backend.directchat.entity.DirectMessage::getMessageBody)
+                    .orElse(null);
+            if (msgBody != null && msgBody.trim().startsWith("[CAREBRIDGE_CHECKLIST_SHARE]")) {
+                title = "Cập nhật Checklist thai kỳ";
+                body = senderDisplayName + " đã cập nhật danh sách việc cần làm cho bạn.";
+            }
+        }
 
         NotificationRecord candidate = NotificationRecord.builder()
                 .id(UUID.randomUUID())

@@ -90,6 +90,8 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
+    final canPop =
+        context.canPop() || (ModalRoute.of(context)?.canPop ?? false);
     return Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(
@@ -112,6 +114,25 @@ class _ConversationListScreenState extends State<ConversationListScreen>
               padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, 20),
               child: Row(
                 children: [
+                  if (canPop) ...[
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: _onSurface,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(

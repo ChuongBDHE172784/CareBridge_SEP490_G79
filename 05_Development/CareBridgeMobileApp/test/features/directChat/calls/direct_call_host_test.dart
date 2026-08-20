@@ -14,6 +14,7 @@ class _HostCallApi implements DirectCallApiPort {
 
   final ConversationCall activeCall;
   final credentialsCompleter = Completer<ZegoJoinCredentials>();
+  int answerCalls = 0;
 
   @override
   Future<List<ConversationCall>> listActiveCalls() async => [activeCall];
@@ -41,8 +42,10 @@ class _HostCallApi implements DirectCallApiPort {
       throw UnimplementedError();
 
   @override
-  Future<ConversationCall> answer(String conversationId, String callId) =>
-      throw UnimplementedError();
+  Future<ConversationCall> answer(String conversationId, String callId) async {
+    answerCalls++;
+    return _call('ANSWERED');
+  }
 
   @override
   Future<ConversationCall> decline(String conversationId, String callId) =>
@@ -51,6 +54,15 @@ class _HostCallApi implements DirectCallApiPort {
   @override
   Future<ConversationCall> end(String conversationId, String callId) =>
       throw UnimplementedError();
+
+  @override
+  Future<ConversationCall> uploadRecording({
+    required String conversationId,
+    required String callId,
+    required String filePath,
+    int? recordedDurationSeconds,
+    bool consentAttested = true,
+  }) => throw UnimplementedError();
 }
 
 ConversationCall _call(String status) => ConversationCall(
@@ -72,6 +84,52 @@ ConversationEventSignal _signal(String eventId) => ConversationEventSignal(
 );
 
 void main() {
+  testWidgets('incoming call is not answered before recording consent', (
+    tester,
+  ) async {
+    final api = _HostCallApi(_call('RINGING'));
+    final signals = StreamController<ConversationEventSignal>.broadcast();
+    final coordinator = DirectCallCoordinator(
+      api: api,
+      signals: signals.stream,
+      currentUserId: () => 'expert-1',
+    );
+    await coordinator.start();
+
+    // Matches the production tree where DirectCallHost is mounted from
+    // MaterialApp.builder, above the Router/Navigator child.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: const Scaffold(body: Text('Chat')),
+        builder: (context, child) => DirectCallHost(
+          coordinator: coordinator,
+          manageAuthenticatedSession: false,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Chấp nhận'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Tuân thủ PDPA'), findsOneWidget);
+    expect(api.answerCalls, 0);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Không đồng ý'));
+    await tester.pumpAndSettle();
+    expect(api.answerCalls, 0);
+
+    await tester.tap(find.text('Chấp nhận'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đồng ý'));
+    await tester.pump();
+    expect(api.answerCalls, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(coordinator.dispose());
+    unawaited(signals.close());
+  });
+
   testWidgets('duplicate signals never create duplicate incoming overlays', (
     tester,
   ) async {

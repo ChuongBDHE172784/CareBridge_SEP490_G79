@@ -43,56 +43,33 @@ void main() {
       expect(paths.single, contains('/api/v1/content?'));
     });
 
-    test(
-      'lifecycle list and checklist parse typed server-stage envelopes',
-      () async {
-        final paths = <String>[];
-        final service = ContentService(
-          getRequest: (path) async {
-            paths.add(path);
-            if (path == '/api/v1/content/lifecycle/checklists') {
-              return {
-                'data': {
-                  'stage': 'PRE_PREGNANCY',
-                  'payload': [
-                    {
-                      'id': 'checklist-69',
-                      'name': 'Synthetic checklist',
-                      'stage': 'PRE_PREGNANCY',
-                      'description': 'Synthetic metadata',
-                      'items': const [],
-                    },
-                  ],
-                },
-              };
-            }
-            return {
-              'data': {
-                'stage': 'PRE_PREGNANCY',
-                'payload': {
-                  'data': [_item('lifecycle-69', 'ARTICLE')],
-                  'page': 0,
-                  'size': 20,
-                  'totalElements': 1,
-                  'totalPages': 1,
-                },
+    test('lifecycle list parses typed server-stage envelope', () async {
+      final paths = <String>[];
+      final service = ContentService(
+        getRequest: (path) async {
+          paths.add(path);
+          return {
+            'data': {
+              'stage': 'PRE_PREGNANCY',
+              'payload': {
+                'data': [_item('lifecycle-69', 'ARTICLE')],
+                'page': 0,
+                'size': 20,
+                'totalElements': 1,
+                'totalPages': 1,
               },
-            };
-          },
-        );
+            },
+          };
+        },
+      );
 
-        final list = await service.getLifecycleContent(type: 'ARTICLE');
-        final checklists = await service.getLifecycleChecklists();
+      final list = await service.getLifecycleContent(type: 'ARTICLE');
 
-        expect(list.stage, 'PRE_PREGNANCY');
-        expect(list.payload.data.single.id, 'lifecycle-69');
-        expect(checklists.stage, 'PRE_PREGNANCY');
-        expect(checklists.payload.single.id, 'checklist-69');
-        expect(paths.first, startsWith('/api/v1/content/lifecycle?'));
-        expect(paths.first, isNot(contains('stage=')));
-        expect(paths.last, '/api/v1/content/lifecycle/checklists');
-      },
-    );
+      expect(list.stage, 'PRE_PREGNANCY');
+      expect(list.payload.data.single.id, 'lifecycle-69');
+      expect(paths.single, startsWith('/api/v1/content/lifecycle?'));
+      expect(paths.single, isNot(contains('stage=')));
+    });
 
     test(
       'lifecycle detail uses its dedicated route and canonical PRE stage',

@@ -3,7 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../checklist/services/user_checklist_service.dart';
+import '../../directChat/services/direct_chat_service.dart';
+import '../../directChat/widgets/checklist_message_card.dart';
+import '../models/reminder_model.dart';
 import '../models/today_task_model.dart';
+import '../models/today_task_support_function.dart';
 import '../services/today_task_service.dart';
 
 enum TodayTasksAudience { mother, family }
@@ -69,6 +73,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   late TodayTaskService _service;
   late UserChecklistService _checklistService;
   TodayTasksSnapshot? _snapshot;
+  List<TodayTask> _expertTasks = [];
+  final Map<String, Map<String, dynamic>> _expertTaskMeta = {};
   TodayTasksFailure? _failure;
   bool _loading = true;
   int _loadGeneration = 0;
@@ -99,11 +105,13 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     if (oldWidget.service != widget.service) {
       _service = widget.service ?? TodayTaskService.instance;
       _snapshot = null;
+      _expertTasks = [];
       _failure = null;
       _load();
     }
     if (oldWidget.careGroupId != widget.careGroupId) {
       _snapshot = null;
+      _expertTasks = [];
       _failure = null;
       _load();
     }
@@ -127,7 +135,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     final generation = ++_loadGeneration;
     if (mounted) {
       setState(() {
-        _loading = _snapshot == null;
+        _loading = _snapshot == null && _expertTasks.isEmpty;
         _failure = null;
       });
     }
@@ -135,9 +143,11 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       final snapshot = await _service.loadToday(
         careGroupId: widget.careGroupId,
       );
+      final expertTasks = await _fetchExpertChecklistTasks(snapshot.sections.all);
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _snapshot = snapshot;
+        _expertTasks = expertTasks;
         _loading = false;
       });
     } on TodayTasksFailure catch (failure) {
@@ -146,9 +156,150 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
         _failure = failure;
         if (failure.kind == TodayFailureKind.terminal) {
           _snapshot = null;
+          _expertTasks = [];
         }
         _loading = false;
       });
+    }
+  }
+
+  Future<List<TodayTask>> _fetchExpertChecklistTasks([Iterable<TodayTask>? currentTasks]) async {
+    if (widget.audience == TodayTasksAudience.family) return const [];
+    try {
+      final conversations =
+          await DirectChatService.instance.listMyConversations();
+      if (conversations.isEmpty) return const [];
+
+      final existingTitles = {
+        if (currentTasks != null)
+          for (final t in currentTasks) t.title.trim().toLowerCase(),
+      };
+
+      final List<TodayTask> expertTasks = [];
+      _expertTaskMeta.clear();
+
+      for (final conv in conversations) {
+        try {
+          final timeline =
+              await DirectChatService.instance.getTimeline(conv.conversationId, limit: 50);
+          for (final item in timeline.items.reversed) {
+            if (item.kind == 'MESSAGE' &&
+                item.recalledAt == null &&
+                ChecklistShareData.isChecklistShareMessage(item.messageBody)) {
+              final shareData = ChecklistShareData.parse(item.messageBody);
+              if (shareData != null && shareData.currentItems.isNotEmpty) {
+                for (int idx = 0; idx < shareData.currentItems.length; idx++) {
+                  final cItem = shareData.currentItems[idx];
+                  final isExpert = cItem.origin == 'EXPERT' ||
+                      cItem.createdBy == 'EXPERT' ||
+                      cItem.isExpertCustom == true;
+                  final normalized = cItem.text.trim().toLowerCase();
+                  if (isExpert && !existingTitles.contains(normalized)) {
+                    existingTitles.add(normalized);
+                    final taskId = 'expert-task-${conv.conversationId}-$idx';
+                    _expertTaskMeta[taskId] = {
+                      'conversationId': conv.conversationId,
+                      'itemIndex': idx,
+                      'shareData': shareData,
+                    };
+                    expertTasks.add(TodayTask(
+                      id: taskId,
+                      kind: TodayTaskKind.checklist,
+                      sourceType: TodayTaskSourceType.checklist,
+                      type: ReminderType.other,
+                      title: cItem.text,
+                      description:
+                          cItem.doctorNote != null &&
+                              cItem.doctorNote!.trim().isNotEmpty
+                          ? 'Bác sĩ: ${cItem.doctorNote}'
+                          : 'Chuyên gia chỉ định',
+                      status: ReminderStatus.pending,
+                      taskStatus: cItem.completed
+                          ? TodayTaskStatus.completed
+                          : TodayTaskStatus.pending,
+                      priority: 1,
+                      target: TodayTaskTarget.mother,
+                      origin: TodayTaskOrigin.systemTemplate,
+                      bucket: TodayTimeBucket.today,
+                      allowedActions: const {
+                        TodayTaskAction.complete,
+                        TodayTaskAction.reopen,
+                      },
+                      careContextLabel: 'Chuyên gia chỉ định',
+                      supportFunction: TodayTaskSupportFunction.fromJson(
+                        cItem.supportFunction,
+                      ),
+                    ));
+                  }
+                }
+              }
+              break; // Found newest checklist share in this conversation
+            }
+          }
+        } catch (_) {}
+      }
+      return expertTasks;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _toggleExpertTaskStatus(TodayTask task, bool completed) async {
+    final meta = _expertTaskMeta[task.id];
+    if (meta == null) return;
+    final conversationId = meta['conversationId'] as String?;
+    final itemIndex = meta['itemIndex'] as int?;
+    final shareData = meta['shareData'] as ChecklistShareData?;
+    if (conversationId == null || itemIndex == null || shareData == null) return;
+
+    if (itemIndex >= 0 && itemIndex < shareData.currentItems.length) {
+      final oldItem = shareData.currentItems[itemIndex];
+      final updatedItem = ChecklistItemShareData(
+        text: oldItem.text,
+        completed: completed,
+        category: oldItem.category,
+        timeLabel: oldItem.timeLabel,
+        origin: oldItem.origin,
+        createdBy: oldItem.createdBy,
+        isExpertCustom: oldItem.isExpertCustom,
+        doctorNote: oldItem.doctorNote,
+        sourceUrl: oldItem.sourceUrl,
+        supportFunction: oldItem.supportFunction,
+      );
+      final newCurrentItems = List<ChecklistItemShareData>.from(
+        shareData.currentItems,
+      );
+      newCurrentItems[itemIndex] = updatedItem;
+
+      final newTotal =
+          shareData.historyItems.length +
+          newCurrentItems.length +
+          shareData.futureItems.length;
+      final newCompleted =
+          shareData.historyItems.where((i) => i.completed).length +
+          newCurrentItems.where((i) => i.completed).length;
+      final newPercent =
+          newTotal > 0 ? ((newCompleted / newTotal) * 100).round() : 0;
+
+      final updatedPayload = ChecklistShareData(
+        title: shareData.title,
+        gestationalWeek: shareData.gestationalWeek,
+        journeyId: shareData.journeyId,
+        isLiveSync: true,
+        completedCount: newCompleted,
+        totalCount: newTotal,
+        progressPercent: newPercent,
+        note: shareData.note,
+        historyItems: shareData.historyItems,
+        currentItems: newCurrentItems,
+        futureItems: shareData.futureItems,
+      );
+
+      await DirectChatService.instance.sendMessage(
+        conversationId,
+        clientMessageId: const Uuid().v4(),
+        messageBody: updatedPayload.serialize(),
+      );
     }
   }
 
@@ -157,6 +308,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     if (!mounted) return;
     setState(() {
       _snapshot = null;
+      _expertTasks = [];
       _failure = null;
       _loading = true;
       _announcement = null;
@@ -174,7 +326,9 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
         '${widget.careGroupId ?? ''}:${task.id}:${action.apiValue}';
     final requestId = _actionRequestIds.putIfAbsent(requestKey, _newRequestId);
     try {
-      if (task.isChecklist) {
+      if (task.id.startsWith('expert-task-')) {
+        await _toggleExpertTaskStatus(task, action == TodayTaskAction.complete);
+      } else if (task.isChecklist) {
         await _service.performChecklistAction(
           taskId: task.id,
           action: action,
@@ -294,10 +448,12 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   String _newRequestId() => const Uuid().v4();
 
   List<TodayTask> get _sourceGroupedTasks {
-    if (_snapshot == null) return const [];
-    final tasks = _snapshot!.sections.all
-        .where((task) => task.isChecklist)
-        .toList();
+    if (_snapshot == null && _expertTasks.isEmpty) return const [];
+    final tasks = [
+      if (_snapshot != null)
+        ..._snapshot!.sections.all.where((task) => task.isChecklist),
+      ..._expertTasks,
+    ];
     tasks.sort(_compareNewestFirst);
     return tasks;
   }

@@ -130,3 +130,24 @@ export async function issueJoinCredentials(
   );
   return data.data;
 }
+
+export async function uploadCallRecording(
+  conversationId: string,
+  callId: string,
+  file: Blob | File,
+  recordedDurationSeconds?: number,
+  consentAttested = true
+): Promise<ConversationCall> {
+  const formData = new FormData();
+  formData.append('file', file, `call_rec_${callId}.webm`);
+  if (recordedDurationSeconds !== undefined) {
+    formData.append('recordedDurationSeconds', String(recordedDurationSeconds));
+  }
+  formData.append('consentAttested', String(consentAttested));
+
+  const { data } = await apiClient.post(
+    `/api/v1/direct-conversations/${conversationId}/calls/${callId}/recording`,
+    formData
+  );
+  return data.data;
+}

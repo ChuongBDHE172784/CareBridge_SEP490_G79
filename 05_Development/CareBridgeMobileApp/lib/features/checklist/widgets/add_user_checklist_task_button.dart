@@ -83,6 +83,55 @@ class AddUserChecklistTaskButton extends StatelessWidget {
   }
 }
 
+enum TaskRecurrence { none, daily, weekly, monthly }
+
+extension TaskRecurrenceExtension on TaskRecurrence {
+  String get label {
+    switch (this) {
+      case TaskRecurrence.none:
+        return 'Không lặp';
+      case TaskRecurrence.daily:
+        return 'Hàng ngày';
+      case TaskRecurrence.weekly:
+        return 'Hàng tuần';
+      case TaskRecurrence.monthly:
+        return 'Hàng tháng';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case TaskRecurrence.none:
+        return Icons.event_busy_rounded;
+      case TaskRecurrence.daily:
+        return Icons.today_rounded;
+      case TaskRecurrence.weekly:
+        return Icons.date_range_rounded;
+      case TaskRecurrence.monthly:
+        return Icons.calendar_month_rounded;
+    }
+  }
+}
+
+enum TaskDurationOption { oneDay, oneWeek, oneMonth, fullJourney, custom }
+
+extension TaskDurationOptionExtension on TaskDurationOption {
+  String get label {
+    switch (this) {
+      case TaskDurationOption.oneDay:
+        return 'Hôm nay (1 ngày)';
+      case TaskDurationOption.oneWeek:
+        return '1 tuần';
+      case TaskDurationOption.oneMonth:
+        return '1 tháng';
+      case TaskDurationOption.fullJourney:
+        return 'Suốt thai kỳ';
+      case TaskDurationOption.custom:
+        return 'Tùy chọn ngày kết thúc...';
+    }
+  }
+}
+
 class _UserChecklistTaskSheet extends StatefulWidget {
   const _UserChecklistTaskSheet({
     required this.journeyId,
@@ -105,8 +154,11 @@ class _UserChecklistTaskSheet extends StatefulWidget {
 
 class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _textController = TextEditingController();
-  ChecklistCategory _category = ChecklistCategory.general;
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  TaskRecurrence _recurrence = TaskRecurrence.none;
+  TaskDurationOption _durationOption = TaskDurationOption.oneDay;
+  DateTime? _customEndDate;
   bool _saving = false;
   String? _errorMessage;
   String? _lastPayload;
@@ -114,8 +166,43 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
 
   @override
   void dispose() {
-    _textController.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickCustomEndDate() async {
+    final now = DateTime.now();
+    final initial = _customEndDate ?? now.add(const Duration(days: 7));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(now) ? now : initial,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 2)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFC98C7B),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF5A463F),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _customEndDate = picked;
+        _durationOption = TaskDurationOption.custom;
+      });
+    }
+  }
+
+  String _formatDate(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   }
 
   @override
@@ -172,24 +259,29 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
                   const Text(
                     'Việc này sẽ được đánh dấu là “Do tôi tạo” và hiển thị trong Việc hôm nay.',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       height: 1.4,
                       color: Color(0xFF9C857C),
                     ),
                   ),
                   const SizedBox(height: 20),
+
+                  // 1. Tên công việc
                   TextFormField(
                     key: const Key('user-checklist-task-text'),
-                    controller: _textController,
+                    controller: _titleController,
                     enabled: !_saving,
-                    maxLength: 500,
-                    minLines: 2,
-                    maxLines: 4,
+                    maxLength: 200,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: 'Nội dung công việc',
+                      labelText: 'Tên công việc *',
+                      hintText: 'Ví dụ: Đi bộ 20 phút, Uống sữa hạt...',
                       filled: true,
                       fillColor: const Color(0xFFF6F1EC),
+                      prefixIcon: const Icon(
+                        Icons.edit_note_rounded,
+                        color: Color(0xFF845143),
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
@@ -203,26 +295,90 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
                       ),
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Vui lòng nhập nội dung công việc.'
+                        ? 'Vui lòng nhập tên công việc.'
                         : null,
                   ),
-                  const SizedBox(height: 18),
-                  DropdownButtonFormField<ChecklistCategory>(
-                    initialValue: _category,
+                  const SizedBox(height: 16),
+
+                  // 2. Mô tả công việc
+                  TextFormField(
+                    key: const Key('user-checklist-task-description'),
+                    controller: _descriptionController,
+                    enabled: !_saving,
+                    maxLength: 500,
+                    minLines: 2,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: 'Nhóm công việc',
+                      labelText: 'Mô tả chi tiết (không bắt buộc)',
+                      hintText: 'Thêm ghi chú, hướng dẫn hoặc lưu ý khi thực hiện...',
                       filled: true,
                       fillColor: const Color(0xFFF6F1EC),
+                      alignLabelWithHint: true,
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 36),
+                        child: Icon(
+                          Icons.description_outlined,
+                          color: Color(0xFF845143),
+                        ),
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
                       ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFC98C7B),
+                          width: 2,
+                        ),
+                      ),
                     ),
-                    items: ChecklistCategory.values
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3. Nhịp lặp
+                  DropdownButtonFormField<TaskRecurrence>(
+                    key: const Key('user-checklist-task-recurrence'),
+                    initialValue: _recurrence,
+                    decoration: InputDecoration(
+                      labelText: 'Nhịp lặp',
+                      filled: true,
+                      fillColor: const Color(0xFFF6F1EC),
+                      prefixIcon: Icon(
+                        _recurrence.icon,
+                        color: const Color(0xFF845143),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFC98C7B),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    items: TaskRecurrence.values
                         .map(
-                          (category) => DropdownMenuItem(
-                            value: category,
-                            child: Text(category.label),
+                          (rec) => DropdownMenuItem(
+                            value: rec,
+                            child: Row(
+                              children: [
+                                Icon(rec.icon, size: 18, color: const Color(0xFF5A463F)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  rec.label,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF5A463F),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         )
                         .toList(growable: false),
@@ -230,10 +386,100 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
                         ? null
                         : (value) {
                             if (value != null) {
-                              setState(() => _category = value);
+                              setState(() => _recurrence = value);
                             }
                           },
                   ),
+                  const SizedBox(height: 16),
+
+                  // 4. Thời gian tồn tại
+                  DropdownButtonFormField<TaskDurationOption>(
+                    key: const Key('user-checklist-task-duration'),
+                    initialValue: _durationOption,
+                    decoration: InputDecoration(
+                      labelText: 'Thời gian tồn tại',
+                      filled: true,
+                      fillColor: const Color(0xFFF6F1EC),
+                      prefixIcon: const Icon(
+                        Icons.timelapse_rounded,
+                        color: Color(0xFF845143),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFC98C7B),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    items: TaskDurationOption.values
+                        .map(
+                          (opt) => DropdownMenuItem(
+                            value: opt,
+                            child: Text(
+                              opt == TaskDurationOption.custom && _customEndDate != null
+                                  ? 'Đến ngày ${_formatDate(_customEndDate!)}'
+                                  : opt.label,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF5A463F),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: _saving
+                        ? null
+                        : (value) {
+                            if (value != null) {
+                              setState(() => _durationOption = value);
+                              if (value == TaskDurationOption.custom) {
+                                _pickCustomEndDate();
+                              }
+                            }
+                          },
+                  ),
+
+                  if (_durationOption == TaskDurationOption.custom) ...[
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: _saving ? null : _pickCustomEndDate,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2EAE4),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFC98C7B).withAlpha(100)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.event_available_rounded, size: 18, color: Color(0xFF845143)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _customEndDate != null
+                                    ? 'Ngày kết thúc: ${_formatDate(_customEndDate!)}'
+                                    : 'Bấm để chọn ngày kết thúc',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF5A463F),
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF9C857C)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 16),
                     Semantics(
@@ -254,7 +500,7 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
                         child: Text(
                           _errorMessage!,
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF5A463F),
                           ),
@@ -262,7 +508,7 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
@@ -305,8 +551,16 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final itemText = _textController.text.trim();
-    final payload = [itemText, _category.apiValue].join('\u0000');
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim();
+    final itemText = description.isNotEmpty ? '$title\n$description' : title;
+    final payload = [
+      itemText,
+      _recurrence.name,
+      _durationOption.name,
+      _customEndDate?.toIso8601String() ?? '',
+    ].join('\u0000');
+
     if (_lastPayload != payload || _clientTaskId == null) {
       _lastPayload = payload;
       _clientTaskId = widget.clientTaskIdFactory();
@@ -320,7 +574,7 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
       await widget.service.addItemV2(
         itemText: itemText,
         clientTaskId: _clientTaskId!,
-        category: _category,
+        category: ChecklistCategory.general,
         journeyId: widget.journeyId,
         babyId: widget.babyId,
         careGroupId: widget.careGroupId,

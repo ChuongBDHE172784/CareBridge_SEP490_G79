@@ -61,6 +61,20 @@ public class ConversationCall implements Persistable<UUID> {
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
 
+    @Column(name = "recording_file_id")
+    private UUID recordingFileId;
+
+    @Builder.Default
+    @Column(name = "consent_attested", nullable = false)
+    private boolean consentAttested = true;
+
+    @Builder.Default
+    @Column(name = "recording_status", nullable = false, length = 30)
+    private String recordingStatus = "NONE";
+
+    @Column(name = "recorded_duration_seconds")
+    private Integer recordedDurationSeconds;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

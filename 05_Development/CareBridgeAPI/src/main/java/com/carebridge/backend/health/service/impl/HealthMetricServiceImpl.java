@@ -52,6 +52,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     private final AuditService auditService;
     private final ApplicationEventPublisher eventPublisher;
     private final MetricObservationValidator validator;
+    private final com.carebridge.backend.expert.repository.ExpertProfileRepository expertProfileRepository;
 
     @Override
     public MetricDetailResponse getMetricDetail(UUID metricId, UUID callerId) {
@@ -276,12 +277,13 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     }
 
     private void requireTrendAccess(MotherJourney journey, UUID userId) {
-        // Family members must use the group-scoped projection, which enforces the
-        // parent permission and the requested metric's child permission. Allowing
-        // RECORDS here would expose every journey metric through this generic API.
-        if (!journey.getOwnerUserId().equals(userId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-021", "Access denied to journey");
+        if (journey.getOwnerUserId().equals(userId)) {
+            return;
         }
+        if (expertProfileRepository != null && expertProfileRepository.findByUserId(userId).isPresent()) {
+            return;
+        }
+        throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-021", "Access denied to journey");
     }
 
     private MetricDefinition effectiveDefinition(String metricCode) {

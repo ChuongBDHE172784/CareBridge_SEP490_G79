@@ -35,8 +35,8 @@ public class UploadedFile {
     @Column(name = "storage_key", nullable = false, unique = true, length = 500)
     private String storageKey;
 
-    @Transient
     @Builder.Default
+    @Column(name = "storage_provider", nullable = false, length = 20)
     private String storageProvider = "cloudinary";
 
     @Transient

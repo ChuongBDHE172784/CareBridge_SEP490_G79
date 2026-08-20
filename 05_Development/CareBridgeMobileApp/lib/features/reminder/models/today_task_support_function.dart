@@ -14,7 +14,8 @@ enum TodayTaskSupportFunctionCode {
 extension TodayTaskSupportFunctionCodeValue on TodayTaskSupportFunctionCode {
   String get apiValue => switch (this) {
     TodayTaskSupportFunctionCode.healthRecords => 'HEALTH_RECORDS',
-    TodayTaskSupportFunctionCode.maternalHealthMetrics => 'MATERNAL_HEALTH_METRICS',
+    TodayTaskSupportFunctionCode.maternalHealthMetrics =>
+      'MATERNAL_HEALTH_METRICS',
     TodayTaskSupportFunctionCode.maternalExercises => 'MATERNAL_EXERCISES',
     TodayTaskSupportFunctionCode.appointments => 'APPOINTMENTS',
     TodayTaskSupportFunctionCode.reminders => 'REMINDERS',
@@ -31,7 +32,8 @@ class TodayTaskSupportFunctionCodeApi {
       ?.trim()
       .toUpperCase()) {
     'HEALTH_RECORDS' => TodayTaskSupportFunctionCode.healthRecords,
-    'MATERNAL_HEALTH_METRICS' => TodayTaskSupportFunctionCode.maternalHealthMetrics,
+    'MATERNAL_HEALTH_METRICS' =>
+      TodayTaskSupportFunctionCode.maternalHealthMetrics,
     'MATERNAL_EXERCISES' => TodayTaskSupportFunctionCode.maternalExercises,
     'APPOINTMENTS' => TodayTaskSupportFunctionCode.appointments,
     'REMINDERS' => TodayTaskSupportFunctionCode.reminders,
@@ -107,8 +109,8 @@ class TodayTaskSupportFunction {
   );
   static const aiTriage = TodayTaskSupportFunction(
     code: TodayTaskSupportFunctionCode.aiTriage,
-    label: 'Sàng lọc AI',
-    route: '/triage/intake',
+    label: 'AI Nurse',
+    route: '/rag/chat',
   );
 
   static const values = <TodayTaskSupportFunction>[
@@ -130,7 +132,8 @@ class TodayTaskSupportFunction {
     final code = TodayTaskSupportFunctionCodeApi.fromApi(value);
     return switch (code) {
       TodayTaskSupportFunctionCode.healthRecords => healthRecords,
-      TodayTaskSupportFunctionCode.maternalHealthMetrics => maternalHealthMetrics,
+      TodayTaskSupportFunctionCode.maternalHealthMetrics =>
+        maternalHealthMetrics,
       TodayTaskSupportFunctionCode.maternalExercises => maternalExercises,
       TodayTaskSupportFunctionCode.appointments => appointments,
       TodayTaskSupportFunctionCode.reminders => reminders,

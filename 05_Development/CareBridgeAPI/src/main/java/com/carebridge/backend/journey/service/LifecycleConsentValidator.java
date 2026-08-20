@@ -54,7 +54,7 @@ public class LifecycleConsentValidator {
         var baseline = baselineRepository
                 .findTopByOwnerUserIdOrderByRevisionDesc(ownerUserId)
                 .orElseThrow(() -> error("BASELINE_REQUIRED",
-                        "Complete your baseline before using postpartum recovery logs"));
+                        "Complete your baseline before using maternal lifecycle features"));
         var evidence = consentRepository
                 .findLifecycleEvidenceByKey(ownerUserId, baseline.getSubmissionId())
                 .orElseThrow(() -> error("LIFECYCLE_CONSENT_REQUIRED",

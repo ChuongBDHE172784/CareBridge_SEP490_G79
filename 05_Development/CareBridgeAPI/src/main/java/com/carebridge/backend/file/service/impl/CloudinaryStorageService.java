@@ -57,26 +57,34 @@ public class CloudinaryStorageService implements IStorageService {
             String resourceType = getResourceType(mimeType);
             FileAccessMode accessMode = determineAccessMode(mimeType);
 
-            String type = switch (accessMode) {
-                case PUBLIC -> "upload";
-                case AUTHENTICATED -> "authenticated";
-                case PRIVATE -> "private";
-            };
+            // Videos and Audios on Cloudinary must use type: "upload" (standard delivery)
+            // because "private" on Cloudinary free tier blocks streaming / HTTP range requests for HTML5 <video> and <audio>
+            String type = "video".equalsIgnoreCase(resourceType) || accessMode == FileAccessMode.PUBLIC
+                    ? "upload"
+                    : switch (accessMode) {
+                        case PUBLIC -> "upload";
+                        case AUTHENTICATED -> "authenticated";
+                        case PRIVATE -> "private";
+                    };
+
+            String publicIdToUse = key != null ? (key.contains(".") ? key.substring(0, key.lastIndexOf('.')) : key) : null;
+            java.util.Map<String, Object> uploadParams = new java.util.HashMap<>();
+            uploadParams.put("resource_type", resourceType);
+            uploadParams.put("type", type);
+            if (publicIdToUse != null && !publicIdToUse.isBlank()) {
+                uploadParams.put("public_id", publicIdToUse);
+                uploadParams.put("overwrite", true);
+            } else {
+                uploadParams.put("folder", "carebridge");
+            }
 
             Map<?, ?> result;
             try {
-                result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                        "folder", "carebridge",
-                        "resource_type", resourceType,
-                        "type", type
-                ));
+                result = cloudinary.uploader().upload(data, uploadParams);
             } catch (Exception e) {
                 if (!"upload".equals(type)) {
-                    result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                            "folder", "carebridge",
-                            "resource_type", resourceType,
-                            "type", "upload"
-                    ));
+                    uploadParams.put("type", "upload");
+                    result = cloudinary.uploader().upload(data, uploadParams);
                     accessMode = FileAccessMode.PUBLIC;
                 } else {
                     throw e;
@@ -105,12 +113,18 @@ public class CloudinaryStorageService implements IStorageService {
     public void storePublic(String key, byte[] data, String mimeType) {
         try {
             String resourceType = getResourceType(mimeType);
+            String publicIdToUse = key != null ? (key.contains(".") ? key.substring(0, key.lastIndexOf('.')) : key) : null;
+            java.util.Map<String, Object> uploadParams = new java.util.HashMap<>();
+            uploadParams.put("resource_type", resourceType);
+            uploadParams.put("type", "upload");
+            if (publicIdToUse != null && !publicIdToUse.isBlank()) {
+                uploadParams.put("public_id", publicIdToUse);
+                uploadParams.put("overwrite", true);
+            } else {
+                uploadParams.put("folder", "carebridge");
+            }
 
-            Map<?, ?> result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                    "folder", "carebridge",
-                    "resource_type", resourceType,
-                    "type", "upload"
-            ));
+            Map<?, ?> result = cloudinary.uploader().upload(data, uploadParams);
 
             String publicId = (String) result.get("public_id");
             if (publicId == null) {
@@ -202,9 +216,9 @@ public class CloudinaryStorageService implements IStorageService {
      *         signed URL, just not time-limited. Enabling true expiry is a follow-up.</p>
      */
     public String generateSignedUrl(String publicId, int ttlMinutes, FileAccessMode accessMode, String resourceType) {
-        if (accessMode == FileAccessMode.PUBLIC) {
+        if (accessMode == FileAccessMode.PUBLIC || "video".equalsIgnoreCase(resourceType)) {
             return cloudinary.url()
-                    .resourceType(resourceType)
+                    .resourceType(resourceType != null ? resourceType : "image")
                     .type("upload")
                     .secure(true)
                     .generate(publicId);
@@ -217,7 +231,7 @@ public class CloudinaryStorageService implements IStorageService {
         };
 
         return cloudinary.url()
-                .resourceType(resourceType)
+                .resourceType(resourceType != null ? resourceType : "image")
                 .type(type)
                 .secure(true)
                 .signed(true)
@@ -320,36 +334,53 @@ public class CloudinaryStorageService implements IStorageService {
     }
 
     private String fallbackGenerateUrl(String key) {
-        // Try to extract publicId from legacy key/URL
+        String resourceType = "image";
+        if (key != null) {
+            String lower = key.toLowerCase();
+            if (lower.endsWith(".webm") || lower.endsWith(".mp4") || lower.endsWith(".mov")
+                    || lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".mp3")
+                    || lower.endsWith(".wav") || lower.endsWith(".ogg") || lower.endsWith(".weba")) {
+                resourceType = "video";
+            } else if (lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx")
+                    || lower.endsWith(".xls") || lower.endsWith(".xlsx")) {
+                resourceType = "raw";
+            }
+        }
         String publicId = extractPublicId(key);
-        return cloudinary.url().secure(true).generate(publicId);
+        return cloudinary.url()
+                .resourceType(resourceType)
+                .type("upload")
+                .secure(true)
+                .generate(publicId);
     }
 
     private String extractPublicId(String url) {
-        // URL format: https://res.cloudinary.com/<cloud>/image/upload/v1234567890/carebridge/xxx.ext
+        if (url == null) return null;
+        String clean = url;
         try {
             String uploadMarker = "/upload/";
-            int idx = url.indexOf(uploadMarker);
+            int idx = clean.indexOf(uploadMarker);
             if (idx >= 0) {
-                String afterUpload = url.substring(idx + uploadMarker.length());
+                clean = clean.substring(idx + uploadMarker.length());
                 // Strip version prefix like "v1234567890/"
-                int slash = afterUpload.indexOf('/');
-                if (slash >= 0 && afterUpload.substring(0, slash).matches("v\\d+")) {
-                    afterUpload = afterUpload.substring(slash + 1);
+                int slash = clean.indexOf('/');
+                if (slash >= 0 && clean.substring(0, slash).matches("v\\d+")) {
+                    clean = clean.substring(slash + 1);
                 }
-                int queryIndex = afterUpload.indexOf('?');
-                if (queryIndex >= 0) afterUpload = afterUpload.substring(0, queryIndex);
-                int fragmentIndex = afterUpload.indexOf('#');
-                if (fragmentIndex >= 0) afterUpload = afterUpload.substring(0, fragmentIndex);
-                int lastSlash = afterUpload.lastIndexOf('/');
-                int extensionIndex = afterUpload.lastIndexOf('.');
-                if (extensionIndex > lastSlash) {
-                    afterUpload = afterUpload.substring(0, extensionIndex);
-                }
-                return afterUpload;
             }
-        } catch (Exception ignored) {}
-        return url;
+            int queryIndex = clean.indexOf('?');
+            if (queryIndex >= 0) clean = clean.substring(0, queryIndex);
+            int fragmentIndex = clean.indexOf('#');
+            if (fragmentIndex >= 0) clean = clean.substring(0, fragmentIndex);
+            int lastSlash = clean.lastIndexOf('/');
+            int extensionIndex = clean.lastIndexOf('.');
+            if (extensionIndex > lastSlash) {
+                clean = clean.substring(0, extensionIndex);
+            }
+            return clean;
+        } catch (Exception ignored) {
+            return url;
+        }
     }
 
     private static class UploadResult {

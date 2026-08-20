@@ -23,8 +23,9 @@ public class R2StorageConfig {
             @Value("${carebridge.storage.r2.secret-key}") String secretKey,
             @Value("${carebridge.storage.r2.region:auto}") String region) {
         validate(endpoint, accessKey, secretKey);
+        String cleanEndpoint = sanitizeEndpoint(endpoint);
         return S3Client.builder()
-                .endpointOverride(URI.create(endpoint))
+                .endpointOverride(URI.create(cleanEndpoint))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
                 .region(Region.of(region))
@@ -39,13 +40,30 @@ public class R2StorageConfig {
             @Value("${carebridge.storage.r2.secret-key}") String secretKey,
             @Value("${carebridge.storage.r2.region:auto}") String region) {
         validate(endpoint, accessKey, secretKey);
+        String cleanEndpoint = sanitizeEndpoint(endpoint);
         return S3Presigner.builder()
-                .endpointOverride(URI.create(endpoint))
+                .endpointOverride(URI.create(cleanEndpoint))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
                 .region(Region.of(region))
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
                 .build();
+    }
+
+    private static String sanitizeEndpoint(String endpoint) {
+        if (endpoint == null) return null;
+        String trimmed = endpoint.trim();
+        if (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        int r2Idx = trimmed.indexOf(".r2.cloudflarestorage.com");
+        if (r2Idx > 0) {
+            int slashAfter = trimmed.indexOf('/', r2Idx);
+            if (slashAfter > 0) {
+                trimmed = trimmed.substring(0, slashAfter);
+            }
+        }
+        return trimmed;
     }
 
     private static void validate(String endpoint, String accessKey, String secretKey) {

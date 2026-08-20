@@ -47,7 +47,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
         widget.continuationCoordinator ??
         TriageContinuationRestoreCoordinator(
           store: continuationStore,
-          gateway: TriageService(continuationStore: continuationStore),
+          gateway: TriageService(),
         );
     WidgetsBinding.instance.addPostFrameCallback((_) => _routeAfterLogin());
   }

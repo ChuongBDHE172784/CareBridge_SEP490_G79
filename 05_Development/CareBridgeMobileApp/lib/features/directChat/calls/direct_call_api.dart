@@ -14,6 +14,13 @@ abstract class DirectCallApiPort {
     String conversationId,
     String callId,
   );
+  Future<ConversationCall> uploadRecording({
+    required String conversationId,
+    required String callId,
+    required String filePath,
+    int? recordedDurationSeconds,
+    bool consentAttested,
+  });
 }
 
 class DirectCallApi implements DirectCallApiPort {
@@ -87,6 +94,30 @@ class DirectCallApi implements DirectCallApiPort {
       const {},
     );
     return ZegoJoinCredentials.fromJson(
+      response['data'] as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<ConversationCall> uploadRecording({
+    required String conversationId,
+    required String callId,
+    required String filePath,
+    int? recordedDurationSeconds,
+    bool consentAttested = true,
+  }) async {
+    final fields = <String, String>{
+      'consentAttested': consentAttested.toString(),
+      if (recordedDurationSeconds != null)
+        'recordedDurationSeconds': recordedDurationSeconds.toString(),
+    };
+    final response = await apiMultipart(
+      '/api/v1/direct-conversations/$conversationId/calls/$callId/recording',
+      fields,
+      filePath: filePath,
+      fileFieldName: 'file',
+    );
+    return ConversationCall.fromJson(
       response['data'] as Map<String, dynamic>,
     );
   }

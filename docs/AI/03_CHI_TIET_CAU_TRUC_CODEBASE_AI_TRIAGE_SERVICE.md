@@ -20,6 +20,9 @@
 │   │   │   └── metrics.py              # Endpoint: Sàng lọc Sinh hiệu Mẹ bầu (Bước 7 ➔ 8 ➔ 9)
 │   │   ├── __init__.py
 │   │   └── health.py                   # Endpoint: Health check & Kiểm tra Vector DB
+│   ├── constants/                      # Tầng Hằng số & Danh mục Lâm sàng (Clean Code & Clinical Thresholds)
+│   │   ├── __init__.py
+│   │   └── vital_thresholds.py         # Quản lý tập trung const & enum ngưỡng sinh hiệu chuẩn Bộ Y Tế / WHO / ACOG
 │   ├── core/                           # Tầng Hạ tầng Cốt lõi (Infrastructure)
 │   │   ├── __init__.py
 │   │   ├── database.py                 # Quản lý kết nối Async PostgreSQL & SQLAlchemy
@@ -100,7 +103,26 @@
 
 ---
 
-### 2.3. Tầng Định nghĩa Dữ liệu (`app/models/`)
+### 2.3. Tầng Hằng số & Danh mục Lâm sàng (`app/constants/`)
+* **`app/constants/vital_thresholds.py`:**
+  - *Chức năng:* Áp dụng nguyên tắc **Clean Code & Type-Safety**, loại bỏ hoàn toàn Hardcoded Magic Numbers khỏi logic xử lý. Toàn bộ hằng số và ngưỡng đều được chú thích rõ nguồn y khoa và đường dẫn tài liệu chính thống:
+    - **`Enum` Danh mục:** `VitalSignType`, `GlucoseMeasurementContext` (6 ngữ cảnh đo Dropdown: `FASTING`, `PRE_MEAL`, `POST_MEAL_1H`, `POST_MEAL_2H`, `RANDOM`, `OTHER_APPROVED`), `BloodPressureCategory`, `TemperatureCategory`, `BMICategory`.
+    - **`Const` Hằng số Ngưỡng Lâm sàng:**
+      - Huyết áp khẩn cấp ($SBP \ge 160, DBP \ge 110$) theo QĐ 1154/QĐ-BYT (2024 - Thư Viện Pháp Luật) & ACOG PB 222 (PubMed: 32443079).
+      - Thân nhiệt sốt thai kỳ ($\ge 38.5^\circ C$) / sốt hậu sản ($\ge 38.0^\circ C$) theo WHO Peripartum Infection Guidelines & QĐ 1359/BYT.
+      - Đường huyết 6 ngữ cảnh theo QĐ 1470/QĐ-BYT (2024 - BVĐK Bạc Liêu) & ADA Standards of Care (2024).
+      - Cử động thai máy ($\ge 4$ lần/2h từ tuần 28) theo RCOG Green-top 57 & ACOG PB 229 (PubMed: 34011892).
+      - Phân tầng thể trạng BMI theo 3 giai đoạn (`PRECONCEPTION` theo WHO Asian Lancet 2004 $18.5 - 22.9$, `PREGNANCY` theo IOM 2009, `POSTPARTUM` bảo vệ nguồn sữa mẹ).
+      - Nhu cầu nước uống theo 3 giai đoạn (`PRECONCEPTION` 1.5-2L, `PREGNANCY` 2-2.5L, `POSTPARTUM` 2.5-3L).
+      - Nhịp tim $\ge 120$ bpm hoặc $< 50$ bpm, Cờ đỏ câu 10 thang trầm cảm EPDS...
+    - **`SANITY_RANGES`:** Bộ giới hạn dải sinh lý y tế hợp lý để bắt lỗi người dùng gõ nhầm đơn vị hoặc số liệu phi lý (ví dụ: gõ nhầm 300 mmol/L, $SBP \le DBP$ hoặc HA $600/500$, nhịp tim ngoài dải $30-250$).
+    - **Danh mục từ khóa báo động (Keywords Catalog):** Tiền sản giật, Nhiễm trùng ối, Vỡ ối, Ra máu tươi... theo chuẩn Bộ Y Tế, WHO và ACOG.
+* **`app/constants/__init__.py`:**
+  - *Chức năng:* Package export thuận tiện cho toàn bộ service và tests tái sử dụng nhất quán.
+
+---
+
+### 2.4. Tầng Định nghĩa Dữ liệu (`app/models/`)
 * **`app/models/db_models.py`:**
   - *Chức năng:* Định nghĩa bảng CSDL `maternal_knowledge_chunks`:
     - `id`: Khóa chính tự tăng.
@@ -109,13 +131,13 @@
     - `embedding`: Cột kiểu `Vector(768)` lưu trữ vector tọa độ ngữ nghĩa.
 * **`app/models/schemas.py`:**
   - *Chức năng:* Định nghĩa các Pydantic DTO (Data Transfer Objects) đảm bảo tính toàn vẹn kiểu dữ liệu:
-    - `HealthMetricsLogRequest`, `HealthMetricsEvaluationResponse`
+    - `HealthMetricsLogRequest` (bổ sung `glucose_context`, hỗ trợ nhận diện giai đoạn `MaternalStage`, tuần thai và đầy đủ sinh hiệu), `HealthMetricsEvaluationResponse`
     - `RagChatRequest`, `RagChatResponse`
     - `IngestDocumentRequest`, `IngestDocumentResponse`, `BatchIngestResponse`
 
 ---
 
-### 2.4. Tầng Xử lý Tri thức RAG (`app/rag/`)
+### 2.5. Tầng Xử lý Tri thức RAG (`app/rag/`)
 * **`app/rag/chunker.py`:**
   - *Chức năng:* Đọc file đa định dạng (dùng `pypdf` đọc PDF, `python-docx` đọc Word, `python-frontmatter` đọc Markdown). Áp dụng thuật toán `RecursiveCharacterTextSplitter` cắt nhỏ văn bản với `chunk_size = 900` ký tự và `chunk_overlap = 180` ký tự (20%).
 * **`app/rag/embedder.py`:**
@@ -137,9 +159,10 @@
 
 ---
 
-### 2.5. Tầng Xử lý Nghiệp vụ (`app/services/`)
+### 2.6. Tầng Xử lý Nghiệp vụ (`app/services/`)
 * **`app/services/metrics_screening_service.py`:**
-  - *Chức năng:* Trái tim của **Bước 7 ➔ 8 ➔ 9**. Chứa bộ quy tắc lâm sàng cứng đối chiếu các ngưỡng nguy hiểm (Tiền sản giật $SBP \ge 140$ kèm đau đầu/nhìn mờ, sốt cao $\ge 38.5^\circ C$, thai không cử động $\ge 2$ giờ ở tuần $\ge 28$, ra máu tươi...) kết hợp tìm kiếm RAG đối chiếu triệu chứng để phân loại rủi ro.
+  - *Chức năng:* Trái tim của **Bước 7 ➔ 8 ➔ 9**. Triển khai mô hình **Deterministic Safety Guardrails**: Import và đối chiếu toàn bộ chỉ số đầu vào với các hằng số y khoa từ `app.constants.vital_thresholds` ($< 1\text{ ms}$) để đảm bảo an toàn tuyệt đối, loại bỏ rủi ro ảo giác AI đối với các ca cấp cứu sản khoa nguy kịch; đồng thời kích hoạt tìm kiếm RAG đối chiếu cẩm nang để trích dẫn bằng chứng y khoa (`SourceCitation`).
+  - *Hỗ trợ toàn diện:* 6 ngữ cảnh đo đường huyết (`FASTING`, `PRE_MEAL`, `POST_MEAL_1H`, `POST_MEAL_2H`, `RANDOM`, `OTHER_APPROVED`), kiểm soát tuần thai $\ge 28$ tuần cho thai máy, phân tầng BMI & Lượng nước uống theo 3 giai đoạn hành trình (`PRECONCEPTION`, `PREGNANCY`, `POSTPARTUM`), và kiểm tra dải sinh lý hợp lý (Sanity validation).
 * **`app/services/rag_chat_service.py`:**
   - *Chức năng:* Điều phối luồng **Bước 10**. Nhận câu hỏi $\rightarrow$ Vector Search $\rightarrow$ Bơm Context vào Prompt $\rightarrow$ Gọi Gemini Flash tạo sinh $\rightarrow$ Trích xuất trích dẫn tài liệu & sinh 3 câu hỏi gợi ý tiếp theo.
 * **`app/services/ingestion_service.py`:**
@@ -147,7 +170,7 @@
 
 ---
 
-### 2.6. File Cấu hình & Khởi chạy Ứng dụng
+### 2.7. File Cấu hình & Khởi chạy Ứng dụng
 * **`app/config.py`:** Quản lý toàn bộ cấu hình: Model name, Embedding dimension (768), Database URL, API Key, Timeout, Medical Disclaimer.
 * **`app/main.py`:** 
   - Tạo ứng dụng FastAPI.

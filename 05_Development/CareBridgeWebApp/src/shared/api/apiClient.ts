@@ -33,7 +33,15 @@ apiClient.interceptors.request.use((config) => {
   const token = session?.accessToken ?? useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (config.data instanceof FormData && config.headers) {
-    delete config.headers['Content-Type'];
+    if (typeof config.headers.setContentType === 'function') {
+      // `false` tells Axios not to restore its JSON/urlencoded default after
+      // this interceptor. The browser then supplies multipart/form-data with
+      // the generated boundary required for Spring to bind the `file` part.
+      config.headers.setContentType(false);
+    } else {
+      delete (config.headers as Record<string, unknown>)['Content-Type'];
+      delete (config.headers as Record<string, unknown>)['content-type'];
+    }
   }
   return config;
 });

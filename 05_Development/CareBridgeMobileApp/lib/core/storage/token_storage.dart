@@ -37,7 +37,7 @@ class SecureTokenStorage implements TokenStorage {
       if (previousUserId != null && previousUserId != userId) {
         await _store.delete(key: _onboardingDraftKey(previousUserId));
         await Future.wait([
-          PostpartumDraftStorageCoordinator.invalidateUser(previousUserId),
+          RetiredDraftStorageCleanup.purgeForUser(previousUserId),
           _triageContinuationStore.invalidateUser(previousUserId),
         ]);
       }
@@ -86,9 +86,7 @@ class SecureTokenStorage implements TokenStorage {
         'role': null,
       };
     }
-    await PostpartumDraftStorageCoordinator.deleteRetiredBabyCreateDrafts(
-      results[2]!,
-    );
+    await RetiredDraftStorageCleanup.purgeForUser(results[2]!);
     return {
       'accessToken': results[0],
       'refreshToken': results[1],
@@ -105,7 +103,7 @@ class SecureTokenStorage implements TokenStorage {
         invalidateCommitMarker: _invalidateCredentialCommitMarker,
         deleteCredentialPayload: _deleteCredentialPayloadKeys,
         clearAccountState: (userId) => Future.wait([
-          PostpartumDraftStorageCoordinator.invalidateUser(userId),
+          RetiredDraftStorageCleanup.purgeForUser(userId),
           _triageContinuationStore.invalidateUser(userId),
           _store.delete(key: _onboardingDraftKey(userId)),
         ]),
@@ -224,66 +222,26 @@ Future<void> clearCredentialBundleFailClosed({
   }
 }
 
-/// Serializes encrypted postpartum-draft operations per account.
-///
-/// Invalidating an account advances its generation synchronously. Writes that
-/// were queued by the previous session are skipped, while an already-running
-/// write is followed by the queued cleanup before this method completes.
-class PostpartumDraftStorageCoordinator {
-  PostpartumDraftStorageCoordinator._();
+/// Removes encrypted drafts left by features that are no longer available.
+class RetiredDraftStorageCleanup {
+  RetiredDraftStorageCleanup._();
 
   static const _store = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
   static final Map<String, Future<void>> _queues = {};
-  static final Map<String, int> _generations = {};
 
-  static int generationFor(String userId) => _generations[userId] ?? 0;
-
-  static Future<String?> read(String userId, String key) async {
-    await (_queues[userId] ?? Future<void>.value()).catchError((_) {});
-    return _store.read(key: key);
-  }
-
-  static Future<void> write({
-    required String userId,
-    required String key,
-    required String value,
-    required int generation,
-  }) => _enqueue(userId, () async {
-    if (generation != generationFor(userId)) return;
-    await _store.write(key: key, value: value);
+  static Future<void> purgeForUser(String userId) => _enqueue(userId, () async {
+    final prefixes = [
+      'cb_postpartum_log_draft_${userId}_',
+      '${_retiredBabyCreateDraftPrefix(userId)}_',
+    ];
+    final values = await _store.readAll();
+    final matchingKeys = values.keys
+        .where((key) => prefixes.any(key.startsWith))
+        .toList(growable: false);
+    await Future.wait(matchingKeys.map((key) => _store.delete(key: key)));
   });
-
-  static Future<void> delete(String userId, String key) =>
-      _enqueue(userId, () => _store.delete(key: key));
-
-  static Future<void> deletePrefix(String userId, String prefix) =>
-      _enqueue(userId, () async {
-        final values = await _store.readAll();
-        final keys = values.keys
-            .where((key) => key.startsWith(prefix))
-            .toList(growable: false);
-        await Future.wait(keys.map((key) => _store.delete(key: key)));
-      });
-
-  static Future<void> invalidateUser(String userId) {
-    _generations[userId] = generationFor(userId) + 1;
-    return _enqueue(userId, () async {
-      final prefixes = [
-        'cb_postpartum_log_draft_${userId}_',
-        '${_retiredBabyCreateDraftPrefix(userId)}_',
-      ];
-      final values = await _store.readAll();
-      final matchingKeys = values.keys
-          .where((key) => prefixes.any(key.startsWith))
-          .toList(growable: false);
-      await Future.wait(matchingKeys.map((key) => _store.delete(key: key)));
-    });
-  }
-
-  static Future<void> deleteRetiredBabyCreateDrafts(String userId) =>
-      deletePrefix(userId, '${_retiredBabyCreateDraftPrefix(userId)}_');
 
   static String _retiredBabyCreateDraftPrefix(String userId) =>
       ['cb', 'baby', 'create', 'intent', userId].join('_');

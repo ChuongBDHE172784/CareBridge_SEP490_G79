@@ -31,4 +31,9 @@ public interface IConversationCallService {
 
     ZegoJoinCredentialsResponse issueJoinCredentials(
             UUID conversationId, UUID callId, UUID currentUserId);
+
+    ConversationCallResponse uploadCallRecording(
+            UUID conversationId, UUID callId, UUID currentUserId,
+            org.springframework.web.multipart.MultipartFile file,
+            Integer recordedDurationSeconds, Boolean consentAttested);
 }

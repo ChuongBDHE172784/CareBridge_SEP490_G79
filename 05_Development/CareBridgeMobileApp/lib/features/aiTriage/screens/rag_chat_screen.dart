@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:universal_io/io.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../directChat/services/direct_chat_service.dart';
@@ -649,6 +650,40 @@ class _RagChatScreenState extends State<RagChatScreen> {
     );
   }
 
+  Future<void> _handleFollowupTap(String prompt) async {
+    final lower = prompt.toLowerCase();
+
+    // 1. Kích hoạt quay số khẩn cấp 115 (Zero-delay native dialer)
+    if (lower.contains('115') ||
+        (lower.contains('cấp cứu') && lower.contains('gọi'))) {
+      final uri = Uri.parse('tel:115');
+      try {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } catch (_) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+
+    // 2. Kích hoạt mở Bản đồ Cơ sở y tế / Bệnh viện phụ sản gần nhất (UC-63 / UC-141)
+    if ((lower.contains('bệnh viện') ||
+            lower.contains('cơ sở y tế') ||
+            lower.contains('phụ sản')) &&
+        (lower.contains('gần nhất') ||
+            lower.contains('ở đâu') ||
+            lower.contains('chỉ đường'))) {
+      context.push('/emergency/map');
+      return;
+    }
+
+    // 3. Với các câu hỏi khác, gửi tiếp tục hỏi AI Nurse
+    _send(prompt);
+  }
+
   Future<void> _navigateToDoctorOrExperts() async {
     try {
       final conversations =
@@ -1053,7 +1088,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
             Expanded(
               child: _WelcomeView(
                 quickPrompts: _quickPrompts,
-                onPromptTap: (p) => _send(p),
+                onPromptTap: (p) => _handleFollowupTap(p),
               ),
             )
           else
@@ -1069,7 +1104,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
                   return _MessageBubble(
                     message: _messages[i],
                     formatTime: _formatTime,
-                    onFollowupTap: (p) => _send(p),
+                    onFollowupTap: (p) => _handleFollowupTap(p),
                     onConsultDoctorTap: () =>
                         _showNeedExpertConsultationDialog(),
                   );
@@ -2162,8 +2197,18 @@ class _MessageBubble extends StatelessWidget {
                       ],
                     ),
                   ),
-                  ...message.followups.map(
-                    (f) => Padding(
+                  ...message.followups.map((f) {
+                    final lower = f.toLowerCase();
+                    final is115 = lower.contains('115') ||
+                        (lower.contains('cấp cứu') && lower.contains('gọi'));
+                    final isHospital = (lower.contains('bệnh viện') ||
+                            lower.contains('cơ sở y tế') ||
+                            lower.contains('phụ sản')) &&
+                        (lower.contains('gần nhất') ||
+                            lower.contains('ở đâu') ||
+                            lower.contains('chỉ đường'));
+
+                    return Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Material(
                         color: Colors.transparent,
@@ -2177,14 +2222,26 @@ class _MessageBubble extends StatelessWidget {
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: is115
+                                  ? const Color(0xFFFFF2F0)
+                                  : (isHospital
+                                      ? const Color(0xFFF0F7FF)
+                                      : Colors.white),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFE8DFD8),
+                                color: is115
+                                    ? const Color(0xFFFFCCC7)
+                                    : (isHospital
+                                        ? const Color(0xFFBAE0FF)
+                                        : const Color(0xFFE8DFD8)),
+                                width: (is115 || isHospital) ? 1.2 : 1.0,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.02),
+                                  color: is115
+                                      ? const Color(0xFFFF4D4F)
+                                          .withValues(alpha: 0.08)
+                                      : Colors.black.withValues(alpha: 0.02),
                                   blurRadius: 3,
                                   offset: const Offset(0, 1),
                                 ),
@@ -2193,37 +2250,59 @@ class _MessageBubble extends StatelessWidget {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                const Icon(
-                                  Icons.chat_bubble_outline_rounded,
-                                  size: 14,
-                                  color: Color(0xFFC98C7B),
+                                Icon(
+                                  is115
+                                      ? Icons.phone_in_talk_rounded
+                                      : (isHospital
+                                          ? Icons.local_hospital_rounded
+                                          : Icons.chat_bubble_outline_rounded),
+                                  size: 15,
+                                  color: is115
+                                      ? const Color(0xFFCF1322)
+                                      : (isHospital
+                                          ? const Color(0xFF0958D9)
+                                          : const Color(0xFFC98C7B)),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     f,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12.5,
-                                      color: Color(0xFF4A3731),
+                                      color: is115
+                                          ? const Color(0xFFA8071A)
+                                          : (isHospital
+                                              ? const Color(0xFF003EB3)
+                                              : const Color(0xFF4A3731)),
                                       height: 1.35,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: (is115 || isHospital)
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
                                     ),
                                     softWrap: true,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 11,
-                                  color: Color(0xFFBCAAA4),
+                                Icon(
+                                  is115
+                                      ? Icons.call_rounded
+                                      : (isHospital
+                                          ? Icons.near_me_rounded
+                                          : Icons.arrow_forward_ios_rounded),
+                                  size: (is115 || isHospital) ? 14 : 11,
+                                  color: is115
+                                      ? const Color(0xFFCF1322)
+                                      : (isHospital
+                                          ? const Color(0xFF0958D9)
+                                          : const Color(0xFFBCAAA4)),
                                 ),
                               ],
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ),
             ),

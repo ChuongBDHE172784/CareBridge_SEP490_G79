@@ -107,15 +107,6 @@ class ContentService {
     return ContentDetail.fromJson(json['data'] as Map<String, dynamic>);
   }
 
-  Future<List<ChecklistTemplate>> getChecklists({String? stage}) async {
-    final q = stage != null ? '?stage=$stage' : '';
-    final json = await _getRequest('/api/v1/content/checklists$q');
-    final list = json['data'] as List? ?? [];
-    return list
-        .map((e) => ChecklistTemplate.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
   Future<LifecycleEnvelope<PaginatedContent>> getLifecycleContent({
     String? type,
     String? topicId,
@@ -193,23 +184,6 @@ class ContentService {
     return LifecycleEnvelope<List<ContentListItem>>(
       stage: resolvedStage,
       payload: byId.values.toList(growable: false),
-    );
-  }
-
-  Future<LifecycleEnvelope<List<ChecklistTemplate>>>
-  getLifecycleChecklists() async {
-    final json = Map<String, dynamic>.from(
-      await _getRequest('/api/v1/content/lifecycle/checklists') as Map,
-    );
-    return LifecycleEnvelope<List<ChecklistTemplate>>.fromApiResponse(
-      json,
-      (payload) => (payload as List)
-          .map(
-            (item) => ChecklistTemplate.fromJson(
-              Map<String, dynamic>.from(item as Map),
-            ),
-          )
-          .toList(growable: false),
     );
   }
 
