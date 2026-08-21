@@ -36,6 +36,7 @@ import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractEmbeddedPostgresIntegrationTest;
 import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -566,13 +567,15 @@ class ChecklistBusinessAuditAtomicityPostgresTest extends AbstractEmbeddedPostgr
                 AuditLogMapper mapper,
                 AuditEligibilityPolicy policy,
                 ObjectMapper objectMapper,
+                UserRepository userRepository,
                 DtoSerializationFault dtoFault,
                 AuditPersistenceFault persistenceFault) {
             return new AuditServiceImpl(
                     persistenceFault.decorate(repository),
                     mapper,
                     policy,
-                    new FaultInjectingAuditObjectMapper(objectMapper, dtoFault));
+                    new FaultInjectingAuditObjectMapper(objectMapper, dtoFault),
+                    userRepository);
         }
     }
 

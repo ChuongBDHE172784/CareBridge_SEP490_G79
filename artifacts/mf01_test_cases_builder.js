@@ -18,7 +18,6 @@ const S = {
   role: `${ROOT}/identity/admin/controller/AdminRoleController.java; ${ROOT}/identity/admin/service/impl/AdminRoleServiceImpl.java`,
   staff: `${ROOT}/identity/admin/controller/AdminStaffController.java; ${ROOT}/identity/admin/service/impl/AdminStaffServiceImpl.java`,
   audit: `${ROOT}/audit/controller/AuditController.java; ${ROOT}/audit/service/impl/AuditServiceImpl.java`,
-  incident: `${ROOT}/audit/controller/SecurityIncidentController.java; ${ROOT}/audit/service/impl/SecurityIncidentServiceImpl.java`,
   db: '05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql',
   webAuth: `${WEB}/features/auth/services/authApi.ts; ${WEB}/features/auth/pages/LoginPage.tsx; ${WEB}/features/auth/pages/OtpPage.tsx`,
   mobileAuth: `${MOBILE}/features/auth/services/auth_service.dart; ${MOBILE}/features/auth/screens/login_screen.dart; ${MOBILE}/features/auth/screens/register_screen.dart; ${MOBILE}/features/auth/screens/otp_verification_screen.dart`,
@@ -104,9 +103,6 @@ api('VIEW', 'UC-17', 'System Admin xem activity history của một tài khoản
 api('VIEW', 'UC-18', 'System Admin/Operations xem audit log được phép.', 'GET', '/api/v1/admin/audit-logs?page=0&size=20', undefined,
   'HTTP 200; audit rows sắp xếp giảm dần theo createdAt; mỗi lần xem tạo meta-audit VIEW_AUDIT_LOG mà không chép toàn bộ PII result vào payload.',
   'Token role SYSTEM_ADMIN hoặc OPERATIONS; có audit_events.', S.audit);
-api('VIEW', 'UC-18', 'System Admin xem danh sách security events.', 'GET', '/api/v1/admin/security-events?page=0&size=20', undefined,
-  'HTTP 200; trả security events được phân trang; query được meta-audit; không trả thêm health content ngoài trường cần thiết.',
-  'SYSTEM_ADMIN token; có security_events nhiều severity/status.', S.incident);
 
 // ADD / CREATE
 api('ADD', 'UC-01', 'Đăng ký tài khoản mới bằng email hợp lệ.', 'POST', '/api/v1/auth/register',
@@ -141,10 +137,6 @@ api('ADD', 'UC-17', 'System Admin tạo staff account MODERATOR.', 'POST', '/api
   { email: 'moderator.mf01@example.test', phone: '0912345679', name: 'Moderator QA', role: 'MODERATOR' },
   'HTTP 201; staff account tạo một lần với temp credential server-generated, không nhận password từ admin; email gửi một lần; audit STAFF_ACCOUNT_CREATED được ghi.',
   'SYSTEM_ADMIN token; email/phone mới; SMTP stub.', `${S.staff}; ${ROOT}/identity/admin/dto/request/CreateStaffAccountRequest.java`, 'Source extension within UC-17.');
-api('ADD', 'UC-18', 'System Admin thêm note vào security event.', 'POST', '/api/v1/admin/security-events/<EVENT_ID_FROM_PRECONDITION>/notes',
-  { noteText: 'Reviewed against authentication logs; follow-up required.' },
-  'HTTP 200; note được trim và gắn đúng event/author; audit SECURITY_NOTE_ADDED được ghi; event gốc không bị sửa ngoài ý muốn.',
-  'SYSTEM_ADMIN token; security event tồn tại.', `${S.incident}; ${ROOT}/audit/dto/request/AddSecurityNoteRequest.java`, 'Source extension within UC-18 investigation.');
 api('ADD', 'UC-12', 'System Admin gửi notification hợp lệ đến user có device token.', 'POST', '/api/v1/notifications/send',
   { recipientUserId: '<USER_ID_FROM_PRECONDITION>', type: 'COMMUNITY_REPLY', title: 'New reply', body: 'A new reply is available.', referenceId: '<REFERENCE_ID_FROM_PRECONDITION>', referenceType: 'COMMUNITY_QUESTION' },
   'HTTP 200; FCM được gọi; notification_record trạng thái SENT/attemptCount=1; audit NOTIFICATION_SENT được ghi.',
@@ -208,10 +200,6 @@ api('UPDATE', 'UC-17', 'System Admin đổi role giữa các staff governance ro
   { newRole: 'CONTENT_ADMIN', lockAccessRights: false, reason: 'Approved staff reassignment' },
   'HTTP 200; role đổi từ MODERATOR/CONTENT_ADMIN/SYSTEM_ADMIN sang role hợp lệ; audit ROLE_PERMISSION_UPDATED có previous/new role.',
   'SYSTEM_ADMIN token; target là staff governance role và khác caller.', `${S.role}; ${ROOT}/identity/admin/dto/request/UpdateUserRoleRequest.java`);
-api('UPDATE', 'UC-18', 'System Admin chuyển security event sang UNDER_REVIEW.', 'PUT', '/api/v1/admin/security-events/<EVENT_ID_FROM_PRECONDITION>/review',
-  { status: 'UNDER_REVIEW' },
-  'HTTP 200; status/reviewer/reviewedAt cập nhật; audit SECURITY_EVENT_REVIEWED được ghi.',
-  'SYSTEM_ADMIN token; security event tồn tại.', `${S.incident}; ${ROOT}/audit/dto/request/ReviewSecurityEventRequest.java`);
 api('UPDATE', 'UC-07', 'Đổi mật khẩu hợp lệ cho user đang đăng nhập.', 'PUT', '/api/v1/auth/change-password',
   { oldPassword: 'OldPass1!', newPassword: 'NewPass2@', confirmPassword: 'NewPass2@' },
   'HTTP 200; password hash thay đổi; refresh tokens hiện hành bị revoke; audit PASSWORD_CHANGED; đăng nhập bằng password cũ thất bại.',
@@ -269,9 +257,6 @@ api('SEARCH', 'UC-17', 'Tìm user không có kết quả.', 'GET', '/api/v1/admi
 api('SEARCH', 'UC-18', 'Tìm audit log theo userId và action.', 'GET', '/api/v1/admin/audit-logs?userId=<USER_ID>&action=LOGIN&page=0&size=20', undefined,
   'HTTP 200; mọi row khớp userId và LOGIN; filter snapshot được meta-audit.',
   'SYSTEM_ADMIN/OPERATIONS token; có nhiều audit action/user.', S.audit);
-api('SEARCH', 'UC-18', 'Tìm timeline security event theo correlationId.', 'GET', '/api/v1/admin/security-events/timeline?correlationId=<CORRELATION_ID>', undefined,
-  'HTTP 200; trả đúng chuỗi event cùng correlationId theo occurredAt tăng dần.',
-  'SYSTEM_ADMIN token; có ít nhất ba correlated events.', S.incident);
 
 // FILTER
 api('FILTER', 'UC-12', 'Lọc notification theo type hợp lệ.', 'GET', '/api/v1/notifications/me?type=COMMUNITY_REPLY&page=0&size=20', undefined,
@@ -286,12 +271,6 @@ api('FILTER', 'UC-17', 'Lọc admin users theo locked=true.', 'GET', '/api/v1/ad
 api('FILTER', 'UC-18', 'Lọc audit log theo khoảng thời gian.', 'GET', '/api/v1/admin/audit-logs?fromDate=2026-08-01T00:00:00Z&toDate=2026-08-09T23:59:59Z&page=0&size=20', undefined,
   'HTTP 200; mọi audit row nằm trong khoảng thời gian; không bỏ qua boundary hợp lệ.',
   'SYSTEM_ADMIN/OPERATIONS token; có audit trước/trong/sau khoảng.', S.audit);
-api('FILTER', 'UC-18', 'Lọc security events theo severity và status.', 'GET', '/api/v1/admin/security-events?severity=HIGH&status=OPEN&page=0&size=20', undefined,
-  'HTTP 200; mọi event khớp HIGH và OPEN.',
-  'SYSTEM_ADMIN token; fixture nhiều severity/status.', S.incident);
-api('FILTER', 'UC-18', 'Reset filter security events về danh sách đầy đủ.', 'GET', '/api/v1/admin/security-events?page=0&size=20', undefined,
-  'HTTP 200; kết quả không còn bị giới hạn bởi filter trước đó; UI reset controls phản ánh trạng thái rỗng.',
-  'SYSTEM_ADMIN token; trước đó đã áp dụng filter trên UI/API.', `${S.incident}; ${WEB}/features/admin`);
 
 // SORT
 api('SORT', 'UC-12', 'Notification list sắp xếp mới nhất trước.', 'GET', '/api/v1/notifications/me?page=0&size=20', undefined,
@@ -405,10 +384,6 @@ api('VALID', 'UC-17', 'Từ chối lock account khi thiếu reason.', 'PATCH', '
   { locked: true },
   'HTTP 400 IAM-114-005; target không bị lock; sessions không bị revoke.',
   'SYSTEM_ADMIN token; target khác caller và unlocked.', S.admin);
-api('VALID', 'UC-18', 'Từ chối security event review status ngoài enum cho phép.', 'PUT', '/api/v1/admin/security-events/<EVENT_ID>/review',
-  { status: 'DELETED' },
-  'HTTP 400; event/reviewer/audit không thay đổi.',
-  'SYSTEM_ADMIN token; event tồn tại.', `${S.incident}; ${ROOT}/audit/dto/request/ReviewSecurityEventRequest.java`);
 
 // AUTHENTICATION
 api('AUTH', 'UC-03', 'Login bằng email và password hợp lệ.', 'POST', '/api/v1/auth/login',
@@ -484,9 +459,6 @@ api('ACCESS', 'UC-17', 'Mother bị từ chối truy cập admin user list.', 'G
 api('ACCESS', 'UC-18', 'Moderator bị từ chối truy cập audit logs.', 'GET', '/api/v1/admin/audit-logs?page=0&size=20', undefined,
   'HTTP 403; không trả audit rows và không meta-audit.',
   'Token role MODERATOR.', `${S.audit}; ${S.jwt}`);
-api('ACCESS', 'UC-18', 'Operations được xem audit logs nhưng không được xem security-events admin endpoint.', 'GET', '/api/v1/admin/security-events?page=0&size=20', undefined,
-  'HTTP 403; security events không trả; quyền GET audit-logs riêng không mở rộng sang incident endpoint.',
-  'Token role OPERATIONS.', `${S.audit}; ${S.incident}; ${S.jwt}`);
 api('ACCESS', 'UC-17', 'System Admin không thể đổi trạng thái chính mình.', 'PATCH', '/api/v1/admin/users/<CALLER_USER_ID>/status',
   { locked: true, reason: 'self target' },
   'HTTP 403 IAM-114-004; caller không bị thay đổi; session không revoke; không audit mutation.',
@@ -575,9 +547,6 @@ api('PRIVACY', 'UC-16', 'Consent list chỉ trả grant của chính user.', 'GE
 api('PRIVACY', 'UC-18', 'Audit query không trả health payload vượt nhu cầu điều tra.', 'GET', '/api/v1/admin/audit-logs?action=VIEW_HEALTH_RECORD&page=0&size=20', undefined,
   'HTTP 200; audit metadata tối thiểu theo schema; không trả raw file content/clinical record body; meta-audit chỉ lưu filter snapshot.',
   'SYSTEM_ADMIN/OPERATIONS token; có VIEW_HEALTH_RECORD audit fixtures.', S.audit);
-api('PRIVACY', 'UC-18', 'Security event notes không thể được anonymous user đọc.', 'GET', '/api/v1/admin/security-events/<EVENT_ID>/notes', undefined,
-  'HTTP 401; không trả noteText hoặc authorId.',
-  'Không có token; event/notes tồn tại.', `${S.incident}; ${S.jwt}`);
 api('PRIVACY', 'UC-03', 'Refresh token không lưu raw value trong auth_sessions.', 'POST', '/api/v1/auth/login',
   { email: 'hashcheck@example.test', password: 'SafePass1!' },
   'HTTP 200; client nhận raw refresh token; auth_sessions chỉ có SHA-256 hash; log/audit không chứa raw access/refresh token.',

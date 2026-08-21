@@ -29,6 +29,7 @@ import com.carebridge.backend.reminder.repository.ReminderRepository;
 import com.carebridge.backend.reminder.service.INotificationService;
 import com.carebridge.backend.reminder.service.ReminderActionAuditContext;
 import com.carebridge.backend.reminder.service.impl.ReminderServiceImpl;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.vaccination.repository.VaccinationRecordRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -148,7 +149,7 @@ class UnifiedTaskTypedAuditTest {
 
     private static AuditServiceImpl auditService(AuditLogRepository repository) {
         return new AuditServiceImpl(repository, mock(AuditLogMapper.class),
-                new AuditEligibilityPolicy(), new ObjectMapper().findAndRegisterModules());
+                new AuditEligibilityPolicy(), new ObjectMapper().findAndRegisterModules(), mock(UserRepository.class));
     }
 
     private static AuditLog captureAudit(AuditLogRepository repository) {

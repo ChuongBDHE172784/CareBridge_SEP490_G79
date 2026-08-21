@@ -57,15 +57,10 @@
 
 ---
 
-## Web App — Sprint 0 (7 màn hình)
+## Web App — Sprint 0 (2 màn hình)
 
 | # | Screen ID | Tên màn hình | UC | Function Spec | Trạng thái | Ghi chú |
 | --- | --- | --- | --- | --- | --- | --- |
-| 20 | **CB-142** | Security Events | UC-175 | 3.2.5.2 | ✅ Done | `security/pages/SecurityEventsPage.tsx` — stats cards, severity filter chips, event log table |
-| 21 | **CB-143** | Security Event Detail | UC-175 | 3.2.5.2 | ✅ Done | `security/pages/SecurityEventDetailPage.tsx` — severity badge, impact/risk, evidence timeline, attack flow |
-| 22 | **CB-144** | Security Incident Investigation | UC-174 | 3.2.5.1 | ✅ Done | `security/pages/SecurityIncidentInvestigationPage.tsx` — evidence timeline, containment, notes, affected accounts |
-| 23 | **CB-145** | Security Incident Resolution | UC-174 | 3.2.5.1 | ✅ Done | `security/pages/SecurityIncidentResolutionPage.tsx` — root cause, summary, remediation checklist, activity log |
-| 24 | **CB-151** | Security Incident List | UC-174 | 3.2.5.1 | ✅ Done | `security/pages/SecurityIncidentListPage.tsx` — search, filters, table with SLA, pagination |
 | 25 | **CB-219** | Notification Center (web) | UC-11, UC-12 | 3.1.5.1–3.1.5.4 | ✅ Done | `notification/pages/NotificationCenterPage.tsx` — table layout, filters, pagination |
 | 26 | **CB-220** | Privacy Settings (web) | UC-17, UC-18, UC-19, UC-157 | 3.1.4.1 | ✅ Done | `settings/pages/PrivacySettingsPage.tsx` — split layout, consent table, save bar |
 
@@ -121,6 +116,4 @@ Role MOTHER dùng mobile; exercise admin web (CB-189–CB-193, UC-185) thuộc *
 
 ### Web (ưu tiên cao → thấp)
 
-1. **CB-151, CB-144, CB-145** — Security Incident List + Investigation + Resolution (Sprint 0)
-2. **CB-142, CB-143** — Security Events + Detail (Sprint 0)
 3. **CB-219, CB-220** — Notification Center + Privacy Settings (Sprint 0)

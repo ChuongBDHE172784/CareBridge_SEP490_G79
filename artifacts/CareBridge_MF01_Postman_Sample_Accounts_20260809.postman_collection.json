@@ -4157,128 +4157,6 @@
           }
         },
         {
-          "name": "MF01-VIEW-015 - System Admin xem danh sách security events.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events?page=0&size=20",
-            "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN token; có security_events nhiều severity/status.\n\nExpected: HTTP 200; trả security events được phân trang; query được meta-audit; không trả thêm health content ngoài trường cần thiết.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-          }
-        },
-        {
-          "name": "MF01-ADD-009 - System Admin thêm note vào security event.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events/{{eventId}}/notes",
-            "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN token; security event tồn tại.\n\nExpected: HTTP 200; note được trim và gắn đúng event/author; audit SECURITY_NOTE_ADDED được ghi; event gốc không bị sửa ngoài ý muốn.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/AddSecurityNoteRequest.java. Source extension within UC-18 investigation.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"noteText\": \"Reviewed against authentication logs; follow-up required.\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "MF01-UPDATE-015 - System Admin chuyển security event sang UNDER_REVIEW.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events/{{eventId}}/review",
-            "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN token; security event tồn tại.\n\nExpected: HTTP 200; status/reviewer/reviewedAt cập nhật; audit SECURITY_EVENT_REVIEWED được ghi.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/ReviewSecurityEventRequest.java.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"UNDER_REVIEW\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
           "name": "MF01-SEARCH-004 - Tìm audit log theo userId và action.",
           "event": [
             {
@@ -4311,38 +4189,6 @@
           }
         },
         {
-          "name": "MF01-SEARCH-005 - Tìm timeline security event theo correlationId.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events/timeline?correlationId={{correlationId}}",
-            "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN token; có ít nhất ba correlated events.\n\nExpected: HTTP 200; trả đúng chuỗi event cùng correlationId theo occurredAt tăng dần.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-          }
-        },
-        {
           "name": "MF01-FILTER-004 - Lọc audit log theo khoảng thời gian.",
           "event": [
             {
@@ -4372,70 +4218,6 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/audit-logs?fromDate=2026-08-01T00:00:00Z&toDate=2026-08-09T23:59:59Z&page=0&size=20",
             "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN/OPERATIONS token; có audit trước/trong/sau khoảng.\n\nExpected: HTTP 200; mọi audit row nằm trong khoảng thời gian; không bỏ qua boundary hợp lệ.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
-          }
-        },
-        {
-          "name": "MF01-FILTER-005 - Lọc security events theo severity và status.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events?severity=HIGH&status=OPEN&page=0&size=20",
-            "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN token; fixture nhiều severity/status.\n\nExpected: HTTP 200; mọi event khớp HIGH và OPEN.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-          }
-        },
-        {
-          "name": "MF01-FILTER-006 - Reset filter security events về danh sách đầy đủ.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events?page=0&size=20",
-            "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN token; trước đó đã áp dụng filter trên UI/API.\n\nExpected: HTTP 200; kết quả không còn bị giới hạn bởi filter trước đó; UI reset controls phản ánh trạng thái rỗng.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeWebApp/src/features/admin."
           }
         },
         {
@@ -4503,51 +4285,6 @@
           }
         },
         {
-          "name": "MF01-VALID-021 - Từ chối security event review status ngoài enum cho phép.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([400]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events/{{eventId}}/review",
-            "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN token; event tồn tại.\n\nExpected: HTTP 400; event/reviewer/audit không thay đổi.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/ReviewSecurityEventRequest.java.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"DELETED\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
           "name": "MF01-ACCESS-008 - Moderator bị từ chối truy cập audit logs.",
           "event": [
             {
@@ -4577,38 +4314,6 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/audit-logs?page=0&size=20",
             "description": "Requirement: UC-18\n\nPre-condition: Token role MODERATOR.\n\nExpected: HTTP 403; không trả audit rows và không meta-audit.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
-          }
-        },
-        {
-          "name": "MF01-ACCESS-009 - Operations được xem audit logs nhưng không được xem security-events admin endpoint.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([403]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{systemAdminToken}}",
-                "type": "text"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events?page=0&size=20",
-            "description": "Requirement: UC-18\n\nPre-condition: Token role OPERATIONS.\n\nExpected: HTTP 403; security events không trả; quyền GET audit-logs riêng không mở rộng sang incident endpoint.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
           }
         },
         {
@@ -4673,33 +4378,6 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/audit-logs?action=VIEW_HEALTH_RECORD&page=0&size=20",
             "description": "Requirement: UC-18\n\nPre-condition: SYSTEM_ADMIN/OPERATIONS token; có VIEW_HEALTH_RECORD audit fixtures.\n\nExpected: HTTP 200; audit metadata tối thiểu theo schema; không trả raw file content/clinical record body; meta-audit chỉ lưu filter snapshot.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
-          }
-        },
-        {
-          "name": "MF01-PRIVACY-007 - Security event notes không thể được anonymous user đọc.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Expected HTTP status\", function () { pm.expect([401]).to.include(pm.response.code); });",
-                  "let body = {}; try { body = pm.response.json(); } catch (e) {}",
-                  "const data = body.data || body;"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/security-events/{{eventId}}/notes",
-            "description": "Requirement: UC-18\n\nPre-condition: Không có token; event/notes tồn tại.\n\nExpected: HTTP 401; không trả noteText hoặc authorId.\n\nSource trace: UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
           }
         },
         {

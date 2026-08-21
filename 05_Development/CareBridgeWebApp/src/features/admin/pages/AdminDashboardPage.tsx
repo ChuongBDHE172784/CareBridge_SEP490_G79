@@ -6,7 +6,6 @@ import { searchUsers } from '../services/adminUserApi';
 import { searchAuditLogs } from '../services/auditLogApi';
 import { fetchSystemConfiguration, type SystemConfiguration } from '../../aiRuleManagement/services/systemConfigurationApi';
 import { fetchStaffContentList, fetchAdminChecklistTemplates } from '../../contentManagement/services/contentApi';
-import apiClient from '../../../shared/api/apiClient';
 
 // Models
 import {
@@ -49,11 +48,9 @@ function getDashboardErrorMessage(error: unknown): string {
 function AdminTaskStatusPanel({
   lockedAccounts,
   pendingContent,
-  securityEvents,
 }: {
   lockedAccounts: number;
   pendingContent: number;
-  securityEvents: number;
 }) {
   const navigate = useNavigate();
 
@@ -81,17 +78,6 @@ function AdminTaskStatusPanel({
       badge: pendingContent > 0 ? `${pendingContent} bài chờ` : 'Hoàn thành',
       badgeTone: pendingContent > 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-300',
       path: '/admin/content-approval-queue',
-    },
-    {
-      title: 'Sự cố an ninh & Cảnh báo bảo mật',
-      detail: 'Sự kiện bất thường, truy cập nghi vấn & cảnh báo an toàn',
-      count: securityEvents,
-      unit: 'sự cố',
-      icon: 'security',
-      iconTone: 'bg-rose-100 text-rose-700',
-      badge: securityEvents > 0 ? `${securityEvents} cảnh báo` : 'An toàn',
-      badgeTone: securityEvents > 0 ? 'bg-rose-50 text-rose-800 border-rose-300' : 'bg-slate-100 text-slate-600 border-slate-300',
-      path: '/admin/security/incidents',
     },
   ];
 
@@ -167,16 +153,6 @@ const QUICK_HUB_ITEMS = [
     badgeTone: 'bg-amber-50 text-amber-800 border-amber-200',
     actionText: 'Cấu hình quy tắc an toàn',
   },
-  {
-    title: 'Nhật ký & Giám sát An ninh',
-    description: 'Theo dõi sự cố bảo mật, sự kiện an toàn thông tin và nhật ký truy vết quản trị.',
-    icon: 'security',
-    path: '/admin/security/incidents',
-    badgeText: 'Bảo mật & Audit Log',
-    iconBg: 'bg-rose-100 text-rose-700',
-    badgeTone: 'bg-rose-50 text-rose-700 border-rose-200',
-    actionText: 'Giám sát sự cố an ninh',
-  },
 ];
 
 export default function AdminDashboardPage() {
@@ -186,7 +162,6 @@ export default function AdminDashboardPage() {
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [lockedUsersCount, setLockedUsersCount] = useState<number>(0);
   const [pendingContentCount, setPendingContentCount] = useState<number>(0);
-  const [totalSecurityEvents, setTotalSecurityEvents] = useState<number>(0);
   const [recentAuditLogs, setRecentAuditLogs] = useState<AuditLogEntry[]>([]);
   const [totalAuditLogs, setTotalAuditLogs] = useState<number>(0);
   const [systemConfig, setSystemConfig] = useState<SystemConfiguration | null>(null);
@@ -204,7 +179,6 @@ export default function AdminDashboardPage() {
         lockedUsersRes,
         contentRes,
         checklistRes,
-        securityRes,
         auditLogsRes,
         systemConfigRes,
       ] = await Promise.allSettled([
@@ -212,7 +186,6 @@ export default function AdminDashboardPage() {
         searchUsers({ locked: true, page: 0, size: 1 }),
         fetchStaffContentList({ status: 'PENDING_REVIEW', size: 1 }),
         fetchAdminChecklistTemplates({ status: 'PENDING_REVIEW', size: 1 }),
-        apiClient.get('/api/v1/admin/security-events?page=0&size=1'),
         searchAuditLogs({ page: 0, size: 5 }),
         fetchSystemConfiguration(),
       ]);
@@ -233,11 +206,6 @@ export default function AdminDashboardPage() {
       }
       setPendingContentCount(contentCount);
 
-      if (securityRes.status === 'fulfilled') {
-        const secData = securityRes.value.data;
-        const total = secData?.data?.totalElements ?? secData?.totalElements ?? 0;
-        setTotalSecurityEvents(total);
-      }
       if (auditLogsRes.status === 'fulfilled') {
         setRecentAuditLogs(auditLogsRes.value.content);
         setTotalAuditLogs(auditLogsRes.value.totalElements);
@@ -337,8 +305,8 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Operational KPI Grid (3 Cards) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Operational KPI Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* KPI 1: Users & locked accounts */}
             <div
               onClick={() => navigate('/admin/users')}
@@ -375,28 +343,10 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* KPI 3: Security Events & Audit Logs */}
-            <div
-              onClick={() => navigate('/admin/security/incidents')}
-              className="bg-surface rounded-2xl p-6 shadow-sm border border-outline-variant/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <div>
-                <div className="text-[13px] text-outline font-semibold mb-1">Giám sát An ninh Bảo mật</div>
-                <div className="text-[28px] font-bold text-rose-600 leading-tight">
-                  {formatNumber(totalSecurityEvents)}
-                </div>
-                <div className="text-xs text-outline mt-1">
-                  Đã ghi nhận: <span className="font-semibold text-on-surface">{formatNumber(totalAuditLogs)} audit log</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-2xl text-rose-600">security</span>
-              </div>
-            </div>
           </div>
 
           {/* Quick Hub Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {QUICK_HUB_ITEMS.map((item) => (
               <div
                 key={item.title}
@@ -441,7 +391,6 @@ export default function AdminDashboardPage() {
               <AdminTaskStatusPanel
                 lockedAccounts={lockedUsersCount}
                 pendingContent={pendingContentCount}
-                securityEvents={totalSecurityEvents}
               />
             </div>
 

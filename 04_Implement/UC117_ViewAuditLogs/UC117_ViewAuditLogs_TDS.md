@@ -350,7 +350,7 @@ CREATE TABLE public.audit_logs (
 
 The Java `AuditAction` enum (`audit.entity.AuditAction`) already carries **more values (52)** than the DB `audit_logs_action_check` constraint's array (14 values, including `VIEW_AUDIT_LOG`). This drift predates UC117 and is out of scope to reconcile here — `@Enumerated(EnumType.STRING)` will fail at insert time for any of the ~38 enum values not present in the CHECK constraint's array. **Flagged as `Open Item OI-117-3`**: not a UC117 regression (the drift exists today independent of this feature) but directly relevant since ADR-AUDIT-001 requires inserting `VIEW_AUDIT_LOG`, which **is** present in the constraint array — so ADR-AUDIT-001's insert will succeed. No migration change is required for UC117 itself.
 
-`security_events` table (L428-447) is a related but separate table (used by `SecurityIncidentController`, not `AuditController`) and is out of scope for UC117.
+Security-incident review endpoints are not part of UC117; this use case reads the shared append-only audit ledger through `AuditController` only.
 
 ---
 
@@ -520,7 +520,7 @@ public interface AuditService {
 
 **Change introduced by UC117 (ADR-AUDIT-001):** `AuditController.search(...)` gains one additional call: `auditService.log(AuditAction.VIEW_AUDIT_LOG, currentAdminUserId, "AuditLog", null, filterSnapshot)`, using the existing `log(...)` overload — no interface change.
 
-**`currentAdminUserId` source:** must be resolved via the existing `SecurityUtils.requireCurrentUserId(principal)` pattern already used in `SecurityIncidentController` (§ file read above), injecting `Principal principal` into the controller method signature — consistent with the codebase's established identity-resolution convention (CASE 2.0 constraint C4, §17).
+**`currentAdminUserId` source:** must be resolved from the authenticated `Principal` through the shared security utility, never from a client-supplied user id.
 
 ### 8.2. Frontend API Client Contract (new)
 
@@ -850,7 +850,7 @@ curl -X GET "https://[host]/api/v1/admin/audit-logs"
 | C1 | Backend implementation is limited to: (a) adding `VIEW_AUDIT_LOG` to `AuditEligibilityPolicy.SENSITIVE_ACTIONS`, (b) adding one `auditService.log(...)` call in `AuditController.search(...)`. No changes to `AuditServiceImpl`, `AuditLogRepository`, `AuditLog` entity, or `AuditLogMapper` are authorized by this TDS. | ADR-AUDIT-001 | 2026-07-02 |
 | C2 | The frontend MUST NOT perform client-side filtering, redaction logic, or enrichment of `details` beyond collapsed/expandable rendering — all filtering happens server-side via the existing query params. | ADR-AUDIT-002 | 2026-07-02 |
 | C3 | Do not resurrect or wire up `audit.dto.request.AuditQueryRequest` — it is confirmed dead code and out of scope (§1.2). | §1.2 (Source Conflict) | 2026-07-02 |
-| C4 | Resolve the acting admin's identity via `SecurityUtils.requireCurrentUserId(principal)` (the pattern already used in `SecurityIncidentController`), never by trusting a client-supplied user id. | §8.1, BR-RBAC | 2026-07-02 |
+| C4 | Resolve the acting admin's identity from the authenticated principal, never by trusting a client-supplied user id. | §8.1, BR-RBAC | 2026-07-02 |
 | C5 | Controller layer only orchestrates (calls `AuditService`); no business/authorization logic beyond the existing `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` may be added to `AuditController` per CLAUDE.md's controller/service layering rule. | CLAUDE.md Architecture rules | 2026-07-02 |
 | C6 | The meta-audit write (ADR-AUDIT-001) MUST be fail-soft (try/catch + warn-log) and must never cause the read request to fail. | §12.2 | 2026-07-02 |
 | C7 | No new Flyway migration file may be created for this UC (§5.2 — schema is unchanged). | §5.2 | 2026-07-02 |

@@ -497,14 +497,12 @@ Web posture config pages có mock fallback data. Cần xác nhận dữ liệu �
 5. Đổi role của một test account an toàn.
 6. Mở audit logs.
 7. Mở security events.
-8. Review một security event và thêm note.
 
 ### Kết quả mong đợi
 
 - Trang admin-only chặn user không phải admin.
 - Thay đổi user status/role được lưu.
 - Audit logs ghi lại hành động nhạy cảm.
-- Review/note của security event được lưu.
 
 ### Backend endpoint liên quan
 
@@ -512,16 +510,11 @@ Web posture config pages có mock fallback data. Cần xác nhận dữ liệu �
 - `PATCH /api/v1/admin/users/{userId}/status`
 - `PATCH /api/v1/admin/users/{userId}/role`
 - `GET /api/v1/admin/audit-logs`
-- `GET /api/v1/admin/security-events`
-- `PUT /api/v1/admin/security-events/{eventId}/review`
-- `POST /api/v1/admin/security-events/{eventId}/notes`
-- `GET /api/v1/admin/security-events/{eventId}/notes`
 
 ### Bằng chứng cần lưu
 
 - Screenshot admin user search.
 - Screenshot audit log sau khi đổi role/status.
-- Screenshot security event note.
 
 ---
 

@@ -456,7 +456,7 @@ The current JPA entity packages are aligned with the updated ERD data dictionary
 | Backend package | Entity ownership |
 | --- | --- |
 | `security.entity` | `User`, `RefreshToken`, `OtpVerification` |
-| `audit.entity` | `AuditLog`, `SecurityEvent`, audit enums |
+| `audit.entity` | `AuditLog`, audit enums |
 | `consent.entity` | `ConsentGrant`, consent enums |
 | `identity.entity` | `Role`, `UserRole`, `UserSession`, `CommunityProfile`, `NotificationPreference`, `Notification`, `DataPermission` |
 | `carejourney.entity` | `MotherJourney`, `MaternalHealthMetric`, `PostpartumLog` |
@@ -958,4 +958,3 @@ Minimum gates:
 | Data architecture | PostgreSQL plus MongoDB plus object storage | Matches structured workflows, flexible content/logs, and file uploads. |
 | Integration strategy | Dedicated integration services with fallback behavior | Reduces schedule risk and supports demo mode. |
 | Safety strategy | Centralized consent, audit, RBAC, and triage policies | Required by healthcare-safe positioning and sensitive data handling. |
-

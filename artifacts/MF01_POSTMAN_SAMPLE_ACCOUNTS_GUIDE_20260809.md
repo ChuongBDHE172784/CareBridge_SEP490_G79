@@ -2311,69 +2311,9 @@ Base URL đang sử dụng: `http://localhost:8080`
 
 ---
 
-### MF01-VIEW-015 - System Admin xem danh sách security events.
-
-**Sử dụng phương thức nào:** `GET`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events?page=0&size=20`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** Không có body.
-
-**Status mong đợi:** `200`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
-
 ---
 
-### MF01-ADD-009 - System Admin thêm note vào security event.
-
-**Sử dụng phương thức nào:** `POST`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events/{{eventId}}/notes`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** chọn `Body → raw → JSON`, sau đó dán:
-
-```json
-{
-  "noteText": "Reviewed against authentication logs; follow-up required."
-}
-```
-
-**Status mong đợi:** `200`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
-
 ---
-
-### MF01-UPDATE-015 - System Admin chuyển security event sang UNDER_REVIEW.
-
-**Sử dụng phương thức nào:** `PUT`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events/{{eventId}}/review`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** chọn `Body → raw → JSON`, sau đó dán:
-
-```json
-{
-  "status": "UNDER_REVIEW"
-}
-```
-
-**Status mong đợi:** `200`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
 
 ---
 
@@ -2395,22 +2335,6 @@ Base URL đang sử dụng: `http://localhost:8080`
 
 ---
 
-### MF01-SEARCH-005 - Tìm timeline security event theo correlationId.
-
-**Sử dụng phương thức nào:** `GET`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events/timeline?correlationId={{correlationId}}`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** Không có body.
-
-**Status mong đợi:** `200`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
-
 ---
 
 ### MF01-FILTER-004 - Lọc audit log theo khoảng thời gian.
@@ -2431,39 +2355,7 @@ Base URL đang sử dụng: `http://localhost:8080`
 
 ---
 
-### MF01-FILTER-005 - Lọc security events theo severity và status.
-
-**Sử dụng phương thức nào:** `GET`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events?severity=HIGH&status=OPEN&page=0&size=20`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** Không có body.
-
-**Status mong đợi:** `200`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
-
 ---
-
-### MF01-FILTER-006 - Reset filter security events về danh sách đầy đủ.
-
-**Sử dụng phương thức nào:** `GET`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events?page=0&size=20`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** Không có body.
-
-**Status mong đợi:** `200`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
 
 ---
 
@@ -2503,28 +2395,6 @@ Base URL đang sử dụng: `http://localhost:8080`
 
 ---
 
-### MF01-VALID-021 - Từ chối security event review status ngoài enum cho phép.
-
-**Sử dụng phương thức nào:** `PUT`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events/{{eventId}}/review`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** chọn `Body → raw → JSON`, sau đó dán:
-
-```json
-{
-  "status": "DELETED"
-}
-```
-
-**Status mong đợi:** `400`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
-
 ---
 
 ### MF01-ACCESS-008 - Moderator bị từ chối truy cập audit logs.
@@ -2544,22 +2414,6 @@ Base URL đang sử dụng: `http://localhost:8080`
 **Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
 
 ---
-
-### MF01-ACCESS-009 - Operations được xem audit logs nhưng không được xem security-events admin endpoint.
-
-**Sử dụng phương thức nào:** `GET`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events?page=0&size=20`
-
-**Authorization:** `Bearer {{systemAdminToken}}`
-
-**Body nhập trong Postman:** Không có body.
-
-**Status mong đợi:** `403`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
 
 ---
 
@@ -2598,22 +2452,6 @@ Base URL đang sử dụng: `http://localhost:8080`
 **Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
 
 ---
-
-### MF01-PRIVACY-007 - Security event notes không thể được anonymous user đọc.
-
-**Sử dụng phương thức nào:** `GET`
-
-**URL nhập vào để Send:**
-
-`http://localhost:8080/api/v1/admin/security-events/{{eventId}}/notes`
-
-**Authorization:** `Không cần Authorization`
-
-**Body nhập trong Postman:** Không có body.
-
-**Status mong đợi:** `401`
-
-**Cách Send:** kiểm tra Method + URL + Authorization + Body ở trên, sau đó nhấn nút **Send**.
 
 ---
 

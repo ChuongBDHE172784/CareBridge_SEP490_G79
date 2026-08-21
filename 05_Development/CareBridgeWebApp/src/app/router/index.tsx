@@ -52,11 +52,6 @@ import ExpertDetailPage from '../../features/admin/pages/ExpertDetailPage';
 import ConsultationCallListPage from '../../features/consultationManagement/pages/ConsultationCallListPage';
 
 // Security & admin screens (TV1 Sprint 0)
-import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
-import SecurityEventsPage from '../../features/security/pages/SecurityEventsPage';
-import SecurityEventDetailPage from '../../features/security/pages/SecurityEventDetailPage';
-import SecurityIncidentInvestigationPage from '../../features/security/pages/SecurityIncidentInvestigationPage';
-import SecurityIncidentResolutionPage from '../../features/security/pages/SecurityIncidentResolutionPage';
 import NotificationCenterPage from '../../features/notification/pages/NotificationCenterPage';
 
 // Content Management screens (CB-073..081)
@@ -179,11 +174,6 @@ export const router = createBrowserRouter([
               // hide all write actions when the viewer lacks CONTENT_ADMIN (see canManage in each page).
               { path: '/admin/content-review/:id', element: <ContentDetailPage /> },
               { path: '/admin/content-review/checklists/:id', element: <ChecklistDetailPage /> },
-              { path: '/admin/security/incidents', element: <SecurityIncidentListPage /> },
-              { path: '/admin/security/events', element: <SecurityEventsPage /> },
-              { path: '/admin/security/events/:eventId', element: <SecurityEventDetailPage /> },
-              { path: '/admin/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
-              { path: '/admin/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
               { path: '/admin/notifications', element: <NotificationCenterPage /> },
               { path: '/admin/posture-configs', element: <PostureConfigListPage /> },
               { path: '/admin/posture-configs/new', element: <EditPostureConfigPage /> },

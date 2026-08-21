@@ -627,7 +627,6 @@ Detail*, *Community Image Attachment* nằm trong sheet **Post Question**; *Dire
 | Ranh giới quyền riêng tư sức khoẻ | `.../moderation/ModeratorHealthPrivacySecurityTest.java` |
 | Escalation lên System Admin | `.../moderation/SystemAdminEscalationControllerSecurityTest.java` |
 | Audit | `.../audit/AuditServiceImplTest.java`, `.../audit/policy/AuditEligibilityPolicyTest.java`, `.../audit/mapper/AuditLogMapperTest.java`, `.../audit/controller/AuditControllerTest.java` |
-| | `.../audit/service/SecurityIncidentServiceImplTest.java`, `.../audit/controller/SecurityIncidentControllerTest.java`, `.../audit/repository/SecurityEventRepositoryQueryTest.java` |
 | Backend (integration) | `.../integration/{ModerateContent,ResolveReport,HideContent,UnpublishContent,UpdateContent,ContentApproval,WarnOrSuspendAccount*,CommunityDashboard}IntegrationTest.java`, `.../moderation/*IntegrationTest.java` |
 
 ---

@@ -9,7 +9,7 @@
 | Primary Actors | System Admin |
 | In Scope | Reachable System Admin workspaces and their current APIs |
 | Explicitly Excluded | Partner administration and any unreachable legacy page |
-| Implementation Trace | UI: AdminDashboardPage, UserListPage, UserDetailPage, AccountLockAppealsPage, SecurityEventsPage, SystemConfigurationPage; Controller: AdminUserController, AdminRoleController, AdminAccountLockAppealController; Service: AdminUserServiceImpl, AccountLockAppealServiceImpl, SystemConfigurationServiceImpl; Repository: UserRepository, AccountLockAppealRepository, AuditLogRepository; Entity: User, AccountLockAppeal, AuditLog |
+| Implementation Trace | UI: AdminDashboardPage, UserListPage, UserDetailPage, AccountLockAppealsPage, SystemConfigurationPage; Controller: AdminUserController, AdminRoleController, AdminAccountLockAppealController, AuditController; Service: AdminUserServiceImpl, AccountLockAppealServiceImpl, AuditServiceImpl, SystemConfigurationServiceImpl; Repository: UserRepository, AccountLockAppealRepository, AuditLogRepository; Entity: User, AccountLockAppeal, AuditLog |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
@@ -26,7 +26,6 @@ class "AdminDashboardPage" as UI1 <<UI>>
 class "UserListPage" as UI2 <<UI>>
 class "UserDetailPage" as UI3 <<UI>>
 class "AccountLockAppealsPage" as UI4 <<UI>>
-class "SecurityEventsPage" as UI5 <<UI>>
 class "SystemConfigurationPage" as UI6 <<UI>>
 class "AdminUserController" as Controller1 <<Controller>> {
   - adminUserService: AdminUserService
@@ -138,7 +137,6 @@ UI1 ..> Controller1 : invokes API
 UI2 ..> Controller2 : invokes API
 UI3 ..> Controller3 : invokes API
 UI4 ..> Controller3 : invokes API
-UI5 ..> Controller3 : invokes API
 UI6 ..> Controller3 : invokes API
 Controller1 --> Service1Contract : delegates
 Controller2 --> Service2Contract : delegates
@@ -167,7 +165,6 @@ actor "System Admin" as Actor
 boundary ":AdminDashboardPage" as UI1
 boundary ":UserListPage" as UI2
 boundary ":AccountLockAppealsPage" as UI3
-boundary ":SecurityEventsPage" as UI4
 boundary ":SystemConfigurationPage" as UI5
 control ":AdminUserController" as Controller1
 control ":AdminStaffController" as Controller2
@@ -360,9 +357,9 @@ group UC-72 Review Account Lock Appeals
 end
 
 group UC-73 Review Audit and Security Operations
-  Actor -> UI4 : 17. startReviewAuditAndSecurityOperations()
-  activate UI4
-  UI4 -> Controller4 : 18. search(filters)
+  Actor -> UI1 : 17. startReviewAuditAndSecurityOperations()
+  activate UI1
+  UI1 -> Controller4 : 18. search(filters)
   activate Controller4
   Controller4 -> Service4 : 19. search(filters)
   activate Service4
@@ -377,17 +374,17 @@ group UC-73 Review Audit and Security Operations
     deactivate Repository3
     Service4 --> Controller4 : 20a-4. resultDTO
     deactivate Service4
-    Controller4 --> UI4 : 20a-5. 200 OK
+    Controller4 --> UI1 : 20a-5. 200 OK
     deactivate Controller4
-    UI4 --> Actor : 20a-6. displayReviewAuditAndSecurityOperationsResult()
-    deactivate UI4
+    UI1 --> Actor : 20a-6. displayReviewAuditAndSecurityOperationsResult()
+    deactivate UI1
   else [request is invalid, forbidden or unavailable]
     Service4 --> Controller4 : 20b. domainError
     deactivate Service4
-    Controller4 --> UI4 : 20b-1. 400 / 401 / 403 / 404
+    Controller4 --> UI1 : 20b-1. 400 / 401 / 403 / 404
     deactivate Controller4
-    UI4 --> Actor : 20b-2. displayActionableError()
-    deactivate UI4
+    UI1 --> Actor : 20b-2. displayActionableError()
+    deactivate UI1
   end
 end
 

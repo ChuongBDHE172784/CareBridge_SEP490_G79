@@ -60,21 +60,6 @@ Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
 ```
 
 
-5_MF01-CREATE-001
-
-Method:POST
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/security-events/THAY_EVENT_ID/notes](http://localhost:8080/api/v1/admin/security-events/THAY_EVENT_ID/notes)
-
-Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
-
-```json
-{
-  "noteText": "qa_notetext_01"
-}
-```
-
-
 6_MF01-CREATE-002
 
 Method:POST
@@ -411,15 +396,6 @@ Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http
 Body: Không có body.
 
 
-33_MF01-SEARCH-002
-
-Method:GET
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/security-events](http://localhost:8080/api/v1/admin/security-events)
-
-Body: Không có body.
-
-
 34_MF01-SEARCH-003
 
 Method:GET
@@ -496,21 +472,6 @@ Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
     "avatarUrl":  "https://example.com/avatar.png",
     "dateOfBirth":  "1995-10-07",
     "area":  "Ha Noi"
-}
-```
-
-
-40_MF01-UPDATE-004
-
-Method:PUT
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/security-events/THAY_EVENT_ID/review](http://localhost:8080/api/v1/admin/security-events/THAY_EVENT_ID/review)
-
-Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
-
-```json
-{
-    "status":  "UNDER_REVIEW"
 }
 ```
 
@@ -737,24 +698,6 @@ Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
   "password": "Test@1234"
 }
 ```
-
-
-54_MF01-VIEW-001
-
-Method:GET
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/security-events/timeline](http://localhost:8080/api/v1/admin/security-events/timeline)
-
-Body: Không có body.
-
-
-55_MF01-VIEW-002
-
-Method:GET
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/security-events/THAY_EVENT_ID/notes](http://localhost:8080/api/v1/admin/security-events/THAY_EVENT_ID/notes)
-
-Body: Không có body.
 
 
 56_MF01-VIEW-003

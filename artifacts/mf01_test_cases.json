@@ -1,21 +1,21 @@
 {
   "feature": "MF-01 — Account, Trust & Access Control",
   "counts": {
-    "VIEW": 15,
-    "ADD": 11,
-    "UPDATE": 17,
+    "VIEW": 14,
+    "ADD": 10,
+    "UPDATE": 16,
     "REVOKE": 10,
-    "SEARCH": 5,
-    "FILTER": 6,
+    "SEARCH": 4,
+    "FILTER": 4,
     "SORT": 3,
     "PAGE": 6,
-    "VALID": 21,
+    "VALID": 20,
     "AUTH": 12,
-    "ACCESS": 13,
+    "ACCESS": 12,
     "INT": 13,
-    "PRIVACY": 9
+    "PRIVACY": 8
   },
-  "total": 141,
+  "total": 132,
   "cases": [
     {
       "id": "MF01-VIEW-001",
@@ -144,15 +144,6 @@
       "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
     },
     {
-      "id": "MF01-VIEW-015",
-      "group": "VIEW",
-      "description": "System Admin xem danh sách security events.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 200; trả security events được phân trang; query được meta-audit; không trả thêm health content ngoài trường cần thiết.",
-      "preconditions": "SYSTEM_ADMIN token; có security_events nhiều severity/status.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-    },
-    {
       "id": "MF01-ADD-001",
       "group": "ADD",
       "description": "Đăng ký tài khoản mới bằng email hợp lệ.",
@@ -223,15 +214,6 @@
       "expected": "HTTP 201; staff account tạo một lần với temp credential server-generated, không nhận password từ admin; email gửi một lần; audit STAFF_ACCOUNT_CREATED được ghi.",
       "preconditions": "SYSTEM_ADMIN token; email/phone mới; SMTP stub.",
       "note": "UC-17; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminStaffController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AdminStaffServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/dto/request/CreateStaffAccountRequest.java. Source extension within UC-17."
-    },
-    {
-      "id": "MF01-ADD-009",
-      "group": "ADD",
-      "description": "System Admin thêm note vào security event.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send POST /api/v1/admin/security-events/<EVENT_ID_FROM_PRECONDITION>/notes.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"noteText\": \"Reviewed against authentication logs; follow-up required.\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 200; note được trim và gắn đúng event/author; audit SECURITY_NOTE_ADDED được ghi; event gốc không bị sửa ngoài ý muốn.",
-      "preconditions": "SYSTEM_ADMIN token; security event tồn tại.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/AddSecurityNoteRequest.java. Source extension within UC-18 investigation."
     },
     {
       "id": "MF01-ADD-010",
@@ -378,15 +360,6 @@
       "note": "UC-17; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminRoleController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AdminRoleServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/dto/request/UpdateUserRoleRequest.java."
     },
     {
-      "id": "MF01-UPDATE-015",
-      "group": "UPDATE",
-      "description": "System Admin chuyển security event sang UNDER_REVIEW.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send PUT /api/v1/admin/security-events/<EVENT_ID_FROM_PRECONDITION>/review.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"status\": \"UNDER_REVIEW\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 200; status/reviewer/reviewedAt cập nhật; audit SECURITY_EVENT_REVIEWED được ghi.",
-      "preconditions": "SYSTEM_ADMIN token; security event tồn tại.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/ReviewSecurityEventRequest.java."
-    },
-    {
       "id": "MF01-UPDATE-016",
       "group": "UPDATE",
       "description": "Đổi mật khẩu hợp lệ cho user đang đăng nhập.",
@@ -531,15 +504,6 @@
       "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
     },
     {
-      "id": "MF01-SEARCH-005",
-      "group": "SEARCH",
-      "description": "Tìm timeline security event theo correlationId.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events/timeline?correlationId=<CORRELATION_ID>.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 200; trả đúng chuỗi event cùng correlationId theo occurredAt tăng dần.",
-      "preconditions": "SYSTEM_ADMIN token; có ít nhất ba correlated events.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-    },
-    {
       "id": "MF01-FILTER-001",
       "group": "FILTER",
       "description": "Lọc notification theo type hợp lệ.",
@@ -574,24 +538,6 @@
       "expected": "HTTP 200; mọi audit row nằm trong khoảng thời gian; không bỏ qua boundary hợp lệ.",
       "preconditions": "SYSTEM_ADMIN/OPERATIONS token; có audit trước/trong/sau khoảng.",
       "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
-    },
-    {
-      "id": "MF01-FILTER-005",
-      "group": "FILTER",
-      "description": "Lọc security events theo severity và status.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?severity=HIGH&status=OPEN&page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 200; mọi event khớp HIGH và OPEN.",
-      "preconditions": "SYSTEM_ADMIN token; fixture nhiều severity/status.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-    },
-    {
-      "id": "MF01-FILTER-006",
-      "group": "FILTER",
-      "description": "Reset filter security events về danh sách đầy đủ.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 200; kết quả không còn bị giới hạn bởi filter trước đó; UI reset controls phản ánh trạng thái rỗng.",
-      "preconditions": "SYSTEM_ADMIN token; trước đó đã áp dụng filter trên UI/API.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeWebApp/src/features/admin."
     },
     {
       "id": "MF01-SORT-001",
@@ -855,15 +801,6 @@
       "note": "UC-17; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminUserController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AdminUserServiceImpl.java."
     },
     {
-      "id": "MF01-VALID-021",
-      "group": "VALID",
-      "description": "Từ chối security event review status ngoài enum cho phép.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send PUT /api/v1/admin/security-events/<EVENT_ID>/review.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"status\": \"DELETED\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 400; event/reviewer/audit không thay đổi.",
-      "preconditions": "SYSTEM_ADMIN token; event tồn tại.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/ReviewSecurityEventRequest.java."
-    },
-    {
       "id": "MF01-AUTH-001",
       "group": "AUTH",
       "description": "Login bằng email và password hợp lệ.",
@@ -1042,15 +979,6 @@
       "expected": "HTTP 403; không trả audit rows và không meta-audit.",
       "preconditions": "Token role MODERATOR.",
       "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
-    },
-    {
-      "id": "MF01-ACCESS-009",
-      "group": "ACCESS",
-      "description": "Operations được xem audit logs nhưng không được xem security-events admin endpoint.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 403; security events không trả; quyền GET audit-logs riêng không mở rộng sang incident endpoint.",
-      "preconditions": "Token role OPERATIONS.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
     },
     {
       "id": "MF01-ACCESS-010",
@@ -1258,15 +1186,6 @@
       "expected": "HTTP 200; audit metadata tối thiểu theo schema; không trả raw file content/clinical record body; meta-audit chỉ lưu filter snapshot.",
       "preconditions": "SYSTEM_ADMIN/OPERATIONS token; có VIEW_HEALTH_RECORD audit fixtures.",
       "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
-    },
-    {
-      "id": "MF01-PRIVACY-007",
-      "group": "PRIVACY",
-      "description": "Security event notes không thể được anonymous user đọc.",
-      "procedure": "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events/<EVENT_ID>/notes.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "expected": "HTTP 401; không trả noteText hoặc authorId.",
-      "preconditions": "Không có token; event/notes tồn tại.",
-      "note": "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
     },
     {
       "id": "MF01-PRIVACY-008",
@@ -1541,24 +1460,6 @@
       "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
     ],
     [
-      "MF01-VIEW-015",
-      "System Admin xem danh sách security events.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 200; trả security events được phân trang; query được meta-audit; không trả thêm health content ngoài trường cần thiết.",
-      "SYSTEM_ADMIN token; có security_events nhiều severity/status.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-    ],
-    [
       "MF01-ADD-001",
       "Đăng ký tài khoản mới bằng email hợp lệ.",
       "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send POST /api/v1/auth/register.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"name\": \"Nguyen An\",\n  \"email\": \"mf01.email@example.test\",\n  \"password\": \"SafePass1!\",\n  \"role\": \"MOTHER\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
@@ -1701,24 +1602,6 @@
       "",
       "",
       "UC-17; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminStaffController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AdminStaffServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/dto/request/CreateStaffAccountRequest.java. Source extension within UC-17."
-    ],
-    [
-      "MF01-ADD-009",
-      "System Admin thêm note vào security event.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send POST /api/v1/admin/security-events/<EVENT_ID_FROM_PRECONDITION>/notes.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"noteText\": \"Reviewed against authentication logs; follow-up required.\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 200; note được trim và gắn đúng event/author; audit SECURITY_NOTE_ADDED được ghi; event gốc không bị sửa ngoài ý muốn.",
-      "SYSTEM_ADMIN token; security event tồn tại.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/AddSecurityNoteRequest.java. Source extension within UC-18 investigation."
     ],
     [
       "MF01-ADD-010",
@@ -2009,24 +1892,6 @@
       "UC-17; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminRoleController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AdminRoleServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/dto/request/UpdateUserRoleRequest.java."
     ],
     [
-      "MF01-UPDATE-015",
-      "System Admin chuyển security event sang UNDER_REVIEW.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send PUT /api/v1/admin/security-events/<EVENT_ID_FROM_PRECONDITION>/review.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"status\": \"UNDER_REVIEW\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 200; status/reviewer/reviewedAt cập nhật; audit SECURITY_EVENT_REVIEWED được ghi.",
-      "SYSTEM_ADMIN token; security event tồn tại.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/ReviewSecurityEventRequest.java."
-    ],
-    [
       "MF01-UPDATE-016",
       "Đổi mật khẩu hợp lệ cho user đang đăng nhập.",
       "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send PUT /api/v1/auth/change-password.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"oldPassword\": \"OldPass1!\",\n  \"newPassword\": \"NewPass2@\",\n  \"confirmPassword\": \"NewPass2@\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
@@ -2315,24 +2180,6 @@
       "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
     ],
     [
-      "MF01-SEARCH-005",
-      "Tìm timeline security event theo correlationId.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events/timeline?correlationId=<CORRELATION_ID>.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 200; trả đúng chuỗi event cùng correlationId theo occurredAt tăng dần.",
-      "SYSTEM_ADMIN token; có ít nhất ba correlated events.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-    ],
-    [
       "MF01-FILTER-001",
       "Lọc notification theo type hợp lệ.",
       "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/notifications/me?type=COMMUNITY_REPLY&page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
@@ -2403,42 +2250,6 @@
       "",
       "",
       "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
-    ],
-    [
-      "MF01-FILTER-005",
-      "Lọc security events theo severity và status.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?severity=HIGH&status=OPEN&page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 200; mọi event khớp HIGH và OPEN.",
-      "SYSTEM_ADMIN token; fixture nhiều severity/status.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java."
-    ],
-    [
-      "MF01-FILTER-006",
-      "Reset filter security events về danh sách đầy đủ.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 200; kết quả không còn bị giới hạn bởi filter trước đó; UI reset controls phản ánh trạng thái rỗng.",
-      "SYSTEM_ADMIN token; trước đó đã áp dụng filter trên UI/API.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeWebApp/src/features/admin."
     ],
     [
       "MF01-SORT-001",
@@ -2963,24 +2774,6 @@
       "UC-17; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminUserController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AdminUserServiceImpl.java."
     ],
     [
-      "MF01-VALID-021",
-      "Từ chối security event review status ngoài enum cho phép.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send PUT /api/v1/admin/security-events/<EVENT_ID>/review.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"status\": \"DELETED\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 400; event/reviewer/audit không thay đổi.",
-      "SYSTEM_ADMIN token; event tồn tại.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/dto/request/ReviewSecurityEventRequest.java."
-    ],
-    [
       "MF01-AUTH-001",
       "Login bằng email và password hợp lệ.",
       "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send POST /api/v1/auth/login.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nRequest body: {\n  \"email\": \"active@example.test\",\n  \"password\": \"SafePass1!\"\n}\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
@@ -3339,24 +3132,6 @@
       "",
       "",
       "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
-    ],
-    [
-      "MF01-ACCESS-009",
-      "Operations được xem audit logs nhưng không được xem security-events admin endpoint.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events?page=0&size=20.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 403; security events không trả; quyền GET audit-logs riêng không mở rộng sang incident endpoint.",
-      "Token role OPERATIONS.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
     ],
     [
       "MF01-ACCESS-010",
@@ -3771,24 +3546,6 @@
       "",
       "",
       "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/AuditController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/AuditServiceImpl.java."
-    ],
-    [
-      "MF01-PRIVACY-007",
-      "Security event notes không thể được anonymous user đọc.",
-      "1. Start the CareBridge API and PostgreSQL test environment.\n2. Prepare the actor and data stated in Pre-conditions.\n3. Send GET /api/v1/admin/security-events/<EVENT_ID>/notes.\nHeaders: Authorization: Bearer <ACCESS_TOKEN_FROM_PRECONDITION> when required; Content-Type: application/json.\nNo request body.\n4. Capture the HTTP status, response body and error code/message.\n5. Verify the affected database, session, audit or external-service state stated in Expected Results.",
-      "HTTP 401; không trả noteText hoặc authorId.",
-      "Không có token; event/notes tồn tại.",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "Pending",
-      "",
-      "",
-      "UC-18; Source: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/service/impl/SecurityIncidentServiceImpl.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/config/SecurityConfig.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtAuthenticationFilter.java; 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java."
     ],
     [
       "MF01-PRIVACY-008",

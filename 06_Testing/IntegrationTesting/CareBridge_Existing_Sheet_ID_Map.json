@@ -36,14 +36,6 @@
     },
     {
       "feature": "MF01",
-      "id": "MF01-CREATE-001",
-      "description": "Verify `add note` through POST /api/v1/admin/security-events/{eventId}/notes as the implemented allowed actor.",
-      "method": "POST",
-      "path": "/api/v1/admin/security-events/{eventId}/notes",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java"
-    },
-    {
-      "feature": "MF01",
       "id": "MF01-CREATE-002",
       "description": "Verify `create staff account` through POST /api/v1/admin/staff-accounts as the implemented allowed actor.",
       "method": "POST",
@@ -260,14 +252,6 @@
     },
     {
       "feature": "MF01",
-      "id": "MF01-SEARCH-002",
-      "description": "Verify `search events` through GET /api/v1/admin/security-events as the implemented allowed actor.",
-      "method": "GET",
-      "path": "/api/v1/admin/security-events",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java"
-    },
-    {
-      "feature": "MF01",
       "id": "MF01-SEARCH-003",
       "description": "Verify `search users` through GET /api/v1/admin/users as the implemented allowed actor.",
       "method": "GET",
@@ -313,14 +297,6 @@
       "method": "PATCH",
       "path": "/api/v1/profile",
       "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/profile/controller/ProfileController.java"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-UPDATE-004",
-      "description": "Verify `review event` through PUT /api/v1/admin/security-events/{eventId}/review as the implemented allowed actor.",
-      "method": "PUT",
-      "path": "/api/v1/admin/security-events/{eventId}/review",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java"
     },
     {
       "feature": "MF01",
@@ -417,22 +393,6 @@
       "method": "",
       "path": "",
       "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/dto/request/LoginRequest.java"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-VIEW-001",
-      "description": "Verify `get timeline` through GET /api/v1/admin/security-events/timeline as the implemented allowed actor.",
-      "method": "GET",
-      "path": "/api/v1/admin/security-events/timeline",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-VIEW-002",
-      "description": "Verify `get notes` through GET /api/v1/admin/security-events/{eventId}/notes as the implemented allowed actor.",
-      "method": "GET",
-      "path": "/api/v1/admin/security-events/{eventId}/notes",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/controller/SecurityIncidentController.java"
     },
     {
       "feature": "MF01",
@@ -785,46 +745,6 @@
       "method": "",
       "path": "",
       "source": "05_Development/CareBridgeWebApp/src/features/settings/pages/PrivacySettingsPage.tsx"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-VIEW-047",
-      "description": "View the implemented web Security Event Detail page.",
-      "method": "",
-      "path": "",
-      "source": "05_Development/CareBridgeWebApp/src/features/security/pages/SecurityEventDetailPage.tsx"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-VIEW-048",
-      "description": "View the implemented web Security Events page.",
-      "method": "",
-      "path": "",
-      "source": "05_Development/CareBridgeWebApp/src/features/security/pages/SecurityEventsPage.tsx"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-VIEW-049",
-      "description": "View the implemented web Security Incident Investigation page.",
-      "method": "",
-      "path": "",
-      "source": "05_Development/CareBridgeWebApp/src/features/security/pages/SecurityIncidentInvestigationPage.tsx"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-VIEW-050",
-      "description": "View the implemented web Security Incident List page.",
-      "method": "",
-      "path": "",
-      "source": "05_Development/CareBridgeWebApp/src/features/security/pages/SecurityIncidentListPage.tsx"
-    },
-    {
-      "feature": "MF01",
-      "id": "MF01-VIEW-051",
-      "description": "View the implemented web Security Incident Resolution page.",
-      "method": "",
-      "path": "",
-      "source": "05_Development/CareBridgeWebApp/src/features/security/pages/SecurityIncidentResolutionPage.tsx"
     },
     {
       "feature": "MF01",
