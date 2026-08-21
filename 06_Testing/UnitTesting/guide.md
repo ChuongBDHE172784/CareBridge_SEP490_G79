@@ -93,9 +93,6 @@ npx vitest run --reporter=json \
 Muốn cho người khác xem "test chạy thật" mà không phải đợi 15 phút, chạy vài class tiêu biểu:
 
 ```bash
-# Backend — chứng minh phân quyền red-flag rule là SYSTEM_ADMIN-only (7 TC)
-cd 05_Development/CareBridgeAPI && ./mvnw test -Dtest=RedFlagRuleControllerSecurityTest
-
 # Mobile — chứng minh lỗi ghi đè ghi chú đã được sửa (11 TC)
 cd 05_Development/CareBridgeMobileApp && flutter test test/features/healthRecords/growth_measurement_form_test.dart
 
@@ -103,7 +100,7 @@ cd 05_Development/CareBridgeMobileApp && flutter test test/features/healthRecord
 cd 05_Development/CareBridgeWebApp && npx vitest run src/shared/api/apiClient.test.ts
 ```
 
-Ba lệnh này tương ứng đúng 3 defect ở sheet `Defects` — xem mục 4.5.
+Hai lệnh này tương ứng với các defect còn được theo dõi ở sheet `Defects` — xem mục 4.5.
 
 ---
 
@@ -201,11 +198,10 @@ ghi một khẳng định bảo mật sai vào tài liệu nộp.
 
 ### 4.5 Sheet `Defects`
 
-**Phần A — đã sửa trong đợt này.** Ba defect do chính unit test phát hiện:
+**Phần A — đã sửa trong đợt này.** Các defect do chính unit test phát hiện:
 
 | Mã | Lỗi | Test bắt được |
 |---|---|---|
-| `DEF-RBAC-001` | `RedFlagRuleController` cho MODERATOR/CONTENT_ADMIN sửa được red-flag rule | `RedFlagRuleControllerSecurityTest#allEndpoints_asNonSystemAdmin_shouldReturn403` |
 | `DEF-RBAC-002` | `AiModerationAdminController` cho non-admin đọc AI policy | `AiModerationAdminControllerSecurityTest#listPolicies_asNonSystemAdmin_returns403` |
 | `DEF-DATA-003` | `GrowthMeasurementFormScreen` gửi `note: ""` đè lên `null` | `growth_measurement_form_test.dart :: edit preserves a null note` |
 
@@ -357,33 +353,6 @@ Khi test bắt được lỗi thật và bạn sửa code ứng dụng, thêm m�
 
 Nếu test **vẫn đang đỏ** (chưa sửa được, hoặc cố ý giữ đỏ chờ xác nhận), đừng dùng `FIXED_DEFECTS` —
 nó sẽ tự lên phần B của sheet `Defects`. Muốn ghi chú nguyên nhân thì thêm vào `KNOWN_DEFECT_NOTES`.
-
----
-
-## 7. Nâng một use case lên mức "dữ liệu thật" *(đang hoãn)*
-
-Hai file reference in ra **giá trị thật**: `username_test`, `null`, `NotFoundException`,
-`"Password must be between 8 and 100 characters"`. Báo cáo này thì không, vì nó sinh từ **kết quả
-chạy** — surefire XML, `flutter --machine`, `vitest --reporter=json` chỉ chứa *tên test + trạng
-thái*, không chứa tham số đầu vào hay giá trị trả về. Muốn có dữ liệu thật thì phải đọc **mã nguồn
-test**, và việc đó phải làm tay.
-
-Khi nào cần làm, hàm `write_sample_sheet()` trong `report-tools/gen_report.py` là bộ khung sẵn có
-(đang tắt bằng cờ `EMIT_SAMPLE_SHEET = False`). Bật lên sẽ sinh thêm một sheet dựng tay từ
-`RedFlagRuleControllerSecurityTest`, khác các sheet tự sinh ở ba điểm:
-
-- cột **B** ghi **tên tham số** (`Vai trò trong JWT`, `Request body`) thay vì nhãn chung chung;
-- cột **D** ghi **giá trị thật** (`MODERATOR`, `{"keyword":"tu khoa moi",...}`, `403 Forbidden`);
-- một `UTCID` là một **tổ hợp giá trị**, nên ma trận `O` dày chứ không phải đường chéo.
-
-Phạm vi khả thi nếu làm tiếp: **46 file backend dùng `@ValueSource`/`@CsvSource`** (giá trị literal
-có sẵn ngay trong annotation) và các class `@WebMvcTest` security (`.andExpect(status().isX())` rõ
-ràng) — cỡ vài trăm TC. Trích tự động cho cả 4.568 TC thì không nên: phải phân tích cú pháp 720 file
-Java cộng Dart và TypeScript, và kết quả sẽ là mảnh vụn assertion chứ không sạch như reference.
-
-Lưu ý về định dạng: mật độ cột của reference đến từ việc **một sheet = một method** (`login` = 11
-cột). Báo cáo này theo quy ước **một sheet = một use case** nên sheet `Login` gộp 112 test case.
-Hai điều này xung khắc — không thể vừa giữ một-tab-một-use-case vừa đạt mật độ như reference.
 
 ---
 

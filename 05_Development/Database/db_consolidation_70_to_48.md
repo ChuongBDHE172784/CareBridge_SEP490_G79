@@ -80,7 +80,7 @@ The following are the 48 physical tables currently in `public`:
 | Health and files | `attachments`, `health_records`, `health_observations`, `health_context_memories`, `device_connections`, `device_tokens` |
 | Expert and facilities | `expert_availability`, `expert_location_shares`, `specialties`, `care_facilities`, `administrative_areas` |
 | Content and moderation | `community_content`, `community_interactions`, `community_topics`, `content_items`, `content_item_topics`, `content_item_sources`, `moderation_cases` |
-| Triage and knowledge | `triage_sessions`, `triage_session_evidence`, `knowledge_sources`, `knowledge_source_reviews`, `red_flag_rules` |
+| Triage and knowledge | `triage_sessions`, `triage_session_evidence`, `knowledge_sources`, `knowledge_source_reviews` |
 | Safety and notifications | `safety_configs`, `safety_monitoring_sessions`, `safety_events`, `notification_records` |
 | Financial, audit, archive | `expense_entries`, `audit_events`, `archived_records` |
 

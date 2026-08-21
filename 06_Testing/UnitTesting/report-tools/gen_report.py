@@ -141,20 +141,6 @@ def case_type(row, cond, exp):
 # `match` is (test class / file, test-name prefix) — the case that fails if the fix is reverted.
 FIXED_DEFECTS = [
     {
-        "id": "DEF-RBAC-001",
-        "match": ("RedFlagRuleControllerSecurityTest", "allEndpoints_asNonSystemAdmin_shouldReturn403"),
-        "severity": "Cao — RBAC",
-        "component": "05_Development/CareBridgeAPI/.../triage/controller/RedFlagRuleController.java",
-        "symptom": "MODERATOR, CONTENT_ADMIN, EXPERT, MOTHER, FAMILY đều tạo/sửa/xoá/đọc được "
-                   "red-flag rule qua /api/v1/admin/red-flag-rules (kỳ vọng 403, thực tế 200).",
-        "cause": "Commit ff31c960 nới @PreAuthorize cấp class thành "
-                 "hasAnyRole('SYSTEM_ADMIN','ADMIN','MODERATOR','CONTENT_ADMIN'). Trang quản trị "
-                 "/admin/safety-rules vốn chỉ dành cho SYSTEM_ADMIN nên backend rộng hơn frontend. "
-                 "Ghi chú: enum Role không có giá trị ADMIN, nên 'ADMIN' trong annotation là giá trị chết.",
-        "fix": "Siết về @PreAuthorize(\"hasRole('SYSTEM_ADMIN')\") cấp class. Chủ dự án xác nhận "
-               "đây là phạm vi đúng.",
-    },
-    {
         "id": "DEF-RBAC-002",
         "match": ("AiModerationAdminControllerSecurityTest", "listPolicies_asNonSystemAdmin_returns403"),
         "severity": "Cao — RBAC",
@@ -184,11 +170,6 @@ FIXED_DEFECTS = [
 # Root-cause notes for the defects that are intentionally left red. The raw failure text alone does
 # not say why the test must stay red, and that is the one thing a reviewer needs.
 KNOWN_DEFECT_NOTES = {
-    "allEndpoints_asModerator_shouldReturn403":
-        "Commit ff31c960 nới @PreAuthorize cấp class của RedFlagRuleController thành "
-        "hasAnyRole('SYSTEM_ADMIN','ADMIN','MODERATOR','CONTENT_ADMIN'), nên MODERATOR tạo/sửa/xoá "
-        "được red-flag rule. /admin/safety-rules là trang của SYSTEM_ADMIN → nghi ngờ nới quyền "
-        "ngoài ý muốn. GIỮ ĐỎ cho tới khi chủ dự án xác nhận phạm vi quyền.",
     "listPolicies_asModerator_returns403":
         "Cùng commit ff31c960 nới quyền cấp class cho AiModerationAdminController; MODERATOR đọc "
         "được toàn bộ AI policy của admin. GIỮ ĐỎ cho tới khi xác nhận đây là thay đổi cố ý.",
@@ -631,198 +612,7 @@ def write_use_case_sheet(ws, sheet, defect_prefix):
     return stats, open_defects, fixed_here
 
 
-# ---------------------------------------------------------------- data-driven sample
-# Off by default: the workbook ships only the auto-generated sheets. Flip to True to emit the
-# hand-built reference-style sheet — it is kept as the template to copy when a use case is
-# converted to real input/output values. See 06_Testing/UnitTesting/guide.md, mục 7.
-EMIT_SAMPLE_SHEET = False
-
-# The auto-generated sheets can only print what surefire/flutter/vitest emit: a test name and a
-# status. The reference reports print the *values* — `username_test`, `null`, `NotFoundException`,
-# the literal log message — because they were written by hand from the test source.
-# This sheet is one use case rebuilt that way, from RedFlagRuleControllerSecurityTest, so the two
-# styles can be compared side by side before deciding whether to convert the rest.
-# Column B holds the parameter name (as in the references), column D the concrete value.
-SAMPLE = {
-    "title": "MAU data-driven (demo)",
-    "module": "Triage / Safety Rules",
-    "use_case": "Triage Red Flag Rules — quản trị quy tắc dấu hiệu nguy hiểm",
-    "requirement": REQUIREMENTS["Triage Red Flag Rules"],
-    "source": "CareBridgeAPI/src/test/java/com/carebridge/backend/security/"
-              "RedFlagRuleControllerSecurityTest.java",
-    "n": 7,
-    "precondition": [
-        ("RedFlagRuleService được mock; SecurityConfig thật được nạp qua @Import", "1234567"),
-        ("Bảng red_flag_rules có sẵn rule id 00000000-0000-0000-0000-000000000002", "1234567"),
-    ],
-    "sections": [
-        ("Condition", [
-            ("Vai trò trong JWT", [
-                ("MODERATOR", "1"),
-                ("CONTENT_ADMIN", "2"),
-                ("EXPERT", "3"),
-                ("MOTHER", "4"),
-                ("FAMILY", "5"),
-                ("SYSTEM_ADMIN", "6"),
-                ("(không gửi Authorization header)", "7"),
-            ]),
-            ("userId trong token", [
-                ("00000000-0000-0000-0000-0000000000bb", "12345"),
-                ("00000000-0000-0000-0000-0000000000aa", "6"),
-                ("(không có)", "7"),
-            ]),
-            ("Endpoint được gọi", [
-                ("POST   /api/v1/admin/red-flag-rules", "12345"),
-                ("GET    /api/v1/admin/red-flag-rules", "1234567"),
-                ("PATCH  /api/v1/admin/red-flag-rules/{ruleId}", "12345"),
-                ("DELETE /api/v1/admin/red-flag-rules/{ruleId}", "12345"),
-            ]),
-            ("Request body", [
-                ('{"keyword":"tu khoa moi","severity":"RED","action":"ESCALATE"}  (POST)', "12345"),
-                ('{"isActive":false}  (PATCH)', "12345"),
-                ("(không có body)", "1234567"),
-            ]),
-            ("CSRF token", [
-                ("có (.with(csrf()) cho POST/PATCH/DELETE)", "12345"),
-                ("không áp dụng (chỉ gọi GET)", "67"),
-            ]),
-        ]),
-        ("Confirm", [
-            ("HTTP status", [
-                ("403 Forbidden", "12345"),
-                ("200 OK", "6"),
-                ("401 Unauthorized", "7"),
-            ]),
-            ("Response body", [
-                ("(rỗng)", "1234"),
-                ('{"items":[],"totalElements":0,"page":0,"size":20}', "6"),
-                ("(rỗng — HttpStatusEntryPoint không ghi body)", "7"),
-            ]),
-            ("Tương tác với RedFlagRuleService", [
-                ("never(): createRule / listRules / updateRule / deleteRule", "12345"),
-                ("listRules(any()) được gọi đúng 1 lần", "6"),
-                ("không gọi — bị chặn ở filter chain trước khi vào controller", "7"),
-            ]),
-            ("Exception", [
-                ("AccessDeniedException (Spring Security xử lý → 403)", "12345"),
-                ("(không có)", "6"),
-                ("AuthenticationException (→ 401)", "7"),
-            ]),
-            ("Actual", [
-                ("Đúng kỳ vọng", "1234567"),
-            ]),
-        ]),
-    ],
-    "types": "AAAAANA",
-    "verdicts": "PPPPPPP",
-    "defect_ids": ["DEF-RBAC-001"] * 5 + ["", ""],
-}
-
-
-def write_sample_sheet(ws):
-    s = SAMPLE
-    n = s["n"]
-    first_col = 6
-    for col, w in zip("ABCDE", (12, 34, 3, 66, 3)):
-        ws.column_dimensions[col].width = w
-    for i in range(n):
-        ws.column_dimensions[get_column_letter(first_col + i)].width = 9
-
-    ws.cell(row=1, column=1, value="Code Module").font = B_BOLD
-    ws.cell(row=1, column=3, value=s["module"])
-    ws.cell(row=1, column=6, value="Use Case").font = B_BOLD
-    ws.cell(row=1, column=12, value=s["use_case"])
-    ws.cell(row=2, column=1, value="Created By").font = B_BOLD
-    ws.cell(row=2, column=3, value=CREATOR)
-    ws.cell(row=2, column=6, value="Executed By").font = B_BOLD
-    ws.cell(row=2, column=12, value=CREATOR)
-    ws.cell(row=3, column=1, value="Test requirement").font = B_BOLD
-    ws.cell(row=3, column=3, value=s["requirement"]).alignment = WRAP
-    ws.row_dimensions[3].height = 30
-
-    note = ws.cell(row=5, column=1, value=(
-        "SHEET MẪU — dựng thủ công từ mã nguồn test (" + s["source"] + "). "
-        "Khác các sheet tự sinh ở chỗ: cột D ghi GIÁ TRỊ đầu vào/đầu ra thật, cột B ghi TÊN THAM SỐ, "
-        "và một UTCID là một tổ hợp giá trị — đúng cách hai file reference đang làm."))
-    note.font = Font(bold=True, color="9C4500")
-    note.alignment = WRAP
-    ws.merge_cells(start_row=5, start_column=1, end_row=5, end_column=first_col + n - 1)
-    ws.row_dimensions[5].height = 34
-
-    ids = [f"UTCID{i:02d}" for i in range(1, n + 1)]
-    for i, uid in enumerate(ids):
-        c = ws.cell(row=7, column=first_col + i, value=uid)
-        c.font = B_BOLD
-        c.fill = HDR_FILL
-        c.border = BOX
-        c.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=90)
-    ws.row_dimensions[7].height = 62
-
-    r = 8
-
-    def value_row(text, cols):
-        nonlocal r
-        c = ws.cell(row=r, column=4, value=text)
-        c.alignment = WRAP
-        c.border = BOX
-        for i in range(n):
-            cc = ws.cell(row=r, column=first_col + i)
-            cc.border = BOX
-            cc.alignment = CENTER
-            if str(i + 1) in cols:
-                cc.value = "O"
-        r += 1
-
-    ws.cell(row=r, column=1, value="Condition").font = B_BOLD
-    ws.cell(row=r, column=1).fill = SEC_FILL
-    ws.cell(row=r, column=2, value="Precondition").font = B_BOLD
-    ws.cell(row=r, column=2).fill = SEC_FILL
-    r += 1
-    for text, cols in s["precondition"]:
-        value_row(text, cols)
-
-    for section, groups in s["sections"]:
-        if section != "Condition":
-            c = ws.cell(row=r, column=1, value=section)
-            c.font = B_BOLD
-            c.fill = SEC_FILL
-        for param, values in groups:
-            ws.cell(row=r, column=2, value=param).font = B_BOLD
-            ws.cell(row=r, column=2).fill = SEC_FILL
-            r += 1
-            for text, cols in values:
-                value_row(text, cols)
-
-    c = ws.cell(row=r, column=1, value="Result")
-    c.font = B_BOLD
-    c.fill = SEC_FILL
-    ws.cell(row=r, column=2, value="Type (N: Normal, A: Abnormal, B: Boundary)").font = B_BOLD
-    for i in range(n):
-        cc = ws.cell(row=r, column=first_col + i, value=s["types"][i])
-        cc.alignment = CENTER
-        cc.border = BOX
-    r += 1
-    ws.cell(row=r, column=2, value="Passed/Failed").font = B_BOLD
-    for i in range(n):
-        cc = ws.cell(row=r, column=first_col + i, value=s["verdicts"][i])
-        cc.alignment = CENTER
-        cc.border = BOX
-        cc.fill = PASS_FILL if s["verdicts"][i] == "P" else FAIL_FILL
-    r += 1
-    ws.cell(row=r, column=2, value="Executed Date").font = B_BOLD
-    for i in range(n):
-        cc = ws.cell(row=r, column=first_col + i, value=ISSUE_DATE)
-        cc.alignment = CENTER
-        cc.border = BOX
-    r += 1
-    ws.cell(row=r, column=2, value="Defect ID").font = B_BOLD
-    for i in range(n):
-        cc = ws.cell(row=r, column=first_col + i, value=s["defect_ids"][i])
-        cc.alignment = CENTER
-        cc.border = BOX
-    ws.freeze_panes = ws.cell(row=8, column=first_col)
-
-
+# ---------------------------------------------------------------- defects
 def write_defects(ws, open_defects, fixed_defects):
     for col, w in zip("ABCDEFGH", (15, 26, 17, 46, 58, 58, 58, 20)):
         ws.column_dimensions[col].width = w
@@ -884,9 +674,6 @@ def main():
     ws_methods = wb.create_sheet("MethodList")
     ws_stats = wb.create_sheet("Statistics")
     ws_def = wb.create_sheet("Defects")
-    if EMIT_SAMPLE_SHEET:
-        write_sample_sheet(wb.create_sheet(SAMPLE["title"]))
-
     used, titles, stats, open_defects, fixed_defects = set(), [], [], [], []
     for idx, sh in enumerate(sheets, 1):
         title = safe_title(sh["label"], used)

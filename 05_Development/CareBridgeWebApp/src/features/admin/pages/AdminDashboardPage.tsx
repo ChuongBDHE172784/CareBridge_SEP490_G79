@@ -154,8 +154,8 @@ const QUICK_HUB_ITEMS = [
     actionText: 'Quản lý danh sách tài khoản',
   },
   {
-    title: 'Quy tắc AI & An toàn Hệ thống',
-    description: 'Cấu hình quy tắc Red Flag, chính sách tự động kiểm duyệt AI và tham số bài tập tư thế.',
+    title: 'Chính sách kiểm duyệt AI',
+    description: 'Cấu hình chính sách tự động kiểm duyệt AI và tham số bài tập tư thế.',
     icon: 'shield',
     path: '/admin/safety-rules',
     badgeText: 'AI & Quy tắc An toàn',

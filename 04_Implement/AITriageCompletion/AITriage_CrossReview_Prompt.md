@@ -236,7 +236,7 @@ Xác minh serializer có forward đầy đủ:
 - `engine/PediatricRiskRules.java`
 - `engine/RiskRuleFactory.java`
 7. Safety/pre-screen:
-- `policy/TriageRedFlagPreScreenPolicy.java`
+- `policy/TriageRedFlagPolicy.java`
 - `policy/TriageRedFlagPolicy.java`
 - `policy/TriageDisclaimerPolicy.java`
 8. Consent:

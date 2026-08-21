@@ -55,3 +55,7 @@ export async function getCallRecordingPresignedUrl(
   );
   return response.data.data.url;
 }
+
+export async function deleteConsultationCallRecording(callId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/admin/consultation-calls/${callId}/recording`);
+}

@@ -867,7 +867,6 @@ ràng buộc bất biến, mất guard checklist, mất khả năng ghi qua view
 | `partner_organizations` | 14 | 2 | 1 |
 | `preparation_checklist_items` | 13 | 2 | 1 |
 | `professional_specialties` | 4 | 2 | 1 |
-| `red_flag_rules` | 10 | 19 | 1 |
 | `reminder_occurrence_aliases` | 6 | 15 | 1 |
 | `reminder_schedule_jobs` | 16 | 221 | 1 |
 | `reminder_schedule_times` | 4 | 6 | 1 |

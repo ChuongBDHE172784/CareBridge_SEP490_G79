@@ -45047,7 +45047,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45150,7 +45150,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45252,7 +45252,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45363,7 +45363,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45463,7 +45463,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45569,7 +45569,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45680,7 +45680,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45696,110 +45696,6 @@ Capture method, URL, non-secret headers, body, response status/body, relevant Su
 MF06-CREATE-002-request-response.png
 MF06-CREATE-002-supabase.png
 MF06-CREATE-002-ui.png
-```
-
----
-
-## MF06-CREATE-003 — Verify that a permitted Administrator user can add red flag rules.
-
-1. Purpose
-
-Verify that a permitted Administrator user can add red flag rules.
-
-2. Source and Requirement Mapping
-
-- Requirement: UC-72–UC-76
-- Source: `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java`
-- Request DTO: `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/dto/request/CreateRedFlagRuleRequest.java`
-
-3. Test Account and Mock Data
-
-Use only verified synthetic accounts and `mf06_qa_*` fixtures. Authorization policy: `hasRole('SYSTEM_ADMIN')`.
-
-4. Pre-condition
-
-A valid active Administrator mock account is available.
-The user is logged in as Administrator.
-Required mock red flag rules data is available when the flow needs an existing item.
-
-5. HTTP Method
-
-```text
-POST
-```
-
-6. URL
-
-```text
-{{baseUrl}}/api/v1/admin/red-flag-rules
-```
-
-Open Postman, select the method from the dropdown, and paste the URL next to Send. For UI/device-only cases, follow the Test Case Procedure instead.
-
-7. Headers
-
-```text
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{adminAccessToken}}
-```
-
-Open Headers and enter each key/value. Do not add Authorization for a public endpoint. Use the token for the role under test and never capture a full token in evidence.
-
-8. Query Parameters
-
-```text
-None
-```
-
-9. Path Parameters
-
-```text
-None
-```
-
-10. Body
-
-Open Body → raw → JSON, then paste the source-derived body below. Do not add fields that are absent from the DTO.
-
-```json
-{
-  "keyword": "qa_keyword_01",
-  "severity": "GREEN",
-  "action": "BLOCK"
-}
-```
-
-11. Send Request
-
-1. Review the selected Postman environment.
-2. Click Send once.
-3. Wait for the request to finish.
-4. Record the actual HTTP status and response body.
-5. Do not copy secrets into evidence.
-
-12. Expected Response
-
-Expected HTTP status: `201`. Validate the implemented response contract, authorization scope, and error envelope against the source handler and DTO.
-
-13. Supabase Verification
-
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
-
-14. External Integration Verification
-
-Gemini/AI service stub or sandbox
-
-15. Evidence Screenshot
-
-Capture method, URL, non-secret headers, body, response status/body, relevant Supabase row, UI result, audit row, and provider/test-mailbox result when applicable. Redact tokens, passwords, private keys and identifiable health data.
-
-16. Evidence Filename
-
-```text
-MF06-CREATE-003-request-response.png
-MF06-CREATE-003-supabase.png
-MF06-CREATE-003-ui.png
 ```
 
 ---
@@ -45889,7 +45785,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -45989,7 +45885,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46116,7 +46012,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46218,7 +46114,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46326,7 +46222,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46426,7 +46322,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46526,7 +46422,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46626,7 +46522,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46726,7 +46622,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -46742,106 +46638,6 @@ Capture method, URL, non-secret headers, body, response status/body, relevant Su
 MF06-DELETE-001-request-response.png
 MF06-DELETE-001-supabase.png
 MF06-DELETE-001-ui.png
-```
-
----
-
-## MF06-DELETE-002 — Verify that a permitted Administrator user can remove red flag rules.
-
-1. Purpose
-
-Verify that a permitted Administrator user can remove red flag rules.
-
-2. Source and Requirement Mapping
-
-- Requirement: UC-72–UC-76
-- Source: `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java`
-- Request DTO: `None`
-
-3. Test Account and Mock Data
-
-Use only verified synthetic accounts and `mf06_qa_*` fixtures. Authorization policy: `hasRole('SYSTEM_ADMIN')`.
-
-4. Pre-condition
-
-A valid active Administrator mock account is available.
-The user is logged in as Administrator.
-Required mock red flag rules data is available when the flow needs an existing item.
-
-5. HTTP Method
-
-```text
-DELETE
-```
-
-6. URL
-
-```text
-{{baseUrl}}/api/v1/admin/red-flag-rules/{id}
-```
-
-Open Postman, select the method from the dropdown, and paste the URL next to Send. For UI/device-only cases, follow the Test Case Procedure instead.
-
-7. Headers
-
-```text
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{adminAccessToken}}
-```
-
-Open Headers and enter each key/value. Do not add Authorization for a public endpoint. Use the token for the role under test and never capture a full token in evidence.
-
-8. Query Parameters
-
-```text
-None
-```
-
-9. Path Parameters
-
-```text
-id={{id}}
-```
-
-10. Body
-
-Open Body → raw → JSON, then paste the source-derived body below. Do not add fields that are absent from the DTO.
-
-```json
-This request does not have a request body.
-```
-
-11. Send Request
-
-1. Review the selected Postman environment.
-2. Click Send once.
-3. Wait for the request to finish.
-4. Record the actual HTTP status and response body.
-5. Do not copy secrets into evidence.
-
-12. Expected Response
-
-Expected HTTP status: `204`. Validate the implemented response contract, authorization scope, and error envelope against the source handler and DTO.
-
-13. Supabase Verification
-
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
-
-14. External Integration Verification
-
-Gemini/AI service stub or sandbox
-
-15. Evidence Screenshot
-
-Capture method, URL, non-secret headers, body, response status/body, relevant Supabase row, UI result, audit row, and provider/test-mailbox result when applicable. Redact tokens, passwords, private keys and identifiable health data.
-
-16. Evidence Filename
-
-```text
-MF06-DELETE-002-request-response.png
-MF06-DELETE-002-supabase.png
-MF06-DELETE-002-ui.png
 ```
 
 ---
@@ -46926,7 +46722,7 @@ Expected HTTP status: `204`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47021,7 +46817,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47116,7 +46912,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47216,7 +47012,7 @@ Expected HTTP status: `403`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47311,7 +47107,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47406,7 +47202,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47501,7 +47297,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47601,7 +47397,7 @@ Expected HTTP status: `403/404`. Validate the implemented response contract, aut
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47701,7 +47497,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -47717,106 +47513,6 @@ Capture method, URL, non-secret headers, body, response status/body, relevant Su
 MF06-SEARCH-001-request-response.png
 MF06-SEARCH-001-supabase.png
 MF06-SEARCH-001-ui.png
-```
-
----
-
-## MF06-SEARCH-002 — Verify that a permitted Administrator user can find red flag rules.
-
-1. Purpose
-
-Verify that a permitted Administrator user can find red flag rules.
-
-2. Source and Requirement Mapping
-
-- Requirement: UC-72–UC-76
-- Source: `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java`
-- Request DTO: `None`
-
-3. Test Account and Mock Data
-
-Use only verified synthetic accounts and `mf06_qa_*` fixtures. Authorization policy: `hasRole('SYSTEM_ADMIN')`.
-
-4. Pre-condition
-
-A valid active Administrator mock account is available.
-The user is logged in as Administrator.
-Required mock red flag rules data is available when the flow needs an existing item.
-
-5. HTTP Method
-
-```text
-GET
-```
-
-6. URL
-
-```text
-{{baseUrl}}/api/v1/admin/red-flag-rules
-```
-
-Open Postman, select the method from the dropdown, and paste the URL next to Send. For UI/device-only cases, follow the Test Case Procedure instead.
-
-7. Headers
-
-```text
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{adminAccessToken}}
-```
-
-Open Headers and enter each key/value. Do not add Authorization for a public endpoint. Use the token for the role under test and never capture a full token in evidence.
-
-8. Query Parameters
-
-```text
-severity=qa_value_01, isActive=qa_value_01, page=0, size=20
-```
-
-9. Path Parameters
-
-```text
-None
-```
-
-10. Body
-
-Open Body → raw → JSON, then paste the source-derived body below. Do not add fields that are absent from the DTO.
-
-```json
-This request does not have a request body.
-```
-
-11. Send Request
-
-1. Review the selected Postman environment.
-2. Click Send once.
-3. Wait for the request to finish.
-4. Record the actual HTTP status and response body.
-5. Do not copy secrets into evidence.
-
-12. Expected Response
-
-Expected HTTP status: `201`. Validate the implemented response contract, authorization scope, and error envelope against the source handler and DTO.
-
-13. Supabase Verification
-
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
-
-14. External Integration Verification
-
-Gemini/AI service stub or sandbox
-
-15. Evidence Screenshot
-
-Capture method, URL, non-secret headers, body, response status/body, relevant Supabase row, UI result, audit row, and provider/test-mailbox result when applicable. Redact tokens, passwords, private keys and identifiable health data.
-
-16. Evidence Filename
-
-```text
-MF06-SEARCH-002-request-response.png
-MF06-SEARCH-002-supabase.png
-MF06-SEARCH-002-ui.png
 ```
 
 ---
@@ -47901,7 +47597,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48001,7 +47697,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48100,7 +47796,7 @@ Expected HTTP status: `401`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48202,7 +47898,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48304,7 +48000,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48406,7 +48102,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48422,111 +48118,6 @@ Capture method, URL, non-secret headers, body, response status/body, relevant Su
 MF06-UPDATE-003-request-response.png
 MF06-UPDATE-003-supabase.png
 MF06-UPDATE-003-ui.png
-```
-
----
-
-## MF06-UPDATE-004 — Verify that a permitted Administrator user can update red flag rules.
-
-1. Purpose
-
-Verify that a permitted Administrator user can update red flag rules.
-
-2. Source and Requirement Mapping
-
-- Requirement: UC-72–UC-76
-- Source: `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java`
-- Request DTO: `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/dto/request/UpdateRedFlagRuleRequest.java`
-
-3. Test Account and Mock Data
-
-Use only verified synthetic accounts and `mf06_qa_*` fixtures. Authorization policy: `hasRole('SYSTEM_ADMIN')`.
-
-4. Pre-condition
-
-A valid active Administrator mock account is available.
-The user is logged in as Administrator.
-Required mock red flag rules data is available when the flow needs an existing item.
-
-5. HTTP Method
-
-```text
-PATCH
-```
-
-6. URL
-
-```text
-{{baseUrl}}/api/v1/admin/red-flag-rules/{id}
-```
-
-Open Postman, select the method from the dropdown, and paste the URL next to Send. For UI/device-only cases, follow the Test Case Procedure instead.
-
-7. Headers
-
-```text
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{adminAccessToken}}
-```
-
-Open Headers and enter each key/value. Do not add Authorization for a public endpoint. Use the token for the role under test and never capture a full token in evidence.
-
-8. Query Parameters
-
-```text
-None
-```
-
-9. Path Parameters
-
-```text
-id={{id}}
-```
-
-10. Body
-
-Open Body → raw → JSON, then paste the source-derived body below. Do not add fields that are absent from the DTO.
-
-```json
-{
-  "keyword": "qa_keyword_01",
-  "severity": "GREEN",
-  "action": "BLOCK",
-  "isActive": true
-}
-```
-
-11. Send Request
-
-1. Review the selected Postman environment.
-2. Click Send once.
-3. Wait for the request to finish.
-4. Record the actual HTTP status and response body.
-5. Do not copy secrets into evidence.
-
-12. Expected Response
-
-Expected HTTP status: `201`. Validate the implemented response contract, authorization scope, and error envelope against the source handler and DTO.
-
-13. Supabase Verification
-
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
-
-14. External Integration Verification
-
-Gemini/AI service stub or sandbox
-
-15. Evidence Screenshot
-
-Capture method, URL, non-secret headers, body, response status/body, relevant Supabase row, UI result, audit row, and provider/test-mailbox result when applicable. Redact tokens, passwords, private keys and identifiable health data.
-
-16. Evidence Filename
-
-```text
-MF06-UPDATE-004-request-response.png
-MF06-UPDATE-004-supabase.png
-MF06-UPDATE-004-ui.png
 ```
 
 ---
@@ -48611,7 +48202,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48711,7 +48302,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48811,7 +48402,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -48911,7 +48502,7 @@ Expected HTTP status: `201`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49011,7 +48602,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49111,7 +48702,7 @@ Expected HTTP status: `200`. Validate the implemented response contract, authori
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49206,7 +48797,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49301,7 +48892,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49396,7 +48987,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49491,7 +49082,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49586,7 +49177,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49681,7 +49272,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 
@@ -49776,7 +49367,7 @@ N/A — no standalone HTTP request is defined for this flow.
 
 13. Supabase Verification
 
-Tables: `triage_sessions, triage_messages, red_flag_rules, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
+Tables: `triage_sessions, triage_messages, evidence_sources, triage_consent`. Filter by the dynamic owner/resource IDs used in the request. Verify only the create/update/delete/revoke/read effect stated in Expected Results; do not alter unrelated data.
 
 14. External Integration Verification
 

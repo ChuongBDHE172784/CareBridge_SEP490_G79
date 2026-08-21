@@ -36,11 +36,10 @@ class ProductionBaselineBootstrapTest {
     private static final String REFERENCE_MANIFEST =
             "db/production-baseline-reference.properties";
     private static final String V2_SHA256 =
-            "421b944a461aa9cacad8d5962a621818afd59b6d5db4115298dfe9620f57900d";
+            "bace6daee1760db91956953f44ea7c209dbd0033d3632a88c1c1d85ca828a930";
     private static final Set<String> REFERENCE_TABLE_ALLOWLIST = Set.of(
             "health_metric_definitions",
             "knowledge_sources",
-            "red_flag_rules",
             "community_topics",
             "ai_moderation_policies",
             "vaccination_schedules",
@@ -48,7 +47,6 @@ class ProductionBaselineBootstrapTest {
     private static final Map<String, String> SEED_IDENTITY_COLUMNS = Map.of(
             "health_metric_definitions", "metric_definition_id",
             "knowledge_sources", "knowledge_source_id",
-            "red_flag_rules", "id",
             "community_topics", "id",
             "ai_moderation_policies", "policy_id",
             "vaccination_schedules", "vaccination_schedule_id",
@@ -58,7 +56,14 @@ class ProductionBaselineBootstrapTest {
     @Timeout(240)
     void productionPairBootstrapsAndValidatesTheProductionContract() throws Exception {
         assertThat(Files.list(MIGRATION_DIRECTORY).map(path -> path.getFileName().toString()).sorted().toList())
-                .containsExactly("V1__baseline_production_schema.sql");
+                .containsExactly(
+                        "V1__baseline_production_schema.sql",
+                        "V2__drop_legacy_triage_evidence.sql",
+                        "V3__create_maternal_knowledge_chunks.sql",
+                        "V4__relax_checklist_instance_open_ended_window.sql",
+                        "V5__add_call_recording_and_consent.sql",
+                        "V6__persist_attachment_storage_provider.sql",
+                        "V7__drop_red_flag_rules.sql");
         Path v1 = MIGRATION_DIRECTORY.resolve("V1__baseline_production_schema.sql");
         Path v2 = Path.of("src/main/resources/db/data_seed/production_reference_data.sql");
         assertThat(v1).isRegularFile();
@@ -105,7 +110,7 @@ class ProductionBaselineBootstrapTest {
             var first = flyway.migrate();
             var second = flyway.migrate();
             assertThat(first.success).isTrue();
-            assertThat(first.migrationsExecuted).isEqualTo(1);
+            assertThat(first.migrationsExecuted).isEqualTo(7);
             assertThat(second.success).isTrue();
             assertThat(second.migrationsExecuted).isZero();
             assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
@@ -116,7 +121,7 @@ class ProductionBaselineBootstrapTest {
                         s.execute(stmt.sql());
                     }
                 }
-                assertThat(historyVersions(connection)).containsExactly("1");
+                assertThat(historyVersions(connection)).containsExactly("1", "2", "3", "4", "5", "6", "7");
                 assertThat(count(connection, """
                         SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
                          WHERE n.nspname='public' AND c.relkind IN ('r','p')
@@ -138,7 +143,6 @@ class ProductionBaselineBootstrapTest {
 
                 assertThat(count(connection, "SELECT count(*) FROM health_metric_definitions")).isEqualTo(16);
                 assertThat(count(connection, "SELECT count(*) FROM knowledge_sources")).isEqualTo(3);
-                assertThat(count(connection, "SELECT count(*) FROM red_flag_rules")).isEqualTo(8);
                 assertThat(count(connection, "SELECT count(*) FROM ai_moderation_policies")).isEqualTo(11);
                 assertThat(count(connection, "SELECT count(*) FROM community_topics")).isEqualTo(107);
                 assertThat(count(connection, "SELECT count(*) FROM community_topics WHERE slug LIKE 'rec-%'"))

@@ -483,9 +483,6 @@
         <mxCell id="d05_uc_82" parent="d05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=12;fontColor=#000000;align=center;verticalAlign=middle;fontFamily=Arial;autosize=1;spacing=8;" ucId="UC-82" ucTitle="Review Expert Applications and Trust" value="Review Expert Applications and Trust" vertex="1">
           <mxGeometry height="72" width="176" x="398" y="424" as="geometry" />
         </mxCell>
-        <mxCell id="d05_uc_83" parent="d05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=12;fontColor=#000000;align=center;verticalAlign=middle;fontFamily=Arial;autosize=1;spacing=8;" ucId="UC-83" ucTitle="Manage AI Red-Flag Rules" value="Manage AI Red-Flag Rules" vertex="1">
-          <mxGeometry height="72" width="140" x="226" y="477" as="geometry" />
-        </mxCell>
         <mxCell id="d05_uc_88" parent="d05_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=12;fontColor=#000000;align=center;verticalAlign=middle;fontFamily=Arial;autosize=1;spacing=8;" ucId="UC-88" ucTitle="Review and Approve Content" value="Review and Approve Content" vertex="1">
           <mxGeometry height="72" width="140" x="406" y="584" as="geometry" />
         </mxCell>
@@ -517,9 +514,6 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="uc-carebridge-system-admin-24-assoc" actor="CareBridge System Admin" edge="1" edgeType="association" parent="1" source="d05_actor_admin" style="html=1;rounded=0;endArrow=none;strokeColor=#000000;strokeWidth=1.2;exitX=1;exitY=0.60;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d05_uc_82" targetUc="UC-82" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="uc-carebridge-system-admin-25-assoc" actor="CareBridge System Admin" edge="1" edgeType="association" parent="1" source="d05_actor_admin" style="html=1;rounded=0;endArrow=none;strokeColor=#000000;strokeWidth=1.2;exitX=1;exitY=0.69;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d05_uc_83" targetUc="UC-83" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="uc-carebridge-system-admin-26-assoc" actor="CareBridge System Admin" edge="1" edgeType="association" parent="1" source="d05_actor_admin" style="html=1;rounded=0;endArrow=none;strokeColor=#000000;strokeWidth=1.2;exitX=1;exitY=0.79;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d05_uc_88" targetUc="UC-88" value="">

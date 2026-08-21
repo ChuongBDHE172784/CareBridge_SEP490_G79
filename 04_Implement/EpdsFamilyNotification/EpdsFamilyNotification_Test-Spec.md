@@ -253,7 +253,7 @@ final class EpdsNotificationProps {
 #### TC-15a — Listener is annotated `@Async` + `AFTER_COMMIT` (structural)
 **Severity:** 🟠 High · **Oracle:** NFR-EPDS-N-02, ADR-001 · **File:** `EpdsFamilyNotificationServiceTest.java`
 - **Assert:** the handler method carries `@Async` **and** `@TransactionalEventListener(phase = AFTER_COMMIT)` (reflection assertion).
-- **⚠️ Documented Red Gate exception:** this case **passes against the red-phase stub**, because the stub already carries the annotations specified in TDS §8. It is structural, not behavioral, so it cannot fail before implementation. Its Red Gate row is recorded as `PASS (documented exception)` rather than `🔴 FAIL` — the same treatment as the SEC exception recorded in `04_Implement/TriageRedFlagPreScreen`. It is retained because annotation loss is a silent, high-impact regression (`@Async` dropped ⇒ NFR-EPDS-N-02 unmet with no test failure anywhere else).
+- **⚠️ Documented Red Gate exception:** this case **passes against the red-phase stub**, because the stub already carries the annotations specified in TDS §8. It is structural, not behavioral, so it cannot fail before implementation. Its Red Gate row is recorded as `PASS (documented exception)` rather than `🔴 FAIL` — the same treatment as the documented safety-gate precedent. It is retained because annotation loss is a silent, high-impact regression (`@Async` dropped ⇒ NFR-EPDS-N-02 unmet with no test failure anywhere else).
 - **Prerequisite verified:** `@EnableAsync` is present on `BackendApplication.java:11`, so `@Async` is honoured at runtime.
 
 #### TC-15b — 🔴 Listener failure does not propagate or roll back the EPDS write

@@ -27,10 +27,6 @@
    * Allow-list domain y tế tin cậy cho RAG (who.int, moh.gov.vn, cdc.gov…). Entity: `EvidenceSource.java`.
 4. **`knowledge_source_reviews`** *(thay `evidence_source_review_log`)*
    * Nhật ký phê duyệt/thu hồi domain — immutable (trigger chặn UPDATE/DELETE). Entity: `EvidenceSourceReviewLog.java`.
-5. **`red_flag_rules`** *(giữ nguyên tên — bảng AI duy nhất không đổi tên)*
-   * Quy tắc từ khóa khẩn cấp. Entity: `RedFlagRule.java`.
-   * ⚠️ Hiện **không được tiêu thụ trên luồng intake** — xem Phần III mục 2.
-
 *(Legacy đã xóa hẳn: `triage_assessments`, `triage_answers` — drop tại `V20260722020500__remove_legacy_triage_persistence.sql`. Lưu ý `triage_sessions` hiện tại là bảng mới, không liên quan cấu trúc trắc nghiệm cũ.)*
 
 ### 2. Bảng khẩn cấp downstream
@@ -60,7 +56,7 @@
 ### Điểm sai lệch so với bản đánh giá cũ
 
 * ❌ **Health memory chưa được nối vào triage**: `HealthMemoryService` chỉ được inject vào `HealthMemoryController` (list + delete). `TriageService` không đọc/ghi memory ở bất kỳ đâu — hạ tầng có nhưng là dead code với luồng intake.
-* ❌ **`red_flag_rules` không được dùng tiền xử lý trước AI**: `TriageRedFlagPolicy` chỉ phục vụ RAG-query filter (`TriageRedFlagSafetyFilter`) và kiểm duyệt community. Java fallback dùng rule hardcode (`PediatricRiskRules.java`); Python service dùng constant hardcode (`risk_rules.py`), không kết nối DB.
+* ✅ **Sàn an toàn khẩn cấp độc lập database**: `TriageRedFlagPolicy`, `TriageRedFlagSafetyFilter` và fallback Java giữ bộ tín hiệu bảo thủ trong code; catalog quản trị và bảng dữ liệu đã được retire để UI không tạo cảm giác cấu hình động có thể thay đổi định tuyến khẩn cấp.
 
 ---
 
@@ -72,19 +68,15 @@ Thứ tự ưu tiên theo gap thực tế:
 * **Hiện trạng:** `health_context_memories` + service + repository (có TTL enforce) đã tồn tại nhưng luồng triage không dùng.
 * **Việc cần làm:** (a) Sau khi phiên triage COMPLETED, ghi tóm tắt bệnh sử ngắn hạn (summary + payload jsonb, kèm `expires_at`) vào `health_context_memories`; (b) khi bắt đầu phiên mới, đọc các memory còn hạn của đúng đối tượng (mẹ/bé, đúng `related_stage`) và đưa vào context gửi AI + Java fallback.
 
-### 2. Tiêu thụ `red_flag_rules` trên Luồng Intake (`TriageRedFlagPreScreen`)
-* **Hiện trạng:** Bảng và UC110 (Admin quản lý rule) đã có, nhưng intake không tra bảng — rule an toàn đang hardcode ở 2 nơi (Java + Python), sửa rule qua UI Admin không có tác dụng thực tế.
-* **Việc cần làm:** Tiền xử lý văn bản triệu chứng tại Spring Boot qua `TriageRedFlagPolicy` (rule ACTIVE, severity RED) **trước khi** gọi Python; match → đánh dấu khẩn cấp ngay (short-circuit về RED) không phụ thuộc AI. Giữ rule hardcode làm lớp dự phòng cuối.
-
-### 3. Follow-up Task cho Rủi ro VÀNG (`TriageYellowFollowUp`)
+### 2. Follow-up Task cho Rủi ro VÀNG (`TriageYellowFollowUp`)
 * **Hiện trạng:** YELLOW đã có expert handoff + khuyến nghị `CONTACT_HEALTHCARE_PROVIDER`, nhưng không có nhắc hẹn theo dõi.
 * **Việc cần làm:** Khi phiên kết thúc YELLOW, tự tạo task theo dõi sau 4–6 giờ (vd: "Kiểm tra lại thân nhiệt của bé") vào **`family_tasks`** / **`scheduled_care_items`** (KHÔNG dùng `reminders` — đã drop), kèm push notification.
 
-### 4. Lưu vết Đồng ý Disclaimer (`TriageDisclaimerConsent`)
+### 3. Lưu vết Đồng ý Disclaimer (`TriageDisclaimerConsent`)
 * **Hiện trạng:** Disclaimer chỉ lưu trên `triage_sessions.disclaimer_text/disclaimer_version`, chưa có gate xác nhận từ người dùng.
 * **Việc cần làm:** Lần đầu sử dụng, yêu cầu xác nhận "Tôi hiểu rằng AI Triage chỉ mang tính chất tham khảo…" và lưu vết vào **`data_permissions`** (KHÔNG dùng `consent_grants` — đã drop); các phiên sau kiểm tra đã có consent còn hiệu lực.
 
-### 5. Mở rộng Từ điển Synonym (việc nhỏ, làm dần)
+### 4. Mở rộng Từ điển Synonym (việc nhỏ, làm dần)
 * `SymptomNormalizer` đã có sẵn — chỉ bổ sung từ dân gian còn thiếu ("thóp phập phồng", "trớ sữa", "sốt sình sịch"…) vào cả bản Java và Python, kèm test.
 
 > **Ghi chú tuân thủ:** Mọi hạng mục trên đi theo quy trình `implement-flow`: TDS + Test-Spec tại `04_Implement/[FeatureName]/` phải được duyệt (`Approved`) trước khi viết code production. AI chỉ đưa khuyến nghị tham khảo — không chẩn đoán, không kê đơn, không trì hoãn định tuyến khẩn cấp (BR-SAFETY).

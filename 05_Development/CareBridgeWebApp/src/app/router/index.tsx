@@ -292,7 +292,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            // RedFlagRuleController
+            // System administration routes
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
               { path: '/admin/safety-rules', element: <SafetyRuleManagementPage /> },

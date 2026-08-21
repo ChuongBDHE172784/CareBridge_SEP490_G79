@@ -36,8 +36,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * SYSTEM_ADMIN management surface for AI content moderation (policy CRUD without hard
- * delete, config/health status without secrets, sandbox test, manual rescan). Same
- * ApiResponse-envelope convention as RedFlagRuleController.
+ * delete, config/health status without secrets, sandbox test, manual rescan). Uses the
+ * standard admin ApiResponse envelope.
  */
 @RestController
 @RequestMapping("/api/v1/admin/ai-moderation")

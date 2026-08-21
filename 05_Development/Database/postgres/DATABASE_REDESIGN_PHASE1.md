@@ -70,7 +70,6 @@ Target 70 core thay thế target 65 trước đây. `care_items` và `legacy_arc
 
 29. `triage_sessions`
 30. `triage_session_evidence`
-31. `red_flag_rules`
 32. `health_context_memories`
 33. `knowledge_sources`
 34. `knowledge_source_reviews`
@@ -327,7 +326,7 @@ HEAD-only `care_facility_legacy_ids` cũng là pending-evidence compatibility ta
 
 ### Tables kept — 28
 
-`account_deletion_requests`, `care_facilities`, `care_group_members`, `care_groups`, `community_profiles`, `community_topics`, `content_items`, `data_permissions`, `development_milestones`, `device_tokens`, `emergency_contacts`, `expert_availability`, `expert_credentials`, `expert_location_shares`, `flyway_schema_history`, `growth_measurements`, `health_records`, `mother_journeys`, `nearby_support_requests`, `nearby_support_responses`, `notification_records`, `red_flag_rules`, `security_events`, `specialties`, `system_configurations`, `user_identities`, `users`, `vaccination_records`.
+`account_deletion_requests`, `care_facilities`, `care_group_members`, `care_groups`, `community_profiles`, `community_topics`, `content_items`, `data_permissions`, `development_milestones`, `device_tokens`, `emergency_contacts`, `expert_availability`, `expert_credentials`, `expert_location_shares`, `flyway_schema_history`, `growth_measurements`, `health_records`, `mother_journeys`, `nearby_support_requests`, `nearby_support_responses`, `notification_records`, `security_events`, `specialties`, `system_configurations`, `user_identities`, `users`, `vaccination_records`.
 
 ### Tables merged — 74 live sources
 

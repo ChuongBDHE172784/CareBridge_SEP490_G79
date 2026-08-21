@@ -170,7 +170,7 @@ Mỗi row có đúng một taxonomy: `KEEP_RELEASE1`, `KEEP_CROSS_CUTTING`, `DRO
 | `privacy_settings` | identity; MF-01 / UC-01–18 | KEEP_RELEASE1 | Yes | 1 | 1/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
 | `provinces` | reference/geography; MF-05/MF-07 lookup | KEEP_RELEASE1 | No | 36 | 0/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
 | `question_notification_mutes` | community; MF-04 / UC-46–59 | KEEP_RELEASE1 | Yes | 0 | 2/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
-| `red_flag_rules` | triage/evidence; MF-06 / UC-72–76 | KEEP_RELEASE1 | Yes | 19 | 2/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
+| Admin medical warning catalog | retired from triage administration | DROP_V7 | No | 0 | 0/0 | 0 | Removed with its controller/service/repository stack | Emergency routing remains repository-free in runtime policy |
 | `refresh_tokens` | identity; MF-01 / UC-01–18 | KEEP_RELEASE1 | Yes | 923 | 1/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
 | `refund_records` | V2 consultation/payment; MF-15 / V2 | DROP_OUT_OF_SCOPE | Yes | 0 | 3/0 | 0 | Schema/V2 dormant; không có Release-1 flow | 0 rows; không có retention obligation đã tìm thấy |
 | `reminders` | reminder/care-plan; MF-09 / UC-89–93 | KEEP_RELEASE1 | Yes | 20 | 3/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |

@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** Null-tolerant PATCH semantics (same convention as UpdateRedFlagRuleRequest). policyCode is immutable. */
+/** Null-tolerant PATCH semantics; policyCode is immutable. */
 public record UpdateAiPolicyRequest(
         @Size(max = 150) String name,
         @Size(max = 3000) String detectionGuidance,

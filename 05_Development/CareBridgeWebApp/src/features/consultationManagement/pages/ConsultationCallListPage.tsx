@@ -4,8 +4,12 @@ import type {
   CallType,
   CallStatus,
 } from '../models/consultationCall';
-import { searchConsultationCalls } from '../services/consultationCallApi';
+import {
+  deleteConsultationCallRecording,
+  searchConsultationCalls,
+} from '../services/consultationCallApi';
 import CallRecordingPlayerModal from '../components/CallRecordingPlayerModal';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 
 function formatDuration(seconds: number | null): string {
   if (!seconds || seconds <= 0) return '00:00';
@@ -43,6 +47,9 @@ export default function ConsultationCallListPage() {
 
   // Selected call for playback modal
   const [selectedCallForPlayback, setSelectedCallForPlayback] = useState<ConsultationCallAdminSummary | null>(null);
+  const [recordingToDelete, setRecordingToDelete] = useState<ConsultationCallAdminSummary | null>(null);
+  const [isDeletingRecording, setIsDeletingRecording] = useState(false);
+  const [deleteRecordingError, setDeleteRecordingError] = useState<string | null>(null);
 
   const fetchCalls = useCallback(async () => {
     setIsLoading(true);
@@ -118,6 +125,33 @@ export default function ConsultationCallListPage() {
     setDateFrom('');
     setTimeFrom('');
     setTimeTo('');
+  };
+
+  const requestDeleteRecording = (call: ConsultationCallAdminSummary) => {
+    setDeleteRecordingError(null);
+    setRecordingToDelete(call);
+  };
+
+  const handleDeleteRecording = async () => {
+    if (!recordingToDelete || isDeletingRecording) return;
+
+    setIsDeletingRecording(true);
+    setDeleteRecordingError(null);
+    try {
+      await deleteConsultationCallRecording(recordingToDelete.callId);
+      if (selectedCallForPlayback?.callId === recordingToDelete.callId) {
+        setSelectedCallForPlayback(null);
+      }
+      setRecordingToDelete(null);
+      await fetchCalls();
+    } catch (err: any) {
+      setDeleteRecordingError(
+        err.response?.data?.message
+          || 'Không thể xóa bản ghi khỏi hệ thống lưu trữ. Vui lòng thử lại.'
+      );
+    } finally {
+      setIsDeletingRecording(false);
+    }
   };
 
   const totalPages = Math.ceil(total / pageSize) || 1;
@@ -455,14 +489,24 @@ export default function ConsultationCallListPage() {
                       {/* Action Button */}
                       <td className="py-4 pl-3 pr-6 text-right">
                         {hasRecord ? (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedCallForPlayback(call)}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">play_circle</span>
-                            Phát bản ghi
-                          </button>
+                          <div className="inline-flex flex-wrap justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCallForPlayback(call)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                              Phát bản ghi
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => requestDeleteRecording(call)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-error/40 bg-error-container px-3 py-1.5 text-xs font-semibold text-error hover:bg-error-container/70 transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                              Xóa
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-[11px] text-outline italic">Không có bản ghi</span>
                         )}
@@ -511,8 +555,27 @@ export default function ConsultationCallListPage() {
         <CallRecordingPlayerModal
           call={selectedCallForPlayback}
           onClose={() => setSelectedCallForPlayback(null)}
+          onDeleteRequest={requestDeleteRecording}
         />
       )}
+
+      <ConfirmDialog
+        key={recordingToDelete?.callId ?? 'delete-recording'}
+        open={recordingToDelete !== null}
+        title="Xóa vĩnh viễn bản ghi?"
+        description="Bản ghi sẽ bị xóa khỏi hệ thống lưu trữ và không thể khôi phục. Thông tin cuộc gọi vẫn được giữ lại."
+        icon="delete_forever"
+        tone="danger"
+        confirmLabel="Xóa bản ghi"
+        submitting={isDeletingRecording}
+        errorText={deleteRecordingError ?? undefined}
+        onConfirm={handleDeleteRecording}
+        onCancel={() => {
+          if (isDeletingRecording) return;
+          setRecordingToDelete(null);
+          setDeleteRecordingError(null);
+        }}
+      />
     </div>
   );
 }

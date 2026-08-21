@@ -1,19 +1,5 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import {
-  fetchRedFlagRules,
-  createRedFlagRule,
-  updateRedFlagRule,
-  deleteRedFlagRule,
-} from '../services/redFlagRuleApi';
-import {
-  SEVERITY_LABELS,
-  SEVERITY_STYLES,
-  ACTION_LABELS,
-  type RedFlagRule,
-  type RedFlagSeverity,
-  type RedFlagAction,
-} from '../models/redFlagRule';
 import {
   fetchAiPolicies,
   createAiPolicy,
@@ -41,19 +27,6 @@ import {
   type PolicyReferenceFile,
 } from '../models/aiModerationPolicy';
 
-type TabKey = 'AI_CONTENT' | 'MEDICAL';
-
-const TABS: { value: TabKey; label: string }[] = [
-  { value: 'AI_CONTENT', label: 'Chính sách kiểm duyệt nội dung AI' },
-  { value: 'MEDICAL', label: 'Cảnh báo khẩn cấp y tế' },
-];
-
-interface RuleFormState {
-  keyword: string;
-  severity: RedFlagSeverity;
-  action: RedFlagAction;
-}
-const DEFAULT_FORM: RuleFormState = { keyword: '', severity: 'YELLOW', action: 'WARN' };
 const MAX_POLICY_GUIDANCE_LENGTH = 3000;
 
 interface PolicyFormState {
@@ -100,28 +73,7 @@ const PRIORITY_LABELS: Record<'NORMAL' | 'HIGH' | 'URGENT', string> = {
   URGENT: 'Khẩn cấp',
 };
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
-}
-
 export default function SafetyRuleManagementPage() {
-  const [tab, setTab] = useState<TabKey>('AI_CONTENT');
-
-  // ── Medical red-flag rules (existing) ─────────────────────────────────────
-  const [rules, setRules] = useState<RedFlagRule[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [severityFilter, setSeverityFilter] = useState<RedFlagSeverity | ''>('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<RedFlagRule | null>(null);
-  const [form, setForm] = useState<RuleFormState>(DEFAULT_FORM);
-  const [formError, setFormError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
   // ── AI content moderation policies ────────────────────────────────────────
   const [policies, setPolicies] = useState<AiPolicy[]>([]);
   const [policiesTotal, setPoliciesTotal] = useState(0);
@@ -152,28 +104,6 @@ export default function SafetyRuleManagementPage() {
   const [testError, setTestError] = useState('');
   const [testResult, setTestResult] = useState<AiPolicyTestResult | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const page = await fetchRedFlagRules({
-        severity: severityFilter || undefined,
-        isActive: activeFilter === 'all' ? undefined : activeFilter === 'active',
-        page: 0,
-        size: 50,
-      });
-      setRules(page.content);
-      setTotalElements(page.totalElements);
-    } catch {
-      setError('Không tải được danh sách quy tắc.');
-      setRules([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [severityFilter, activeFilter]);
-
-  useEffect(() => { load(); }, [load]);
-
   const loadPolicies = useCallback(async () => {
     setPoliciesLoading(true);
     setPoliciesError('');
@@ -201,83 +131,6 @@ export default function SafetyRuleManagementPage() {
   }, []);
 
   useEffect(() => { loadPolicies(); loadAiStatus(); }, [loadPolicies, loadAiStatus]);
-
-  const visibleRules = useMemo(() => {
-    if (!search.trim()) return rules;
-    const q = search.trim().toLowerCase();
-    return rules.filter((r) => r.keyword.toLowerCase().includes(q));
-  }, [rules, search]);
-
-  const stats = useMemo(() => {
-    const activeCount = rules.filter((r) => r.isActive).length;
-    const criticalCount = rules.filter((r) => r.severity === 'RED').length;
-    const systemDefaultCount = rules.filter((r) => r.isSystemDefault).length;
-    return { activeCount, criticalCount, systemDefaultCount };
-  }, [rules]);
-
-  const openCreateModal = () => {
-    setEditingRule(null);
-    setForm(DEFAULT_FORM);
-    setFormError('');
-    setModalOpen(true);
-  };
-
-  const openEditModal = (rule: RedFlagRule) => {
-    setEditingRule(rule);
-    setForm({ keyword: rule.keyword, severity: rule.severity, action: rule.action });
-    setFormError('');
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    if (submitting) return;
-    setModalOpen(false);
-  };
-
-  const handleSubmit = async () => {
-    if (!form.keyword.trim()) {
-      setFormError('Vui lòng nhập từ khóa quy tắc.');
-      return;
-    }
-    setSubmitting(true);
-    setFormError('');
-    try {
-      if (editingRule) {
-        await updateRedFlagRule(editingRule.id, form);
-      } else {
-        await createRedFlagRule(form);
-      }
-      setModalOpen(false);
-      await load();
-    } catch (err: any) {
-      const code = err?.response?.data?.error;
-      if (code === 'MOD-025') setFormError('Từ khóa này đã tồn tại trong hệ thống.');
-      else setFormError(err?.response?.data?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleToggleActive = async (rule: RedFlagRule) => {
-    try {
-      await updateRedFlagRule(rule.id, { isActive: !rule.isActive });
-      await load();
-    } catch (err: any) {
-      const code = err?.response?.data?.error;
-      alert(code === 'MOD-027' ? 'Không thể tắt quy tắc mặc định của hệ thống.' : 'Có lỗi xảy ra khi cập nhật trạng thái.');
-    }
-  };
-
-  const handleDelete = async (rule: RedFlagRule) => {
-    if (rule.isSystemDefault) return;
-    if (!window.confirm(`Xóa quy tắc "${rule.keyword}"? Hành động này không thể hoàn tác.`)) return;
-    try {
-      await deleteRedFlagRule(rule.id);
-      await load();
-    } catch {
-      alert('Có lỗi xảy ra khi xóa quy tắc.');
-    }
-  };
 
   // ── AI policy handlers ────────────────────────────────────────────────────
   const openCreatePolicyModal = () => {
@@ -493,78 +346,33 @@ export default function SafetyRuleManagementPage() {
           {/* Header */}
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-[26px] font-bold text-on-surface m-0">AI & Chính sách an toàn</h1>
+              <h1 className="text-[26px] font-bold text-on-surface m-0">Chính sách kiểm duyệt nội dung AI</h1>
               <p className="text-on-surface-variant text-sm mt-1">
-                Quản lý chính sách kiểm duyệt nội dung AI và từ khóa cảnh báo khẩn cấp y tế. AI chỉ hỗ trợ đánh giá và ưu tiên - quyết định xử lý cuối cùng bắt buộc phải do con người phê duyệt.
+                Quản lý chính sách kiểm duyệt nội dung cộng đồng. AI chỉ hỗ trợ đánh giá và ưu tiên - quyết định xử lý cuối cùng bắt buộc phải do con người phê duyệt.
               </p>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
-              {tab === 'AI_CONTENT' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { void loadPolicies(); void loadAiStatus(); }}
-                    disabled={policiesLoading}
-                    className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50"
-                  >
-                    <span className="material-symbols-outlined text-lg">refresh</span>
-                    Làm mới
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openCreatePolicyModal}
-                    className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold cursor-pointer hover:bg-primary/90"
-                  >
-                    <span className="material-symbols-outlined text-lg">add</span>
-                    Tạo chính sách
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => void load()}
-                    disabled={loading}
-                    className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50"
-                  >
-                    <span className="material-symbols-outlined text-lg">refresh</span>
-                    Làm mới
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openCreateModal}
-                    className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold cursor-pointer hover:bg-primary/90"
-                  >
-                    <span className="material-symbols-outlined text-lg">add</span>
-                    Tạo quy tắc mới
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => { void loadPolicies(); void loadAiStatus(); }}
+                disabled={policiesLoading}
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-lg">refresh</span>
+                Làm mới
+              </button>
+              <button
+                type="button"
+                onClick={openCreatePolicyModal}
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold cursor-pointer hover:bg-primary/90"
+              >
+                <span className="material-symbols-outlined text-lg">add</span>
+                Tạo chính sách
+              </button>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="mb-6 flex items-center gap-2 border-b border-surface-container-highest pb-3">
-            {TABS.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => setTab(t.value)}
-                className={`py-2 px-5 rounded-full text-sm font-semibold cursor-pointer transition-colors flex items-center gap-2 ${tab === t.value
-                  ? 'bg-primary text-on-primary shadow-sm'
-                  : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
-                  }`}
-              >
-                <span className="material-symbols-outlined text-lg">
-                  {t.value === 'AI_CONTENT' ? 'smart_toy' : 'emergency'}
-                </span>
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {tab === 'AI_CONTENT' && (
-            <>
+          <>
               {/* Gemini status - Stats Bar */}
               <div className="mb-6">
                 <div className="mb-3 flex items-center justify-between">
@@ -895,286 +703,9 @@ export default function SafetyRuleManagementPage() {
                 )}
               </div>
             </>
-          )}
 
-          {tab === 'MEDICAL' && (
-            <>
-              {/* Action & Filter Bar */}
-              <div className="bg-surface rounded-2xl p-4 shadow-sm border border-surface-container-highest mb-6">
-                <div className="flex flex-col xl:flex-row items-center gap-3">
-                  <div className="flex-1 w-full relative">
-                    <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Tìm kiếm quy tắc theo từ khóa..."
-                      className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full xl:w-auto">
-                    <select
-                      value={severityFilter}
-                      onChange={(e) => setSeverityFilter(e.target.value as RedFlagSeverity | '')}
-                      className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
-                    >
-                      <option value="">Tất cả mức độ</option>
-                      <option value="RED">Nghiêm trọng</option>
-                      <option value="YELLOW">Cảnh báo</option>
-                      <option value="GREEN">Bình thường</option>
-                    </select>
-
-                    <select
-                      value={activeFilter}
-                      onChange={(e) => setActiveFilter(e.target.value as 'all' | 'active' | 'inactive')}
-                      className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
-                    >
-                      <option value="all">Tất cả trạng thái</option>
-                      <option value="active">Đang chạy</option>
-                      <option value="inactive">Đã tắt</option>
-                    </select>
-
-                    {(search || severityFilter || activeFilter !== 'all') && (
-                      <button
-                        type="button"
-                        onClick={() => { setSearch(''); setSeverityFilter(''); setActiveFilter('all'); }}
-                        className="py-2.5 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container-low flex items-center gap-1 whitespace-nowrap"
-                      >
-                        <span className="material-symbols-outlined text-base">filter_alt_off</span>
-                        Xóa lọc
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats Bar */}
-              <div className="mb-6 grid gap-4 md:grid-cols-3">
-                <div className="bg-surface rounded-2xl p-5 shadow-sm border border-surface-container-highest flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-semibold text-outline uppercase tracking-wider block mb-1">Đang hoạt động</span>
-                    <p className="text-2xl font-bold text-on-surface m-0">{stats.activeCount}</p>
-                    <p className="text-xs text-outline mt-0.5 m-0">/ {totalElements} quy tắc</p>
-                  </div>
-                  <span className="material-symbols-outlined text-3xl text-primary/70">rule</span>
-                </div>
-
-                <div className="bg-surface rounded-2xl p-5 shadow-sm border border-surface-container-highest flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-semibold text-outline uppercase tracking-wider block mb-1">Mức nghiêm trọng</span>
-                    <p className="text-2xl font-bold text-error m-0">{stats.criticalCount}</p>
-                    <p className="text-xs text-outline mt-0.5 m-0">Cần xem xét đánh giá</p>
-                  </div>
-                  <span className="material-symbols-outlined text-3xl text-error/70">warning</span>
-                </div>
-
-                <div className="bg-surface rounded-2xl p-5 shadow-sm border border-surface-container-highest flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-semibold text-outline uppercase tracking-wider block mb-1">Mặc định hệ thống</span>
-                    <p className="text-2xl font-bold text-on-surface m-0">{stats.systemDefaultCount}</p>
-                    <p className="text-xs text-outline mt-0.5 m-0">Không thể xóa/tắt</p>
-                  </div>
-                  <span className="material-symbols-outlined text-3xl text-primary/70">verified_user</span>
-                </div>
-              </div>
-
-              {/* Rule List Table Card */}
-              <div className="bg-surface rounded-2xl p-6 shadow-md border border-surface-container-highest">
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-surface-container-highest">
-                  <h3 className="text-base font-bold text-on-surface m-0">Danh sách quy tắc cảnh báo y tế</h3>
-                  <button
-                    type="button"
-                    onClick={() => void load()}
-                    className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base">refresh</span>
-                    Làm mới
-                  </button>
-                </div>
-
-                {loading ? (
-                  <div className="py-12 text-center text-outline">Đang tải danh sách quy tắc...</div>
-                ) : error ? (
-                  <div className="mb-4 rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error">
-                    {error}
-                  </div>
-                ) : visibleRules.length === 0 ? (
-                  <div className="py-12 text-center text-outline">
-                    <span className="material-symbols-outlined text-4xl block mb-2">rule</span>
-                    Không có quy tắc nào phù hợp.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b-2 border-surface-container-highest text-left">
-                          {['TỪ KHÓA QUY TẮC', 'MỨC ĐỘ', 'HÀNH ĐỘNG XỬ LÝ', 'TRẠNG THÁI', 'CẬP NHẬT LÚC', 'THAO TÁC'].map((heading, idx) => (
-                            <th key={heading} className={`py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] ${idx === 5 ? 'text-right' : ''}`}>
-                              {heading}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visibleRules.map((rule) => (
-                          <tr key={rule.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
-                            <td className="py-3.5 px-2 max-w-[300px]">
-                              <div className="font-semibold text-sm text-on-surface">{rule.keyword}</div>
-                              {rule.isSystemDefault && (
-                                <div className="text-xs text-outline mt-0.5 flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-sm">lock</span> Mặc định hệ thống
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-2">
-                              <span className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold ${SEVERITY_STYLES[rule.severity]}`}>
-                                {SEVERITY_LABELS[rule.severity]}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-2 text-[13px] text-on-surface-variant font-medium">
-                              {ACTION_LABELS[rule.action]}
-                            </td>
-                            <td className="py-3.5 px-2">
-                              <button
-                                type="button"
-                                onClick={() => void handleToggleActive(rule)}
-                                disabled={rule.isSystemDefault}
-                                className={`flex items-center gap-2 text-xs font-semibold text-on-surface-variant bg-transparent border-0 ${rule.isSystemDefault ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                                  }`}
-                                title={rule.isSystemDefault ? 'Quy tắc mặc định luôn hoạt động' : 'Bấm để bật/tắt'}
-                              >
-                                <div className={`h-2.5 w-2.5 rounded-full ${rule.isActive ? 'bg-emerald-500' : 'bg-outline-variant'}`} />
-                                {rule.isActive ? 'Đang chạy' : 'Đã tắt'}
-                              </button>
-                            </td>
-                            <td className="py-3.5 px-2 text-[13px] text-outline whitespace-nowrap">
-                              {formatDateTime(rule.updatedAt)}
-                            </td>
-                            <td className="py-3.5 px-2 text-right">
-                              <div className="flex items-center gap-1.5 justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditModal(rule)}
-                                  className="h-8 w-8 rounded-full border border-outline-variant bg-surface text-outline flex items-center justify-center hover:bg-surface-container-low hover:text-primary cursor-pointer"
-                                  title="Sửa quy tắc"
-                                >
-                                  <span className="material-symbols-outlined text-base">edit</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleDelete(rule)}
-                                  disabled={rule.isSystemDefault}
-                                  title={rule.isSystemDefault ? 'Không thể xóa quy tắc mặc định' : 'Xóa quy tắc'}
-                                  className={`h-8 w-8 rounded-full border border-outline-variant flex items-center justify-center cursor-pointer ${rule.isSystemDefault
-                                    ? 'opacity-40 cursor-not-allowed text-outline-variant bg-surface'
-                                    : 'bg-surface text-outline hover:bg-error-container hover:text-error hover:border-error-container'
-                                    }`}
-                                >
-                                  <span className="material-symbols-outlined text-base">delete</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
         </div>
       </main>
-
-      {/* Create / Edit Modal (red-flag rules) */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm" onClick={closeModal}>
-          <div
-            className="w-full max-w-md rounded-2xl border border-surface-container-highest bg-surface p-6 shadow-2xl font-sans"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-5 pb-3 border-b border-surface-container-highest">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-xl">rule</span>
-                <h3 className="text-lg font-bold text-on-surface m-0">
-                  {editingRule ? 'Chỉnh sửa quy tắc y tế' : 'Tạo quy tắc mới'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={submitting}
-                className="w-8 h-8 rounded-full border border-outline-variant bg-surface text-outline flex items-center justify-center hover:bg-surface-container-low cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-base">close</span>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">Từ khóa quy tắc</label>
-                <input
-                  value={form.keyword}
-                  onChange={(e) => setForm((f) => ({ ...f, keyword: e.target.value }))}
-                  placeholder="Ví dụ: chảy máu nhiều, sốt cao liên tục..."
-                  className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">Mức độ nghiêm trọng</label>
-                <select
-                  value={form.severity}
-                  onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value as RedFlagSeverity }))}
-                  className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans cursor-pointer"
-                >
-                  <option value="GREEN">Bình thường (Green)</option>
-                  <option value="YELLOW">Cảnh báo (Yellow)</option>
-                  <option value="RED">Nghiêm trọng (Red)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">Hành động xử lý</label>
-                <select
-                  value={form.action}
-                  onChange={(e) => setForm((f) => ({ ...f, action: e.target.value as RedFlagAction }))}
-                  className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans cursor-pointer"
-                >
-                  <option value="WARN">Cảnh báo cho người dùng</option>
-                  <option value="BLOCK">Chặn xuất bản</option>
-                  <option value="ESCALATE">Leo thang xem xét</option>
-                </select>
-              </div>
-            </div>
-
-            {formError && (
-              <div className="mt-4 rounded-2xl border border-error-container bg-error-container/60 p-3 text-xs text-error font-medium">
-                {formError}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3 mt-6 pt-4 border-t border-surface-container-highest">
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={submitting}
-                className="flex-1 py-2.5 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container-low disabled:opacity-50"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSubmit()}
-                disabled={submitting}
-                className="flex-1 py-2.5 px-4 rounded-full bg-primary text-on-primary text-xs font-semibold cursor-pointer hover:bg-primary/90 disabled:opacity-50"
-              >
-                {submitting ? 'Đang lưu...' : editingRule ? 'Lưu thay đổi' : 'Tạo quy tắc'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Create / Edit Modal (AI policies) */}
       {policyModalOpen && (
@@ -1378,6 +909,7 @@ export default function SafetyRuleManagementPage() {
                       ))}
                     </div>
                   )}
+
                 </div>
 
                 {/* 2. Upload Document Files to Cloudflare R2 */}

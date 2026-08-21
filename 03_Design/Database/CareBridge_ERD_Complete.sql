@@ -1050,21 +1050,6 @@ CREATE TABLE triage_session_evidence (
     CONSTRAINT triage_session_evidence_pkey PRIMARY KEY (evidence_id)
 );
 
--- Table: red_flag_rules
-CREATE TABLE red_flag_rules (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    keyword varchar(255) NOT NULL UNIQUE,
-    severity varchar(20) NOT NULL,
-    action varchar(20) NOT NULL,
-    is_active boolean DEFAULT true NOT NULL,
-    is_system_default boolean DEFAULT false NOT NULL,
-    created_by uuid,
-    updated_by uuid,
-    created_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT red_flag_rules_pkey PRIMARY KEY (id)
-);
-
 -- Table: safety_monitoring_sessions
 CREATE TABLE safety_monitoring_sessions (
     monitoring_session_id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1424,8 +1409,6 @@ ALTER TABLE notification_records ADD CONSTRAINT fk_notification_records_care_gro
 ALTER TABLE notification_records ADD CONSTRAINT fk_notification_records_user_id FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE;
 ALTER TABLE professional_specialties ADD CONSTRAINT fk_professional_specialties_professional_profile_id FOREIGN KEY (professional_profile_id) REFERENCES users (user_id);
 ALTER TABLE professional_specialties ADD CONSTRAINT fk_professional_specialties_specialty_id FOREIGN KEY (specialty_id) REFERENCES specialties (specialty_id);
-ALTER TABLE red_flag_rules ADD CONSTRAINT fk_red_flag_rules_created_by FOREIGN KEY (created_by) REFERENCES users (user_id);
-ALTER TABLE red_flag_rules ADD CONSTRAINT fk_red_flag_rules_updated_by FOREIGN KEY (updated_by) REFERENCES users (user_id);
 ALTER TABLE reminder_schedules ADD CONSTRAINT fk_reminder_schedules_owner_user_id FOREIGN KEY (owner_user_id) REFERENCES users (user_id) ON DELETE CASCADE;
 ALTER TABLE safety_events ADD CONSTRAINT fk_safety_events_care_facility_id FOREIGN KEY (care_facility_id) REFERENCES care_facilities (facility_id);
 ALTER TABLE safety_events ADD CONSTRAINT fk_safety_events_care_subject_id FOREIGN KEY (care_subject_id) REFERENCES care_subjects (care_subject_id);

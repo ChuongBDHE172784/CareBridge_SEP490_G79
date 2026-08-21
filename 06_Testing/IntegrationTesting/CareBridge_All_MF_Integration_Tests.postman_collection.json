@@ -15284,65 +15284,6 @@
           "response": []
         },
         {
-          "name": "MF06-CREATE-003",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP status is 201', function () {",
-                  "  pm.expect(pm.response.code).to.eql(201);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/red-flag-rules",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "red-flag-rules"
-              ]
-            },
-            "description": "Verify that a permitted Administrator user can add red flag rules.\nSource: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java\nRequirement: UC-72–UC-76\nStatus: Planned/Pending; not executed.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"keyword\": \"qa_keyword_01\",\n  \"severity\": \"GREEN\",\n  \"action\": \"BLOCK\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
           "name": "MF06-CREATE-004",
           "event": [
             {
@@ -15815,52 +15756,6 @@
           "response": []
         },
         {
-          "name": "MF06-DELETE-002",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP status is 204', function () {",
-                  "  pm.expect(pm.response.code).to.eql(204);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/red-flag-rules/{{id}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "red-flag-rules",
-                "{{id}}"
-              ]
-            },
-            "description": "Verify that a permitted Administrator user can remove red flag rules.\nSource: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java\nRequirement: UC-72–UC-76\nStatus: Planned/Pending; not executed."
-          },
-          "response": []
-        },
-        {
           "name": "MF06-DELETE-003",
           "event": [
             {
@@ -16045,73 +15940,6 @@
               ]
             },
             "description": "Verify that a permitted Administrator user can find evidence sources.\nSource: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java\nRequirement: UC-72–UC-76\nStatus: Planned/Pending; not executed."
-          },
-          "response": []
-        },
-        {
-          "name": "MF06-SEARCH-002",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP status is 201', function () {",
-                  "  pm.expect(pm.response.code).to.eql(201);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/red-flag-rules",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "red-flag-rules"
-              ],
-              "query": [
-                {
-                  "key": "severity",
-                  "value": "qa_value_01",
-                  "disabled": false
-                },
-                {
-                  "key": "isActive",
-                  "value": "qa_value_01",
-                  "disabled": false
-                },
-                {
-                  "key": "page",
-                  "value": "0",
-                  "disabled": false
-                },
-                {
-                  "key": "size",
-                  "value": "20",
-                  "disabled": false
-                }
-              ]
-            },
-            "description": "Verify that a permitted Administrator user can find red flag rules.\nSource: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java\nRequirement: UC-72–UC-76\nStatus: Planned/Pending; not executed."
           },
           "response": []
         },
@@ -16436,66 +16264,6 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"notes\": \"qa_notes_01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "MF06-UPDATE-004",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP status is 201', function () {",
-                  "  pm.expect(pm.response.code).to.eql(201);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/red-flag-rules/{{id}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "red-flag-rules",
-                "{{id}}"
-              ]
-            },
-            "description": "Verify that a permitted Administrator user can update red flag rules.\nSource: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java\nRequirement: UC-72–UC-76\nStatus: Planned/Pending; not executed.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"keyword\": \"qa_keyword_01\",\n  \"severity\": \"GREEN\",\n  \"action\": \"BLOCK\",\n  \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -141,7 +141,6 @@ Each use case belongs to exactly one application group and retains its owning MF
 | UC-80 | MF-04 | Review AI Moderation Assessment | Moderator | Moderator Web / Backend |
 | UC-81 | MF-04 | Manage Community Topics | Moderator | Moderator Web / Backend |
 | UC-82 | MF-05 | Review Expert Applications and Trust | System Admin | Admin Web / Backend |
-| UC-83 | MF-06 | Manage AI Red-Flag Rules | System Admin | Admin Web / Backend |
 | UC-84 | MF-09 | View Content Administration Workspace | Content Admin | Content Web / Backend |
 | UC-85 | MF-09 | Manage Verified Articles | Content Admin | Content Web / Backend |
 | UC-86 | MF-09 | Manage Verified FAQs | Content Admin | Content Web / Backend |
@@ -1883,26 +1882,11 @@ Each use case belongs to exactly one application group and retains its owning MF
 
 **Table 88: UC-82 Review Expert Applications and Trust Use Case Specification**
 
-##### **3.4.3.15 UC-83 Manage AI Red-Flag Rules** {#3.4.3.15-uc-83-manage-ai-red-flag-rules}
+##### **3.4.3.15 Reserved** {#3.4.3.15-reserved}
 
-| UC ID and Name | UC-83 Manage AI Red-Flag Rules |  |  |
-| :--- | :--- | :--- | :--- |
-| **Created By** | CareBridge Team | **Date Revised** | 06/08/2026 |
-| **Feature / Group** | MF-06 — Web App Use Cases — AI Nurse Assistant & Risk Triage | **Platform** | Admin Web / Backend |
-| **Primary Actor** | System Admin | **Secondary Actors** | Supporting platform services where applicable |
-| **Trigger** | The actor starts Manage AI Red-Flag Rules from a reachable CareBridge screen or system event. |  |  |
-| **Description** | Lists, creates, updates and deletes permitted red-flag rules used by the structured triage flow. |  |  |
-| **Preconditions** | PRE-1. Required CareBridge and external services are available. PRE-2. The actor can reach the relevant screen or trigger. PRE-3. The actor is authenticated and has the required role, ownership, membership or permission. PRE-4. Referenced records exist when the flow manages existing data. |  |  |
-| **Postconditions** | POST-1. The requested business outcome and its final status are displayed. POST-2. Valid confirmed changes are persisted and related views or notifications are refreshed. POST-3. Sensitive actions retain required audit evidence. |  |  |
-| **Normal Flow** | Step 1\. The actor opens or triggers Manage AI Red-Flag Rules. Step 2\. The system loads the permitted context and validates access. Step 3\. The actor views data or provides and confirms the supported input. Step 4\. The Backend applies the business rules for Manage AI Red-Flag Rules and performs the requested operation. Step 5\. The system displays the resulting state and updates related data, history or notifications where applicable. |  |  |
-| **Alternative Flows** | AF1. Supported method variants, list/detail views, search/filter controls and CRUD actions remain subflows only when relevant to this actor goal. AF2. The actor cancels before confirmation and no unintended change occurs. AF3. An empty result displays the next permitted action. |  |  |
-| **Exceptions** | E1. Unauthorized, out-of-scope or ownership-invalid access is denied without exposing protected data. E2. Invalid, expired, conflicting or missing input is rejected with actionable feedback. E3. External, network or server failure returns a safe retry state without false success or duplicate effects. |  |  |
-| **Priority** | High | **Frequency of Use** | Regular |
-| **Business Rules** | AI output is non-diagnostic; approved evidence and red-flag rules establish the safe risk floor. |  |  |
-| **Other Information** | Portal list, detail, search, filter and confirmation screens are subflows of this use case. |  |  |
-| **Assumptions** | Current code and the user-approved feature inventory define Release 1 behavior; unsupported legacy APIs do not create additional UCs. |  |  |
+The use-case identifier and table number are intentionally reserved after retirement of an unsupported administration capability.
 
-**Table 89: UC-83 Manage AI Red-Flag Rules Use Case Specification**
+**Table 89: Reserved Use Case Identifier**
 
 ##### **3.4.3.16 UC-84 View Content Administration Workspace** {#3.4.3.16-uc-84-view-content-administration-workspace}
 

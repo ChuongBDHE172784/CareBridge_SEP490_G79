@@ -174,8 +174,6 @@ USE_CASES = [
      r"StructuredIntakeService|IntakeSessionCompletedHandler|IntakeController|SymptomNormalizer|symptom_intake_screen"),
     ("Triage Assessment",       "CareBridge AI",
      r"TriageService|TriageGraphService|TriageV2|TriageRecommendationCode|PediatricRedParity|LifecycleIntakeBindingService|Story67LifecycleContract|HttpChildTriageAiClient|risk_triage_result_screen|triage_v2_|triage_model_contract|triage_demo_visual|HealthMemory"),
-    ("Triage Red Flag Rules",   "CareBridge AI",
-     r"RedFlagRule|TriageRedFlag|triage\.rules\."),
     ("Triage Consent",          "CareBridge AI",
      r"TriageConsent"),
     ("Triage Continuation & History", "CareBridge AI",

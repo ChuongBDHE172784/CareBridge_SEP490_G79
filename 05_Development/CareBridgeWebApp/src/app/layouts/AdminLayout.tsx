@@ -41,7 +41,7 @@ const NAV_LINKS: readonly NavItem[] = [
     icon: 'shield',
     roles: ['SYSTEM_ADMIN'],
     children: [
-      { to: '/admin/safety-rules', label: 'AI & An toàn', icon: 'rule', roles: ['SYSTEM_ADMIN'] },
+      { to: '/admin/safety-rules', label: 'Kiểm duyệt AI', icon: 'rule', roles: ['SYSTEM_ADMIN'] },
       { to: '/admin/system-configuration', label: 'Cấu hình hệ thống', icon: 'tune', roles: ['SYSTEM_ADMIN'] },
     ],
   },

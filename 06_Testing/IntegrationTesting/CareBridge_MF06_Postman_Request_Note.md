@@ -128,23 +128,6 @@ Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
 ```
 
 
-8_MF06-CREATE-003
-
-Method:POST
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/red-flag-rules](http://localhost:8080/api/v1/admin/red-flag-rules)
-
-Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
-
-```json
-{
-  "keyword": "qa_keyword_01",
-  "severity": "GREEN",
-  "action": "BLOCK"
-}
-```
-
-
 9_MF06-CREATE-004
 
 Method:POST
@@ -284,15 +267,6 @@ Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http
 Body: Không có body.
 
 
-18_MF06-DELETE-002
-
-Method:DELETE
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/red-flag-rules/THAY_ID](http://localhost:8080/api/v1/admin/red-flag-rules/THAY_ID)
-
-Body: Không có body.
-
-
 19_MF06-DELETE-003
 
 Method:DELETE
@@ -325,15 +299,6 @@ Body: Không có body.
 Method:GET
 
 Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/admin/api/v1/evidence-sources](http://localhost:8080/admin/api/v1/evidence-sources)
-
-Body: Không có body.
-
-
-23_MF06-SEARCH-002
-
-Method:GET
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/red-flag-rules](http://localhost:8080/api/v1/admin/red-flag-rules)
 
 Body: Không có body.
 
@@ -406,24 +371,6 @@ Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
 ```json
 {
   "notes": "qa_notes_01"
-}
-```
-
-
-30_MF06-UPDATE-004
-
-Method:PATCH
-
-Khi dùng cấu hình local hiện tại, Postman sẽ resolve URL thành: [http://localhost:8080/api/v1/admin/red-flag-rules/THAY_ID](http://localhost:8080/api/v1/admin/red-flag-rules/THAY_ID)
-
-Body: chọn `Body` → `raw` → `JSON`, sau đó nhập chính xác JSON sau:
-
-```json
-{
-  "keyword": "qa_keyword_01",
-  "severity": "GREEN",
-  "action": "BLOCK",
-  "isActive": true
 }
 ```
 

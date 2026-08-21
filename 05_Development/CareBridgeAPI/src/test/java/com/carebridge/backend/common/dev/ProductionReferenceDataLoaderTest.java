@@ -31,7 +31,7 @@ class ProductionReferenceDataLoaderTest {
         var loader = new ProductionReferenceDataLoader(jdbcTemplate);
         loader.seedProductionReferenceData();
 
-        verify(jdbcTemplate, times(7)).execute(anyString());
+        verify(jdbcTemplate, times(6)).execute(anyString());
     }
 
     @Test

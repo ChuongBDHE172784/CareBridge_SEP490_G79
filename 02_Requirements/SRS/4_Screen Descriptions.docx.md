@@ -101,10 +101,9 @@ This catalogue follows the ten Release 1 MFs and the UC-01 through UC-91 baselin
 | 95 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-88 | Content Approval Queue and Read-Only Review Screens | Reviews submitted article, FAQ or checklist content and records the approval decision without exposing Content Admin editing actions. |
 | 96 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-73 | Security Events and Event Detail Screens | Searches security and audit events and opens their correlation and evidence detail. |
 | 97 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-73 | Security Incident Investigation and Resolution Screens | Groups related security events, records investigation work and appends the final resolution. |
-| 98 | System Admin Web Portal | MF-06 AI Nurse Assistant & Risk Triage — UC-83 | AI Red-Flag Rule Management Screen | Lists and manages authorized red-flag rules while preserving protected defaults and audit evidence. |
-| 99 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-74 | System Configuration Screen | Reviews and updates the supported runtime configuration values through the audited admin path. |
-| 100 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-91 | Posture Analysis Configuration List, Detail and Editor Screens | Creates and activates versioned posture-analysis configuration for a published exercise. |
-| 101 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-07 | Admin Notification and Privacy Settings Screens | Shows administration notifications and supported privacy configuration for the authenticated System Admin. |
+| 98 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-74 | System Configuration Screen | Reviews and updates the supported runtime configuration values through the audited admin path. |
+| 99 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-91 | Posture Analysis Configuration List, Detail and Editor Screens | Creates and activates versioned posture-analysis configuration for a published exercise. |
+| 100 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-07 | Admin Notification and Privacy Settings Screens | Shows administration notifications and supported privacy configuration for the authenticated System Admin. |
 
 **Table 254: Screen Descriptions**
 
@@ -211,7 +210,6 @@ An `X` identifies a role that may enter the screen group through its supported p
 | Content Approval Queue and Read-Only Review Screens |  |  |  |  |  |  | X |
 | Security Events and Event Detail Screens |  |  |  |  |  |  | X |
 | Security Incident Investigation and Resolution Screens |  |  |  |  |  |  | X |
-| AI Red-Flag Rule Management Screen |  |  |  |  |  |  | X |
 | System Configuration Screen |  |  |  |  |  |  | X |
 | Posture Analysis Configuration List, Detail and Editor Screens |  |  |  |  |  |  | X |
 | Admin Notification and Privacy Settings Screens |  |  |  |  |  |  | X |

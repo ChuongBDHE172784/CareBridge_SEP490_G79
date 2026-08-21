@@ -13,4 +13,6 @@ public interface IAdminConsultationCallService {
     AdminConsultationCallSummaryResponse getCallDetail(UUID callId);
 
     String getRecordingPresignedUrl(UUID callId, UUID adminUserId);
+
+    void deleteRecording(UUID callId, UUID adminUserId);
 }

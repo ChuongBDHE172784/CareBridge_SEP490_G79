@@ -732,29 +732,6 @@ for supporting evidence; it also means no single existing method verifies the co
 **Verdict:** Contract shapes only. The described Zego token-provider failure (DCC-008), outsider 403 and timeout job are not executed against real call state.
 
 
-### ITS-AI-001 — Deterministic RED rules cannot be downgraded by a GREEN/malformed/timed-out AI response
-
-**Module:** AI Triage & Gemini  
-**Original coverage:** Partial  
-**Evidence class:** Integration (Spring Boot)
-
-**Source:** `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/service/impl/TriageService.java`
-
-**Test:** `05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/TriageRedFlagPreScreenIntegrationTest.java`
-
-**Evidence test:** `TriageRedFlagPreScreenIntegrationTest`
-
-**Command:** `./mvnw -o test -Dtest=TriageRedFlagPreScreenIntegrationTest`
-
-**Expected:** Final outcome remains RED; emergency action visible; session/evidence persist; no diagnosis/dispatch claim.
-
-**Observed:** 1r 0F 0E
-
-**Execution Result:** NOT_EXECUTED
-
-**Verdict:** One pre-screen path is covered. The described AI-variant matrix (GREEN / malformed / timed-out) confirming RED cannot be downgraded is not executed.
-
-
 ### ITS-AI-002 — Java and Python apply the same versioned rule vectors and dataset integrity
 
 **Module:** AI Triage & Gemini  
@@ -1570,7 +1547,6 @@ for supporting evidence; it also means no single existing method verifies the co
 | ITS-CON-002 | Verify only consented triage context/citations are shared with the selected Expert. | Pending | Pending | Pending | Pending | `05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/consultation/context/TriageExpertHandoffPostgresIntegrationTest.java` | `TriageExpertHandoffPostgresIntegrationTest` | Handoff persistence is covered; the described revoke-then-reread denial and file-access boundary are not executed. |
 | ITS-CHAT-001 | Verify idempotent durable send emits one Firebase signal and one notification after commit. | Pending | Pending | Pending | Pending | `05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/directchat/integration/DirectChatWriteLockConcurrencyIntegrationTest.java` | `DirectChatWriteLockConcurrencyIntegrationTest` | Write-lock concurrency is covered. No Firebase/FCM emulator participates, so "one Firebase signal and one notification after commit" and the DCC-005 changed-paylo... |
 | ITS-CHAT-002 | Verify authorized call transitions and Zego join credentials; provider failure preserves state. | Pending | Pending | Pending | Pending | `05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/directchat/controller/ConversationCallControllerContractTest.java` | `ConversationCallControllerContractTest` | Contract shapes only. The described Zego token-provider failure (DCC-008), outsider 403 and timeout job are not executed against real call state. |
-| ITS-AI-001 | Verify deterministic RED rules cannot be downgraded by a GREEN/malformed/timed-out AI response. | Pending | Pending | Pending | Pending | `05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/TriageRedFlagPreScreenIntegrationTest.java` | `TriageRedFlagPreScreenIntegrationTest` | One pre-screen path is covered. The described AI-variant matrix (GREEN / malformed / timed-out) confirming RED cannot be downgraded is not executed. |
 | ITS-AI-002 | Verify Java and Python apply the same versioned rule vectors and dataset integrity. | Pending | Pending | Pending | Pending | `05_Development/CareBridgeAITriageService/tests/test_rule_registry_parity_v2.py` | `test_rule_registry_parity_v2.py` | Python-side parity vectors pass. The described cross-runtime comparison actually running the same vectors through the Java boundary is not executed as one gate. |
 | ITS-AI-003 | Verify internal V2 requires service authority distinct from user/admin JWT. | Pending | Pending | Pending | Pending | `05_Development/CareBridgeAITriageService/tests/test_triage_v2_api.py` | `test_triage_v2_api.py` | Python-side auth rejection is covered. The described matrix using a real user/admin JWT issued by the Java service is not executed. |
 | ITS-AI-004 | Verify a timed-out V2 turn can be retried/cancelled without duplicate or corrupt state. | Pending | Pending | Pending | Pending | NONE | `NONE` | The analysis records no existing test. No timeout/retry/cancel verification of an internal V2 turn exists and building one requires both services running with a c... |
@@ -1718,7 +1694,6 @@ This register names every non-passed case individually. For Pending rows, there 
 | ITS-CON-002 | Pending | Missing/partial automation: Handoff persistence is covered; the described revoke-then-reread denial and file-access boundary are not executed. | No exact failing test; supporting evidence: `TriageExpertHandoffPostgresIntegrationTest`. | Create or extend a real-boundary integration test for every missing expected clause, then execute it. |
 | ITS-CHAT-001 | Pending | Missing/partial automation: Write-lock concurrency is covered. No Firebase/FCM emulator participates, so "one Firebase signal and one notification after commit" and the DCC-005 changed-paylo... | No exact failing test; supporting evidence: `DirectChatWriteLockConcurrencyIntegrationTest`. | Create or extend a real-boundary integration test for every missing expected clause, then execute it. |
 | ITS-CHAT-002 | Pending | Missing/partial automation: Contract shapes only. The described Zego token-provider failure (DCC-008), outsider 403 and timeout job are not executed against real call state. | No exact failing test; supporting evidence: `ConversationCallControllerContractTest`. | Create or extend a real-boundary integration test for every missing expected clause, then execute it. |
-| ITS-AI-001 | Pending | Missing/partial automation: One pre-screen path is covered. The described AI-variant matrix (GREEN / malformed / timed-out) confirming RED cannot be downgraded is not executed. | No exact failing test; supporting evidence: `TriageRedFlagPreScreenIntegrationTest`. | Create or extend a real-boundary integration test for every missing expected clause, then execute it. |
 | ITS-AI-002 | Pending | Missing/partial automation: Python-side parity vectors pass. The described cross-runtime comparison actually running the same vectors through the Java boundary is not executed as one gate. | No exact failing test; supporting evidence: `test_rule_registry_parity_v2.py`. | Create or extend a real-boundary integration test for every missing expected clause, then execute it. |
 | ITS-AI-003 | Pending | Missing/partial automation: Python-side auth rejection is covered. The described matrix using a real user/admin JWT issued by the Java service is not executed. | No exact failing test; supporting evidence: `test_triage_v2_api.py`. | Create or extend a real-boundary integration test for every missing expected clause, then execute it. |
 | ITS-AI-004 | Pending | Missing/partial automation: The analysis records no existing test. No timeout/retry/cancel verification of an internal V2 turn exists and building one requires both services running with a c... | No exact failing test; supporting evidence: `NONE`. | Create or extend a real-boundary integration test for every missing expected clause, then execute it. |

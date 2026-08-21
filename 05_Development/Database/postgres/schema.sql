@@ -500,17 +500,6 @@ CREATE TABLE public.knowledge_source_reviews (
     CONSTRAINT knowledge_source_reviews_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE public.red_flag_rules (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    keyword varchar(100) NOT NULL,
-    category varchar(100) NOT NULL,
-    severity varchar(20) DEFAULT 'HIGH'::character varying NOT NULL,
-    recommended_action text NOT NULL,
-    is_active boolean DEFAULT true NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT red_flag_rules_pkey PRIMARY KEY (id)
-);
-
 CREATE TABLE public.ai_content_assessments (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     content_id uuid NOT NULL,

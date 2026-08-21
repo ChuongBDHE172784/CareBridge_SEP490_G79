@@ -49,7 +49,7 @@ Xây dựng luồng AI-assisted Content Moderation hoàn chỉnh:
 2. Worker `@Scheduled` claim job **atomic**, gọi **Gemini** (structured JSON), lưu **assessment** idempotent.
 3. Kết quả SAFE → chỉ lưu assessment. VIOLATION/UNCERTAIN đạt ngưỡng → tạo/attach **moderation case** `report_source=AUTOMATED` (dedup, không overwrite USER case).
 4. Moderator có workflow **PENDING → IN_REVIEW (claim) → RESOLVED/DISMISSED**, xem AI evidence, gửi **feedback** đồng ý/không đồng ý.
-5. SYSTEM_ADMIN quản lý **AI moderation policies** (bảng riêng, KHÔNG dùng `red_flag_rules` y tế), xem Gemini status + job metrics, sandbox test.
+5. SYSTEM_ADMIN quản lý **AI moderation policies** (tách biệt khỏi sàn an toàn y tế tích hợp trong code), xem Gemini status + job metrics, sandbox test.
 
 ### 1.1 Current-state findings (đã kiểm chứng trên code/migrations, 2026-07-26)
 
@@ -59,7 +59,7 @@ Xây dựng luồng AI-assisted Content Moderation hoàn chỉnh:
 | B | Status chỉ PENDING/RESOLVED/DISMISSED, chưa có IN_REVIEW | ✅ `ReportStatus.java` |
 | C | `assigned_moderator_id` chỉ gán khi resolve | ✅ `ModerationServiceImpl.resolveReport()` (BR-MOD-009) |
 | D | API queue đã trả `reportSource` nhưng FE chưa dùng | ✅ `ModerationQueueItemResponse` có `reportSource`; web `ModerationQueueItem` (models/moderation.ts) KHÔNG khai báo; chỉ `RelatedReportItem` có và chỉ render text trong `RelatedReportsCard.tsx:33` |
-| E | `red_flag_rules` là medical triage rules | ✅ triage/entity/RedFlagRule + TriageRedFlagPolicy (emergency routing); **thêm phát hiện**: `CommunitySafetyPolicy.autoReportIfRedFlag()` đang tạo report `AUTOMATED` category `UNSAFE_ADVICE` từ medical keyword — safety floor hiện tại, GIỮ NGUYÊN |
+| E | Sàn an toàn y tế độc lập AI moderation | ✅ `TriageRedFlagPolicy` và `CommunitySafetyPolicy.autoReportIfRedFlag()` giữ định tuyến/cảnh báo bảo thủ trong code; catalog quản trị động đã retire |
 | F | `/moderator/safety-rules` copy gây hiểu nhầm | ✅ Title "Quản lý quy tắc an toàn" / "…ngăn chặn nội dung vi phạm" trong khi rules là medical keywords ("chảy máu nhiều") |
 | G | `GeminiHttpClient` là stub luôn throw | ✅ constructor bỏ config, `generate()` luôn `throw GeminiUnavailableException` |
 | H | GEMINI_ENABLED/GEMINI_MODEL chưa bind | ✅ application.yaml chỉ bind `GEMINI_API_KEY`; `model: gemini-1.5-flash` hard-code; không có key `enabled`. `.env`/`.env.example` có đủ 3 biến |
@@ -174,9 +174,9 @@ Decision matrix (server-side, `AiModerationDecisionPolicy`):
 
 ## 5. API CONTRACT
 
-Base FE hiện dùng `/api/v1/admin/moderation/**` (MODERATOR) và `/api/v1/admin/red-flag-rules` (SYSTEM_ADMIN).
+Base FE hiện dùng `/api/v1/admin/moderation/**` cho luồng kiểm duyệt.
 
-### 5.1 SYSTEM_ADMIN — `/api/v1/admin/ai-moderation/**` (controller mới, ApiResponse envelope theo convention red-flag-rules)
+### 5.1 SYSTEM_ADMIN — `/api/v1/admin/ai-moderation/**` (controller mới, dùng ApiResponse envelope chuẩn)
 - `GET /policies?active=&page=&size=` — list
 - `POST /policies` — create (validate lengths/enum/threshold/targetTypes)
 - `PUT /policies/{id}` — update (system_default: không đổi policy_code; version++ nếu đổi trường ảnh hưởng phân loại)

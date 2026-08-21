@@ -13,9 +13,8 @@ import java.util.Locale;
  *
  * <p>It deliberately depends on <em>nothing</em>: not {@link TriageRuleRegistry}, not the
  * Python service, not Gemini, not LangGraph, not RAG, not Supabase, not the evidence
- * registry, not even a repository. The existing {@code TriageRedFlagPreScreenPolicy} could
- * not fill this role because it reads {@code RedFlagRuleRepository}, so a database or
- * registry outage would take it down too.
+ * registry, not even a repository. A database or registry outage therefore cannot take
+ * this last-resort protection down.
  *
  * <p>It is NOT a third rule engine. It recognises only the global danger signals that the
  * V2 registry already carries as {@code globalRed}, with no new thresholds and no new

@@ -49,7 +49,6 @@ This document describes the 56 business entities in the CareBridge logical data 
 | 43 | `HealthContextMemory` | Stores selected health context to maintain continuity across interactions and triage sessions. |
 | 44 | `TriageSession` | Represents a symptom-intake and care-urgency classification session that does not replace medical diagnosis. |
 | 45 | `TriageSessionEvidence` | Records evidence or citations supporting the result of a triage session. |
-| 46 | `RedFlagRule` | Defines a warning sign, its severity, and the safety action required when it is detected. |
 | 47 | `SafetyMonitoringSession` | Represents an active safety-monitoring period for a user or connected device. |
 | 48 | `SafetyEvent` | Records a safety or emergency event, including verification, response, alerting, and resolution details. |
 | 49 | `ReminderSchedule` | Defines recurrence, time zone, and validity rules for generating care reminders. |

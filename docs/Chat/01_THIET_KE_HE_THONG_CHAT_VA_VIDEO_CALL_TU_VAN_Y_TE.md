@@ -537,6 +537,7 @@ com.carebridge.backend.file/
 | `POST` | `.../calls/{callId}/recording` | MOTHER, EXPERT, FAMILY | Upload bản ghi |
 | `GET` | `/api/v1/admin/consultation-calls` | ADMIN | Danh sách tất cả cuộc gọi |
 | `GET` | `/api/v1/admin/consultation-calls/{callId}/recording-url` | ADMIN | Presigned URL 15 phút |
+| `DELETE` | `/api/v1/admin/consultation-calls/{callId}/recording` | ADMIN, SYSTEM_ADMIN | Xóa vĩnh viễn object lưu trữ và metadata bản ghi; giữ lại lịch sử cuộc gọi |
 
 ---
 
@@ -654,6 +655,7 @@ const handleCallEnd = async () => {
 | Upload bản ghi | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Xem danh sách tất cả | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Phát lại bản ghi | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Xóa vĩnh viễn bản ghi | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Lấy Presigned URL | ❌ | ❌ | ❌ | ✅ | ✅ |
 
 ### 12.2. ZegoCloud Token — Server-side HMAC
@@ -734,7 +736,7 @@ private IStorageService resolveProvider(FilePurpose purpose, FileAccessMode mode
 
 ### 14.1. Trang Quản lý Tư vấn
 
-**URL:** Admin Portal → `/consultation-management`
+**URL:** Admin Portal → `/admin/consultation-calls`
 
 Thông tin hiển thị mỗi cuộc gọi:
 - Mã cuộc gọi (8 ký tự đầu của callId)
@@ -744,7 +746,7 @@ Thông tin hiển thị mỗi cuộc gọi:
 - Loại (Video/Voice)
 - Thời lượng (mm:ss)
 - Trạng thái (Hoàn thành, Nhỡ, Từ chối...)
-- Nút "Phát bản ghi" / "Tải file"
+- Nút "Phát bản ghi", "Tải file" và "Xóa bản ghi"
 
 ### 14.2. CallRecordingPlayerModal
 
@@ -761,6 +763,8 @@ const normalizedUrl = normalizeMediaUrl(url);
 // 4. Fallback: nếu không phát được → nút tải file
 <a href={normalizedUrl} download>Tải file (Video)</a>
 ```
+
+Khi quản trị viên chọn **Xóa bản ghi**, player đang phát được dừng trước khi mở hộp thoại xác nhận. Chỉ sau khi xác nhận, backend mới khóa bản ghi cuộc gọi, xóa object khỏi Cloudflare R2 (hoặc storage provider legacy), rồi xóa metadata attachment và đặt trạng thái recording về `NONE`. Nếu storage trả lỗi, transaction không thay đổi database và hộp thoại giữ nguyên lỗi để người dùng thử lại; thao tác lặp lại khi bản ghi đã không còn là idempotent `204 No Content`.
 
 ---
 

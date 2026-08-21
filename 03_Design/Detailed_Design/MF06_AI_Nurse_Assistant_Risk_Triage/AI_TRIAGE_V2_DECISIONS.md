@@ -71,12 +71,12 @@ emergency rule would silently become "no rule matched").
 ## D-007 — Independent Global Safety Fallback with a hard-coded signal set
 **Date** 2026-08-05 · **Decider** CLAUDE REVIEW
 **Problem** With the registry invalid there was no path left to recognise a seizure.
-`TriageRedFlagPreScreenPolicy` could not serve because it reads `RedFlagRuleRepository`.
-**Decision** A dependency-free screen over 8 hard-coded global danger signals; only RED or
+The retired repository-backed pre-screen could not provide a reliable fail-safe path.
+**Decision** A dependency-free screen over hard-coded global danger signals; only RED or
 NEEDS_MORE_INFO reachable; `screen()` takes signals only, so no caller flag can suppress it;
 `current=false` signals are ignored.
-**Known risk** The hard-coded set can drift from the registry — PHASE0-FALLBACK-001 adds a test
-that fails on divergence.
+**Known risk** The built-in signal set can drift from clinical guidance; policy tests pin the
+minimum emergency vocabulary and require an explicit reviewed code change.
 **Impact** Java only.
 
 ## D-008 — Gemini fail-open closed by throwing, not by defaulting

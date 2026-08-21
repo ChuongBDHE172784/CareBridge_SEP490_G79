@@ -475,10 +475,6 @@
 | triage | DELETE | /api/internal/v2/triage/sessions/{sessionId} | cancel | NEEDS_CONFIRMATION | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | None | ResponseEntity<ApiResponse<TriageV2SessionResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/InternalTriageV2Controller.java:61 | HIGH |
 | triage | GET | /api/internal/v2/triage/sessions/{sessionId} | get | NEEDS_CONFIRMATION | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | None | ResponseEntity<ApiResponse<TriageV2SessionResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/InternalTriageV2Controller.java:54 | HIGH |
 | triage | POST | /api/internal/v2/triage/sessions | start | NEEDS_CONFIRMATION | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | TriageV2StartRequest | ResponseEntity<ApiResponse<TriageV2SessionResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/InternalTriageV2Controller.java:34 | HIGH |
-| triage | DELETE | /api/v1/admin/red-flag-rules/{id} | delete | redFlagRuleService.deleteRule() | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | None | ResponseEntity<Void> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:71 | HIGH |
-| triage | PATCH | /api/v1/admin/red-flag-rules/{id} | update | redFlagRuleService.updateRule() | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | UpdateRedFlagRuleRequest | ResponseEntity<ApiResponse<RedFlagRuleResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:61 | HIGH |
-| triage | GET | /api/v1/admin/red-flag-rules | list | redFlagRuleService.listRules() | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | None | ResponseEntity<ApiResponse<RedFlagRulePageResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:50 | HIGH |
-| triage | POST | /api/v1/admin/red-flag-rules | create | redFlagRuleService.createRule() | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | CreateRedFlagRuleRequest | ResponseEntity<ApiResponse<RedFlagRuleResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:40 | HIGH |
 | triage | POST | /api/v1/triage/consent/accept | accept | triageConsentService.accept() | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | AcceptTriageConsentRequest | ResponseEntity<ApiResponse<TriageConsentStatusResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/TriageConsentController.java:41 | HIGH |
 | triage | POST | /api/v1/triage/consent/revoke | revoke | triageConsentService.revoke() | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | None | ResponseEntity<ApiResponse<TriageConsentStatusResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/TriageConsentController.java:53 | HIGH |
 | triage | GET | /api/v1/triage/consent | getStatus | triageConsentService.getStatus() | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | None | ResponseEntity<ApiResponse<TriageConsentStatusResponse>> | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/TriageConsentController.java:34 | HIGH |
@@ -524,7 +520,6 @@
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can start python intake. | Backend Service | http://localhost:8001 | /triage/intake/start | POST | Public | Accept: application/json | None | None | None | HTTP 200; A success message is displayed and the visible status of the selected python intake is updated. | 05_Development/CareBridgeAITriageService/app/main.py:101 | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/service/impl/HttpChildTriageAiClient.java | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can add evidence sources. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources | POST | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | None | {<br>  "baseUrl": "https://example.invalid/qa-resource",<br>  "organization": "qa_organization_01",<br>  "category": "qa_category_01",<br>  "applicableStages": "qa_applicablestages_01",<br>  "notes": "qa_notes_01"<br>} | HTTP 200; A success message is displayed and the new evidence sources appears in the visible list or detail page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:26 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can add continue session. | Shared | http://localhost:8080 | /api/internal/v2/triage/sessions/{{sessionId}}/messages | POST | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{familyAccessToken}} | sessionId | None | {<br>  "sessionId": "{{sessionId}}",<br>  "expectedStateVersion": 1,<br>  "message": "qa_message_01",<br>  "messageId": "qa_messageid_01",<br>  "requestId": "qa_requestid_01",<br>  "answers": [<br>    "qa_answer_01"<br>  ],<br>  "signals": "qa_signals_01",<br>  "measurements": "qa_measurements_01"<br>} | HTTP 201; A success message is displayed and the new continue session appears in the visible list or detail page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/InternalTriageV2Controller.java:42 | 05_Development/CareBridgeWebApp/src/features/directChat/services/directChatApi.ts; 05_Development/CareBridgeMobileApp/lib/features/aiTriage/services/triage_v2_service.dart; 05_Development/CareBridgeMobileApp/lib/features/directChat/screens/direct_chat_attachment_viewer_screen.dart (endpoint-family match) | MEDIUM |
-| AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can add red flag rules. | Web/Admin | http://localhost:8080 | /api/v1/admin/red-flag-rules | POST | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | None | {<br>  "keyword": "qa_keyword_01",<br>  "severity": "GREEN",<br>  "action": "BLOCK"<br>} | HTTP 201; A success message is displayed and the new red flag rules appears in the visible list or detail page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:40 | 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts | HIGH |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can add generate answer. | Mobile | http://localhost:8080 | /api/v1/rag/answer | POST | Bearer Token (SecurityConfig catch-all) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | None | {<br>  "query": "qa_query_01",<br>  "userStage": "PRE_PREGNANCY",<br>  "topicId": "qa_topicid_01",<br>  "maxContextChunks": 1<br>} | HTTP 200; A success message is displayed and the new generate answer appears in the visible list or detail page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/controller/RagController.java:30 | 05_Development/CareBridgeMobileApp/lib/features/aiTriage/screens/rag_chat_screen.dart | HIGH |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can add revoke. | Mobile | http://localhost:8080 | /api/v1/triage/consent/revoke | POST | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | Accept: application/json<br>Authorization: Bearer {{familyAccessToken}} | None | None | None | HTTP 200; A success message is displayed and the new revoke appears in the visible list or detail page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/TriageConsentController.java:53 | 05_Development/CareBridgeMobileApp/lib/features/aiTriage/services/triage_service.dart (endpoint-family match) | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can add run intake. | Mobile | http://localhost:8080 | /api/v1/triage/intake | POST | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{familyAccessToken}} | None | None | {<br>  "symptoms": "qa_symptoms_01",<br>  "childAgeMonths": 1,<br>  "symptomList": [<br>    "qa_symptomlist_01"<br>  ],<br>  "duration": "qa_duration_01",<br>  "temperatureC": 1,<br>  "feedingStatus": "qa_feedingstatus_01",<br>  "breathingStatus": "qa_breathingstatus_01",<br>  "consciousnessStatus": "qa_consciousnessstatus_01",<br>  "painSeverity": "qa_painseverity_01",<br>  "urinarySymptoms": "qa_urinarysymptoms_01",<br>  "hydrationStatus": "qa_hydrationstatus_01",<br>  "vomiting": "qa_vomiting_01",<br>  "diarrhea": "qa_diarrhea_01",<br>  "rash": "qa_rash_01",<br>  "seizure": true,<br>  "dehydrationSigns": [<br>    "qa_dehydrationsign_01"<br>  ],<br>  "parentFreeText": "qa_parentfreetext_01",<br>  "babyProfileId": "{{fileId}}",<br>  "motherProfileId": "{{fileId}}",<br>  "stage": "PRECONCEPTION",<br>  "gestationalWeeks": 1,<br>  "abdominalPainPattern": "qa_abdominalpainpattern_01"<br>} | HTTP 201; A success message is displayed and the new run intake appears in the visible list or detail page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/IntakeController.java:35 | 05_Development/CareBridgeMobileApp/lib/features/aiTriage/services/triage_service.dart | HIGH |
@@ -534,19 +529,16 @@
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can add legacy child triage. | Backend Service | http://localhost:8001 | /triage/child | POST | Public | Accept: application/json | None | None | None | HTTP 200; A success message is displayed and the new legacy child triage appears in the visible list or detail page. | 05_Development/CareBridgeAITriageService/app/main.py:94 | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/service/impl/HttpChildTriageAiClient.java | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can add continue python intake. | Backend Service | http://localhost:8001 | /triage/intake/continue | POST | Public | Accept: application/json | None | None | None | HTTP 200; A success message is displayed and the new continue python intake appears in the visible list or detail page. | 05_Development/CareBridgeAITriageService/app/main.py:120 | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/service/impl/HttpChildTriageAiClient.java | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can remove sessions. | Mobile | http://localhost:8080 | /api/internal/v2/triage/sessions/{{sessionId}} | DELETE | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | Accept: application/json<br>Authorization: Bearer {{familyAccessToken}} | sessionId | expectedStateVersion=qa_value_01 | None | HTTP 201; The confirmation dialog is closed and the selected sessions is removed from the visible list or marked as revoked. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/InternalTriageV2Controller.java:61 | 05_Development/CareBridgeMobileApp/lib/features/aiTriage/services/triage_v2_service.dart | HIGH |
-| AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can remove red flag rules. | Web/Admin | http://localhost:8080 | /api/v1/admin/red-flag-rules/{{id}} | DELETE | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | Accept: application/json<br>Authorization: Bearer {{adminAccessToken}} | id | None | None | HTTP 204; The confirmation dialog is closed and the selected red flag rules is removed from the visible list or marked as revoked. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:71 | 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts | HIGH |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can remove health memory. | NEEDS_CONFIRMATION | http://localhost:8080 | /api/v1/triage/health-memory/{{entryId}} | DELETE | Bearer Token; @PreAuthorize(hasRole('MOTHER')) | Accept: application/json<br>Authorization: Bearer {{motherAccessToken}} | entryId | None | None | HTTP 204; The confirmation dialog is closed and the selected health memory is removed from the visible list or marked as revoked. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/HealthMemoryController.java:32 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a user with the wrong role cannot open AI Nurse Assistant & Risk Triage. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources | GET | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | None | None | HTTP 403; The AI Nurse Assistant & Risk Triage option is not displayed, or an access-denied message is displayed. Restricted information is not visible. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:38 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a non-owner cannot view another user's private information in AI Nurse Assistant & Risk Triage. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources | GET | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | None | None | HTTP 403; The other user's private item is not displayed, or an access-denied message is displayed. Private details remain hidden. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:38 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can find evidence sources. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources | GET | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | status=qa_value_01 | None | HTTP 200; The evidence sources list reflects the selected search, filter, sort, or page controls, or the implemented empty-state message is displayed. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:38 | NEEDS_CONFIRMATION | MEDIUM |
-| AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can find red flag rules. | Web/Admin | http://localhost:8080 | /api/v1/admin/red-flag-rules | GET | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | Accept: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | severity=qa_value_01, isActive=qa_value_01, page=0, size=20 | None | HTTP 201; The red flag rules list reflects the selected search, filter, sort, or page controls, or the implemented empty-state message is displayed. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:50 | 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts | HIGH |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can find health memory. | NEEDS_CONFIRMATION | http://localhost:8080 | /api/v1/triage/health-memory | GET | Bearer Token; @PreAuthorize(hasRole('MOTHER')) | Accept: application/json<br>Authorization: Bearer {{motherAccessToken}} | None | stage=qa_value_01, profileId=qa_value_01 | None | HTTP 200; The health memory list reflects the selected search, filter, sort, or page controls, or the implemented empty-state message is displayed. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/HealthMemoryController.java:24 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can find sessions. | Mobile | http://localhost:8080 | /api/v1/triage/intake | GET | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | Accept: application/json<br>Authorization: Bearer {{familyAccessToken}} | None | None | None | HTTP 201; The sessions list is displayed, or the implemented empty-state message is displayed. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/IntakeController.java:54 | 05_Development/CareBridgeMobileApp/lib/features/aiTriage/services/triage_service.dart | HIGH |
 | AI Nurse Assistant & Risk Triage | Verify that a signed-out user cannot open AI Nurse Assistant & Risk Triage. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources | GET | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Authorization: Bearer {{adminAccessToken}} | None | None | None | HTTP 401; The user is redirected to the Login page or a sign-in-required message is displayed. Protected information is not visible. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:38 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can update approve. | Web/Admin | http://localhost:8001 | /admin/api/v1/evidence-sources/{{id}}/approve | PATCH | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{adminAccessToken}} | id | None | {<br>  "notes": "qa_notes_01"<br>} | HTTP 200; A success message is displayed and the updated approve information is visible on the page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:43 | 05_Development/CareBridgeWebApp/src/features/contentManagement/services/contentApi.ts; 05_Development/CareBridgeWebApp/src/features/expert/services/expertApi.ts (endpoint-family match) | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can update deprecate. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources/{{id}}/deprecate | PATCH | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{adminAccessToken}} | id | None | {<br>  "notes": "qa_notes_01"<br>} | HTTP 200; A success message is displayed and the updated deprecate information is visible on the page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:55 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can update reject. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources/{{id}}/reject | PATCH | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{adminAccessToken}} | id | None | {<br>  "notes": "qa_notes_01"<br>} | HTTP 200; A success message is displayed and the updated reject information is visible on the page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:49 | NEEDS_CONFIRMATION | MEDIUM |
-| AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can update red flag rules. | Web/Admin | http://localhost:8080 | /api/v1/admin/red-flag-rules/{{id}} | PATCH | Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN')) | Accept: application/json<br>Content-Type: application/json<br>Authorization: Bearer {{adminAccessToken}} | id | None | {<br>  "keyword": "qa_keyword_01",<br>  "severity": "GREEN",<br>  "action": "BLOCK",<br>  "isActive": true<br>} | HTTP 201; A success message is displayed and the updated red flag rules information is visible on the page. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:61 | 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts | HIGH |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Administrator user can view review log. | NEEDS_CONFIRMATION | http://localhost:8001 | /admin/api/v1/evidence-sources/{{id}}/review-log | GET | Bearer Token; @PreAuthorize(hasAnyRole('SYSTEM_ADMIN','CONTENT_ADMIN')) | Accept: application/json<br>Authorization: Bearer {{adminAccessToken}} | id | None | None | HTTP 200; The review log details are displayed with the fields permitted for the signed-in user. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:61 | NEEDS_CONFIRMATION | MEDIUM |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can view sessions. | Mobile | http://localhost:8080 | /api/internal/v2/triage/sessions/{{sessionId}} | GET | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | Accept: application/json<br>Authorization: Bearer {{familyAccessToken}} | sessionId | None | None | HTTP 201; The sessions details are displayed with the fields permitted for the signed-in user. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/InternalTriageV2Controller.java:54 | 05_Development/CareBridgeMobileApp/lib/features/aiTriage/services/triage_v2_service.dart | HIGH |
 | AI Nurse Assistant & Risk Triage | Verify that a permitted Mother user can view status. | Mobile | http://localhost:8080 | /api/v1/triage/consent | GET | Bearer Token; @PreAuthorize(hasAnyRole('MOTHER', 'FAMILY')) | Accept: application/json<br>Authorization: Bearer {{familyAccessToken}} | None | None | None | HTTP 200; The status details are displayed with the fields permitted for the signed-in user. | 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/TriageConsentController.java:34 | 05_Development/CareBridgeMobileApp/lib/features/aiTriage/services/triage_service.dart | HIGH |
@@ -957,7 +949,6 @@
 | AI Nurse Assistant & Risk Triage | MF06-ACTION-005 | Verify that a permitted Mother user can start python intake. | POST /triage/intake/start | Partially Ready | The current handler declares request schema IntakeStartRequest, but the checked-in collection has no request body; payload is NEEDS_CONFIRMATION. |
 | AI Nurse Assistant & Risk Triage | MF06-CREATE-001 | Verify that a permitted Administrator user can add evidence sources. | POST /admin/api/v1/evidence-sources | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-CREATE-002 | Verify that a permitted Mother user can add continue session. | POST /api/internal/v2/triage/sessions/{{sessionId}}/messages | Partially Ready | Use disposable data; mask secrets in screenshots |
-| AI Nurse Assistant & Risk Triage | MF06-CREATE-003 | Verify that a permitted Administrator user can add red flag rules. | POST /api/v1/admin/red-flag-rules | Ready for Postman | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-CREATE-004 | Verify that a permitted Mother user can add generate answer. | POST /api/v1/rag/answer | Ready for Postman | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-CREATE-005 | Verify that a permitted Mother user can add revoke. | POST /api/v1/triage/consent/revoke | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-CREATE-006 | Verify that a permitted Mother user can add run intake. | POST /api/v1/triage/intake | Ready for Postman | Use disposable data; mask secrets in screenshots |
@@ -967,19 +958,16 @@
 | AI Nurse Assistant & Risk Triage | MF06-CREATE-010 | Verify that a permitted Mother user can add legacy child triage. | POST /triage/child | Partially Ready | The current handler declares request schema ChildTriageRequest, but the checked-in collection has no request body; payload is NEEDS_CONFIRMATION. |
 | AI Nurse Assistant & Risk Triage | MF06-CREATE-011 | Verify that a permitted Mother user can add continue python intake. | POST /triage/intake/continue | Partially Ready | The current handler declares request schema IntakeContinueRequest, but the checked-in collection has no request body; payload is NEEDS_CONFIRMATION. |
 | AI Nurse Assistant & Risk Triage | MF06-DELETE-001 | Verify that a permitted Mother user can remove sessions. | DELETE /api/internal/v2/triage/sessions/{{sessionId}} | Ready for Postman | Use disposable data; mask secrets in screenshots |
-| AI Nurse Assistant & Risk Triage | MF06-DELETE-002 | Verify that a permitted Administrator user can remove red flag rules. | DELETE /api/v1/admin/red-flag-rules/{{id}} | Ready for Postman | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-DELETE-003 | Verify that a permitted Mother user can remove health memory. | DELETE /api/v1/triage/health-memory/{{entryId}} | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-FORBIDDEN-001 | Verify that a user with the wrong role cannot open AI Nurse Assistant & Risk Triage. | GET /admin/api/v1/evidence-sources | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-PRIVACY-001 | Verify that a non-owner cannot view another user's private information in AI Nurse Assistant & Risk Triage. | GET /admin/api/v1/evidence-sources | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-SEARCH-001 | Verify that a permitted Administrator user can find evidence sources. | GET /admin/api/v1/evidence-sources | Partially Ready | Use disposable data; mask secrets in screenshots |
-| AI Nurse Assistant & Risk Triage | MF06-SEARCH-002 | Verify that a permitted Administrator user can find red flag rules. | GET /api/v1/admin/red-flag-rules | Ready for Postman | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-SEARCH-003 | Verify that a permitted Mother user can find health memory. | GET /api/v1/triage/health-memory | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-SEARCH-004 | Verify that a permitted Mother user can find sessions. | GET /api/v1/triage/intake | Ready for Postman | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-UNAUTHORIZED-001 | Verify that a signed-out user cannot open AI Nurse Assistant & Risk Triage. | GET /admin/api/v1/evidence-sources | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-UPDATE-001 | Verify that a permitted Administrator user can update approve. | PATCH /admin/api/v1/evidence-sources/{{id}}/approve | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-UPDATE-002 | Verify that a permitted Administrator user can update deprecate. | PATCH /admin/api/v1/evidence-sources/{{id}}/deprecate | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-UPDATE-003 | Verify that a permitted Administrator user can update reject. | PATCH /admin/api/v1/evidence-sources/{{id}}/reject | Partially Ready | Use disposable data; mask secrets in screenshots |
-| AI Nurse Assistant & Risk Triage | MF06-UPDATE-004 | Verify that a permitted Administrator user can update red flag rules. | PATCH /api/v1/admin/red-flag-rules/{{id}} | Ready for Postman | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-VIEW-001 | Verify that a permitted Administrator user can view review log. | GET /admin/api/v1/evidence-sources/{{id}}/review-log | Partially Ready | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-VIEW-002 | Verify that a permitted Mother user can view sessions. | GET /api/internal/v2/triage/sessions/{{sessionId}} | Ready for Postman | Use disposable data; mask secrets in screenshots |
 | AI Nurse Assistant & Risk Triage | MF06-VIEW-003 | Verify that a permitted Mother user can view status. | GET /api/v1/triage/consent | Ready for Postman | Use disposable data; mask secrets in screenshots |
@@ -8327,32 +8315,6 @@ NEEDS_CONFIRMATION
 - Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
 - Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
 
-## MF06-CREATE-003 - Verify that a permitted Administrator user can add red flag rules.
-
-- Feature / Scenario: Verify that a permitted Administrator user can add red flag rules.
-- Caller Platform: Web/Admin
-- Base URL: http://localhost:8080
-- Endpoint: /api/v1/admin/red-flag-rules
-- HTTP Method: POST
-- Auth Type: Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN'))
-- Required Headers: Accept: application/json; Content-Type: application/json; Authorization: Bearer {{adminAccessToken}}
-- Path Params: None
-- Query Params: None
-- Sample Request Body:
-```json
-{
-  "keyword": "qa_keyword_01",
-  "severity": "GREEN",
-  "action": "BLOCK"
-}
-```
-- Expected Success Clue: HTTP 201; A success message is displayed and the new red flag rules appears in the visible list or detail page.
-- Backend Evidence: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:40
-- Caller Evidence: 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts
-- Confidence: HIGH
-- Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
-- Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
-
 ## MF06-CREATE-004 - Verify that a permitted Mother user can add generate answer.
 
 - Feature / Scenario: Verify that a permitted Mother user can add generate answer.
@@ -8593,28 +8555,6 @@ None
 - Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
 - Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
 
-## MF06-DELETE-002 - Verify that a permitted Administrator user can remove red flag rules.
-
-- Feature / Scenario: Verify that a permitted Administrator user can remove red flag rules.
-- Caller Platform: Web/Admin
-- Base URL: http://localhost:8080
-- Endpoint: /api/v1/admin/red-flag-rules/{{id}}
-- HTTP Method: DELETE
-- Auth Type: Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN'))
-- Required Headers: Accept: application/json; Authorization: Bearer {{adminAccessToken}}
-- Path Params: id
-- Query Params: None
-- Sample Request Body:
-```text
-None
-```
-- Expected Success Clue: HTTP 204; The confirmation dialog is closed and the selected red flag rules is removed from the visible list or marked as revoked.
-- Backend Evidence: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:71
-- Caller Evidence: 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts
-- Confidence: HIGH
-- Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
-- Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
-
 ## MF06-DELETE-003 - Verify that a permitted Mother user can remove health memory.
 
 - Feature / Scenario: Verify that a permitted Mother user can remove health memory.
@@ -8700,28 +8640,6 @@ None
 - Backend Evidence: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:38
 - Caller Evidence: NEEDS_CONFIRMATION
 - Confidence: MEDIUM
-- Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
-- Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
-
-## MF06-SEARCH-002 - Verify that a permitted Administrator user can find red flag rules.
-
-- Feature / Scenario: Verify that a permitted Administrator user can find red flag rules.
-- Caller Platform: Web/Admin
-- Base URL: http://localhost:8080
-- Endpoint: /api/v1/admin/red-flag-rules
-- HTTP Method: GET
-- Auth Type: Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN'))
-- Required Headers: Accept: application/json; Authorization: Bearer {{adminAccessToken}}
-- Path Params: None
-- Query Params: severity=qa_value_01, isActive=qa_value_01, page=0, size=20
-- Sample Request Body:
-```text
-None
-```
-- Expected Success Clue: HTTP 201; The red flag rules list reflects the selected search, filter, sort, or page controls, or the implemented empty-state message is displayed.
-- Backend Evidence: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:50
-- Caller Evidence: 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts
-- Confidence: HIGH
 - Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
 - Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
 
@@ -8860,33 +8778,6 @@ None
 - Backend Evidence: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java:49
 - Caller Evidence: NEEDS_CONFIRMATION
 - Confidence: MEDIUM
-- Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
-- Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
-
-## MF06-UPDATE-004 - Verify that a permitted Administrator user can update red flag rules.
-
-- Feature / Scenario: Verify that a permitted Administrator user can update red flag rules.
-- Caller Platform: Web/Admin
-- Base URL: http://localhost:8080
-- Endpoint: /api/v1/admin/red-flag-rules/{{id}}
-- HTTP Method: PATCH
-- Auth Type: Bearer Token; @PreAuthorize(hasRole('SYSTEM_ADMIN'))
-- Required Headers: Accept: application/json; Content-Type: application/json; Authorization: Bearer {{adminAccessToken}}
-- Path Params: id
-- Query Params: None
-- Sample Request Body:
-```json
-{
-  "keyword": "qa_keyword_01",
-  "severity": "GREEN",
-  "action": "BLOCK",
-  "isActive": true
-}
-```
-- Expected Success Clue: HTTP 201; A success message is displayed and the updated red flag rules information is visible on the page.
-- Backend Evidence: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java:61
-- Caller Evidence: 05_Development/CareBridgeWebApp/src/features/aiRuleManagement/services/redFlagRuleApi.ts
-- Confidence: HIGH
 - Postman Notes: Set only disposable test data and required collection variables before sending. Capture the Postman request method/URL/headers (with token masked), request body, HTTP status, and response body.
 - Screenshot Evidence Suggestion: One screenshot with the Postman request and masked auth; one screenshot with status, response envelope, and a unique disposable test-data identifier where applicable.
 

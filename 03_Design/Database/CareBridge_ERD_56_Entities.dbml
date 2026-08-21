@@ -1,5 +1,5 @@
-// CareBridge logical ERD — 56 entities
-// Source: current live public schema (64 physical tables).
+// CareBridge logical ERD — 55 entities
+// Source: current live public schema (63 physical tables).
 // DBML requires a column type. The quoted zero-width type keeps types visually blank.
 // 7 relationship tables are represented as direct many-to-many references.
 // Visualization-only artifact: SQL export is intentionally unsupported.
@@ -7,7 +7,7 @@
 
 Project CareBridge_Logical_ERD {
   database_type: 'PostgreSQL'
-  Note: '56 logical entities; data types intentionally hidden for conceptual ERD presentation.'
+  Note: '55 logical entities; data types intentionally hidden for conceptual ERD presentation.'
 }
 
 Table care_subjects [headerColor: #6C8EBF] {
@@ -1059,19 +1059,6 @@ Table triage_session_evidence [headerColor: #B85450] {
   }
 }
 
-Table red_flag_rules [headerColor: #B85450] {
-  id "​" [pk]
-  keyword "​" [unique]
-  severity "​"
-  action "​"
-  is_active "​"
-  is_system_default "​"
-  created_by "​"
-  updated_by "​"
-  created_at "​"
-  updated_at "​"
-}
-
 Table safety_monitoring_sessions [headerColor: #B85450] {
   monitoring_session_id "​" [pk]
   user_id "​"
@@ -1386,7 +1373,6 @@ TableGroup "Knowledge, AI & Moderation" {
 TableGroup "Triage & Safety" {
   triage_sessions
   triage_session_evidence
-  red_flag_rules
   safety_monitoring_sessions
   safety_events
 }
@@ -1508,8 +1494,6 @@ Ref ref_99_notification_jobs_reminder_fk: notification_jobs.reminder_id > care_t
 Ref ref_100_notification_jobs_schedule_fk: notification_jobs.schedule_id > reminder_schedules.schedule_id
 Ref ref_101_fk_notification_records_care_group: notification_records.care_group_id > care_groups.care_group_id
 Ref ref_102_fk_notification_records_user: notification_records.user_id > users.user_id
-Ref ref_103_fk_red_flag_rules_created_by: red_flag_rules.created_by > users.user_id
-Ref ref_104_fk_red_flag_rules_updated_by: red_flag_rules.updated_by > users.user_id
 Ref ref_105_reminder_schedules_owner_fk: reminder_schedules.owner_user_id > users.user_id
 Ref ref_106_safety_events_care_facility_id_fkey: safety_events.care_facility_id > care_facilities.facility_id
 Ref ref_107_safety_events_care_subject_id_fkey: safety_events.care_subject_id > care_subjects.care_subject_id

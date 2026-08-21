@@ -1,5 +1,8 @@
 package com.carebridge.backend.directchat.service.impl;
 
+import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.directchat.dto.request.AdminConsultationCallSearchQuery;
 import com.carebridge.backend.directchat.dto.response.AdminConsultationCallSummaryResponse;
@@ -11,6 +14,11 @@ import com.carebridge.backend.directchat.service.IAdminConsultationCallService;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.file.service.IFileService;
+import com.carebridge.backend.file.entity.UploadedFile;
+import com.carebridge.backend.file.repository.UploadedFileRepository;
+import com.carebridge.backend.file.service.IStorageService;
+import com.carebridge.backend.file.service.StorageServiceResolver;
+import com.carebridge.backend.file.service.impl.CloudinaryStorageService;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -22,15 +30,18 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminConsultationCallServiceImpl implements IAdminConsultationCallService {
 
     private final ConversationCallRepository callRepository;
@@ -38,6 +49,9 @@ public class AdminConsultationCallServiceImpl implements IAdminConsultationCallS
     private final UserRepository userRepository;
     private final ExpertProfileRepository expertProfileRepository;
     private final IFileService fileService;
+    private final UploadedFileRepository uploadedFileRepository;
+    private final StorageServiceResolver storageServiceResolver;
+    private final AuditService auditService;
 
     @Override
     @Transactional(readOnly = true)
@@ -150,6 +164,57 @@ public class AdminConsultationCallServiceImpl implements IAdminConsultationCallS
 
         // Generate pre-signed URL valid for 60 minutes for streaming playback
         return fileService.generatePresignedUrl(call.getRecordingFileId(), adminUserId, 60);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRecording(UUID callId, UUID adminUserId) {
+        ConversationCall call = callRepository.findByIdForUpdate(callId)
+                .orElseThrow(() -> new ResourceNotFoundException("Call not found: " + callId));
+
+        UUID recordingFileId = call.getRecordingFileId();
+        if (recordingFileId == null) {
+            return;
+        }
+
+        UploadedFile recording = uploadedFileRepository.findById(recordingFileId)
+                .orElseThrow(() -> new BusinessException(
+                        HttpStatus.CONFLICT,
+                        "DCC-014",
+                        "Không tìm thấy metadata của bản ghi. Vui lòng liên hệ quản trị hệ thống."));
+        deleteStoredRecording(callId, recording);
+
+        call.setRecordingFileId(null);
+        call.setRecordingStatus("NONE");
+        call.setRecordedDurationSeconds(null);
+        uploadedFileRepository.delete(recording);
+
+        auditService.log(
+                AuditAction.DIRECT_CALL_STATE_CHANGED,
+                adminUserId,
+                "ConversationCall",
+                callId.toString(),
+                Map.of("recordingDeleted", true, "recordingStatus", "NONE"),
+                "RECORDING_DELETED",
+                UUID.randomUUID());
+    }
+
+    private void deleteStoredRecording(UUID callId, UploadedFile recording) {
+        try {
+            IStorageService storageService = storageServiceResolver.resolve(recording.getStorageProvider());
+            if (storageService instanceof CloudinaryStorageService cloudinaryStorageService) {
+                cloudinaryStorageService.deleteRequired(recording.getStorageKey());
+            } else {
+                storageService.delete(recording.getStorageKey());
+            }
+        } catch (RuntimeException exception) {
+            log.warn("Unable to delete consultation recording for call {} provider={}",
+                    callId, recording.getStorageProvider(), exception);
+            throw new BusinessException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "DCC-013",
+                    "Không thể xóa bản ghi khỏi hệ thống lưu trữ. Vui lòng thử lại.");
+        }
     }
 
     private AdminConsultationCallSummaryResponse mapToAdminSummary(

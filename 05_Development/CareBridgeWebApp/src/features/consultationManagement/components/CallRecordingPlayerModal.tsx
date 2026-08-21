@@ -5,6 +5,7 @@ import { getCallRecordingPresignedUrl } from '../services/consultationCallApi';
 interface CallRecordingPlayerModalProps {
   call: ConsultationCallAdminSummary | null;
   onClose: () => void;
+  onDeleteRequest: (call: ConsultationCallAdminSummary) => void;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -30,6 +31,7 @@ function formatDateTime(iso: string | null): string {
 export default function CallRecordingPlayerModal({
   call,
   onClose,
+  onDeleteRequest,
 }: CallRecordingPlayerModalProps) {
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,6 +95,12 @@ export default function CallRecordingPlayerModal({
     setPlaybackRate(rate);
     if (videoRef.current) videoRef.current.playbackRate = rate;
     if (audioRef.current) audioRef.current.playbackRate = rate;
+  };
+
+  const handleDeleteRequest = () => {
+    videoRef.current?.pause();
+    audioRef.current?.pause();
+    if (call) onDeleteRequest(call);
   };
 
   if (!call) return null;
@@ -269,7 +277,15 @@ export default function CallRecordingPlayerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end border-t border-outline-variant/50 bg-surface-container-low px-6 py-3.5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-outline-variant/50 bg-surface-container-low px-6 py-3.5">
+          <button
+            type="button"
+            onClick={handleDeleteRequest}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-error/40 bg-error-container px-4 py-2 text-xs font-semibold text-error hover:bg-error-container/70 transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-base">delete</span>
+            Xóa bản ghi
+          </button>
           <button
             type="button"
             onClick={onClose}

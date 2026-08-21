@@ -1,10 +1,9 @@
 package com.carebridge.backend.aimoderation.entity;
 
 /**
- * Content-moderation violation taxonomy. Deliberately distinct from the medical triage
- * {@code RedFlagSeverity}/{@code red_flag_rules} domain (emergency routing) and broader than
- * the user-facing {@code ReportCategory}; each policy maps back to a ReportCategory for the
- * moderation case's reason_code.
+ * Content-moderation violation taxonomy. It is broader than the user-facing
+ * {@code ReportCategory}; each policy maps back to a ReportCategory for the moderation
+ * case's reason_code. Emergency triage remains an independent runtime safety concern.
  */
 public enum AiViolationCategory {
     SPAM_ADVERTISING,

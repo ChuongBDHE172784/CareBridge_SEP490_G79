@@ -87,7 +87,6 @@ Target 70 core thay thế target 65 trước đó. `care_items` và `legacy_arch
 
 29. `triage_sessions`
 30. `triage_session_evidence`
-31. `red_flag_rules`
 32. `health_context_memories`
 33. `knowledge_sources`
 34. `knowledge_source_reviews`

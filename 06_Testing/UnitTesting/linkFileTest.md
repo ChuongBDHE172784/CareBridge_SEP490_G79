@@ -535,8 +535,7 @@ Detail*, *Community Image Attachment* nằm trong sheet **Post Question**; *Dire
 | Backend | `.../triage/TriageConsentServiceTest.java`, `TriageConsentControllerTest.java` |
 | Backend | `.../triage/TriageRagEnrichmentServiceTest.java`, `SourceRetrieverTest.java` |
 | Backend | `.../triage/TriageSessionEvidenceWriterTest.java` |
-| Backend | `.../triage/TriageRedFlagPolicyTest.java`, `TriageRedFlagPreScreenPolicyTest.java`, `TriageRedFlagPreScreenSecurityTest.java` |
-| Backend | `.../triage/RedFlagRuleServiceImplTest.java`, `RedFlagRuleControllerTest.java` |
+| Backend | `.../triage/TriageRedFlagPolicyTest.java` |
 | Backend | `.../triage/HealthMemoryServiceImplTest.java`, `HealthMemoryWriteTest.java`, `HealthMemoryContextReadTest.java`, `HealthMemorySummaryPolicyTest.java` |
 | Backend | `.../triage/{TriageServiceHealthMemoryContext,TriageServiceGestationalContext,IntakeControllerHealthContext,IntakeController}Test.java` |
 | Backend | `.../triage/SymptomNormalizerTest.java`, `TriageRecommendationCodeTest.java`, `PediatricRedParityTest.java` |
@@ -650,7 +649,6 @@ Detail*, *Community Image Attachment* nằm trong sheet **Post Question**; *Dire
 | `/admin/experts` + `/admin/expert-verification-queue` | `.../expertverification/ExpertIdentityVerificationServiceTest.java` |
 | | `.../expertverification/ExpertCredentialPreviewServiceTest.java`, `DuplicateIdentityFaceServiceTest.java` |
 | | Web `src/features/expert/pages/ExpertVerificationQueuePage.test.tsx` |
-| `/admin/safety-rules` (red-flag rules) | `.../triage/RedFlagRuleServiceImplTest.java`, `RedFlagRuleControllerTest.java`, `.../security/RedFlagRuleControllerSecurityTest.java` |
 | `/admin/system-configuration` | `.../systemconfiguration/SystemConfigurationServiceImplTest.java` |
 | | `.../systemconfiguration/SystemConfigurationControllerSecurityTest.java` |
 | | `.../systemconfiguration/SystemMaintenanceModeServiceTest.java`, `MaintenanceModeFilterTest.java` |
@@ -720,7 +718,6 @@ trong `Report5_Unit Test_CareBridge.xlsx`.
 
 | Mã | Defect | Trạng thái | Cách xử lý |
 |---|---|---|---|
-| `DEF-RBAC-001` | `RedFlagRuleController` mở cho MODERATOR / CONTENT_ADMIN (commit `ff31c960`) | ✅ Đã sửa | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` — khớp với route `/admin/safety-rules` vốn đã là `requiredRoles={['SYSTEM_ADMIN']}` ở web. Test mở rộng thành `@ParameterizedTest` phủ 5 role bị từ chối + 1 ca SYSTEM_ADMIN 200. |
 | `DEF-RBAC-002` | `AiModerationAdminController` mở cho MODERATOR / CONTENT_ADMIN (cùng commit) | ✅ Đã sửa | Class → `hasRole('SYSTEM_ADMIN')`; riêng `GET /status` giữ `hasAnyRole('SYSTEM_ADMIN','MODERATOR')` vì trang moderator `PendingContentQueuePage` đọc nó để biết AI screening đang bật. `policies` CRUD / `test` / `rescan` giờ admin-only. |
 | `DEF-DATA-003` | `GrowthMeasurementFormScreen` gửi `note: ""` đè lên `null` | ✅ Đã sửa | `existing?.note?.trim() ?? ''` — chuẩn hoá cả hai vế trước khi so sánh. Bổ sung 2 test: xoá ghi chú có sẵn *vẫn* gửi `note: ""`, và ghi chú không đổi *không* lọt vào payload. |
 
@@ -731,7 +728,6 @@ trong `Report5_Unit Test_CareBridge.xlsx`.
 
 | File | Thay đổi | Lý do |
 |---|---|---|
-| `CareBridgeAPI/.../triage/controller/RedFlagRuleController.java` | `@PreAuthorize` → `hasRole('SYSTEM_ADMIN')` | **Sửa RBAC theo yêu cầu**: `/admin/safety-rules` chỉ dành cho SYSTEM_ADMIN. Red-flag rule điều khiển luồng escalation cấp cứu nên quyền soạn thảo phải giữ hẹp. Chỉ `SafetyRuleManagementPage` (đã gate SYSTEM_ADMIN) gọi API này → không ảnh hưởng màn hình khác. |
 | `CareBridgeAPI/.../aimoderation/controller/AiModerationAdminController.java` | Class → `hasRole('SYSTEM_ADMIN')`; `GET /status` → `hasAnyRole('SYSTEM_ADMIN','MODERATOR')` | Thu hẹp về admin-only, giữ đúng một ngoại lệ read-only mà moderator thật sự cần. |
 | `CareBridgeMobileApp/lib/features/healthRecords/screens/growth_measurement_form_screen.dart` | `existing?.note?.trim() ?? ''` | Sửa lỗi ghi đè `null` thành chuỗi rỗng khi sửa phép đo mà không đụng vào ô ghi chú. |
 | `CareBridgeMobileApp/lib/integrations/firebaseRealtime/firebase_conversation_signaling_port.dart` | Thêm `_FirebaseSignInGate.reset()` và `@visibleForTesting resetFirebaseSignInGateForTest()` | `_firebaseSignInGate` là hàng đợi **toàn cục cấp process**; mỗi mắt xích gắn với zone đã tạo nó. Widget test chạy fake-async nên một test kết thúc giữa chừng làm hàng đợi kẹt vĩnh viễn → mọi test sau treo tới timeout 10 phút. Hook này **không có caller ở production**, không đổi hành vi runtime. |

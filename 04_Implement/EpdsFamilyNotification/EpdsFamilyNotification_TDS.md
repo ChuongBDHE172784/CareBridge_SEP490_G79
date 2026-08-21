@@ -181,7 +181,7 @@ stay reconcilable.
 
 **Consequences.**
 - ✅ Matches CLAUDE.md's layer rule ("Policy: reusable domain rules") and the
-  `triage/policy/TriageRedFlagPreScreenPolicy` precedent.
+  `triage/policy/TriageRedFlagPolicy` precedent.
 - ✅ Pure function, trivially unit-testable with no Spring context.
 - ⚠️ Thresholds are now duplicated in Dart and Java. Divergence is a real maintenance risk; §14
   defines the reconciliation check. Deliberately **not** solved by an API round-trip in v1.

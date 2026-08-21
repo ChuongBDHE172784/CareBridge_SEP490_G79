@@ -1,6 +1,6 @@
 {
   "captured_from": "Google Sheet before UI rewrite",
-  "count": 643,
+  "count": 639,
   "rows": [
     {
       "feature": "MF01",
@@ -3492,14 +3492,6 @@
     },
     {
       "feature": "MF06",
-      "id": "MF06-CREATE-003",
-      "description": "Verify `create` through POST /api/v1/admin/red-flag-rules as the implemented allowed actor.",
-      "method": "POST",
-      "path": "/api/v1/admin/red-flag-rules",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java"
-    },
-    {
-      "feature": "MF06",
       "id": "MF06-CREATE-004",
       "description": "Verify `generate answer` through POST /api/v1/rag/answer as the implemented allowed actor.",
       "method": "POST",
@@ -3572,14 +3564,6 @@
     },
     {
       "feature": "MF06",
-      "id": "MF06-DELETE-002",
-      "description": "Verify `delete` through DELETE /api/v1/admin/red-flag-rules/{id} as the implemented allowed actor.",
-      "method": "DELETE",
-      "path": "/api/v1/admin/red-flag-rules/{id}",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java"
-    },
-    {
-      "feature": "MF06",
       "id": "MF06-DELETE-003",
       "description": "Verify `delete` through DELETE /api/v1/triage/health-memory/{entryId} as the implemented allowed actor.",
       "method": "DELETE",
@@ -3628,14 +3612,6 @@
     },
     {
       "feature": "MF06",
-      "id": "MF06-SEARCH-002",
-      "description": "Verify `list` through GET /api/v1/admin/red-flag-rules as the implemented allowed actor.",
-      "method": "GET",
-      "path": "/api/v1/admin/red-flag-rules",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java"
-    },
-    {
-      "feature": "MF06",
       "id": "MF06-SEARCH-003",
       "description": "Verify `list` through GET /api/v1/triage/health-memory as the implemented allowed actor.",
       "method": "GET",
@@ -3681,14 +3657,6 @@
       "method": "PATCH",
       "path": "/admin/api/v1/evidence-sources/{id}/reject",
       "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/EvidenceSourceAdminController.java"
-    },
-    {
-      "feature": "MF06",
-      "id": "MF06-UPDATE-004",
-      "description": "Verify `update` through PATCH /api/v1/admin/red-flag-rules/{id} as the implemented allowed actor.",
-      "method": "PATCH",
-      "path": "/api/v1/admin/red-flag-rules/{id}",
-      "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java"
     },
     {
       "feature": "MF06",

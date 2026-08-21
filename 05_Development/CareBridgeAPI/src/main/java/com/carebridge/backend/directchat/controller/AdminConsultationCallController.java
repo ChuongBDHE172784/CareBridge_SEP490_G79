@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -71,5 +72,14 @@ public class AdminConsultationCallController {
         UUID adminUserId = SecurityUtils.requireCurrentUserId(principal);
         String url = adminCallService.getRecordingPresignedUrl(callId, adminUserId);
         return ResponseEntity.ok(ApiResponse.success(Map.of("url", url)));
+    }
+
+    @DeleteMapping("/{callId}/recording")
+    public ResponseEntity<Void> deleteRecording(
+            @PathVariable UUID callId,
+            Principal principal) {
+        UUID adminUserId = SecurityUtils.requireCurrentUserId(principal);
+        adminCallService.deleteRecording(callId, adminUserId);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -14588,7 +14588,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14619,7 +14618,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14649,7 +14647,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14688,7 +14685,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14716,7 +14712,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14750,7 +14745,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14791,45 +14785,12 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
     "external": "Gemini/AI service stub or sandbox",
     "expected_status": 201,
     "id": "MF06-CREATE-002"
-  },
-  {
-    "feature": "MF06",
-    "group": "CREATE",
-    "description": "Verify that a permitted Administrator user can add red flag rules.",
-    "procedure": "1. Log in using a valid Administrator mock account.\n2. Navigate to the AI Nurse Assistant page.\n3. Click the Add Red Flag Rules button.\n4. Enter valid values in the required fields.\n5. Select the required options.\n6. Click the Save button.",
-    "expected": "A success message is displayed and the new red flag rules appears in the visible list or detail page.",
-    "preconditions": "A valid active Administrator mock account is available.\nThe user is logged in as Administrator.\nRequired mock red flag rules data is available when the flow needs an existing item.",
-    "note": "Planned test date: 10/07/2026. Source-derived function; UC-72–UC-76. Request DTO: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/dto/request/CreateRedFlagRuleRequest.java. UI flow mapped to the closest implemented feature page.",
-    "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java",
-    "uc": "UC-72–UC-76",
-    "method": "POST",
-    "path": "/api/v1/admin/red-flag-rules",
-    "authorization": "hasRole('SYSTEM_ADMIN')",
-    "query_params": [],
-    "path_params": [],
-    "body": {
-      "keyword": "qa_keyword_01",
-      "severity": "GREEN",
-      "action": "BLOCK"
-    },
-    "request_dto": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/dto/request/CreateRedFlagRuleRequest.java",
-    "tables": [
-      "triage_sessions",
-      "triage_messages",
-      "red_flag_rules",
-      "evidence_sources",
-      "triage_consent"
-    ],
-    "external": "Gemini/AI service stub or sandbox",
-    "expected_status": 201,
-    "id": "MF06-CREATE-003"
   },
   {
     "feature": "MF06",
@@ -14856,7 +14817,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14884,7 +14844,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14939,7 +14898,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -14969,7 +14927,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15005,7 +14962,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15033,7 +14989,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15061,7 +15016,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15089,7 +15043,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15125,43 +15078,12 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
     "external": "Gemini/AI service stub or sandbox",
     "expected_status": 201,
     "id": "MF06-DELETE-001"
-  },
-  {
-    "feature": "MF06",
-    "group": "DELETE",
-    "description": "Verify that a permitted Administrator user can remove red flag rules.",
-    "procedure": "1. Log in using a valid Administrator mock account.\n2. Navigate to the AI Nurse Assistant page.\n3. Select an existing red flag rules item.\n4. Click the Remove button.\n5. Click the Confirm button in the confirmation dialog.",
-    "expected": "The confirmation dialog is closed and the selected red flag rules is removed from the visible list or marked as revoked.",
-    "preconditions": "A valid active Administrator mock account is available.\nThe user is logged in as Administrator.\nRequired mock red flag rules data is available when the flow needs an existing item.",
-    "note": "Planned test date: 10/07/2026. Source-derived function; UC-72–UC-76. No request DTO/body was found for this handler. UI flow mapped to the closest implemented feature page.",
-    "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java",
-    "uc": "UC-72–UC-76",
-    "method": "DELETE",
-    "path": "/api/v1/admin/red-flag-rules/{id}",
-    "authorization": "hasRole('SYSTEM_ADMIN')",
-    "query_params": [],
-    "path_params": [
-      "id"
-    ],
-    "body": null,
-    "request_dto": null,
-    "tables": [
-      "triage_sessions",
-      "triage_messages",
-      "red_flag_rules",
-      "evidence_sources",
-      "triage_consent"
-    ],
-    "external": "Gemini/AI service stub or sandbox",
-    "expected_status": 204,
-    "id": "MF06-DELETE-002"
   },
   {
     "feature": "MF06",
@@ -15185,7 +15107,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15213,7 +15134,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15241,7 +15161,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15269,7 +15188,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15297,7 +15215,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15325,7 +15242,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15353,7 +15269,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15381,7 +15296,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15415,62 +15329,12 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
     "external": "Gemini/AI service stub or sandbox",
     "expected_status": 200,
     "id": "MF06-SEARCH-001"
-  },
-  {
-    "feature": "MF06",
-    "group": "SEARCH",
-    "description": "Verify that a permitted Administrator user can find red flag rules.",
-    "procedure": "1. Log in using a valid Administrator mock account.\n2. Navigate to the AI Nurse Assistant page.\n3. Open the red flag rules list.\n4. Open the Filter control.\n5. Select an available filter option.\n6. Click the Apply Filter button.\n7. Click the Next Page button.\n8. Click the Previous Page button.",
-    "expected": "The red flag rules list reflects the selected search, filter, sort, or page controls, or the implemented empty-state message is displayed.",
-    "preconditions": "A valid active Administrator mock account is available.\nThe user is logged in as Administrator.\nRequired mock red flag rules data is available when the flow needs an existing item.",
-    "note": "Planned test date: 10/07/2026. Source-derived function; UC-72–UC-76. No request DTO/body was found for this handler. UI flow mapped to the closest implemented feature page.",
-    "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java",
-    "uc": "UC-72–UC-76",
-    "method": "GET",
-    "path": "/api/v1/admin/red-flag-rules",
-    "authorization": "hasRole('SYSTEM_ADMIN')",
-    "query_params": [
-      {
-        "name": "severity",
-        "required": false,
-        "example": "qa_value_01"
-      },
-      {
-        "name": "isActive",
-        "required": false,
-        "example": "qa_value_01"
-      },
-      {
-        "name": "page",
-        "required": false,
-        "example": "0"
-      },
-      {
-        "name": "size",
-        "required": false,
-        "example": "20"
-      }
-    ],
-    "path_params": [],
-    "body": null,
-    "request_dto": null,
-    "tables": [
-      "triage_sessions",
-      "triage_messages",
-      "red_flag_rules",
-      "evidence_sources",
-      "triage_consent"
-    ],
-    "external": "Gemini/AI service stub or sandbox",
-    "expected_status": 201,
-    "id": "MF06-SEARCH-002"
   },
   {
     "feature": "MF06",
@@ -15503,7 +15367,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15531,7 +15394,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15559,7 +15421,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15591,7 +15452,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15623,7 +15483,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15655,48 +15514,12 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
     "external": "Gemini/AI service stub or sandbox",
     "expected_status": 200,
     "id": "MF06-UPDATE-003"
-  },
-  {
-    "feature": "MF06",
-    "group": "UPDATE",
-    "description": "Verify that a permitted Administrator user can update red flag rules.",
-    "procedure": "1. Log in using a valid Administrator mock account.\n2. Navigate to the AI Nurse Assistant page.\n3. Select an existing red flag rules item.\n4. Click the Edit button.\n5. Enter valid updated values in the editable fields.\n6. Click the Save button.",
-    "expected": "A success message is displayed and the updated red flag rules information is visible on the page.",
-    "preconditions": "A valid active Administrator mock account is available.\nThe user is logged in as Administrator.\nRequired mock red flag rules data is available when the flow needs an existing item.",
-    "note": "Planned test date: 10/07/2026. Source-derived function; UC-72–UC-76. Request DTO: 05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/dto/request/UpdateRedFlagRuleRequest.java. UI flow mapped to the closest implemented feature page.",
-    "source": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/controller/RedFlagRuleController.java",
-    "uc": "UC-72–UC-76",
-    "method": "PATCH",
-    "path": "/api/v1/admin/red-flag-rules/{id}",
-    "authorization": "hasRole('SYSTEM_ADMIN')",
-    "query_params": [],
-    "path_params": [
-      "id"
-    ],
-    "body": {
-      "keyword": "qa_keyword_01",
-      "severity": "GREEN",
-      "action": "BLOCK",
-      "isActive": true
-    },
-    "request_dto": "05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/triage/dto/request/UpdateRedFlagRuleRequest.java",
-    "tables": [
-      "triage_sessions",
-      "triage_messages",
-      "red_flag_rules",
-      "evidence_sources",
-      "triage_consent"
-    ],
-    "external": "Gemini/AI service stub or sandbox",
-    "expected_status": 201,
-    "id": "MF06-UPDATE-004"
   },
   {
     "feature": "MF06",
@@ -15720,7 +15543,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15750,7 +15572,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15778,7 +15599,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15808,7 +15628,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15836,7 +15655,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15870,7 +15688,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15898,7 +15715,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15926,7 +15742,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15954,7 +15769,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -15982,7 +15796,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -16010,7 +15823,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -16038,7 +15850,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],
@@ -16066,7 +15877,6 @@
     "tables": [
       "triage_sessions",
       "triage_messages",
-      "red_flag_rules",
       "evidence_sources",
       "triage_consent"
     ],

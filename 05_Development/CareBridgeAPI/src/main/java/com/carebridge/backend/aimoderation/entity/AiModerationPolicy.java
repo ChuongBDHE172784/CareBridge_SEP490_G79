@@ -24,10 +24,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * AI content-moderation policy: validated data, not a free-form system prompt. Distinct from
- * the medical {@code red_flag_rules} table (triage/emergency routing) by design — the two
- * domains must never be merged. System-default policies are never hard-deleted; changes that
- * affect classification bump {@link #version} and are audited.
+ * AI content-moderation policy: validated data, not a free-form system prompt.
+ * System-default policies are never hard-deleted; changes that affect classification bump
+ * {@link #version} and are audited. Emergency triage is intentionally handled elsewhere.
  */
 @Entity
 @Table(name = "ai_moderation_policies")

@@ -37,8 +37,8 @@ of it — which is the opposite of how it looks from the file count.
 - **585 occurrences** of the identifiers in `.py` / `.java` / `.dart`.
 - Endpoint `/internal/triage/v2/turn`; config `carebridge.triage.v2.*`; env
   `CAREBRIDGE_TRIAGE_V2_INTERNAL_ENABLED`; error code `TRIAGE_V2_INTERNAL_ONLY`.
-- **No `triage_v2_*` database table.** Entities are already neutrally named
-  (`triage_sessions`, `red_flag_rules`, …). The rename needs no data migration.
+- **No `triage_v2_*` database table.** Active triage entities are already neutrally named;
+  the former admin-configurable medical warning catalog was retired separately by Flyway V7.
 
 ## 3. Which engine is the base
 

@@ -3,15 +3,22 @@ package com.carebridge.backend.directchat.repository;
 import com.carebridge.backend.directchat.entity.ConversationCall;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface ConversationCallRepository extends JpaRepository<ConversationCall, UUID>, JpaSpecificationExecutor<ConversationCall> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM ConversationCall c WHERE c.id = :callId")
+    Optional<ConversationCall> findByIdForUpdate(@Param("callId") UUID callId);
 
     // ADR-DCC-005: conditional UPDATE, never load-then-save — rowsAffected is the sole
     // race oracle between PATCH /answer and CallTimeoutReconciliationJob.

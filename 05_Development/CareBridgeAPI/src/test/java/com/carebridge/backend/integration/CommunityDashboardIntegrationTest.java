@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 // DASH-TC-INT-001, DASH-TC-INT-002
 // Note: no Testcontainers/real-Postgres harness exists in this codebase (verified project-wide, same
-// finding as UC-110's RedFlagRuleIntegrationTest / ModerateContentIntegrationTest). Hosted as
+// finding as other focused policy integration tests). Hosted as
 // @SpringBootTest + H2 (real Spring-managed beans end-to-end) instead — seeded rows here ARE the oracle
 // (equivalent to a direct-SQL cross-check since the expected values are defined by the seed itself).
 @SpringBootTest

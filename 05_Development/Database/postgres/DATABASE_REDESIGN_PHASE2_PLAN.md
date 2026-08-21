@@ -25,7 +25,7 @@ non-empty synthetic shadow is a release stop that requires evidence review.
 | 1 | account/person/auth | persons, care_subjects, users, identities, sessions, revocations, challenges, deletion requests | retain legacy auth/profile tables |
 | 2 | mother/baby | journeys, lifecycle events, maternal observations/exercise, care logs, growth, milestones, vaccination | retain legacy mother/baby sources |
 | 3 | community/expert | public community content/interactions and professional identity/credential lifecycle | retain source tables |
-| 4 | triage/knowledge | triage sessions/evidence, red-flag rules, health context, knowledge sources/reviews | retain intake/triage sources |
+| 4 | triage/knowledge | triage sessions/evidence, health context, knowledge sources/reviews | retain intake/triage sources; admin medical warning catalog retired |
 | 5 | health/files/devices | health records, attachments, record links, device connections/observations | retain file/device sources |
 | 6 | family/care plan | care groups/members, scheduled items, tasks, checklist items/templates | retain reminder/task sources |
 | 7 | content/moderation | verified content links, moderation cases and append-only events | retain report/action sources |

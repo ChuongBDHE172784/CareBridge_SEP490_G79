@@ -16,7 +16,7 @@ Final Cleanup chỉ ghi nhận representation hiện tại và hướng canonica
 |---|---|---|---|
 | Accounts / role | Một account, một scalar effective role | `users.role`, `user_identities`, `user_sessions`, security/audit tables | Giữ; `roles/user_roles` đã được Batch 2 loại bỏ |
 | Notification | Durable notification + preferences | `notification_records`, `notification_preferences`, `device_tokens` | Giữ; `notifications` đã được Batch 1 loại bỏ |
-| Triage | Intake aggregate + structured extraction | `intake_sessions`, `structured_intake_data`, `health_memory_entries`, `red_flag_rules` | Giữ; legacy triage đã được Batch 3 loại bỏ |
+| Triage | Intake aggregate + structured extraction | `intake_sessions`, `structured_intake_data`, `health_memory_entries` | Giữ; catalog cảnh báo y tế quản trị đã retire, sàn an toàn runtime không phụ thuộc database |
 | Safety | IMU session/event + canonical config, responses and deliveries | `imu_monitoring_sessions`, `imu_safety_events`, `safety_monitoring_config`, `safety_event_responses`, `emergency_alert_deliveries`, `emergency_alert_attempts` | Giữ; legacy safety đã được Batch 4 loại bỏ |
 | Facility | Verified/searchable facility aggregate + durable legacy mapping | `care_facilities`, `care_facility_legacy_ids` | Giữ; `hospitals` được Batch 5 canonicalize |
 | Expert | Profile, credentials, availability, location share, contribution reputation | `expert_profiles`, `expert_credentials`, `expert_availability`, `expert_location_shares`, `contribution_points`, `specialties` | Giữ; dormant verification tables thuộc approved cleanup |

@@ -232,7 +232,7 @@ CareBridge: A Maternal and Early Childhood Healthcare Platform
 
 [3.3.14 UC-82 Review Expert Applications and Trust	134](#heading=)
 
-[3.3.15 UC-83 Manage AI Red-Flag Rules	135](#heading=)
+[3.3.15 Reserved	135](#heading=)
 
 [3.3.16 UC-84 View Content Administration Workspace	136](#heading=)
 
@@ -454,8 +454,6 @@ CareBridge: A Maternal and Early Childhood Healthcare Platform
 
 [4.3.5.3 Sensitive Access and Security Events Screen	315](#heading=)
 
-[4.3.5.4 AI Risk and Red-Flag Rules Screen	316](#heading=)
-
 [5\. Non-Functional Requirements	317](#heading=)
 
 [5.1 External Interfaces	317](#heading=)
@@ -576,7 +574,7 @@ External entities include human actors such as Guest, User, Care Seeker, Family 
 | Verified Expert | Expert profile, verification docs, availability, answers, consultation summaries | Question queue, bookings, shared summaries, earnings, verification/renewal status | Uses Expert Portal / Expert App capabilities to provide verified consultation and expert community support. |
 | Community Moderator | Report lifecycle, moderation decisions, warnings/suspensions, topic governance | Moderation queue, reports, flagged content, account enforcement history | Reviews community content and account reports to keep interaction safe and respectful. |
 | Content Admin | Articles, FAQs, checklists, pregnancy exercises, content categories/versions | Approval status, version history, unpublish/revision feedback | Manages verified content and knowledge materials used by users and Gemini RAG support. |
-| System Admin | \- Manage users, roles, experts, AI/red-flag rules, posture config, dashboards\- Consultation lifecycle: reschedule, cancel, complete, no-show, dispute, refund | \- System reports, audit logs, security events and community/expert metrics\- Refund/dispute outcomes, commission and settlement reports | Administers platform operation, access, expert governance, pricing configuration, and security review. |
+| System Admin | \- Manage users, roles, experts, posture config, dashboards\- Consultation lifecycle: reschedule, cancel, complete, no-show, dispute, refund | \- System reports, audit logs, security events and community/expert metrics\- Refund/dispute outcomes, commission and settlement reports | Administers platform operation, access, expert governance, pricing configuration, and security review. |
 | VNPay Payment Gateway | Payment/refund/settlement status | Payment, refund, commission and reconciliation requests | Processes paid consultation transactions and returns payment results to CareBridge. |
 | Firebase Cloud Messaging | Firebase delivery status | Firebase push notification requests | Delivers push and in-app notifications for consultation, moderation, reminder, and safety events. |
 | Gemini AI Service (RAG / Triage Support) | Structured intake, RAG answer and triage support output | Gemini prompts for intake, RAG and red-flag support | Supports intake, FAQ/RAG response, summarization, and triage assistance without making independent medical decisions. |
@@ -940,7 +938,6 @@ Table 6: Community Q\&A & Moderation Workflow Description
 | UC-80 | Review AI Moderation Assessment | Moderator | Views AI moderation assessment details and submits moderator feedback where implemented. |
 | UC-81 | Manage Community Topics | Moderator | Creates, updates, orders and hides community topics exposed by the moderation workspace. |
 | UC-82 | Review Expert Applications and Trust | CareBridge System Admin | Lists expert cases, opens submitted evidence, approves or rejects verification and changes supported expert trust status. |
-| UC-83 | Manage AI Red-Flag Rules | CareBridge System Admin | Lists, creates, updates and deletes permitted red-flag rules used by the structured triage flow. |
 | UC-84 | View Content Administration Workspace | Content Admin | Displays the Content Admin dashboard and browses the content library and its status filters. |
 | UC-85 | Manage Verified Articles | Content Admin | Creates, views, updates, versions, archives or unpublishes verified articles through the implemented lifecycle. |
 | UC-86 | Manage Verified FAQs | Content Admin | Creates, views, updates, versions, archives or unpublishes verified FAQ entries through the implemented lifecycle. |
@@ -2682,26 +2679,11 @@ Table 6: Community Q\&A & Moderation Workflow Description
 
 **Table 93: UC-82 Review Expert Applications and Trust Use Case Specification**
 
-#### ***3.3.15 UC-83 Manage AI Red-Flag Rules***
+#### ***3.3.15 Reserved***
 
-| UC ID and Name | UC-83 Manage AI Red-Flag Rules |  |  |
-| :---- | :---- | :---- | :---- |
-| **Created By** | LamVH | **Date Revised** | 03/08/2026 |
-| **Feature / Group** | MF-06 — Web App Use Cases — AI Nurse Assistant & Risk Triage | **Platform** | Admin Web / Backend |
-| **Primary Actor** | CareBridge System Admin | **Secondary Actors** | Supporting platform services where applicable |
-| **Trigger** | The actor starts Manage AI Red-Flag Rules from a reachable CareBridge screen or system event. |  |  |
-| **Description** | Lists, creates, updates and deletes permitted red-flag rules used by the structured triage flow. |  |  |
-| **Preconditions** | PRE-1. Required CareBridge and external services are available.PRE-2. The actor can reach the relevant screen or trigger.PRE-3. The actor is authenticated and has the required role, ownership, membership or permission.PRE-4. Referenced records exist when the flow manages existing data. |  |  |
-| **Postconditions** | POST-1. The requested business outcome and its final status are displayed.POST-2. Valid confirmed changes are persisted and related views or notifications are refreshed.POST-3. Sensitive actions retain required audit evidence. |  |  |
-| **Normal Flow** | Step 1\. The actor opens or triggers Manage AI Red-Flag Rules.Step 2\. The system loads the permitted context and validates access.Step 3\. The actor views data or provides and confirms the supported input.Step 4\. The Backend applies the business rules for Manage AI Red-Flag Rules and performs the requested operation.Step 5\. The system displays the resulting state and updates related data, history or notifications where applicable. |  |  |
-| **Alternative Flows** | AF1. Supported method variants, list/detail views, search/filter controls and CRUD actions remain subflows only when relevant to this actor goal.AF2. The actor cancels before confirmation and no unintended change occurs.AF3. An empty result displays the next permitted action. |  |  |
-| **Exceptions** | E1. Unauthorized, out-of-scope or ownership-invalid access is denied without exposing protected data.E2. Invalid, expired, conflicting or missing input is rejected with actionable feedback.E3. External, network or server failure returns a safe retry state without false success or duplicate effects. |  |  |
-| **Priority** | High |  |  |
-| **Business Rules** | AI output is non-diagnostic; approved evidence and red-flag rules establish the safe risk floor. |  |  |
-| **Other Information** | Portal list, detail, search, filter and confirmation screens are subflows of this use case. |  |  |
-| **Assumptions** | Current code and the user-approved feature inventory define Release 1 behavior; unsupported legacy APIs do not create additional UCs. |  |  |
+The use-case identifier and table number are intentionally reserved after retirement of an unsupported administration capability.
 
-**Table 94: UC-83 Manage AI Red-Flag Rules Use Case Specification**
+**Table 94: Reserved Use Case Identifier**
 
 #### ***3.3.16 UC-84 View Content Administration Workspace***
 
@@ -3038,10 +3020,9 @@ Table 6: Community Q\&A & Moderation Workflow Description
 | 95 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub  | Content Approval Queue and Read-Only Review Screens | Reviews submitted article, FAQ or checklist content and records the approval decision without exposing Content Admin editing actions. |
 | 96 | System Admin Web Portal | MF-01 Account, Trust & Access Control  | Security Events and Event Detail Screens | Searches security and audit events and opens their correlation and evidence detail. |
 | 97 | System Admin Web Portal | MF-01 Account, Trust & Access Control  | Security Incident Investigation and Resolution Screens | Groups related security events, records investigation work and appends the final resolution. |
-| 98 | System Admin Web Portal | MF-06 AI Nurse Assistant & Risk Triage  | AI Red-Flag Rule Management Screen | Lists and manages authorized red-flag rules while preserving protected defaults and audit evidence. |
-| 99 | System Admin Web Portal | MF-01 Account, Trust & Access Control  | System Configuration Screen | Reviews and updates the supported runtime configuration values through the audited admin path. |
-| 100 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub  | Posture Analysis Configuration List, Detail and Editor Screens | Creates and activates versioned posture-analysis configuration for a published exercise. |
-| 101 | System Admin Web Portal | MF-01 Account, Trust & Access Control  | Admin Notification and Privacy Settings Screens | Shows administration notifications and supported privacy configuration for the authenticated System Admin. |
+| 98 | System Admin Web Portal | MF-01 Account, Trust & Access Control  | System Configuration Screen | Reviews and updates the supported runtime configuration values through the audited admin path. |
+| 99 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub  | Posture Analysis Configuration List, Detail and Editor Screens | Creates and activates versioned posture-analysis configuration for a published exercise. |
+| 100 | System Admin Web Portal | MF-01 Account, Trust & Access Control  | Admin Notification and Privacy Settings Screens | Shows administration notifications and supported privacy configuration for the authenticated System Admin. |
 
 **Table 103: Screen Descriptions**
 
@@ -3146,7 +3127,6 @@ Table 6: Community Q\&A & Moderation Workflow Description
 | Content Approval Queue and Read-Only Review Screens |  |  |  |  |  |  | X |
 | Security Events and Event Detail Screens |  |  |  |  |  |  | X |
 | Security Incident Investigation and Resolution Screens |  |  |  |  |  |  | X |
-| AI Red-Flag Rule Management Screen |  |  |  |  |  |  | X |
 | System Configuration Screen |  |  |  |  |  |  | X |
 | Posture Analysis Configuration List, Detail and Editor Screens |  |  |  |  |  |  | X |
 | Admin Notification and Privacy Settings Screens |  |  |  |  |  |  | X |
@@ -3272,7 +3252,6 @@ Table 6: Community Q\&A & Moderation Workflow Description
 | 43 | HealthContextMemory | Stores selected health context to maintain continuity across interactions and triage sessions. |
 | 44 | TriageSession | Represents a symptom-intake and care-urgency classification session that does not replace medical diagnosis. |
 | 45 | TriageSessionEvidence | Records evidence or citations supporting the result of a triage session. |
-| 46 | RedFlagRule | Defines a warning sign, its severity, and the safety action required when it is detected. |
 | 47 | SafetyMonitoringSession | Represents an active safety-monitoring period for a user or connected device. |
 | 48 | SafetyEvent | Records a safety or emergency event, including verification, response, alerting, and resolution details. |
 | 49 | ReminderSchedule | Defines recurrence, time zone, and validity rules for generating care reminders. |
@@ -4999,28 +4978,6 @@ This section specifies Release 1 web screens for Expert, Moderator, Content Admi
 | Privacy Boundary | States that audit review does not authorize unnecessary health-data browsing. |
 
 **Table 183: Sensitive Access and Security Events Screen**
-
-##### **4.3.5.4 AI Risk and Red-Flag Rules Screen**
-
-![][image100]
-
-**Applies To:** System Admin Web Portal.
-
-**Platform:** System Admin Web Portal
-
-**Feature:** AI nurse assistant & risk triage
-
-**Purpose:** Maintains conservative risk thresholds, red-flag patterns, safe fallback actions and rule version history.
-
-| Field name | Description |
-| :---- | :---- |
-| Rule List | Shows rule name, active version, risk level, last review and status. |
-| Risk Threshold Editor | Defines conservative input conditions and green, yellow or red orientation. |
-| Red-Flag Pattern Editor | Maintains patterns that require emergency or offline-care guidance. |
-| Safe Fallback Actions | Defines non-diagnostic next actions when certainty is low or service fails. |
-| Version and Review History | Shows version, reviewer and effective date. |
-
-**Table 184: AI Risk and Red-Flag Rules Screen**
 
 ## **5\. Non-Functional Requirements**
 

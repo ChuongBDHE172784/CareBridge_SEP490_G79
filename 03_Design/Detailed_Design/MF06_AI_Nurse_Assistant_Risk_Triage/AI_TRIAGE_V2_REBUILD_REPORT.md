@@ -57,7 +57,6 @@ Not yet delivered: the LangGraph workflow rewrite, the LLM symptom extractor, th
 
 **Pre-existing failures (NOT caused by this work):**
 
-1. `TriageRedFlagPreScreenSecurityTest.unsupportedRole_intakeEndpointsForbidden_preScreenUnreachable` — `Status expected:<403> but was:<400>`.
 2. `Ov01Ac2BackendContractIntegrationTest`, `TriageConsentIntegrationTest`, `TriageConversationStartIntegrationTest`, `TriageHealthMemoryContextIntegrationTest` — all fail to initialise `AbstractPostgresIntegrationTest` because Docker is unavailable. These are **NOT RUN**, not failures of the code under test.
 3. Flutter golden `triage_demo_visual_test.dart: mobile stage selector renders all four supported stages` — matching diff PNGs already committed under `test/features/aiTriage/failures/`.
 
@@ -177,13 +176,13 @@ Absence semantics are **fail-closed**: a signal the user has not provided never 
 | Schema source of truth | Flyway (`CareBridgeAPI/src/main/resources/db/migration/`) |
 | Supabase environment detected | Not contacted — no database command was executed |
 | Application schema managed | `public` |
-| Triage-related application tables (start) | **7** — `triage_sessions`, `triage_session_evidence`, `red_flag_rules`, `knowledge_sources`, `knowledge_source_reviews`, `health_context_memories`, `data_permissions` (shared with the privacy domain) |
-| Triage-related application tables (now) | **7** (unchanged) |
+| Triage-related application tables (start) | **7** — included the former admin-configurable medical warning catalog |
+| Triage-related application tables (now) | **6** — `triage_sessions`, `triage_session_evidence`, `knowledge_sources`, `knowledge_source_reviews`, `health_context_memories`, `data_permissions` (shared with the privacy domain) |
 | **New business tables added** | **0** |
-| Tables removed | 0 |
+| Tables removed | 1 (retired admin-configurable medical warning catalog, via Flyway V7) |
 | Columns added | 0 |
 | Columns deprecated | 0 |
-| Flyway migrations created | **0** |
+| Flyway migrations created | **1** (`V7__drop_red_flag_rules.sql`) |
 | Supabase-managed schemas modified | **0** |
 | RLS policies changed | 0 |
 | Grants changed | 0 |
