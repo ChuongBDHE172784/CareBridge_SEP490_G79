@@ -9,7 +9,11 @@ import { fetchStaffContentList, fetchAdminChecklistTemplates } from '../../conte
 import apiClient from '../../../shared/api/apiClient';
 
 // Models
-import type { AuditLogEntry } from '../models/auditLog';
+import {
+  formatAuditDetails,
+  getAuditActionLabel,
+  type AuditLogEntry,
+} from '../models/auditLog';
 
 function formatNumber(n: number): string {
   return n.toLocaleString('vi-VN');
@@ -526,7 +530,7 @@ export default function AdminDashboardPage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b border-outline-variant/60 text-left">
-                      <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Hành động (Action)</th>
+                      <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Hành động</th>
                       <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Thực hiện bởi</th>
                       <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Thời gian</th>
                       <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Chi tiết / Ghi chú</th>
@@ -536,22 +540,31 @@ export default function AdminDashboardPage() {
                     {recentAuditLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-surface-container-low/60 transition-colors">
                         <td className="py-3.5 px-3">
-                          <span className="font-mono text-xs font-bold text-primary px-2 py-0.5 rounded bg-primary/10">
-                            {log.action}
+                          <span className="inline-flex text-xs font-bold text-primary px-2.5 py-1 rounded-lg bg-primary/10">
+                            {getAuditActionLabel(log.action)}
                           </span>
                         </td>
                         <td className="py-3.5 px-3 text-xs text-on-surface">
-                          {log.userId ? (
-                            <span className="font-mono text-xs">{log.userId.slice(0, 8)}...</span>
+                          {log.actorName || log.actorEmail ? (
+                            <div className="min-w-0">
+                              <div className="font-semibold text-on-surface truncate">
+                                {log.actorName || log.actorEmail}
+                              </div>
+                              {log.actorEmail && log.actorEmail !== log.actorName && (
+                                <div className="text-[11px] text-outline truncate">{log.actorEmail}</div>
+                              )}
+                            </div>
+                          ) : log.userId ? (
+                            <span className="text-on-surface-variant">Tài khoản không xác định</span>
                           ) : (
-                            <span className="text-outline">SYSTEM</span>
+                            <span className="text-outline">Hệ thống tự động</span>
                           )}
                         </td>
                         <td className="py-3.5 px-3 text-xs text-outline whitespace-nowrap">
                           {formatDate(log.timestamp)}
                         </td>
-                        <td className="py-3.5 px-3 text-xs text-on-surface-variant max-w-sm truncate">
-                          {log.details || '—'}
+                        <td className="py-3.5 px-3 text-xs text-on-surface-variant max-w-md leading-relaxed">
+                          {formatAuditDetails(log.action, log.details)}
                         </td>
                       </tr>
                     ))}

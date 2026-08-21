@@ -11,6 +11,8 @@ import com.carebridge.backend.audit.service.RequiredAuditEvent;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.family.entity.CareTaskStatus;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -82,6 +84,7 @@ public class AuditServiceImpl implements AuditService {
     private final AuditLogMapper auditLogMapper;
     private final AuditEligibilityPolicy auditEligibilityPolicy;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Override
     public void log(AuditAction action, java.util.UUID userId, String resourceType, String resourceId, Object details) {
@@ -153,8 +156,34 @@ public class AuditServiceImpl implements AuditService {
             Instant fromDate,
             Instant toDate,
             Pageable pageable) {
-        return auditLogRepository.search(userId, action, fromDate, toDate, pageable)
-                .map(auditLogMapper::toResponse);
+        Page<AuditLog> logs = auditLogRepository.search(userId, action, fromDate, toDate, pageable);
+        Set<java.util.UUID> actorIds = logs.stream()
+                .map(AuditLog::getActorUserId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<java.util.UUID, User> actorsById = actorIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(actorIds).stream()
+                        .collect(Collectors.toMap(User::getId, user -> user));
+
+        return logs.map(log -> {
+            User actor = actorsById.get(log.getActorUserId());
+            return auditLogMapper.toResponse(
+                    log,
+                    resolveActorName(actor),
+                    actor != null ? actor.getEmail() : null);
+        });
+    }
+
+    private static String resolveActorName(User actor) {
+        if (actor == null) return null;
+        if (actor.getDisplayName() != null && !actor.getDisplayName().isBlank()) {
+            return actor.getDisplayName().trim();
+        }
+        if (actor.getName() != null && !actor.getName().isBlank()) {
+            return actor.getName().trim();
+        }
+        return null;
     }
 
     private java.util.UUID parseUuidSafely(String value) {

@@ -11,16 +11,22 @@ import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.entity.AuditLog;
+import com.carebridge.backend.audit.dto.response.AuditLogResponse;
 import com.carebridge.backend.audit.mapper.AuditLogMapper;
 import com.carebridge.backend.audit.policy.AuditEligibilityPolicy;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.audit.service.RequiredAuditEvent;
 import com.carebridge.backend.audit.service.impl.AuditServiceImpl;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +48,7 @@ class AuditServiceImplTest {
 
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private AuditLogMapper auditLogMapper;
+    @Mock private UserRepository userRepository;
 
     private AuditServiceImpl auditService;
 
@@ -49,7 +56,45 @@ class AuditServiceImplTest {
     void setUp() {
         AuditEligibilityPolicy policy = new AuditEligibilityPolicy();
         ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        auditService = new AuditServiceImpl(auditLogRepository, auditLogMapper, policy, mapper);
+        auditService = new AuditServiceImpl(auditLogRepository, auditLogMapper, policy, mapper, userRepository);
+    }
+
+    @Test
+    void search_enrichesActorIdentityWithOneBatchLookup() {
+        UUID actorId = UUID.randomUUID();
+        AuditLog log = AuditLog.builder()
+                .auditLogId(UUID.randomUUID())
+                .actorUserId(actorId)
+                .action(AuditAction.VIEW_AUDIT_LOG)
+                .build();
+        User actor = User.builder()
+                .id(actorId)
+                .displayName("Quản trị viên Huy")
+                .email("admin@carebridge.dev")
+                .build();
+        PageRequest pageable = PageRequest.of(0, 5);
+        AuditLogResponse response = AuditLogResponse.builder()
+                .id(log.getAuditLogId())
+                .userId(actorId)
+                .actorName(actor.getDisplayName())
+                .actorEmail(actor.getEmail())
+                .action(log.getAction())
+                .build();
+
+        when(auditLogRepository.search(null, null, null, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(log), pageable, 1));
+        when(userRepository.findAllById(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(actor));
+        when(auditLogMapper.toResponse(log, actor.getDisplayName(), actor.getEmail()))
+                .thenReturn(response);
+
+        var result = auditService.search(null, null, null, null, pageable);
+
+        assertThat(result.getContent()).singleElement().satisfies(item -> {
+            assertThat(item.getActorName()).isEqualTo("Quản trị viên Huy");
+            assertThat(item.getActorEmail()).isEqualTo("admin@carebridge.dev");
+        });
+        verify(userRepository).findAllById(org.mockito.ArgumentMatchers.any());
     }
 
     // AU-01a: OTP audit with null entityId (OtpVerification has Long PK)
@@ -517,7 +562,7 @@ class AuditServiceImplTest {
         when(failingMapper.writeValueAsString(org.mockito.ArgumentMatchers.any()))
                 .thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("boom") { });
         AuditServiceImpl strictService = new AuditServiceImpl(
-                auditLogRepository, auditLogMapper, new AuditEligibilityPolicy(), failingMapper);
+                auditLogRepository, auditLogMapper, new AuditEligibilityPolicy(), failingMapper, userRepository);
 
         UUID actor = UUID.randomUUID();
         assertThatThrownBy(() -> strictService.logRequired(new RequiredAuditEvent(

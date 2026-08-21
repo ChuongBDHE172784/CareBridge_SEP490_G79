@@ -8,6 +8,10 @@ import org.springframework.stereotype.Component;
 public class AuditLogMapper {
 
     public AuditLogResponse toResponse(AuditLog log) {
+        return toResponse(log, null, null);
+    }
+
+    public AuditLogResponse toResponse(AuditLog log, String actorName, String actorEmail) {
         if (log == null) {
             return null;
         }
@@ -15,6 +19,8 @@ public class AuditLogMapper {
                 .id(log.getAuditLogId())
                 .timestamp(log.getCreatedAt())
                 .userId(log.getActorUserId())
+                .actorName(actorName)
+                .actorEmail(actorEmail)
                 .action(log.getAction())
                 .resourceType(log.getEntityType())
                 .resourceId(log.getEntityId())
