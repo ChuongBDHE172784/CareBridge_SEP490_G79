@@ -63,7 +63,7 @@ public class AiModerationPolicy {
     @Column(name = "severity", nullable = false, length = 20)
     private AiPolicySeverity severity;
 
-    /** CSV subset of QUESTION,ANSWER,CONTENT — kept as varchar for H2 test parity. */
+    /** CSV subset of QUESTION,ANSWER — kept as varchar for H2 test parity. */
     @Column(name = "applicable_target_types", nullable = false, length = 100)
     private String applicableTargetTypes;
 

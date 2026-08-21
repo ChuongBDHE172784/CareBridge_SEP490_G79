@@ -106,7 +106,7 @@ class AiScanProcessingServiceTest {
                 .violationCategory(AiViolationCategory.SPAM_ADVERTISING)
                 .reportCategory(ReportCategory.SPAM)
                 .severity(AiPolicySeverity.MEDIUM)
-                .applicableTargetTypes("QUESTION,ANSWER,CONTENT")
+                .applicableTargetTypes("QUESTION,ANSWER")
                 .confidenceThreshold(new BigDecimal("0.7"))
                 .build();
         policySet = new AiPolicySet(List.of(policy), Map.of("SPAM_ADVERTISING", policy), POLICY_SET_HASH);

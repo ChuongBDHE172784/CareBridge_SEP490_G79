@@ -22,7 +22,7 @@ export type ReportCategory =
   | 'SPAM'
   | 'OTHER';
 
-export type PolicyTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT';
+export type PolicyTargetType = 'QUESTION' | 'ANSWER';
 
 export interface PolicyReferenceLink {
   title: string;
@@ -174,7 +174,6 @@ export const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
 export const POLICY_TARGET_TYPE_LABELS: Record<PolicyTargetType, string> = {
   QUESTION: 'Câu hỏi',
   ANSWER: 'Câu trả lời',
-  CONTENT: 'Nội dung thư viện',
 };
 
 export function formatPolicyName(policyCode: string, category?: string): string {
@@ -186,4 +185,3 @@ export function formatPolicyName(policyCode: string, category?: string): string 
   }
   return policyCode;
 }
-

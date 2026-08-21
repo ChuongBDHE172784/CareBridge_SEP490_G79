@@ -267,8 +267,7 @@ public class AiPolicyServiceImpl implements AiPolicyService {
     }
 
     private static String normalizeTargetTypes(List<ReportTargetType> targetTypes) {
-        List<ReportTargetType> allowed = List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER,
-                ReportTargetType.CONTENT);
+        List<ReportTargetType> allowed = List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER);
         List<ReportTargetType> distinct = targetTypes.stream().distinct().toList();
         if (distinct.isEmpty() || !allowed.containsAll(distinct)) {
             throw AiModerationException.invalidTargetTypes(String.valueOf(targetTypes));

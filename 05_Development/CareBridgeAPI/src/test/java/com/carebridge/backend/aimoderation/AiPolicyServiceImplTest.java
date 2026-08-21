@@ -105,6 +105,32 @@ class AiPolicyServiceImplTest {
     }
 
     @Test
+    void create_contentTarget_throwsAim003() {
+        when(policyRepository.existsByPolicyCodeIgnoreCase(anyString())).thenReturn(false);
+        CreateAiPolicyRequest request = new CreateAiPolicyRequest("LIBRARY_POLICY", "n", "g",
+                AiViolationCategory.OTHER, ReportCategory.OTHER, AiPolicySeverity.LOW,
+                List.of(ReportTargetType.CONTENT), new BigDecimal("0.7"), true, null, null);
+
+        assertThatThrownBy(() -> service.createPolicy(request, ACTOR))
+                .isInstanceOf(AiModerationException.class)
+                .extracting(ex -> ((AiModerationException) ex).getCode())
+                .isEqualTo("AIM-003");
+    }
+
+    @Test
+    void update_contentTarget_throwsAim003() {
+        AiModerationPolicy policy = existingPolicy(false);
+        when(policyRepository.findById(policy.getId())).thenReturn(Optional.of(policy));
+
+        assertThatThrownBy(() -> service.updatePolicy(policy.getId(),
+                new UpdateAiPolicyRequest(null, null, null, null, null,
+                        List.of(ReportTargetType.CONTENT), null, null, null, null), ACTOR))
+                .isInstanceOf(AiModerationException.class)
+                .extracting(ex -> ((AiModerationException) ex).getCode())
+                .isEqualTo("AIM-003");
+    }
+
+    @Test
     void create_invalidThreshold_throwsAim004() {
         when(policyRepository.existsByPolicyCodeIgnoreCase(anyString())).thenReturn(false);
         CreateAiPolicyRequest request = new CreateAiPolicyRequest("NEW_POLICY", "n", "g",

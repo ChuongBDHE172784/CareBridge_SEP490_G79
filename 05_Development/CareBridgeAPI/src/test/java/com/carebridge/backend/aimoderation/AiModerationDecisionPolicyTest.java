@@ -33,7 +33,7 @@ class AiModerationDecisionPolicyTest {
                 .violationCategory(category)
                 .reportCategory(reportCategory)
                 .severity(severity)
-                .applicableTargetTypes("QUESTION,ANSWER,CONTENT")
+                .applicableTargetTypes("QUESTION,ANSWER")
                 .confidenceThreshold(new BigDecimal(threshold))
                 .build();
     }

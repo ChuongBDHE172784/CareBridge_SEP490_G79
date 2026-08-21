@@ -33,7 +33,7 @@ public class AiModerationException extends RuntimeException {
 
     public static AiModerationException invalidTargetTypes(String value) {
         return new AiModerationException("AIM-003",
-                "applicableTargetTypes must be a non-empty subset of QUESTION,ANSWER,CONTENT — got: " + value,
+                "applicableTargetTypes must be a non-empty subset of QUESTION,ANSWER — got: " + value,
                 HttpStatus.BAD_REQUEST);
     }
 

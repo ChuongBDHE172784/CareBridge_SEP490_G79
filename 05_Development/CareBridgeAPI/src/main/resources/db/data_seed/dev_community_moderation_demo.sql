@@ -94,7 +94,7 @@ WITH policy_seed(
         'CHILD_SAFETY',
         'OTHER',
         'CRITICAL',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.600::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Luật Trẻ em số 102/2016/QH13', 'url', 'https://vanban.chinhphu.vn/default.aspx?docid=184566&pageid=27160'),
@@ -113,7 +113,7 @@ WITH policy_seed(
         'DANGEROUS_MEDICAL_ADVICE',
         'UNSAFE_ADVICE',
         'CRITICAL',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.600::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Luật Khám bệnh, chữa bệnh số 15/2023/QH15', 'url', 'https://vanban.chinhphu.vn/?docid=207396&pageid=27160'),
@@ -132,7 +132,7 @@ WITH policy_seed(
         'EXPERT_IMPERSONATION',
         'UNSAFE_ADVICE',
         'HIGH',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.700::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Luật Khám bệnh, chữa bệnh số 15/2023/QH15', 'url', 'https://vanban.chinhphu.vn/?docid=207396&pageid=27160'),
@@ -149,7 +149,7 @@ WITH policy_seed(
         'HARASSMENT_BULLYING',
         'HARASSMENT',
         'HIGH',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.680::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Bộ luật Dân sự số 91/2015/QH13', 'url', 'https://congbao.chinhphu.vn/van-ban/luat-so-91-2015-qh13-18397.htm'),
@@ -166,7 +166,7 @@ WITH policy_seed(
         'HARMFUL_MISINFORMATION',
         'INACCURATE_INFORMATION',
         'HIGH',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.650::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Luật An ninh mạng số 116/2025/QH15', 'url', 'https://congbao.chinhphu.vn/van-ban/luat-so-116-2025-qh15-468678.htm'),
@@ -184,7 +184,7 @@ WITH policy_seed(
         'HATE_SPEECH',
         'HARASSMENT',
         'HIGH',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.700::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Văn bản hợp nhất Hiến pháp số 52/VBHN-VPQH', 'url', 'https://congbao.chinhphu.vn/van-ban/van-ban-hop-nhat-so-52-vbhn-vpqh-45714.htm'),
@@ -203,7 +203,7 @@ WITH policy_seed(
         'PII_DOXXING',
         'OTHER',
         'CRITICAL',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.650::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15', 'url', 'https://congbao.chinhphu.vn/van-ban/luat-so-91-2025-qh15-45578.htm'),
@@ -220,7 +220,7 @@ WITH policy_seed(
         'PROMPT_INJECTION',
         'OTHER',
         'MEDIUM',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.750::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Luật An ninh mạng số 116/2025/QH15', 'url', 'https://congbao.chinhphu.vn/van-ban/luat-so-116-2025-qh15-468678.htm'),
@@ -237,7 +237,7 @@ WITH policy_seed(
         'SCAM_FRAUD',
         'DISGUISED_ADVERTISING',
         'CRITICAL',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.650::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Văn bản hợp nhất Bộ luật Hình sự số 135/VBHN-VPQH', 'url', 'https://congbao.chinhphu.vn/van-ban/van-ban-hop-nhat-so-135-vbhn-vpqh-46165/58885.htm'),
@@ -254,7 +254,7 @@ WITH policy_seed(
         'SELF_HARM_ENCOURAGEMENT',
         'OTHER',
         'CRITICAL',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.550::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Văn bản hợp nhất Bộ luật Hình sự số 135/VBHN-VPQH', 'url', 'https://congbao.chinhphu.vn/van-ban/van-ban-hop-nhat-so-135-vbhn-vpqh-46165/58885.htm'),
@@ -270,7 +270,7 @@ WITH policy_seed(
         'SPAM_ADVERTISING',
         'SPAM',
         'MEDIUM',
-        'QUESTION,ANSWER,CONTENT',
+        'QUESTION,ANSWER',
         0.800::numeric,
         jsonb_build_array(
             jsonb_build_object('title', 'Nghị định số 91/2020/NĐ-CP', 'url', 'https://vanban.chinhphu.vn/default.aspx?docid=200773&pageid=27160'),
@@ -380,7 +380,7 @@ BEGIN
         OR p.report_category <> e.report_category
         OR p.severity <> e.severity
         OR p.confidence_threshold <> e.confidence_threshold
-        OR p.applicable_target_types <> 'QUESTION,ANSWER,CONTENT'
+        OR p.applicable_target_types <> 'QUESTION,ANSWER'
         OR NOT p.active
         OR NOT p.system_default
         OR p.version < 1
