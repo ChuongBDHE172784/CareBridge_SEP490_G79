@@ -34,7 +34,6 @@ BEGIN
             p.policy_code <> upper(p.policy_code)
             OR NOT p.system_default
             OR p.created_by IS NOT NULL
-            OR p.updated_by IS NOT NULL
        )
      ORDER BY p.policy_code
      LIMIT 1;
