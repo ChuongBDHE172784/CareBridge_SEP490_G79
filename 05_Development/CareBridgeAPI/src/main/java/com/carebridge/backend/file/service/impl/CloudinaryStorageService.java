@@ -83,8 +83,10 @@ public class CloudinaryStorageService implements IStorageService {
                 result = cloudinary.uploader().upload(data, uploadParams);
             } catch (Exception e) {
                 if (!"upload".equals(type)) {
-                    uploadParams.put("type", "upload");
-                    result = cloudinary.uploader().upload(data, uploadParams);
+                    java.util.Map<String, Object> fallbackParams =
+                            new java.util.HashMap<>(uploadParams);
+                    fallbackParams.put("type", "upload");
+                    result = cloudinary.uploader().upload(data, fallbackParams);
                     accessMode = FileAccessMode.PUBLIC;
                 } else {
                     throw e;

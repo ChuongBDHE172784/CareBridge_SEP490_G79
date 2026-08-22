@@ -8,6 +8,8 @@ import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
 import com.carebridge.backend.file.enums.FilePurpose;
+import com.carebridge.backend.file.enums.FileAccessMode;
+import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
 import com.carebridge.backend.file.service.impl.CloudinaryStorageService;
 import com.carebridge.backend.file.service.impl.R2StorageService;
@@ -131,6 +133,26 @@ class FileServiceImplTest {
                 });
 
         verify(cloudinaryStorageService, never()).store(any(), any(), any());
+    }
+
+    @Test
+    void uploadWithPurpose_callRecordingAllowsMoreThanTwentyMegabytes() {
+        byte[] content = new byte[20 * 1024 * 1024 + 1];
+        MultipartFile recording = new MockMultipartFile(
+                "file", "recording.mp3", "audio/mpeg", content);
+        when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE))
+                .thenReturn(0L);
+        saveReturnsPersistedArgument();
+        when(r2StorageService.persistedKey(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(r2StorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/file");
+
+        assertThatCode(() -> fileService.uploadWithPurpose(
+                recording,
+                CALLER_ID,
+                FileKind.DOCUMENT,
+                FilePurpose.CONSULTATION_CALL_RECORDING,
+                FileAccessMode.PRIVATE))
+                .doesNotThrowAnyException();
     }
 
     // FILE-TC-004: C4 — storage quota check before write

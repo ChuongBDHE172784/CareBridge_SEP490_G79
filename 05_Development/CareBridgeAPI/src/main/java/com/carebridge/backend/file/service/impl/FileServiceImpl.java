@@ -40,7 +40,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class FileServiceImpl implements IFileService {
 
-    private static final long MAX_SIZE_BYTES = 100L * 1024 * 1024;
+    private static final long MAX_SIZE_BYTES = 20L * 1024 * 1024;
+    private static final long MAX_CALL_RECORDING_SIZE_BYTES = 100L * 1024 * 1024;
     private static final long MAX_FILES_PER_ACCOUNT = 500L;
 
     // IMAGE MIME types → Cloudinary
@@ -201,9 +202,12 @@ public class FileServiceImpl implements IFileService {
     private UploadFileResponse uploadUsing(MultipartFile file, UUID callerId, String provider,
                                            FileKind kind, FilePurpose purpose, FileAccessMode accessMode) {
         // C5: size check (FILE-002)
-        if (file.getSize() > MAX_SIZE_BYTES) {
+        long maxSizeBytes = purpose == FilePurpose.CONSULTATION_CALL_RECORDING
+                ? MAX_CALL_RECORDING_SIZE_BYTES
+                : MAX_SIZE_BYTES;
+        if (file.getSize() > maxSizeBytes) {
             throw new BusinessException(HttpStatus.CONTENT_TOO_LARGE, "FILE-002",
-                    "File exceeds maximum size of 20MB");
+                    "File exceeds maximum size of " + (maxSizeBytes / 1024 / 1024) + "MB");
         }
 
         // C4: storage quota check BEFORE writing to storage
