@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -169,6 +171,14 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   final String _transportMode = 'DRIVING';
   TrackAsiaMapController? _mapController;
   bool _mapStyleReady = false;
+  // Ảnh phải được nạp vào style trước khi symbol tham chiếu tới tên này, và
+  // phải nạp lại mỗi lần style dựng lại (đổi style là mất toàn bộ ảnh đã nạp).
+  static const String _facilityIcon = 'carebridge-facility';
+  static const String _selectedFacilityIcon = 'carebridge-facility-selected';
+  bool _mapIconsRegistered = false;
+  // Chỉ căn giữa vào mẹ ở lần mở bản đồ đầu tiên. Sau đó người dùng tự kéo bản
+  // đồ hoặc bấm nút, kéo camera về nữa sẽ thành giành quyền điều khiển.
+  bool _initialCenterDone = false;
   bool _mapStyleFailed = false;
   int _mapGeneration = 0;
   Timer? _mapStyleTimer;
@@ -1255,6 +1265,93 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         : '${meters.round()} m';
   }
 
+  /// Vẽ ghim bệnh viện thành PNG ngay lúc chạy.
+  ///
+  /// TrackAsia chỉ nhận ảnh bitmap cho `iconImage`, mà dự án không có sẵn asset
+  /// nào ngoài logo. Vẽ từ font Material Icons tránh phải thêm tệp nhị phân vào
+  /// repo, và đổi màu/kích thước chỉ là sửa tham số.
+  Future<Uint8List> _renderFacilityPin({
+    required Color fill,
+    required double size,
+  }) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final radius = size / 2;
+    final centre = Offset(radius, radius * 0.86);
+
+    // Viền trắng để ghim còn đọc được trên nền bản đồ đậm.
+    canvas.drawCircle(centre, radius * 0.82, Paint()..color = Colors.white);
+    canvas.drawCircle(centre, radius * 0.72, Paint()..color = fill);
+
+    // Chân ghim nhọn xuống, để neo 'bottom' trỏ đúng toạ độ.
+    final tail = Path()
+      ..moveTo(radius - size * 0.13, centre.dy + radius * 0.55)
+      ..lineTo(radius, size)
+      ..lineTo(radius + size * 0.13, centre.dy + radius * 0.55)
+      ..close();
+    canvas.drawPath(tail, Paint()..color = fill);
+
+    const icon = Icons.local_hospital_rounded;
+    final painter = TextPainter(textDirection: TextDirection.ltr)
+      ..text = TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontSize: size * 0.42,
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: Colors.white,
+        ),
+      )
+      ..layout();
+    painter.paint(
+      canvas,
+      Offset(radius - painter.width / 2, centre.dy - painter.height / 2),
+    );
+
+    final image = await recorder.endRecording().toImage(
+          size.ceil(),
+          size.ceil(),
+        );
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    return data!.buffer.asUint8List();
+  }
+
+  Future<void> _registerMapIcons(TrackAsiaMapController controller) async {
+    if (_mapIconsRegistered) return;
+    try {
+      await controller.addImage(
+        _facilityIcon,
+        await _renderFacilityPin(fill: const Color(0xFFDC2626), size: 84),
+      );
+      await controller.addImage(
+        _selectedFacilityIcon,
+        await _renderFacilityPin(fill: const Color(0xFF845143), size: 100),
+      );
+      _mapIconsRegistered = true;
+    } catch (_) {
+      // Nạp ảnh hỏng thì symbol sẽ không hiện; danh sách bên dưới vẫn dùng được.
+    }
+  }
+
+  /// Đưa vị trí mẹ vào chính giữa khung nhìn.
+  Future<void> _centerOnMother({double zoom = 15.5}) async {
+    final controller = _mapController;
+    final position = _position;
+    if (controller == null || position == null) return;
+    try {
+      await controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(position.latitude, position.longitude),
+            zoom: zoom,
+          ),
+        ),
+      );
+    } catch (_) {
+      // Camera không nhúc nhích thì bản đồ vẫn hiển thị được.
+    }
+  }
+
   void _onMapCreated(TrackAsiaMapController? controller, int generation) {
     if (!mounted || generation != _mapGeneration) return;
     _mapController = controller;
@@ -1262,6 +1359,15 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     controller.onCircleTapped.add((circle) {
       if (!mounted || generation != _mapGeneration) return;
       final index = circle.data?['facilityIndex'];
+      if (index is int && index >= 0 && index < _results.length) {
+        unawaited(_select(_results[index]));
+      }
+    });
+    // Cơ sở y tế giờ vẽ bằng symbol, nên sự kiện chạm đến qua onSymbolTapped.
+    // Giữ luôn nhánh onCircleTapped ở trên cho chấm vị trí của mẹ.
+    controller.onSymbolTapped.add((symbol) {
+      if (!mounted || generation != _mapGeneration) return;
+      final index = symbol.data?['facilityIndex'];
       if (index is int && index >= 0 && index < _results.length) {
         unawaited(_select(_results[index]));
       }
@@ -1275,7 +1381,21 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       _mapStyleReady = true;
       _mapStyleFailed = false;
     });
-    unawaited(_syncMapAnnotations());
+    // Đổi style làm mất mọi ảnh đã nạp, nên cờ được hạ để nạp lại từ đầu.
+    _mapIconsRegistered = false;
+    unawaited(() async {
+      final controller = _mapController;
+      if (controller != null) await _registerMapIcons(controller);
+      if (!mounted || generation != _mapGeneration) return;
+      // Lần đầu mở bản đồ thì đặt mẹ vào giữa; khung bao trọn tuyến đường chỉ
+      // dùng khi người dùng chủ động bấm nút toàn cảnh hoặc đã chọn cơ sở.
+      final centreFirst = !_initialCenterDone && _selected == null;
+      await _syncMapAnnotations(fitCamera: !centreFirst);
+      if (centreFirst) {
+        _initialCenterDone = true;
+        await _centerOnMother();
+      }
+    }());
   }
 
   void _retryMapRenderer() {
@@ -1317,6 +1437,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     if (controller == null) return;
     try {
       await controller.clearCircles();
+      await controller.clearSymbols();
       await controller.clearLines();
       await controller.addCircle(
         CircleOptions(
@@ -1330,13 +1451,14 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       for (var index = 0; index < _results.length; index++) {
         final facility = _results[index];
         if (!facility.hasCoordinates) continue;
-        await controller.addCircle(
-          CircleOptions(
+        final chosen = identical(facility, _selected);
+        await controller.addSymbol(
+          SymbolOptions(
             geometry: LatLng(facility.latitude!, facility.longitude!),
-            circleRadius: identical(facility, _selected) ? 10 : 7,
-            circleColor: identical(facility, _selected) ? '#845143' : '#DC2626',
-            circleStrokeColor: '#FFFFFF',
-            circleStrokeWidth: 2,
+            iconImage: chosen ? _selectedFacilityIcon : _facilityIcon,
+            // Neo đáy ghim vào đúng toạ độ, như cách mọi bản đồ đặt ghim.
+            iconAnchor: 'bottom',
+            iconSize: 1.0,
           ),
           {'facilityIndex': index},
         );
@@ -1658,7 +1780,10 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
               // Floating map buttons on the right
               Positioned(
                 right: 16,
-                bottom: _panelCollapsed ? 120 : (desktop ? 20 : 360),
+                // Thẻ "Bệnh viện gần bạn" cao khoảng 140px khi thu gọn, nên mốc
+                // 120 cũ khiến nút dưới cùng nằm khuất sau thẻ. Nâng lên cho
+                // cả ba nút nằm trọn phía trên thẻ.
+                bottom: _panelCollapsed ? 200 : (desktop ? 20 : 430),
                 child: SafeArea(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
