@@ -2,8 +2,10 @@ package com.carebridge.backend.common.dev;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -36,7 +38,24 @@ public class ProductionReferenceDataLoader implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        if (!isPostgreSql()) {
+            log.info("Skipping PostgreSQL reference data for a non-PostgreSQL datasource");
+            return;
+        }
         seedProductionReferenceData();
+    }
+
+    private boolean isPostgreSql() {
+        DataSource dataSource = jdbcTemplate.getDataSource();
+        if (dataSource == null) {
+            throw new IllegalStateException("JdbcTemplate has no datasource configured");
+        }
+        try (var connection = dataSource.getConnection()) {
+            return "PostgreSQL".equalsIgnoreCase(
+                    connection.getMetaData().getDatabaseProductName());
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Unable to identify the configured database", ex);
+        }
     }
 
     /**

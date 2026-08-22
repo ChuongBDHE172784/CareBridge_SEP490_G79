@@ -18,6 +18,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         })
 @ActiveProfiles("hermetic")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Testcontainers(disabledWithoutDocker = true)
 class HermeticDatasourceTestcontainersSmokeTest {
 
     private static final String DATABASE_NAME = "carebridge_test";
@@ -47,7 +49,7 @@ class HermeticDatasourceTestcontainersSmokeTest {
 
     @ServiceConnection
     private static final PostgreSQLContainer POSTGRES =
-            new PostgreSQLContainer("postgres:16-alpine")
+            PostgresTestImages.pg16()
                     .withDatabaseName(DATABASE_NAME)
                     .withUsername("carebridge_test_user")
                     .withPassword("synthetic-test-password");

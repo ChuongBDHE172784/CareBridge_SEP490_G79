@@ -4,6 +4,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.TestPropertySource;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
@@ -25,6 +26,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Testcontainers(disabledWithoutDocker = true)
 @TestPropertySource(properties = {
         "spring.flyway.enabled=true",
         "spring.flyway.locations=classpath:db/migration,classpath:db/migration/phase2",
@@ -65,7 +67,7 @@ public abstract class AbstractPostgresIntegrationTest {
 
     @ServiceConnection
     protected static final PostgreSQLContainer POSTGRES =
-            new PostgreSQLContainer("postgres:16-alpine");
+            PostgresTestImages.pg16();
 
     static {
         POSTGRES.start();

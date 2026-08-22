@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.SmsService;
+import com.carebridge.backend.testsupport.PostgresTestImages;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,7 @@ class DevDataSeederPostgresIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18.1-alpine");
+    static final PostgreSQLContainer POSTGRES = PostgresTestImages.pg18();
 
     static {
         POSTGRES.start();

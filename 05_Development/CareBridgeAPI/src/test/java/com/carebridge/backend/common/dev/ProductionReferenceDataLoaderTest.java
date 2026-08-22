@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.util.List;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,6 +25,15 @@ class ProductionReferenceDataLoaderTest {
 
     @Mock
     private JdbcTemplate jdbcTemplate;
+
+    @Mock
+    private DataSource dataSource;
+
+    @Mock
+    private Connection connection;
+
+    @Mock
+    private DatabaseMetaData databaseMetaData;
 
     @Test
     void splitsProductionReferenceDataIntoExpectedStatements() {
@@ -44,6 +57,19 @@ class ProductionReferenceDataLoaderTest {
                 """;
         List<String> statements = ProductionReferenceDataLoader.splitSqlStatements(testSql);
         assertThat(statements).hasSize(2);
+    }
+
+    @Test
+    void runSkipsPostgresOnlyReferenceDataForOtherDatabases() throws Exception {
+        when(jdbcTemplate.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(databaseMetaData);
+        when(databaseMetaData.getDatabaseProductName()).thenReturn("H2");
+
+        new ProductionReferenceDataLoader(jdbcTemplate).run(null);
+
+        verify(jdbcTemplate, times(0)).execute(anyString());
+        verify(connection).close();
     }
 
     @Test

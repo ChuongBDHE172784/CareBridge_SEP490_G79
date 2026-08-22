@@ -1,6 +1,7 @@
 package com.carebridge.backend.testsupport;
 
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -8,6 +9,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 
 /** Real PostgreSQL 18 integration base for Windows environments without Docker. */
+@ExtendWith(WindowsEmbeddedPostgresCondition.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
