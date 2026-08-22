@@ -1333,18 +1333,61 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     }
   }
 
-  /// Đưa vị trí mẹ vào chính giữa khung nhìn.
-  Future<void> _centerOnMother({double zoom = 15.5}) async {
+  /// Đặt mẹ vào chính giữa khung nhìn, đồng thời kéo đủ rộng để thấy các cơ sở
+  /// y tế quanh đó.
+  ///
+  /// Khung bao thông thường (`newLatLngBounds` qua mọi điểm) đẩy mẹ lệch sang
+  /// một bên khi bệnh viện nằm dồn về một phía — đúng thứ nhìn thấy ở màn hình
+  /// trước. Ở đây khung được dựng ĐỐI XỨNG quanh mẹ: lấy khoảng cách lớn nhất
+  /// tới một cơ sở rồi trải đều sang cả bốn phía, nên mẹ luôn ở tâm mà bệnh
+  /// viện vẫn nằm trong tầm nhìn.
+  Future<void> _centerOnMother() async {
     final controller = _mapController;
     final position = _position;
     if (controller == null || position == null) return;
+
+    final centre = LatLng(position.latitude, position.longitude);
+    var deltaLat = 0.0;
+    var deltaLng = 0.0;
+    for (final facility in _results) {
+      if (!facility.hasCoordinates) continue;
+      final dLat = (facility.latitude! - centre.latitude).abs();
+      final dLng = (facility.longitude! - centre.longitude).abs();
+      if (dLat > deltaLat) deltaLat = dLat;
+      if (dLng > deltaLng) deltaLng = dLng;
+    }
+
     try {
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(position.latitude, position.longitude),
-            zoom: zoom,
+      if (deltaLat == 0 && deltaLng == 0) {
+        // Chưa có cơ sở nào: chỉ cần đưa mẹ vào giữa ở mức nhìn rõ đường phố.
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: centre, zoom: 15.5),
           ),
+        );
+        return;
+      }
+      // Nới thêm 25% để ghim ngoài cùng không dính mép màn hình, và đặt sàn
+      // ~1.1km mỗi phía cho trường hợp mọi cơ sở đều sát ngay cạnh mẹ.
+      const minSpan = 0.01;
+      final spanLat = math.max(deltaLat * 1.25, minSpan);
+      final spanLng = math.max(deltaLng * 1.25, minSpan);
+      await controller.animateCamera(
+        CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            southwest: LatLng(
+              centre.latitude - spanLat,
+              centre.longitude - spanLng,
+            ),
+            northeast: LatLng(
+              centre.latitude + spanLat,
+              centre.longitude + spanLng,
+            ),
+          ),
+          left: 48,
+          top: 48,
+          right: 48,
+          bottom: 48,
         ),
       );
     } catch (_) {
@@ -1503,7 +1546,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     }
   }
 
-  Future<void> _fitMapCamera() async {
+  Future<void> _fitMapCamera({bool includeAllFacilities = false}) async {
     final controller = _mapController;
     final position = _position;
     if (controller == null || position == null) return;
@@ -1515,7 +1558,16 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           (point) => LatLng(point.latitude, point.longitude),
         ),
       );
-    } else {
+    }
+    final selected = _selected;
+    if (selected != null && selected.hasCoordinates) {
+      points.add(LatLng(selected.latitude!, selected.longitude!));
+    }
+    // Chọn một cơ sở thì khung chỉ ôm mẹ và tuyến tới đúng cơ sở đó, để đường đi
+    // hiện đủ lớn mà đọc được. Gộp cả sáu ghim vào đây sẽ kéo camera ra xa tới
+    // mức tuyến đường co lại thành một vệt ngắn — đúng thứ cần tránh.
+    // Nút toàn cảnh mới là chỗ muốn nhìn hết mọi lựa chọn.
+    if (includeAllFacilities || selected == null) {
       points.addAll(
         _results
             .where((facility) => facility.hasCoordinates)
@@ -1815,7 +1867,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                       const SizedBox(height: 10),
                       FloatingActionButton.small(
                         heroTag: 'emergency_overview_btn',
-                        onPressed: () => unawaited(_fitMapCamera()),
+                        onPressed: () => unawaited(_fitMapCamera(includeAllFacilities: true)),
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xFF5A463F),
                         tooltip: 'Toàn cảnh tuyến đường',
