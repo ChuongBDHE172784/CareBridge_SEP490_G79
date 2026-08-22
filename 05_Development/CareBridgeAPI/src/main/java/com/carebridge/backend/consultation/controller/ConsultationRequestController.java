@@ -18,6 +18,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import com.carebridge.backend.consultation.matching.ExpertMatchingService;
+import com.carebridge.backend.consultation.matching.ExpertMatchingService.SweepResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ConsultationRequestController {
 
     private final IConsultationRequestService service;
+    private final ExpertMatchingService expertMatchingService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
@@ -47,6 +50,22 @@ public class ConsultationRequestController {
         var result = service.create(request, SecurityUtils.requireCurrentUserId(principal));
         HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(ApiResponse.success(result.response()));
+    }
+
+    /**
+     * Hàm vét điều phối: gợi ý chuyên gia đang còn lịch trống, ưu tiên Chuyên gia Hệ thống,
+     * hết mới rơi xuống Chuyên gia Y tế Cộng đồng. Chỉ gợi ý — người dùng vẫn phải tạo yêu cầu
+     * qua POST ở trên và chuyên gia vẫn phải bấm chấp nhận.
+     */
+    @GetMapping("/matching")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
+    public ResponseEntity<ApiResponse<SweepResult>> matching(
+            @RequestParam(required = false) String specialty,
+            @RequestParam(defaultValue = "5") int limit,
+            @RequestParam(defaultValue = "24") int windowHours,
+            @RequestParam(defaultValue = "30") int minMinutes) {
+        return ResponseEntity.ok(ApiResponse.success(
+                expertMatchingService.sweep(specialty, limit, windowHours, minMinutes)));
     }
 
     @GetMapping("/mine")

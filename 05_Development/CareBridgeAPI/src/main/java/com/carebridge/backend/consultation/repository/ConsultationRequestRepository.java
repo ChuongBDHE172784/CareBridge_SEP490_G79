@@ -31,6 +31,18 @@ public interface ConsultationRequestRepository extends JpaRepository<Consultatio
     long countByExpertProfileIdAndStatus(
             UUID expertProfileId, ConsultationRequestStatus status);
 
+    /**
+     * Đếm yêu cầu đang chờ theo từng chuyên gia trong một lần truy vấn — hàm vét dùng để cân tải
+     * ứng viên "yêu cầu mở". Gọi {@link #countByExpertProfileIdAndStatus} trong vòng lặp sẽ thành
+     * N+1 ngay trên đường điều phối.
+     */
+    @Query("select r.expertProfileId, count(r) from ConsultationRequest r"
+            + " where r.expertProfileId in :expertProfileIds"
+            + " and r.status = com.carebridge.backend.consultation.entity.ConsultationRequestStatus.PENDING"
+            + " group by r.expertProfileId")
+    List<Object[]> countPendingByExpert(
+            @Param("expertProfileIds") java.util.Collection<UUID> expertProfileIds);
+
     // Canonical model: the expert profile IS the users row, so the profile id is the user id.
     @Query(
             value = "select user_id from users where user_id = :expertProfileId and role = 'EXPERT'",

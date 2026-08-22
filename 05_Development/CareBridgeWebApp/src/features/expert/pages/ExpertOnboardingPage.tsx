@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ContractStep, ExpertTypeStep } from '../components/ExpertTwoTierSteps';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, BadgeCheck, Camera, Check, FileBadge, RefreshCw, ShieldCheck } from 'lucide-react';
 import {
@@ -30,9 +31,11 @@ type ImageSlot = 'selfie' | 'identityFront' | 'identityBack';
 type CapturedImage = { file: File; preview: string };
 
 const steps = [
+  ['EXPERT_TYPE', 'Hình thức'],
   ['IDENTITY', 'Định danh'],
   ['CREDENTIAL', 'Chứng chỉ'],
   ['UNDER_REVIEW', 'Xét duyệt'],
+  ['CONTRACT', 'Ký thoả thuận'],
 ] as const;
 
 export default function ExpertOnboardingPage() {
@@ -85,8 +88,10 @@ export default function ExpertOnboardingPage() {
       </header>
 
       {/* Stepper Steps */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {steps.map(([key, label], index) => {
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {steps
+          .filter(([step]) => step !== 'CONTRACT' || state?.expertType === 'PENDING_CONTRACT' || state?.expertType === 'CONTRACTED')
+          .map(([key, label], index, steps) => {
           const activeIndex = Math.max(0, steps.findIndex(([step]) => step === currentStep));
           const complete = currentStep === 'COMPLETE' || index < activeIndex;
           const active = index === activeIndex && currentStep !== 'COMPLETE';
@@ -122,6 +127,8 @@ export default function ExpertOnboardingPage() {
       </div>
 
       {error && <ErrorBanner message={error} retry={reload} />}
+      {currentStep === 'EXPERT_TYPE' && <ExpertTypeStep onDone={reload} />}
+      {currentStep === 'CONTRACT' && <ContractStep onDone={reload} />}
       {(currentStep === 'PROFILE' || currentStep === 'IDENTITY') && (
         <IdentityStep 
           needsProfile={!state?.profileExists}

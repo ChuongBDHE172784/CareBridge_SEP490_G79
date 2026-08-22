@@ -10,6 +10,9 @@ class ExpertDirectoryItem {
   final String? verificationStatus;
   final bool? isConsultationEligible;
 
+  /// COMMUNITY | PENDING_CONTRACT | CONTRACTED | null. Nguồn sự thật cho huy hiệu.
+  final String? expertType;
+
   const ExpertDirectoryItem({
     required this.expertProfileId,
     this.displayName,
@@ -21,7 +24,12 @@ class ExpertDirectoryItem {
     this.avatarUrl,
     this.verificationStatus,
     this.isConsultationEligible,
+    this.expertType,
   });
+
+  /// Fail-closed: chỉ CONTRACTED mới là Chuyên gia Hệ thống. PENDING_CONTRACT (đã duyệt
+  /// chuyên môn nhưng chưa ký) hiển thị như nhóm cộng đồng.
+  bool get isContracted => expertType == 'CONTRACTED';
 
   bool get isEligibleForTriageHandoff =>
       verificationStatus == 'APPROVED' && isConsultationEligible == true;
@@ -39,6 +47,7 @@ class ExpertDirectoryItem {
       experienceYears: json['experienceYears'] as int?,
       avatarUrl: json['avatarUrl'] as String?,
       verificationStatus: json['verificationStatus'] as String?,
+      expertType: json['expertType'] as String?,
       isConsultationEligible: consultationEligible is bool
           ? consultationEligible
           : null,

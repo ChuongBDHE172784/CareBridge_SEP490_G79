@@ -236,6 +236,8 @@ void main() {
 
 class _FakeApi implements ExpertOnboardingApi {
   String? multipartPath;
+  String? patchPath;
+  Map<String, dynamic>? patchBody;
   String? postPath;
   Map<String, dynamic> postBody = {};
   Map<String, String> fields = {};
@@ -263,6 +265,13 @@ class _FakeApi implements ExpertOnboardingApi {
   Future<dynamic> post(String path, Map<String, dynamic> body) async {
     postPath = path;
     postBody = body;
+    return {'data': {}};
+  }
+
+  @override
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async {
+    patchPath = path;
+    patchBody = body;
     return {'data': {}};
   }
 }

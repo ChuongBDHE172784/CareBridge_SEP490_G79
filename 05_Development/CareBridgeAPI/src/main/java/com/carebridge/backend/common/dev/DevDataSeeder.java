@@ -2,6 +2,7 @@ package com.carebridge.backend.common.dev;
 
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.experttype.ExpertType;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
@@ -396,30 +397,30 @@ public class DevDataSeeder implements ApplicationRunner {
 
         seedVerifiedExpert(savedUsers.get("expert@carebridge.dev"), admin,
                 "Sản khoa", "BS.CKII", 15, "Bệnh viện Từ Dũ",
-                "Theo dõi thai kỳ nguy cơ cao, tư vấn tiền sản và chăm sóc sau sinh.", 350_000L);
+                "Theo dõi thai kỳ nguy cơ cao, tư vấn tiền sản và chăm sóc sau sinh.", 350_000L, ExpertType.CONTRACTED);
         seedVerifiedExpert(savedUsers.get("expert2@carebridge.dev"), admin,
                 "Sản khoa", "Bác sĩ", 8, "Bệnh viện Từ Dũ",
-                "Tư vấn sức khỏe thai kỳ, chuẩn bị sinh và phục hồi sau sinh.", 280_000L);
+                "Tư vấn sức khỏe thai kỳ, chuẩn bị sinh và phục hồi sau sinh.", 280_000L, ExpertType.COMMUNITY);
         seedVerifiedExpert(savedUsers.get("expert3@carebridge.dev"), admin,
                 "Nhi khoa", "Bác sĩ", 6, "Bệnh viện Nhi Đồng 1",
-                "Tư vấn chăm sóc trẻ sơ sinh, dinh dưỡng và các bệnh lý nhi khoa thường gặp.", 250_000L);
+                "Tư vấn chăm sóc trẻ sơ sinh, dinh dưỡng và các bệnh lý nhi khoa thường gặp.", 250_000L, ExpertType.CONTRACTED);
         seedVerifiedExpert(savedUsers.get("expert4@carebridge.dev"), admin,
                 "Dinh dưỡng", "Thạc sĩ - Bác sĩ", 12, "Bệnh viện Bạch Mai",
-                "Xây dựng chế độ dinh dưỡng cho mẹ mang thai, sau sinh và trẻ nhỏ.", 320_000L);
+                "Xây dựng chế độ dinh dưỡng cho mẹ mang thai, sau sinh và trẻ nhỏ.", 320_000L, ExpertType.COMMUNITY);
         seedVerifiedExpert(savedUsers.get("expert5@carebridge.dev"), admin,
                 "Tâm lý", "Chuyên gia Tâm lý", 9, "Bệnh viện Phụ sản - Nhi Đà Nẵng",
-                "Hỗ trợ tâm lý thai kỳ, phòng ngừa trầm cảm sau sinh và tư vấn gia đình.", 300_000L);
+                "Hỗ trợ tâm lý thai kỳ, phòng ngừa trầm cảm sau sinh và tư vấn gia đình.", 300_000L, ExpertType.CONTRACTED);
         seedVerifiedExpert(savedUsers.get("expert6@carebridge.dev"), admin,
                 "Nhi khoa", "BS.CKI", 10, "Bệnh viện Nhi đồng Cần Thơ",
-                "Tư vấn chăm sóc, tiêm chủng và theo dõi phát triển trẻ sơ sinh, trẻ nhỏ.", 270_000L);
+                "Tư vấn chăm sóc, tiêm chủng và theo dõi phát triển trẻ sơ sinh, trẻ nhỏ.", 270_000L, ExpertType.COMMUNITY);
     }
 
     private void seedVerifiedExpert(User expertUser, User admin, String specialty,
             String professionalTitle, int experienceYears, String workplace,
-            String consultationScope, long consultationFeeVnd) {
+            String consultationScope, long consultationFeeVnd, ExpertType expertType) {
         ExpertProfile profile = expertProfileRepository.findByUserId(expertUser.getId())
                 .orElseGet(() -> insertExpertProfileRow(expertUser, admin, specialty, professionalTitle,
-                        experienceYears, workplace, consultationScope, consultationFeeVnd));
+                        experienceYears, workplace, consultationScope, consultationFeeVnd, expertType));
 
         boolean profileChanged = false;
         profileChanged |= setIfDifferent(profile.getSpecialty(), specialty, profile::setSpecialty);
@@ -434,6 +435,7 @@ public class DevDataSeeder implements ApplicationRunner {
                 profile::setConsultationFeeVnd);
         profileChanged |= setIfDifferent(profile.getTrustStatus(), TrustStatus.ACTIVE,
                 profile::setTrustStatus);
+        profileChanged |= setIfDifferent(profile.getExpertType(), expertType, profile::setExpertType);
 
         if (profile.getVerificationStatus() != VerificationStatus.APPROVED
                 || profile.getVerifiedAt() == null
@@ -450,7 +452,7 @@ public class DevDataSeeder implements ApplicationRunner {
 
     private ExpertProfile insertExpertProfileRow(User expertUser, User admin, String specialty,
             String professionalTitle, int experienceYears, String workplace,
-            String consultationScope, long consultationFeeVnd) {
+            String consultationScope, long consultationFeeVnd, ExpertType expertType) {
         return expertProfileRepository.save(ExpertProfile.builder()
                 .expertProfileId(expertUser.getId())
                 .specialty(specialty)
@@ -459,6 +461,7 @@ public class DevDataSeeder implements ApplicationRunner {
                 .workplace(workplace)
                 .consultationScope(consultationScope)
                 .consultationFeeVnd(consultationFeeVnd)
+                .expertType(expertType)
                 .verificationStatus(VerificationStatus.APPROVED)
                 .trustStatus(TrustStatus.ACTIVE)
                 .verifiedAt(LocalDateTime.now())

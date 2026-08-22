@@ -10,8 +10,10 @@ import {
   Download,
   Eye,
   FileCheck,
+  FileSignature,
   FileText,
   Filter,
+  HeartHandshake,
   Info,
   Loader2,
   RefreshCw,
@@ -24,6 +26,7 @@ import {
 } from 'lucide-react';
 import {
   approveExpert,
+  previewContractForExpert,
   getCredentialDocumentPreview,
   getCredentialFileUrl,
   getExpertReviewCases,
@@ -35,11 +38,48 @@ import {
   type CredentialDocumentPreviewResponse,
   type DocumentReviewResponse,
   type ExpertReviewCaseResponse,
+  type ContractOfferResponse,
+  type ExpertType,
+  type GrantableExpertType,
 } from '../services/expertApi';
 import { updateUserRole } from '../../admin/services/adminUserApi';
 
 type TrustStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
 type ReviewDecision = 'APPROVED' | 'REJECTED';
+
+/**
+ * Chip phân nhóm chuyên gia trong hàng đợi duyệt.
+ * Khác nhau về HÌNH (khiên có tích vs trái tim trong bàn tay) chứ không chỉ khác màu — ~8% nam
+ * giới mù màu đỏ-lục, và bản in đen trắng sẽ làm hai chip chỉ khác màu thành y hệt nhau.
+ */
+function ExpertTypeChip({ value }: { value?: ExpertType | null }) {
+  if (!value) return null;
+  const config = {
+    CONTRACTED: {
+      label: 'Hệ thống',
+      icon: <BadgeCheck className="w-3 h-3" />,
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    },
+    PENDING_CONTRACT: {
+      label: 'Xin hợp tác',
+      icon: <FileSignature className="w-3 h-3" />,
+      className: 'bg-amber-50 text-amber-700 border-amber-200',
+    },
+    COMMUNITY: {
+      label: 'Cộng đồng',
+      icon: <HeartHandshake className="w-3 h-3" />,
+      className: 'bg-sky-50 text-sky-700 border-sky-200',
+    },
+  }[value];
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${config.className}`}
+    >
+      {config.icon}
+      {config.label}
+    </span>
+  );
+}
 
 const statusConfig: Record<
   string,
@@ -478,11 +518,37 @@ export default function ExpertVerificationQueuePage() {
     );
   };
 
-  const decideProfile = (decision: ReviewDecision) => {
+  // PENDING_CONTRACT = chuyên gia đã chọn hình thức hợp tác ở bước 2 onboarding.
+  const requestedContract = selected?.profile?.expertType === 'PENDING_CONTRACT';
+  const [contractPreview, setContractPreview] = useState<ContractOfferResponse | null>(null);
+  const [contractLoading, setContractLoading] = useState(false);
+
+  // Đổi hồ sơ thì bỏ bản xem trước cũ, tránh hiển thị thoả thuận của người khác.
+  useEffect(() => {
+    setContractPreview(null);
+  }, [selectedProfileId]);
+
+  const toggleContractPreview = async () => {
+    if (contractPreview) {
+      setContractPreview(null);
+      return;
+    }
+    if (!selected) return;
+    setContractLoading(true);
+    try {
+      setContractPreview(await previewContractForExpert(selected.profile.expertProfileId));
+    } catch {
+      setError('Không tải được toàn văn thoả thuận.');
+    } finally {
+      setContractLoading(false);
+    }
+  };
+
+  const decideProfile = (decision: ReviewDecision, grantedType?: GrantableExpertType) => {
     if (!selected || !requireRejectReason(decision, reasons.profile)) return;
-    void runAction(`profile-${decision}`, async () => {
+    void runAction(`profile-${decision}-${grantedType ?? 'AS_REQUESTED'}`, async () => {
       if (decision === 'APPROVED') {
-        await approveExpert(selected.profile.expertProfileId);
+        await approveExpert(selected.profile.expertProfileId, grantedType);
         try {
           await updateUserRole(selected.profile.userId, { newRole: 'EXPERT' as any });
         } catch (e) {
@@ -701,7 +767,10 @@ export default function ExpertVerificationQueuePage() {
                       </div>
 
                       <div className="mt-3 flex items-center justify-between border-t border-[#eef3f6] pt-2.5">
-                        <StatusBadge value={item.profile?.verificationStatus} />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge value={item.profile?.verificationStatus} />
+                          <ExpertTypeChip value={item.profile?.expertType} />
+                        </div>
 
                         <div className="flex items-center gap-2.5 text-[11px] text-[#42515a] font-medium">
                           <span
@@ -1141,6 +1210,47 @@ export default function ExpertVerificationQueuePage() {
                     </span>
                   </div>
 
+                  {requestedContract && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800">
+                        <FileSignature className="w-4 h-4" />
+                        Xét duyệt hợp tác
+                      </div>
+                      <p className="text-sm text-emerald-900 m-0">
+                        Nguyện vọng: <strong>Chuyên gia Hệ thống</strong> · Thời hạn 12 tháng · Cam kết
+                        tối thiểu 10 ca/tuần.
+                      </p>
+                      <p className="text-xs text-emerald-800/80 m-0 leading-relaxed">
+                        Duyệt sẽ phát hành đề nghị thoả thuận. Chuyên gia chỉ trở thành Chuyên gia Hệ
+                        thống sau khi tự xác nhận chấp nhận điều khoản.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={toggleContractPreview}
+                        disabled={contractLoading}
+                        className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 transition"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        {contractLoading
+                          ? 'Đang tải…'
+                          : contractPreview
+                          ? 'Ẩn toàn văn thoả thuận'
+                          : 'Xem toàn văn thoả thuận'}
+                      </button>
+                      {contractPreview && (
+                        <div className="space-y-2">
+                          <p className="text-[11px] font-semibold text-emerald-800 m-0">
+                            Số {contractPreview.contractNumber} · Phiên bản {contractPreview.termsVersion} ·
+                            SHA-256 {contractPreview.termsHash.slice(0, 16)}…
+                          </p>
+                          <div className="max-h-96 overflow-y-auto rounded-lg border border-emerald-200 bg-white p-4 text-[12.5px] leading-6 whitespace-pre-wrap text-[#172126]">
+                            {contractPreview.content}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Row 3: Note / Reason textarea */}
                   <div className="space-y-1.5">
                     <label className="block text-xs font-bold text-[#172126]">
@@ -1163,14 +1273,37 @@ export default function ExpertVerificationQueuePage() {
                   {/* Row 4: Final Action Buttons */}
                   {selected.profile?.verificationStatus !== 'APPROVED' && (
                     <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#95d2ca]/30">
-                      <button
-                        disabled={!selected.readyForFinalApproval || Boolean(action)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#0f766e] px-6 py-3 text-sm font-bold text-white shadow-xs hover:bg-[#0d665f] disabled:opacity-40 transition"
-                        onClick={() => decideProfile('APPROVED')}
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        Phê duyệt chuyên gia
-                      </button>
+                      {requestedContract ? (
+                        <>
+                          <button
+                            disabled={!selected.readyForFinalApproval || Boolean(action)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#0f766e] px-6 py-3 text-sm font-bold text-white shadow-xs hover:bg-[#0d665f] disabled:opacity-40 transition"
+                            onClick={() => decideProfile('APPROVED', 'PENDING_CONTRACT')}
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Duyệt & phát hành thoả thuận
+                          </button>
+                          {/* Bác sĩ hợp lệ nhưng hệ thống chưa cần thêm người khoa đó — vẫn nhận
+                              vào nhóm cộng đồng thay vì phải từ chối cả một hồ sơ tốt. */}
+                          <button
+                            disabled={!selected.readyForFinalApproval || Boolean(action)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-white px-6 py-3 text-sm font-bold text-sky-700 hover:bg-sky-50 disabled:opacity-40 transition"
+                            onClick={() => decideProfile('APPROVED', 'COMMUNITY')}
+                          >
+                            <HeartHandshake className="w-4 h-4" />
+                            Duyệt, xếp nhóm cộng đồng
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          disabled={!selected.readyForFinalApproval || Boolean(action)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-[#0f766e] px-6 py-3 text-sm font-bold text-white shadow-xs hover:bg-[#0d665f] disabled:opacity-40 transition"
+                          onClick={() => decideProfile('APPROVED', 'COMMUNITY')}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          Phê duyệt chuyên gia
+                        </button>
+                      )}
                       <button
                         disabled={Boolean(action)}
                         className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-6 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 transition"

@@ -5,6 +5,7 @@ import com.carebridge.backend.family.entity.InviteStatus;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.file.entity.UploadedFile;
+import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.health.repository.HealthRecordFileRepository;
 import com.carebridge.backend.health.repository.HealthRecordRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,16 @@ public class FileAccessPolicyImpl implements FileAccessPolicy {
         // Rule 1 (ADR-FILE-005): Owner always has access
         if (file.getOwnerUserId().equals(callerId)) {
             return;
+        }
+
+        // Thoả thuận hợp tác chuyên gia mang điều khoản thù lao — thu hẹp khỏi Rule 3.
+        // Moderator/Content admin cần soi bằng cấp y khoa, không cần biết điều khoản hợp tác.
+        if (file.getPurpose() == FilePurpose.EXPERT_CONTRACT) {
+            if (callerAuthorities.contains("ROLE_SYSTEM_ADMIN")) {
+                return;
+            }
+            throw new AccessDeniedBusinessException(
+                    "Access denied to expert contract " + file.getId());
         }
 
         // Rule 3 (ADR-FILE-005): Admin roles bypass scope check

@@ -46,6 +46,12 @@ class _ExpertOnboardingGateScreenState
     switch (step) {
       case ExpertOnboardingStep.profile:
         return '/expert-profile-setup';
+      case ExpertOnboardingStep.expertType:
+        return '/expert/type';
+      case ExpertOnboardingStep.contract:
+        return '/expert/contract';
+      case ExpertOnboardingStep.availability:
+        return '/expert-calendar';
       case ExpertOnboardingStep.identity:
         return '/expert/identity';
       case ExpertOnboardingStep.credential:

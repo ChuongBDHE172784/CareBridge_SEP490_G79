@@ -1,5 +1,6 @@
 package com.carebridge.backend.expert.entity;
 
+import com.carebridge.backend.expert.experttype.ExpertType;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import jakarta.persistence.*;
@@ -79,6 +80,13 @@ public class ExpertProfile {
     @Column(name = "trust_status", length = 20)
     private TrustStatus trustStatus = TrustStatus.ACTIVE;
 
+    // Nullable như verification_status/trust_status ở trên, và vì cùng lý do: users là bảng
+    // dùng chung cho mọi role. Không có @Builder.Default — hồ sơ mới tạo chưa chọn hình thức,
+    // NULL chính là trạng thái "chưa chọn" mà determineNextStep dựa vào để đẩy sang bước chọn.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "expert_type", length = 20)
+    private ExpertType expertType;
+
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
 
@@ -99,6 +107,20 @@ public class ExpertProfile {
     public boolean isEligibleForConsultation() {
         return verificationStatus == VerificationStatus.APPROVED
                 && trustStatus == TrustStatus.ACTIVE;
+    }
+
+    /**
+     * Nguồn sự thật duy nhất cho huy hiệu hợp tác, priority sorting và tuyến 1 điều phối.
+     * Fail-closed: NULL, COMMUNITY và PENDING_CONTRACT đều trả false, nên dữ liệu thiếu
+     * hoặc sai không bao giờ vô tình cấp huy hiệu Chuyên gia Hệ thống.
+     */
+    public boolean isContracted() {
+        return expertType == ExpertType.CONTRACTED;
+    }
+
+    /** Đã được duyệt chuyên môn và đã được phát hành đề nghị, còn chờ ký Thoả thuận. */
+    public boolean isAwaitingContractSignature() {
+        return expertType == ExpertType.PENDING_CONTRACT;
     }
 
 }

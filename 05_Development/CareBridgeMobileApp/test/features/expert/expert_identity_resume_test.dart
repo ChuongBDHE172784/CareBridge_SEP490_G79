@@ -100,4 +100,9 @@ class _FakeExpertApi implements ExpertOnboardingApi {
   Future<dynamic> post(String path, Map<String, dynamic> body) async => const {
     'data': <String, dynamic>{},
   };
+
+  @override
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async => const {
+    'data': <String, dynamic>{},
+  };
 }

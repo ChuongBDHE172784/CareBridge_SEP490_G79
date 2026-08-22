@@ -6,6 +6,7 @@ import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.dto.response.VerificationStatusResponse;
+import com.carebridge.backend.expert.experttype.ExpertType;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 
 import java.util.List;
@@ -37,6 +38,20 @@ public interface IExpertProfileService {
 
     // ── UC-70: Admin approve / reject ──────────────────────────────────
     void approveExpert(UUID expertProfileId, UUID adminId);
+
+    /**
+     * Duyệt hồ sơ và chốt nhóm chuyên gia cùng lúc.
+     * {@code grantedType} null = giữ nguyên nguyện vọng chuyên gia đã chọn.
+     * Không nhận CONTRACTED — trạng thái đó chỉ đạt được qua hành vi ký của chuyên gia.
+     */
+    void approveExpert(UUID expertProfileId, UUID adminId, ExpertType grantedType);
+
+    // ── Phân loại hai nhóm chuyên gia ──────────────────────────────────
+    /** Chuyên gia tự chọn hình thức ở bước 2 onboarding (PENDING_CONTRACT | COMMUNITY). */
+    ExpertProfileDetailResponse chooseExpertType(UUID userId, ExpertType requestedType);
+
+    /** Admin đổi nhóm — dùng để hạ khỏi nhóm hợp tác hoặc phát hành lại đề nghị. */
+    void setExpertType(UUID expertProfileId, ExpertType newType, UUID adminId);
 
     void rejectExpert(UUID expertProfileId, UUID adminId, String reason);
 
