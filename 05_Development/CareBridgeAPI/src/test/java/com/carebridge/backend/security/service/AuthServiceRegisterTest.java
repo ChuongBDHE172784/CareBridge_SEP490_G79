@@ -492,14 +492,14 @@ class AuthServiceRegisterTest {
     }
 
     @Test
-    void registerDto_emailAndPhone_areBothRequired() {
+    void registerDto_contactRequirementsAreValidatedAgainstTheSelectedChannel() {
         RegisterRequest missingPhone = registerRequest(
                 "valid@test.com", null, "MyP@ssw0rd123", Role.MOTHER);
         RegisterRequest missingEmail = registerRequest(
                 null, "0901111026", "MyP@ssw0rd123", Role.MOTHER);
 
-        assertThat(hasViolationOn(beanValidator().validate(missingPhone), "phone")).isTrue();
-        assertThat(hasViolationOn(beanValidator().validate(missingEmail), "email")).isTrue();
+        assertThat(hasViolationOn(beanValidator().validate(missingPhone), "phone")).isFalse();
+        assertThat(hasViolationOn(beanValidator().validate(missingEmail), "email")).isFalse();
     }
 
     @Test

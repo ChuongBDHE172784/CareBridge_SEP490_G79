@@ -17,11 +17,9 @@ public class RegisterRequest {
     @Size(min = 2, max = 120)
     private String name;
 
-    @NotBlank
     @VietnamesePhoneNumber
     private String phone;
 
-    @NotBlank
     @Email
     private String email;
 

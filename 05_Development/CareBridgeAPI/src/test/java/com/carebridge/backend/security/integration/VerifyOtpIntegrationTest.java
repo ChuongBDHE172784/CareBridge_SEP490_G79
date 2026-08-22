@@ -1,6 +1,7 @@
 package com.carebridge.backend.security.integration;
 
 import com.carebridge.backend.security.dto.request.RegisterRequest;
+import com.carebridge.backend.security.dto.request.VerificationMethod;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;
@@ -68,6 +69,7 @@ class VerifyOtpIntegrationTest extends AbstractPostgresIntegrationTest {
         register.setPhone(null);
         register.setPassword("Test@1234");
         register.setRole(Role.MOTHER);
+        register.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

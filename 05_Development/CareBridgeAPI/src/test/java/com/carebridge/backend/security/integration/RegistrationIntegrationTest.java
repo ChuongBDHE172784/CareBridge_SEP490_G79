@@ -5,6 +5,7 @@ import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
 import com.carebridge.backend.security.dto.request.ResendOtpRequest;
 import com.carebridge.backend.security.dto.request.VerifyOtpRequest;
+import com.carebridge.backend.security.dto.request.VerificationMethod;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -101,6 +102,7 @@ class RegistrationIntegrationTest {
         request.setPhone(null);
         request.setPassword(password);
         request.setRole(Role.MOTHER);
+        request.setVerificationMethod(VerificationMethod.EMAIL);
 
         // When/Then
         mockMvc.perform(post("/api/v1/auth/register")
@@ -127,10 +129,9 @@ class RegistrationIntegrationTest {
     }
 
     @Test
-    void register_WithValidPhone_ShouldCreateUserAndReturnSuccess() throws Exception {
+    void register_WithPhoneVerificationMethod_ShouldRequireFirebaseFlow() throws Exception {
         // Given
         String inputPhone = "0901234567";
-        String canonicalPhone = "+84901234567";
         String password = "MyP@ssw0rd123";
 
         RegisterRequest request = new RegisterRequest();
@@ -139,22 +140,17 @@ class RegistrationIntegrationTest {
         request.setPhone(inputPhone);
         request.setPassword(password);
         request.setRole(Role.EXPERT);
+        request.setVerificationMethod(VerificationMethod.PHONE);
 
         // When/Then
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.message").value("Registration initiated. Please verify your OTP."))
-                .andExpect(jsonPath("$.data.userId").exists());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        "Phone verification must be completed through Firebase Phone Authentication"));
 
-        // Verify user was created
-        Optional<User> userOpt = userRepository.findByPhone(canonicalPhone);
-        assertThat(userOpt).isPresent();
-        User user = userOpt.get();
-        assertThat(user.getPhone()).isEqualTo(canonicalPhone);
-        assertThat(user.isEnabled()).isFalse();
-        assertThat(user.getRole()).isEqualTo(Role.EXPERT);
+        assertThat(userRepository.findByPhone("+84901234567")).isEmpty();
     }
 
     @Test
@@ -166,6 +162,7 @@ class RegistrationIntegrationTest {
         request.setPhone(null);
         request.setPassword("weak");
         request.setRole(Role.MOTHER);
+        request.setVerificationMethod(VerificationMethod.EMAIL);
 
         // When/Then
         mockMvc.perform(post("/api/v1/auth/register")
@@ -185,6 +182,7 @@ class RegistrationIntegrationTest {
         firstRequest.setPhone(null);
         firstRequest.setPassword("MyP@ssw0rd123");
         firstRequest.setRole(Role.MOTHER);
+        firstRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -197,6 +195,7 @@ class RegistrationIntegrationTest {
         secondRequest.setPhone("+84987654321");
         secondRequest.setPassword("AnotherPass123!");
         secondRequest.setRole(Role.MOTHER);
+        secondRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -215,6 +214,7 @@ class RegistrationIntegrationTest {
         request.setPhone(null);
         request.setPassword("MyP@ssw0rd123");
         request.setRole(Role.MOTHER);
+        request.setVerificationMethod(VerificationMethod.EMAIL);
 
         // When/Then
         mockMvc.perform(post("/api/v1/auth/register")
@@ -228,10 +228,11 @@ class RegistrationIntegrationTest {
         // Given
         RegisterRequest request = new RegisterRequest();
         request.setName("Test User");
-        request.setEmail(null);
+        request.setEmail("phone-validation@example.com");
         request.setPhone("+84123456789"); // Invalid Vietnamese mobile prefix
         request.setPassword("MyP@ssw0rd123");
         request.setRole(Role.MOTHER);
+        request.setVerificationMethod(VerificationMethod.EMAIL);
 
         // When/Then
         mockMvc.perform(post("/api/v1/auth/register")
@@ -249,6 +250,7 @@ class RegistrationIntegrationTest {
         request.setPhone(null);
         request.setPassword("MyP@ssw0rd123");
         request.setRole(Role.MOTHER);
+        request.setVerificationMethod(VerificationMethod.EMAIL);
 
         // When/Then
         mockMvc.perform(post("/api/v1/auth/register")
@@ -270,6 +272,7 @@ class RegistrationIntegrationTest {
         registerRequest.setPhone(null);
         registerRequest.setPassword(password);
         registerRequest.setRole(Role.MOTHER);
+        registerRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -335,6 +338,7 @@ class RegistrationIntegrationTest {
         registerRequest.setPhone(null);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.MOTHER);
+        registerRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -360,20 +364,21 @@ class RegistrationIntegrationTest {
     @Test
     void verifyOtp_WithWrongOtp_ShouldDecrementAttemptsAndReturnError() throws Exception {
         // Given: Register and get OTP record
-        String phone = "+84901234567";
+        String email = "wrong-otp@example.com";
         RegisterRequest registerRequest = new RegisterRequest();
         registerRequest.setName("Test User");
-        registerRequest.setEmail(null);
-        registerRequest.setPhone(phone);
+        registerRequest.setEmail(email);
+        registerRequest.setPhone(null);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.EXPERT);
+        registerRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isCreated());
 
-        Optional<User> userOpt = userRepository.findByPhone(phone);
+        Optional<User> userOpt = userRepository.findByEmail(email);
         assertThat(userOpt).isPresent();
         User user = userOpt.get();
 
@@ -383,7 +388,7 @@ class RegistrationIntegrationTest {
 
         // When: Submit wrong OTP
         VerifyOtpRequest verifyRequest = new VerifyOtpRequest();
-        verifyRequest.setPhone(phone);
+        verifyRequest.setEmail(email);
         verifyRequest.setOtp("000000"); // Wrong OTP
 
         mockMvc.perform(post("/api/v1/auth/verify-otp")
@@ -442,20 +447,21 @@ class RegistrationIntegrationTest {
     @Test
     void resendOtp_WithValidRequest_ShouldSendNewOtpAndReturnSuccess() throws Exception {
         // Given: Register a user
-        String phone = "+84911234567";
+        String email = "resend@example.com";
         RegisterRequest registerRequest = new RegisterRequest();
         registerRequest.setName("Test User");
-        registerRequest.setEmail(null);
-        registerRequest.setPhone(phone);
+        registerRequest.setEmail(email);
+        registerRequest.setPhone(null);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.MOTHER);
+        registerRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isCreated());
 
-        Optional<User> userOpt = userRepository.findByPhone(phone);
+        Optional<User> userOpt = userRepository.findByEmail(email);
         assertThat(userOpt).isPresent();
         User user = userOpt.get();
         OtpVerification originalOtp = otpVerificationRepository
@@ -469,8 +475,7 @@ class RegistrationIntegrationTest {
 
         // When: Request resend
         ResendOtpRequest resendRequest = new ResendOtpRequest();
-        resendRequest.setPhone(phone);
-        resendRequest.setEmail(null);
+        resendRequest.setEmail(email);
 
         mockMvc.perform(post("/api/v1/auth/resend-otp")
                         .with(csrf())
@@ -493,10 +498,10 @@ class RegistrationIntegrationTest {
         assertThat(pendingOtps).hasSize(1);
         OtpVerification replacement = pendingOtps.get(0);
         assertThat(replacement.getId()).isNotEqualTo(originalOtp.getId());
-        assertThat(replacement.getPhone()).isEqualTo(phone);
-        assertThat(replacement.getEmail()).isNull();
-        verify(smsService).sendOtpVerificationSms(eq(phone), anyString(), eq(5));
-        verifyNoInteractions(emailService);
+        assertThat(replacement.getPhone()).isNull();
+        assertThat(replacement.getEmail()).isEqualTo(email);
+        verify(emailService).sendOtpVerificationEmail(eq(email), anyString(), eq(5));
+        verifyNoInteractions(smsService);
 
         long auditCountAfter = auditLogRepository.findAll().stream()
                 .filter(log -> log.getActorUserId().equals(user.getId()))
@@ -508,18 +513,21 @@ class RegistrationIntegrationTest {
     @Test
     void resendOtp_WithPhoneAndEmail_ShouldRejectWithoutSideEffects() throws Exception {
         String phone = "+84922222222";
+        String email = "mixed-resend@example.com";
         RegisterRequest registerRequest = new RegisterRequest();
         registerRequest.setName("Test User");
+        registerRequest.setEmail(email);
         registerRequest.setPhone(phone);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.MOTHER);
+        registerRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isCreated());
 
-        User user = userRepository.findByPhone(phone).orElseThrow();
+        User user = userRepository.findByEmail(email).orElseThrow();
         OtpVerification originalOtp = otpVerificationRepository
                 .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow();
@@ -550,7 +558,7 @@ class RegistrationIntegrationTest {
         verifyNoInteractions(emailService, smsService);
 
         ResendOtpRequest validRequest = new ResendOtpRequest();
-        validRequest.setPhone(phone);
+        validRequest.setEmail(email);
         mockMvc.perform(post("/api/v1/auth/resend-otp")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
@@ -616,19 +624,20 @@ class RegistrationIntegrationTest {
 
     @Test
     void resendOtp_WithMultiplePendingRows_ShouldInvalidateNewestOtp() throws Exception {
-        String phone = "+84933333333";
+        String email = "multiple-pending@example.com";
         RegisterRequest registerRequest = new RegisterRequest();
         registerRequest.setName("Test User");
-        registerRequest.setPhone(phone);
+        registerRequest.setEmail(email);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.MOTHER);
+        registerRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isCreated());
 
-        User user = userRepository.findByPhone(phone).orElseThrow();
+        User user = userRepository.findByEmail(email).orElseThrow();
         OtpVerification olderPending = otpVerificationRepository
                 .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(user.getId())
                 .orElseThrow();
@@ -636,7 +645,7 @@ class RegistrationIntegrationTest {
                 OtpVerification.builder()
                         .user(user)
                         .codeHash("newer_hash")
-                        .phone(phone)
+                        .email(email)
                         .purpose(OtpVerification.OtpPurpose.REGISTER)
                         .expiresAt(Instant.now().plusSeconds(300))
                         .attempts(5)
@@ -654,7 +663,7 @@ class RegistrationIntegrationTest {
         clearInvocations(emailService, smsService);
 
         ResendOtpRequest resendRequest = new ResendOtpRequest();
-        resendRequest.setPhone(phone);
+        resendRequest.setEmail(email);
         mockMvc.perform(post("/api/v1/auth/resend-otp")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(resendRequest)))
@@ -665,20 +674,21 @@ class RegistrationIntegrationTest {
         OtpVerification remaining = selected == newerPending ? olderPending : newerPending;
         assertThat(otpVerificationRepository.findById(selected.getId()).orElseThrow().getUsedAt()).isNotNull();
         assertThat(otpVerificationRepository.findById(remaining.getId()).orElseThrow().getUsedAt()).isNull();
-        verify(smsService).sendOtpVerificationSms(eq(phone), anyString(), eq(5));
-        verifyNoInteractions(emailService);
+        verify(emailService).sendOtpVerificationEmail(eq(email), anyString(), eq(5));
+        verifyNoInteractions(smsService);
     }
 
     @Test
     void resendOtp_WithinCooldownPeriod_ShouldReturnTooManyRequests() throws Exception {
         // Given: Register a user
-        String phone = "+84955555555";
+        String email = "cooldown@example.com";
         RegisterRequest registerRequest = new RegisterRequest();
         registerRequest.setName("Test User");
-        registerRequest.setEmail(null);
-        registerRequest.setPhone(phone);
+        registerRequest.setEmail(email);
+        registerRequest.setPhone(null);
         registerRequest.setPassword("MyP@ssw0rd123");
         registerRequest.setRole(Role.MOTHER);
+        registerRequest.setVerificationMethod(VerificationMethod.EMAIL);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -687,7 +697,7 @@ class RegistrationIntegrationTest {
 
         // First resend (should succeed)
         ResendOtpRequest resendRequest = new ResendOtpRequest();
-        resendRequest.setPhone(phone);
+        resendRequest.setEmail(email);
 
         mockMvc.perform(post("/api/v1/auth/resend-otp")
                         .with(csrf())
