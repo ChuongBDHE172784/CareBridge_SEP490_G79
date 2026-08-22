@@ -1,5 +1,6 @@
 package com.carebridge.backend.expert.dto.response;
 
+import com.carebridge.backend.expert.experttype.ExpertType;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import lombok.*;
@@ -29,6 +30,8 @@ public class ExpertProfileResponse {
 	private String consultationScope;
 	private VerificationStatus verificationStatus;
 	private TrustStatus trustStatus;
+	private ExpertType expertType;
+	private boolean contracted;
 	private boolean isConsultationEligible;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;

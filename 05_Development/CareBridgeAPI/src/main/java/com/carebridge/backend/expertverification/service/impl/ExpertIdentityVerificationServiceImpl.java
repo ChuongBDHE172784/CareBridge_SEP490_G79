@@ -41,6 +41,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.carebridge.backend.expert.experttype.ExpertType;
+import com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -68,6 +71,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private final IFileService fileService;
     private final AuditService auditService;
     private final TransactionOperations transactionOperations;
+    private final ExpertAvailabilityRepository availabilityRepository;
 
     private record InitialSubmission(
             IdentityVerificationResponse response,
@@ -301,13 +305,15 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 credentialRepository.findByExpertProfileId(profile.getExpertProfileId());
         String credentialStatus = credentialStatus(credentials);
         String identityStatus = latest.map(attempt -> attempt.getReviewStatus().name()).orElse("MISSING");
-        String nextStep = determineNextStep(profile.getVerificationStatus(), identityStatus, credentialStatus);
+        String nextStep = determineNextStep(profile.getVerificationStatus(), identityStatus, credentialStatus,
+                profile.getExpertType(), hasFutureAvailability(profile.getExpertProfileId()));
 
         return ExpertOnboardingResponse.builder()
                 .profileExists(true)
                 .identityStatus(identityStatus)
                 .credentialStatus(credentialStatus)
                 .verificationStatus(profile.getVerificationStatus())
+                .expertType(profile.getExpertType() != null ? profile.getExpertType().name() : null)
                 .rejectionReason(profileRepository
                         .findLatestProfileRejectionReason(profile.getExpertProfileId())
                         .orElse(null))
@@ -488,12 +494,30 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         return "MISSING";
     }
 
+    /**
+     * Nhánh hai nhóm chuyên gia (docs/expert-two-tier-flow.md §3.5): cả hai nhóm đi chung
+     * PROFILE → IDENTITY → CREDENTIAL → duyệt. Chỉ nhánh hợp tác mới có thêm CONTRACT và
+     * AVAILABILITY sau khi được duyệt.
+     */
     private static String determineNextStep(
-            VerificationStatus verificationStatus, String identityStatus, String credentialStatus) {
-        if (verificationStatus == VerificationStatus.APPROVED) return "COMPLETE";
+            VerificationStatus verificationStatus, String identityStatus, String credentialStatus,
+            ExpertType expertType, boolean hasAvailability) {
+        if (verificationStatus == VerificationStatus.APPROVED) {
+            if (expertType == ExpertType.PENDING_CONTRACT) return "CONTRACT";
+            if (expertType == ExpertType.CONTRACTED && !hasAvailability) return "AVAILABILITY";
+            return "COMPLETE";
+        }
+        if (expertType == null) return "EXPERT_TYPE";
         if ("MISSING".equals(identityStatus) || "REJECTED".equals(identityStatus)) return "IDENTITY";
         if ("MISSING".equals(credentialStatus) || "REJECTED".equals(credentialStatus)) return "CREDENTIAL";
         return "UNDER_REVIEW";
+    }
+
+    private boolean hasFutureAvailability(UUID expertProfileId) {
+        return availabilityRepository
+                .findByExpertProfileIdAndEndAtAfterOrderByStartAtAsc(expertProfileId, Instant.now())
+                .stream()
+                .anyMatch(slot -> slot.getStatus() == AvailabilityStatus.AVAILABLE);
     }
 
     private IdentityVerificationResponse toResponse(ExpertIdentityVerification entity) {

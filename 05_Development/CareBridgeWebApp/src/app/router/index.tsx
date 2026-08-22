@@ -14,6 +14,10 @@ import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
 import ExpertRegisterPage from '../../features/auth/pages/ExpertRegisterPage';
+// Trang pháp lý: phải đọc được khi chưa đăng nhập, vì người dùng mở chúng từ ô
+// chấp thuận ở màn đăng ký trước khi có tài khoản.
+import PrivacyPolicyPage from '../../features/legal/pages/PrivacyPolicyPage';
+import TermsOfServicePage from '../../features/legal/pages/TermsOfServicePage';
 import AccountProfilePage from '../../features/auth/pages/AccountProfilePage';
 import ForgotPasswordPage from '../../features/auth/pages/ForgotPasswordPage';
 import ChangePasswordPage from '../../features/auth/pages/ChangePasswordPage';
@@ -124,6 +128,8 @@ export const router = createBrowserRouter([
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
   { path: '/expert/register', element: <ExpertRegisterPage /> },
+  { path: '/privacy-policy', element: <PrivacyPolicyPage /> },
+  { path: '/terms-of-service', element: <TermsOfServicePage /> },
   { path: '/mother/baby-care', element: <BabyCareHubPage /> },
   { path: '/mother/babies/:babyId/daily-logs/:logId', element: <BabyCareResourceNotFoundPage /> },
 

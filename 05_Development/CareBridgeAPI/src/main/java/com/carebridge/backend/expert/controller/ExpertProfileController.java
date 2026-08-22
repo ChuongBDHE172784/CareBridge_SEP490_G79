@@ -9,6 +9,7 @@ import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.dto.response.VerificationStatusResponse;
+import com.carebridge.backend.expert.experttype.ExpertType;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.service.IExpertProfileService;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationAdapter;
@@ -144,15 +145,39 @@ public class ExpertProfileController {
         return ResponseEntity.ok(ApiResponse.success(expertProfileService.getPublicProfile(expertProfileId)));
     }
 
-    // UC-70: Admin approves expert
+    // Chuyên gia chọn hình thức hợp tác (bước 2 onboarding)
+    @PatchMapping("/profiles/me/expert-type")
+    @PreAuthorize("hasRole('EXPERT')")
+    public ResponseEntity<ApiResponse<ExpertProfileDetailResponse>> chooseExpertType(
+            @RequestParam ExpertType type,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                expertProfileService.chooseExpertType(userId, type)));
+    }
+
+    // UC-70: Admin approves expert. expertType để trống = giữ nguyên nguyện vọng của chuyên gia.
     @PostMapping("/profiles/{expertProfileId}/approve")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> approveExpert(
             @PathVariable UUID expertProfileId,
+            @RequestParam(required = false) ExpertType expertType,
             Principal principal) {
         UUID adminId = SecurityUtils.requireCurrentUserId(principal);
-        expertProfileService.approveExpert(expertProfileId, adminId);
+        expertProfileService.approveExpert(expertProfileId, adminId, expertType);
         return ResponseEntity.ok(ApiResponse.success(null, "Expert approved"));
+    }
+
+    // Admin đổi nhóm chuyên gia (hạ khỏi nhóm hợp tác / phát hành lại đề nghị)
+    @PatchMapping("/profiles/{expertProfileId}/expert-type")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> setExpertType(
+            @PathVariable UUID expertProfileId,
+            @RequestParam ExpertType type,
+            Principal principal) {
+        UUID adminId = SecurityUtils.requireCurrentUserId(principal);
+        expertProfileService.setExpertType(expertProfileId, type, adminId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã cập nhật nhóm chuyên gia"));
     }
 
     // UC-70: Admin rejects expert

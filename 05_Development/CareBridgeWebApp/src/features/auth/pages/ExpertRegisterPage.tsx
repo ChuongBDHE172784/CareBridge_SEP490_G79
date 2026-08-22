@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowRight, ShieldCheck, Stethoscope, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, Stethoscope, CheckCircle2 } from 'lucide-react';
 import { registerExpert } from '../services/authApi';
+import { normalizeVietnamesePhone, VIETNAMESE_PHONE_ERROR } from '../../../shared/utils/vietnamesePhone';
 
 type FormState = {
   name: string;
@@ -14,7 +15,19 @@ type FormState = {
 type FieldErrors = Partial<Record<keyof FormState, string>>;
 
 const initialForm: FormState = { name: '', email: '', phone: '', password: '', confirmPassword: '' };
-const VIETNAMESE_PHONE_PATTERN = /^\+84[35789]\d{8}$/;
+
+const TERMS_FIELD_ID = 'expert-register-terms';
+const TERMS_ERROR_ID = `${TERMS_FIELD_ID}-error`;
+const TERMS_LINK_CLASS = 'font-semibold text-primary underline underline-offset-2 hover:text-on-primary-fixed-variant';
+
+/**
+ * Hai liên kết pháp lý nằm bên trong <label> của ô tích, nên một cú nhấp vào
+ * chúng sẽ vừa mở tài liệu vừa vô tình bật/tắt ô tích. Chặn lan truyền để cú
+ * nhấp chỉ mở tài liệu, còn ô tích vẫn giữ được liên kết nhãn cho trình đọc màn hình.
+ */
+const stopLabelToggle = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  event.stopPropagation();
+};
 
 export default function ExpertRegisterPage() {
   const navigate = useNavigate();
@@ -22,6 +35,11 @@ export default function ExpertRegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  // Sự chấp thuận nằm ngoài FormState vì nó không được gửi lên API — đây là điều
+  // kiện tiên quyết phía người dùng, không phải một trường hồ sơ. Tách riêng
+  // cũng giữ FieldErrors đúng nghĩa "lỗi của trường dữ liệu".
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
 
   const update = (key: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -34,10 +52,22 @@ export default function ExpertRegisterPage() {
     setError(null);
   };
 
+  const toggleTerms = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setAcceptedTerms(event.target.checked);
+    if (event.target.checked) setTermsError(null);
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
     setFieldErrors({});
+    setTermsError(null);
+    // Chặn trước mọi kiểm tra khác: chưa có sự đồng ý thì không được phép xử lý
+    // dữ liệu cá nhân, nên không gửi gì lên máy chủ.
+    if (!acceptedTerms) {
+      setTermsError('Bạn cần đồng ý với Điều khoản sử dụng và Chính sách bảo mật để tiếp tục.');
+      return;
+    }
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
       setFieldErrors({
         ...(!form.name.trim() ? { name: 'Vui lòng nhập họ và tên.' } : {}),
@@ -46,8 +76,11 @@ export default function ExpertRegisterPage() {
       });
       return;
     }
-    if (!VIETNAMESE_PHONE_PATTERN.test(form.phone.trim())) {
-      setFieldErrors({ phone: 'Số điện thoại cần là số di động Việt Nam dạng +84xxxxxxxxx.' });
+    // Người dùng gõ 0912345678; máy chủ lưu +84912345678. Quy đổi ngay tại đây để
+    // màn hình nhận đúng thứ người ta quen gõ mà dữ liệu gửi đi vẫn ở dạng chuẩn.
+    const normalizedPhone = normalizeVietnamesePhone(form.phone);
+    if (!normalizedPhone) {
+      setFieldErrors({ phone: VIETNAMESE_PHONE_ERROR });
       return;
     }
     if (form.password.length < 8) {
@@ -64,7 +97,7 @@ export default function ExpertRegisterPage() {
       const result = await registerExpert({
         name: form.name.trim(),
         email: form.email.trim(),
-        phone: form.phone.trim(),
+        phone: normalizedPhone,
         password: form.password,
       });
       navigate('/login/otp', {
@@ -152,22 +185,54 @@ export default function ExpertRegisterPage() {
           <form className="grid gap-5" onSubmit={submit}>
             <Field name="name" label="Họ và tên" required value={form.name} error={fieldErrors.name} onChange={update('name')} autoComplete="name" placeholder="Nguyễn Văn A" />
             <Field name="email" label="Email" type="email" required value={form.email} error={fieldErrors.email} onChange={update('email')} autoComplete="email" placeholder="email@example.com" />
-            <Field name="phone" label="Số điện thoại" type="tel" required value={form.phone} error={fieldErrors.phone} onChange={update('phone')} autoComplete="tel" placeholder="+84901234567" />
+            <Field name="phone" label="Số điện thoại" type="tel" required value={form.phone} error={fieldErrors.phone} onChange={update('phone')} autoComplete="tel" placeholder="0901234567" />
             <div className="grid gap-5 sm:grid-cols-2">
               <Field name="password" label="Mật khẩu" type="password" required value={form.password} error={fieldErrors.password} onChange={update('password')} autoComplete="new-password" placeholder="••••••••" />
               <Field name="confirmPassword" label="Nhập lại mật khẩu" type="password" required value={form.confirmPassword} error={fieldErrors.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" placeholder="••••••••" />
             </div>
 
-            <div className="mt-4 flex items-start gap-3 rounded-xl bg-surface-variant p-4">
-              <ShieldCheck size={20} className="mt-0.5 shrink-0 text-primary" />
-              <p className="text-xs leading-5 text-on-surface-variant">
-                Bằng việc tiếp tục, bạn đồng ý với Điều khoản và Chính sách bảo mật của CareBridge. Thông tin sẽ được mã hóa an toàn.
-              </p>
+            <div className="mt-4">
+              <label
+                htmlFor={TERMS_FIELD_ID}
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 bg-surface-variant p-4 transition-colors ${
+                  termsError ? 'border-error' : 'border-transparent'
+                }`}
+              >
+                <input
+                  id={TERMS_FIELD_ID}
+                  name="acceptedTerms"
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={toggleTerms}
+                  aria-invalid={Boolean(termsError)}
+                  aria-describedby={termsError ? TERMS_ERROR_ID : undefined}
+                  className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-primary"
+                />
+                <span className="text-xs leading-5 text-on-surface-variant">
+                  Tôi đã đọc và đồng ý với{' '}
+                  <Link to="/terms-of-service" target="_blank" rel="noopener noreferrer" onClick={stopLabelToggle} className={TERMS_LINK_CLASS}>
+                    Điều khoản sử dụng
+                  </Link>{' '}
+                  và{' '}
+                  <Link to="/privacy-policy" target="_blank" rel="noopener noreferrer" onClick={stopLabelToggle} className={TERMS_LINK_CLASS}>
+                    Chính sách bảo mật
+                  </Link>{' '}
+                  của CareBridge, bao gồm việc xử lý dữ liệu cá nhân nhạy cảm về sức khỏe theo Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15.
+                  <span className="text-error"> *</span>
+                </span>
+              </label>
+              {termsError && (
+                <p id={TERMS_ERROR_ID} className="mt-2 text-xs font-medium text-error" role="alert">
+                  {termsError}
+                </p>
+              )}
             </div>
 
-            <button 
-              className="group mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-on-primary shadow-lg shadow-primary/25 transition-all duration-300 hover:bg-on-primary-fixed-variant hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none" 
-              disabled={submitting}
+            <button
+              className="group mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-on-primary shadow-lg shadow-primary/25 transition-all duration-300 hover:bg-on-primary-fixed-variant hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
+              // Khoá hẳn nút khi chưa chấp thuận. Kiểm tra trong submit() vẫn giữ
+              // nguyên vì phím Enter trong ô nhập vẫn gửi form được dù nút bị khoá.
+              disabled={submitting || !acceptedTerms}
             >
               {submitting ? 'Đang xử lý...' : 'Đăng ký ngay'}
               {!submitting && <ArrowRight size={19} className="transition-transform group-hover:translate-x-1" />}

@@ -110,7 +110,8 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
                    AND s2.is_active = true
                    AND (LOWER(s2.code) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
                         OR LOWER(s2.name) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))))
-      ORDER BY u.rating_avg DESC NULLS LAST, u.user_id ASC
+      ORDER BY CASE WHEN u.expert_type = 'CONTRACTED' THEN 0 ELSE 1 END,
+               u.rating_avg DESC NULLS LAST, u.user_id ASC
       """,
       countQuery = """
       SELECT COUNT(*) FROM users u
@@ -150,6 +151,40 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
       nativeQuery = true)
 
  Page<ExpertProfile> searchDirectory(@Param("specialty") String specialty, @Param("q") String q, Pageable pageable);
+
+ /**
+  * Chuyên gia đủ điều kiện mà KHÔNG còn ca AVAILABLE nào trong tương lai — ứng viên "yêu cầu mở"
+  * của hàm vét điều phối (docs/expert-matching-sweep.md §4).
+  *
+  * <p>Luật: đã set lịch nghĩa là đang tuyên bố khi nào mình rảnh, hệ thống tôn trọng tuyên bố đó và
+  * chỉ cho đặt theo ca. Chưa set ca nào thì chưa tuyên bố gì, nên nhận yêu cầu mở bất cứ lúc nào.
+  * Nhờ luật này, chuyên gia hợp đồng kín lịch vẫn rơi xuống được tuyến 2 đúng như đặc tả.
+  */
+ @Query(value = """
+   SELECT u.* FROM users u
+   WHERE u.role = 'EXPERT'
+     AND u.verification_status = 'APPROVED'
+     AND u.trust_status = 'ACTIVE'
+     AND u.enabled = true AND u.locked = false
+     AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+          OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
+     AND (CAST(:specialty AS text) IS NULL
+          OR LOWER(u.specialty) = LOWER(CAST(:specialty AS text))
+          OR EXISTS (
+              SELECT 1 FROM professional_specialties ps
+              JOIN specialties s ON s.specialty_id = ps.specialty_id
+              WHERE ps.professional_profile_id = u.user_id
+                AND s.is_active = true
+                AND (LOWER(s.code) = LOWER(CAST(:specialty AS text))
+                     OR LOWER(s.name) = LOWER(CAST(:specialty AS text)))))
+     AND NOT EXISTS (
+          SELECT 1 FROM expert_availability a
+          WHERE a.user_id = u.user_id
+            AND a.status = 'AVAILABLE'
+            AND a.start_at > :now)
+   """, nativeQuery = true)
+ List<ExpertProfile> findOpenRequestExperts(
+   @Param("specialty") String specialty, @Param("now") java.time.Instant now);
 
  @Query(value = """
      SELECT DISTINCT s.name

@@ -322,7 +322,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '100% Đã xác thực chứng chỉ y khoa',
+                          'Chuyên gia Hệ thống & Chuyên gia Y tế Cộng đồng, đều đã kiểm duyệt chứng chỉ',
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
@@ -612,6 +612,17 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     final title =
         expert.displayName ?? expert.professionalTitle ?? 'Chuyên gia Y tế';
     final isApproved = expert.verificationStatus == 'APPROVED';
+    // Hai huy hiệu khác nhau về HÌNH, không chỉ khác màu: ~8% nam giới mù màu đỏ-lục,
+    // và slide bảo vệ in đen trắng sẽ làm hai huy hiệu chỉ khác màu thành y hệt nhau.
+    final isContracted = expert.isContracted;
+    final badgeIcon = isContracted
+        ? Icons.verified_rounded
+        : Icons.volunteer_activism_outlined;
+    final badgeColor =
+        isContracted ? const Color(0xFF10B981) : const Color(0xFF0EA5E9);
+    final badgeTooltip = isContracted
+        ? 'Chuyên gia y tế được xác thực bởi hệ thống'
+        : 'Chuyên gia Y tế Cộng đồng — chứng chỉ hành nghề đã được kiểm duyệt';
     final hasActiveChat =
         _activeConversationExpertIds.contains(expert.expertProfileId);
 
@@ -678,16 +689,19 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                           Positioned(
                             bottom: 0,
                             right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.verified_rounded,
-                                size: 18,
-                                color: Color(0xFF10B981),
+                            child: Tooltip(
+                              message: badgeTooltip,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  badgeIcon,
+                                  size: 18,
+                                  color: badgeColor,
+                                ),
                               ),
                             ),
                           ),

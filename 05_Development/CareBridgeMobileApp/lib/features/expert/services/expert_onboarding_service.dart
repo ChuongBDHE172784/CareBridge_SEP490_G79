@@ -4,6 +4,7 @@ import '../models/expert_onboarding_model.dart';
 abstract class ExpertOnboardingApi {
   Future<dynamic> get(String path);
   Future<dynamic> post(String path, Map<String, dynamic> body);
+  Future<dynamic> patch(String path, Map<String, dynamic> body);
   Future<dynamic> multipart(
     String path,
     Map<String, String> fields,
@@ -18,6 +19,10 @@ class _DefaultExpertOnboardingApi implements ExpertOnboardingApi {
   @override
   Future<dynamic> post(String path, Map<String, dynamic> body) =>
       apiPost(path, body);
+
+  @override
+  Future<dynamic> patch(String path, Map<String, dynamic> body) =>
+      apiPatch(path, body);
 
   @override
   Future<dynamic> multipart(
@@ -40,6 +45,39 @@ class ExpertOnboardingService {
     return ExpertOnboardingState.fromJson(
       response as Map<String, dynamic>? ?? const {},
     );
+  }
+
+  /// Bước 2 onboarding — chuyên gia chọn hình thức hợp tác.
+  /// Chỉ nhận [ExpertKind.pendingContract] hoặc [ExpertKind.community];
+  /// CONTRACTED chỉ đạt được qua hành vi ký ở [acceptContract].
+  Future<void> chooseExpertType(ExpertKind kind) async {
+    final value = kind == ExpertKind.pendingContract
+        ? 'PENDING_CONTRACT'
+        : 'COMMUNITY';
+    await api.patch('/api/v1/expert/profiles/me/expert-type?type=$value', {});
+  }
+
+  /// Bản đề nghị hợp tác để hiển thị toàn văn trên trang ký.
+  Future<ExpertContractOffer> getContractOffer() async {
+    final response = await api.get('/api/v1/expert/contract/offer');
+    final root = response as Map<String, dynamic>? ?? const {};
+    final data = root['data'];
+    return ExpertContractOffer.fromJson(
+      data is Map<String, dynamic> ? data : root,
+    );
+  }
+
+  /// Xác nhận chấp nhận (click-wrap). IP và thiết bị do server tự ghi nhận.
+  Future<void> acceptContract({
+    required String termsVersion,
+    required String termsHash,
+    required String acceptedFullName,
+  }) async {
+    await api.post('/api/v1/expert/contract/accept', {
+      'termsVersion': termsVersion,
+      'termsHash': termsHash,
+      'acceptedFullName': acceptedFullName,
+    });
   }
 
   Future<void> createProfile({

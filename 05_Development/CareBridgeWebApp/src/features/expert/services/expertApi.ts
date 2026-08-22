@@ -14,6 +14,8 @@ export interface ExpertProfileResponse {
 	consultationScope: string;
 	verificationStatus: string;
 	trustStatus?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
+	expertType?: ExpertType | null;
+	contracted?: boolean;
 	verifiedAt: string | null;
 	ratingAvg: number | null;
 	consultationFeeVnd: number | null;
@@ -55,7 +57,25 @@ export interface CredentialResponse {
 	createdAt: string;
 }
 
-export type ExpertOnboardingStep = 'PROFILE' | 'IDENTITY' | 'CREDENTIAL' | 'UNDER_REVIEW' | 'COMPLETE';
+export type ExpertOnboardingStep =
+	| 'PROFILE'
+	| 'EXPERT_TYPE'
+	| 'IDENTITY'
+	| 'CREDENTIAL'
+	| 'UNDER_REVIEW'
+	| 'CONTRACT'
+	| 'AVAILABILITY'
+	| 'COMPLETE';
+
+/**
+ * Nhóm chuyên gia — xem docs/expert-two-tier-flow.md.
+ * PENDING_CONTRACT = đã được duyệt chuyên môn, chờ ký Thoả thuận; hiển thị như nhóm cộng đồng.
+ * Chỉ CONTRACTED mới được huy hiệu Chuyên gia Hệ thống và quyền ưu tiên hiển thị.
+ */
+export type ExpertType = 'COMMUNITY' | 'PENDING_CONTRACT' | 'CONTRACTED';
+
+/** Nhóm admin được phép chốt khi duyệt. CONTRACTED chỉ đạt được qua hành vi ký của chuyên gia. */
+export type GrantableExpertType = Exclude<ExpertType, 'CONTRACTED'>;
 
 export interface IdentityAttemptResponse {
 	identityVerificationId?: string;
@@ -93,6 +113,7 @@ export interface ExpertOnboardingResponse {
 	credentialStatus: string | null;
 	verificationStatus: string | null;
 	rejectionReason?: string | null;
+	expertType?: ExpertType | null;
 	nextStep: ExpertOnboardingStep;
 	latestIdentityAttempt: IdentityAttemptResponse | null;
 }
@@ -134,6 +155,27 @@ export interface ExpertReviewCaseResponse {
 	identityStatus: string;
 	credentialStatus: string;
 	readyForFinalApproval: boolean;
+}
+
+export interface ContractOfferResponse {
+	termsVersion: string;
+	termsHash: string;
+	content: string;
+	contractNumber: string;
+	issuedDate: string;
+	termMonths: number;
+	minSlotsPerWeek: number;
+	expectedFullName: string;
+	alreadyAccepted: boolean;
+}
+
+export interface ContractAcceptanceResponse {
+	acceptanceId: string;
+	contractFileId: string;
+	termsVersion: string;
+	termsHash: string;
+	acceptedAt: string;
+	expertType: ExpertType;
 }
 
 export interface CredentialDocumentPreviewResponse {
@@ -326,6 +368,29 @@ export async function uploadExpertAvatar(file: File): Promise<string> {
 	return res.data.data.presignedUrl;
 }
 
+export async function getContractOffer(): Promise<ContractOfferResponse> {
+	const { data } = await apiClient.get('/api/v1/expert/contract/offer');
+	return data.data;
+}
+
+/** Admin xem trước toàn văn thoả thuận sẽ phát hành cho một chuyên gia cụ thể. */
+export async function previewContractForExpert(
+	expertProfileId: string
+): Promise<ContractOfferResponse> {
+	const { data } = await apiClient.get(`/api/v1/expert/contract/${expertProfileId}/preview`);
+	return data.data;
+}
+
+/** IP và User-Agent do server tự ghi nhận, client không gửi. */
+export async function acceptContract(body: {
+	termsVersion: string;
+	termsHash: string;
+	acceptedFullName: string;
+}): Promise<ContractAcceptanceResponse> {
+	const { data } = await apiClient.post('/api/v1/expert/contract/accept', body);
+	return data.data;
+}
+
 export async function getExpertOnboarding(): Promise<ExpertOnboardingResponse> {
 	const { data } = await apiClient.get('/api/v1/expert/onboarding');
 	return data.data;
@@ -386,8 +451,34 @@ export async function getPublicDirectory(params: {
 	return data.data;
 }
 
-export async function approveExpert(profileId: string): Promise<void> {
-	await apiClient.post(`/api/v1/expert/profiles/${profileId}/approve`);
+/**
+ * Duyệt hồ sơ. `expertType` bỏ trống = giữ nguyên nguyện vọng chuyên gia đã chọn.
+ * Backend từ chối 'CONTRACTED' — trạng thái đó chỉ đạt được qua hành vi ký của chuyên gia.
+ */
+export async function approveExpert(
+	profileId: string,
+	expertType?: GrantableExpertType
+): Promise<void> {
+	await apiClient.post(`/api/v1/expert/profiles/${profileId}/approve`, null, {
+		params: expertType ? { expertType } : undefined,
+	});
+}
+
+/** Admin đổi nhóm chuyên gia — dùng để hạ khỏi nhóm hợp tác hoặc phát hành lại đề nghị. */
+export async function setExpertType(
+	profileId: string,
+	type: GrantableExpertType
+): Promise<void> {
+	await apiClient.patch(`/api/v1/expert/profiles/${profileId}/expert-type`, null, {
+		params: { type },
+	});
+}
+
+/** Chuyên gia tự chọn hình thức hợp tác ở bước 2 onboarding. */
+export async function chooseExpertType(type: GrantableExpertType): Promise<void> {
+	await apiClient.patch('/api/v1/expert/profiles/me/expert-type', null, {
+		params: { type },
+	});
 }
 
 export async function rejectExpert(profileId: string, reason?: string): Promise<void> {

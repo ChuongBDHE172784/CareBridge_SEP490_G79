@@ -40,12 +40,16 @@ class ConsultationRequestControllerTest {
 
     @Mock private IConsultationRequestService service;
 
+    private final com.carebridge.backend.consultation.matching.ExpertMatchingService matchingService =
+            org.mockito.Mockito.mock(
+                    com.carebridge.backend.consultation.matching.ExpertMatchingService.class);
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        ConsultationRequestController controller = new ConsultationRequestController(service);
+        ConsultationRequestController controller = new ConsultationRequestController(service, matchingService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -124,7 +128,7 @@ class ConsultationRequestControllerTest {
         when(service.listAssigned(eq(MOTHER_ID), eq(ConsultationRequestStatus.PENDING), any()))
                 .thenReturn(Page.empty());
 
-        new ConsultationRequestController(service).listAssigned(
+        new ConsultationRequestController(service, matchingService).listAssigned(
                 ConsultationRequestStatus.PENDING, 0, 20, () -> MOTHER_ID.toString());
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);

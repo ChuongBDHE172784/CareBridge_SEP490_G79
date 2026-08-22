@@ -13,6 +13,7 @@ import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.repository.ProfessionalSpecialtyRepository;
 import com.carebridge.backend.expert.service.IExpertProfileService;
+import com.carebridge.backend.expert.experttype.ExpertType;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
@@ -402,6 +403,18 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public void approveExpert(UUID expertProfileId, UUID adminId) {
+		approveExpert(expertProfileId, adminId, null);
+	}
+
+	@Override
+	public void approveExpert(UUID expertProfileId, UUID adminId, ExpertType grantedType) {
+		// CONTRACTED chỉ đạt được qua hành vi ký của chính chuyên gia ở /expert/contract/accept.
+		// Admin chỉ được đưa tới PENDING_CONTRACT (phát hành đề nghị) hoặc COMMUNITY (xếp xuống).
+		if (grantedType == ExpertType.CONTRACTED) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-CONTRACT-REQUIRED",
+				"Trạng thái hợp tác chỉ được xác lập khi chuyên gia chấp nhận Thoả thuận");
+		}
 		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
@@ -442,10 +455,65 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		profile.setVerificationStatus(VerificationStatus.APPROVED);
 		profile.setVerifiedAt(LocalDateTime.now());
 		profile.setVerifiedBy(adminId);
+		// grantedType == null nghĩa là admin giữ nguyên nguyện vọng chuyên gia đã chọn.
+		// Hồ sơ chưa chọn gì thì mặc định về COMMUNITY (fail-closed).
+		ExpertType resolvedType = grantedType != null
+			? grantedType
+			: (profile.getExpertType() != null ? profile.getExpertType() : ExpertType.COMMUNITY);
+		profile.setExpertType(resolvedType);
 		expertProfileRepository.save(profile);
 		auditService.log(AuditAction.EXPERT_VERIFICATION, adminId,
 			"ExpertProfile", expertProfileId.toString(),
-			Map.of("event", "FINAL_DECISION", "decision", "APPROVED"));
+			Map.of("event", "FINAL_DECISION", "decision", "APPROVED",
+				"expertType", resolvedType.name()));
+	}
+
+	// ── Chuyên gia tự chọn hình thức (bước 2 onboarding) ───────────────
+	@Override
+	public ExpertProfileDetailResponse chooseExpertType(UUID userId, ExpertType requestedType) {
+		if (requestedType == null || requestedType == ExpertType.CONTRACTED) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-TYPE-INVALID",
+				"Chỉ được chọn Chuyên gia Hệ thống (PENDING_CONTRACT) hoặc Chuyên gia Y tế Cộng đồng");
+		}
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(userId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-003", "Expert profile not found"));
+		// Đã ký rồi thì không cho tự đổi lại — phải qua admin.
+		if (profile.isContracted()) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.CONFLICT, "EXPERT-TYPE-LOCKED",
+				"Chuyên gia đã ký Thoả thuận hợp tác, vui lòng liên hệ quản trị viên để thay đổi");
+		}
+		profile.setExpertType(requestedType);
+		expertProfileRepository.save(profile);
+		auditService.log(AuditAction.EXPERT_VERIFICATION, userId,
+			"ExpertProfile", userId.toString(),
+			Map.of("event", "EXPERT_TYPE_REQUESTED", "requestedType", requestedType.name()));
+		return getMyProfile(userId);
+	}
+
+	// ── Admin đổi nhóm (hạ khỏi nhóm hợp tác / nâng lên chờ ký) ────────
+	@Override
+	public void setExpertType(UUID expertProfileId, ExpertType newType, UUID adminId) {
+		if (newType == null || newType == ExpertType.CONTRACTED) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-CONTRACT-REQUIRED",
+				"Trạng thái hợp tác chỉ được xác lập khi chuyên gia chấp nhận Thoả thuận");
+		}
+		ExpertProfile profile = expertProfileRepository.findByIdForUpdate(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.NOT_FOUND,
+				"EXPERT-003", "Expert profile not found"));
+		ExpertType previous = profile.getExpertType();
+		profile.setExpertType(newType);
+		expertProfileRepository.save(profile);
+		auditService.log(AuditAction.EXPERT_VERIFICATION, adminId,
+			"ExpertProfile", expertProfileId.toString(),
+			Map.of("event", previous == ExpertType.CONTRACTED ? "CONTRACT_TERMINATED" : "EXPERT_TYPE_CHANGED",
+				"from", previous != null ? previous.name() : "NONE",
+				"to", newType.name()));
 	}
 
 	@Override

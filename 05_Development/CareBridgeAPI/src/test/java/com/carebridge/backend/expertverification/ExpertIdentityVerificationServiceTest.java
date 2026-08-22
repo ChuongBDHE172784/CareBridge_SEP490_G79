@@ -58,6 +58,7 @@ class ExpertIdentityVerificationServiceTest {
     @Mock private DuplicateIdentityFaceService duplicateIdentityFaceService;
     @Mock private IFileService fileService;
     @Mock private AuditService auditService;
+    @Mock private com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository availabilityRepository;
 
     private ExpertIdentityVerificationServiceImpl service;
     private final UUID userId = UUID.randomUUID();
@@ -70,7 +71,7 @@ class ExpertIdentityVerificationServiceTest {
                 credentialService, profileMapper, userRepository,
                 careFacilityRepository,
                 pipelineAdapter, duplicateIdentityFaceService, fileService, auditService,
-                TransactionOperations.withoutTransaction());
+                TransactionOperations.withoutTransaction(), availabilityRepository);
     }
 
     @Test

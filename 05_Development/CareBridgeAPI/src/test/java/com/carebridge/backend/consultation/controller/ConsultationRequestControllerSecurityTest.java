@@ -33,6 +33,7 @@ class ConsultationRequestControllerSecurityTest {
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private IConsultationRequestService service;
+    @MockitoBean private com.carebridge.backend.consultation.matching.ExpertMatchingService matchingService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 

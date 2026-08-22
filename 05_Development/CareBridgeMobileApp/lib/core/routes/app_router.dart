@@ -88,7 +88,9 @@ import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
+import '../../features/expert/screens/expert_contract_screen.dart';
 import '../../features/expert/screens/expert_identity_capture_screen.dart';
+import '../../features/expert/screens/expert_type_choice_screen.dart';
 import '../../features/expert/services/expert_onboarding_store.dart';
 import '../../features/directChat/screens/expert_directory_screen.dart';
 import '../../features/directChat/screens/conversation_list_screen.dart';
@@ -283,6 +285,9 @@ final GoRouter appRouter = GoRouter(
     final isExpertOnboardingRoute =
         state.matchedLocation == '/expert-onboarding' ||
         state.matchedLocation == '/expert-profile-setup' ||
+        state.matchedLocation == '/expert/type' ||
+        state.matchedLocation == '/expert/contract' ||
+        state.matchedLocation == '/expert-calendar' ||
         state.matchedLocation == '/expert/identity' ||
         state.matchedLocation == '/expert/credentials' ||
         state.matchedLocation == '/expert-verification-status';
@@ -951,6 +956,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/expert/identity',
       builder: (context, state) => const ExpertIdentityCaptureScreen(),
+    ),
+    // Hai nhóm chuyên gia: bước chọn hình thức + trang ký Thoả thuận hợp tác.
+    // Cả hai path phải nằm trong whitelist isExpertOnboardingRoute ở trên.
+    GoRoute(
+      path: '/expert/type',
+      builder: (context, state) => const ExpertTypeChoiceScreen(),
+    ),
+    GoRoute(
+      path: '/expert/contract',
+      builder: (context, state) => const ExpertContractScreen(),
     ),
     GoRoute(
       path: '/expert/profile',
