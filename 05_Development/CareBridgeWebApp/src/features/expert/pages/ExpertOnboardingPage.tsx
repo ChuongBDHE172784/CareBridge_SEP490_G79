@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ContractStep, ExpertTypeStep } from '../components/ExpertTwoTierSteps';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, BadgeCheck, Camera, Check, FileBadge, RefreshCw, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, FileBadge, RefreshCw, ShieldCheck } from 'lucide-react';
 import {
   createMyProfile,
   getExpertOnboarding,
@@ -38,6 +38,15 @@ const steps = [
   ['CONTRACT', 'Ký thoả thuận'],
 ] as const;
 
+/** Bước ký thoả thuận chỉ áp dụng cho Chuyên gia Hệ thống. */
+function visibleStepsFor(expertType: string | null | undefined) {
+  return steps.filter(
+    ([step]) => step !== 'CONTRACT'
+      || expertType === 'PENDING_CONTRACT'
+      || expertType === 'CONTRACTED',
+  );
+}
+
 export default function ExpertOnboardingPage() {
   const navigate = useNavigate();
   const [state, setState] = useState<ExpertOnboardingResponse | null>(null);
@@ -65,6 +74,18 @@ export default function ExpertOnboardingPage() {
 
   const currentStep = overrideStep || state?.nextStep;
 
+  // CONTRACT chỉ thuộc luồng Chuyên gia Hệ thống, nên danh sách bước hiển thị
+  // phải lọc trước khi đánh số — nếu không, số thứ tự sẽ nhảy cóc.
+  const visibleSteps = visibleStepsFor(state?.expertType);
+  // serverIndex là tiến độ THẬT do máy chủ giữ; viewIndex là bước đang xem.
+  // Tách hai thứ này ra để người dùng lùi lại xem bước cũ mà không bị coi là
+  // tụt tiến độ, và quan trọng hơn: mọi bước sau serverIndex vẫn khoá, không
+  // thể nhảy qua khâu định danh rồi gửi hồ sơ.
+  const serverIndex = Math.max(0, visibleSteps.findIndex(([step]) => step === state?.nextStep));
+  const viewIndex = Math.max(0, visibleSteps.findIndex(([step]) => step === currentStep));
+  const isRevisiting = overrideStep !== null && viewIndex < serverIndex;
+  const goToStep = (index: number) => setOverrideStep(visibleSteps[index][0]);
+
   return (
     <div className="p-8 font-sans space-y-8 max-w-5xl mx-auto">
       {/* Header Banner */}
@@ -87,44 +108,74 @@ export default function ExpertOnboardingPage() {
         </div>
       </header>
 
-      {/* Stepper Steps */}
+      {/* Stepper — bước đã qua bấm được để xem và sửa lại */}
       <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {steps
-          .filter(([step]) => step !== 'CONTRACT' || state?.expertType === 'PENDING_CONTRACT' || state?.expertType === 'CONTRACTED')
-          .map(([key, label], index, steps) => {
-          const activeIndex = Math.max(0, steps.findIndex(([step]) => step === currentStep));
-          const complete = currentStep === 'COMPLETE' || index < activeIndex;
-          const active = index === activeIndex && currentStep !== 'COMPLETE';
+        {visibleSteps.map(([key, label], index) => {
+          const complete = currentStep === 'COMPLETE' || index < serverIndex;
+          const active = index === viewIndex && currentStep !== 'COMPLETE';
+          // Chỉ mở tới đúng mốc máy chủ cho phép; bước phía trước vẫn khoá.
+          const reachable = index <= serverIndex && currentStep !== 'COMPLETE';
           return (
-            <div
+            <button
               key={key}
-              className={`rounded-2xl border p-4 flex items-center gap-3.5 transition-all shadow-xs ${
-                complete
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-900'
-                  : active
+              type="button"
+              disabled={!reachable}
+              aria-current={active ? 'step' : undefined}
+              onClick={() => goToStep(index)}
+              className={`w-full text-left rounded-2xl border p-4 flex items-center gap-3.5 transition-all shadow-xs ${
+                active
                   ? 'border-primary bg-primary-container/30 text-primary font-bold shadow-sm'
+                  : complete
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-900'
                   : 'border-outline-variant/50 bg-surface text-outline'
-              }`}
+              } ${reachable ? 'cursor-pointer hover:shadow-sm' : 'cursor-not-allowed'}`}
             >
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  complete
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : active
+                  active
                     ? 'bg-primary text-on-primary shadow-xs'
+                    : complete
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-surface-container-highest text-outline'
                 }`}
               >
-                {complete ? <Check size={18} /> : index + 1}
+                {complete && !active ? <Check size={18} /> : index + 1}
               </div>
               <div>
                 <p className="text-[11px] text-outline font-semibold uppercase tracking-wider m-0">Bước {index + 1}</p>
                 <p className="text-sm font-bold m-0">{label}</p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
+
+      {/* Điều hướng lùi. Tách riêng khỏi stepper vì trên màn hình hẹp stepper
+          xếp thành nhiều dòng, nút bấm nằm lẫn trong đó sẽ khó thấy. */}
+      {currentStep !== 'COMPLETE' && (viewIndex > 0 || isRevisiting) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {viewIndex > 0 && (
+            <button
+              type="button"
+              onClick={() => goToStep(viewIndex - 1)}
+              className="inline-flex items-center gap-2 rounded-full border border-outline-variant px-5 py-2.5 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-variant"
+            >
+              <ArrowLeft size={16} />
+              Quay lại bước {viewIndex}: {visibleSteps[viewIndex - 1][1]}
+            </button>
+          )}
+          {isRevisiting && (
+            <button
+              type="button"
+              onClick={() => setOverrideStep(null)}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-on-primary-fixed-variant"
+            >
+              Về bước hiện tại: {visibleSteps[serverIndex]?.[1]}
+              <ArrowRight size={16} />
+            </button>
+          )}
+        </div>
+      )}
 
       {error && <ErrorBanner message={error} retry={reload} />}
       {currentStep === 'EXPERT_TYPE' && <ExpertTypeStep onDone={reload} />}
