@@ -38,15 +38,9 @@ public class RagPolicyServiceImpl implements RagPolicyService {
             executionContext = new RagExecutionContext(
                     context.mother(), context.triageStage(), mapCanonicalStage(context.triageStage()));
         } else if (context.mother()) {
-            ContentStage canonical = ContentStage.PREGNANCY;
-            UserStage mappedStage = UserStage.PREGNANCY;
-            try {
-                canonical = lifecycleContentStageResolver.resolve(context.callerId());
-                mappedStage = mapCanonicalStage(canonical);
-            } catch (Exception ignored) {
-                // Default to PREGNANCY context if no journey is configured yet
-            }
-            executionContext = new RagExecutionContext(true, canonical, mappedStage);
+            ContentStage canonical = lifecycleContentStageResolver.resolve(context.callerId());
+            executionContext = new RagExecutionContext(
+                    true, canonical, mapCanonicalStage(canonical));
         } else {
             UserStage stage = request.getUserStage() != null ? request.getUserStage() : UserStage.PREGNANCY;
             executionContext = new RagExecutionContext(false, null, stage);
