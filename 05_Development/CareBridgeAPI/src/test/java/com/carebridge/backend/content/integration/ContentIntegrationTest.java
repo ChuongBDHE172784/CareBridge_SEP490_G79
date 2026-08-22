@@ -151,7 +151,7 @@ class ContentIntegrationTest {
     @Test
     @WithMockUser(username = "1", roles = "USER")
     void getChecklists_stageParamPassedToService() throws Exception {
-        when(contentService.getChecklists(ContentStage.POSTPARTUM)).thenReturn(List.of());
+        when(contentService.getChecklists(ContentStage.BABY_CARE)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/content/checklists")
                         .param("stage", "BABY_CARE"))
@@ -159,7 +159,7 @@ class ContentIntegrationTest {
 
         ArgumentCaptor<ContentStage> stageCaptor = ArgumentCaptor.forClass(ContentStage.class);
         verify(contentService).getChecklists(stageCaptor.capture());
-        assertThat(stageCaptor.getValue()).isEqualTo(ContentStage.POSTPARTUM);
+        assertThat(stageCaptor.getValue()).isEqualTo(ContentStage.BABY_CARE);
     }
 
     @Test

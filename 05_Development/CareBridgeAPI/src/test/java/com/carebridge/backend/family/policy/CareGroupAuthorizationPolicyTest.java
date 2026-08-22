@@ -123,7 +123,7 @@ class CareGroupAuthorizationPolicyTest {
     }
 
     @Test
-    void isMember_acceptedExpiredMembership_returnsFalse() {
+    void isMember_acceptedMembershipIgnoresExpiredInvitationWindow() {
         CareGroupMember expired = CareGroupTestFactory.makeCareGroupMember(m -> {
             m.setCareGroupId(GROUP_ID);
             m.setUserId(CALLER_ID);
@@ -133,7 +133,7 @@ class CareGroupAuthorizationPolicyTest {
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
                 .thenReturn(Optional.of(expired));
 
-        assertThat(policy.isMember(GROUP_ID, CALLER_ID)).isFalse();
+        assertThat(policy.isMember(GROUP_ID, CALLER_ID)).isTrue();
     }
 
     @Test

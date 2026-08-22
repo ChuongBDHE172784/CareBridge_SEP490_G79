@@ -168,11 +168,11 @@ class HermeticProfileConfigurationTest {
     }
 
     @Test
-    void productionFlywayDefaults_AreStrictForTheSquashedBaseline() throws IOException {
+    void productionFlywayDefaults_AllowAdditiveMigrationsAfterTheSquashedBaseline() throws IOException {
         StandardEnvironment environment = loadConfiguration("application.yaml", Map.of());
 
         assertThat(environment.getProperty("spring.flyway.validate-on-migrate", Boolean.class))
-                .isTrue();
+                .isFalse();
         assertThat(environment.getProperty("spring.flyway.out-of-order", Boolean.class))
                 .isFalse();
         assertThat(environment.getProperty("spring.flyway.ignore-migration-patterns"))

@@ -13,9 +13,9 @@ class StageCompatibilityTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void legacyBabyCareJsonNormalizesToPostpartum() throws Exception {
+    void babyCareIsCanonicalForContentButNormalizesForLegacyConsumers() throws Exception {
         assertThat(objectMapper.readValue("\"BABY_CARE\"", ContentStage.class))
-                .isEqualTo(ContentStage.POSTPARTUM);
+                .isEqualTo(ContentStage.BABY_CARE);
         assertThat(objectMapper.readValue("\"BABY_CARE\"", PregnancyStage.class))
                 .isEqualTo(PregnancyStage.POSTPARTUM);
         assertThat(objectMapper.readValue("\"BABY_CARE\"", UserStage.class))
@@ -33,11 +33,12 @@ class StageCompatibilityTest {
     }
 
     @Test
-    void enumsExposeExactlyTheThreeCanonicalValues() {
+    void enumsExposeTheirCanonicalValues() {
         assertThat(ContentStage.values()).containsExactly(
                 ContentStage.PRE_PREGNANCY,
                 ContentStage.PREGNANCY,
-                ContentStage.POSTPARTUM);
+                ContentStage.POSTPARTUM,
+                ContentStage.BABY_CARE);
         assertThat(PregnancyStage.values()).containsExactly(
                 PregnancyStage.PRE_PREGNANCY,
                 PregnancyStage.PREGNANCY,
