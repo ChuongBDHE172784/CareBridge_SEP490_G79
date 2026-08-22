@@ -46,6 +46,14 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Flutter bật R8 cho bản release, nhưng proguard-rules.pro chỉ được
+            // đọc khi khai báo ở đây. Thiếu dòng này thì file luật nằm im và bản
+            // release crash ngay lúc mở: WorkManager không dựng nổi WorkDatabase
+            // vì lớp Room sinh ra đã bị R8 đổi tên.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
