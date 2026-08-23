@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-    'Mother Home embeds Today Tasks and View Content uses its canonical screen',
+    'Mother Home embeds Today Tasks without a legacy standalone screen',
     () {
       final mother = File(
         'lib/features/home/screens/mother_home_screen.dart',
@@ -17,8 +17,7 @@ void main() {
       expect(mother, contains('AddUserChecklistTaskButton('));
       expect(mother, contains('journeyId: _dashboard!.journeyId'));
       expect(mother, isNot(contains('TodayTasksScreen')));
-      expect(content, contains('TodayTasksScreen'));
-      expect(content, contains('TodayTasksScreen(journeyId: journeyId)'));
+      expect(content, isNot(contains('TodayTasksScreen')));
       expect(mother, isNot(contains('PreparationChecklistScreen')));
       expect(content, isNot(contains('PreparationChecklistScreen')));
       expect(mother, isNot(contains('_buildPreparationChecklistSection')));

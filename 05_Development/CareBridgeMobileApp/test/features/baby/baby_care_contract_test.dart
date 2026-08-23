@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/baby/models/baby_daily_log_model.dart';
-import 'package:untitled/features/baby/models/baby_care_composite_model.dart';
 import 'package:untitled/features/healthRecords/models/growth_measurement_model.dart';
 
 void main() {
@@ -70,65 +69,6 @@ void main() {
       );
       expect(
         () => LogTypeSummary.fromJson({'count': 1.5}),
-        throwsFormatException,
-      );
-    });
-  });
-
-  group('Baby care composite API contract', () {
-    test('parses overview, timeline, and preparation read models', () {
-      final overview = BabyCareOverview.fromJson({
-        'babyId': 'baby-1',
-        'nickname': 'Bông',
-        'journalCount': 4,
-        'growthMeasurementCount': 2,
-        'milestoneCount': 1,
-        'vaccinationRecordCount': 3,
-        'notice': 'For observation',
-      });
-      final timeline = BabyCareTimeline.fromJson({
-        'babyId': 'baby-1',
-        'events': [
-          {
-            'sourceType': 'JOURNAL',
-            'sourceId': 'log-1',
-            'occurredAt': '2026-08-05T02:30:00Z',
-            'displayLabel': 'FEEDING',
-          },
-        ],
-        'nextCursor': null,
-      });
-      final preparation = AppointmentPreparationSummary.fromJson({
-        'babyId': 'baby-1',
-        'facts': ['Baby: Bông'],
-        'dueItems': ['BCG (scheduled)'],
-        'notice': 'For observation',
-      });
-
-      expect(overview.journalCount, 4);
-      expect(timeline.events.single.sourceId, 'log-1');
-      expect(preparation.dueItems, ['BCG (scheduled)']);
-    });
-
-    test('rejects malformed composite counts and event timestamps', () {
-      expect(
-        () => BabyCareOverview.fromJson({
-          'babyId': 'baby-1',
-          'nickname': 'Bông',
-          'journalCount': -1,
-          'growthMeasurementCount': 0,
-          'milestoneCount': 0,
-          'vaccinationRecordCount': 0,
-        }),
-        throwsFormatException,
-      );
-      expect(
-        () => BabyCareTimelineEvent.fromJson({
-          'sourceType': 'JOURNAL',
-          'sourceId': 'log-1',
-          'occurredAt': 'not-a-date',
-          'displayLabel': 'FEEDING',
-        }),
         throwsFormatException,
       );
     });

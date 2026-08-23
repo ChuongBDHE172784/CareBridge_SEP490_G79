@@ -755,8 +755,7 @@ Trạng thái closure ngày 2026-07-18: `ĐẠT`.
 ## 12. Tài liệu liên quan
 
 - `06_Testing/TestCases/backend/MF-01-Story-6.1-Manual-Test-Guide.md`
-- `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/UC22 - Canonical Mother Lifecycle and Transition History_TDS.md`
-- `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/UC22 - Canonical Mother Lifecycle and Transition History_Test-Spec.md`
+- `02_Requirements/SRS/Report3_Functional_Specifications.md` — current consolidated UC catalogue
 - `05_Development/CareBridgeMobileApp/lib/features/journey/screens/mother_stage_selection_screen.dart`
 - `05_Development/CareBridgeMobileApp/lib/features/journey/screens/journey_setup_screen.dart`
 - `05_Development/CareBridgeMobileApp/lib/features/journey/screens/mother_journey_screen.dart`

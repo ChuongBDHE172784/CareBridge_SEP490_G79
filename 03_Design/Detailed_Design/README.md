@@ -1,59 +1,51 @@
-# Detailed Design — CareBridge Release 1
+# CareBridge Detailed Design — Code-First Baseline
 
-## 1. Baseline and structure
+> Status: **Draft**
+>
+> Baseline date: **2026-08-23**
+>
+> Feature authority: `02_Requirements/SRS/Report1_Project Introduction.md`, section **6.2 Major Features**
+>
+> Functional authority: current reachable Mobile/Web/API/AI code and tests, represented by the 88-use-case code-first catalogue
+>
+> Sequence convention: [`sequence-diagram-skill.md`](sequence-diagram-skill.md)
 
-This directory implements the current 91-use-case SRS baseline. It keeps one folder per MF and one or more implementation-flow Specs inside each folder. Every Spec preserves the required Field/Value metadata table, Main Flow Overview, Class Diagram, Sequence Diagram — Main Flow, named figure captions and Business Rules Applied.
+## Scope
 
-Use-case groups (Shared/Common, Mobile App and Web App) are recorded in Spec metadata; they do not replace the ten MF folders. State Machine diagrams are intentionally omitted. Sequence diagrams follow [sequence-diagram-skill.md](./sequence-diagram-skill.md).
+This directory contains exactly **10 release-1 Major Features**, **31 function-design documents**, and **88 uniquely owned code-first use cases**. It does not preserve the retired 91-UC structure when that structure conflicts with reachable code.
 
-## 2. Scope rules
+The same UC is owned by one MF only. Cross-feature consumers are noted as references rather than duplicated ownership. MF-11, MF-12, and CC-01 from Report1 are Version-2/cross-cutting scope and therefore do not create extra release-1 folders here.
 
-- User-approved scope and the current reachable Mobile/Web flow take precedence over unused legacy code.
-- Free expert requests, accepted direct chat, protected attachments and voice/video calls are active MF-05 flows.
-- Community identity, expert gamification, paid booking/payment/commission/refund, partner marketplace, nearby-expert request, connected devices and standalone RAG chat are excluded.
-- A class or endpoint without a supported reachable product flow is not sufficient to enter a Spec.
+## Major Feature Index
 
-## 3. Feature-to-Spec map
+| Major Feature | Code-aligned responsibility | Owned UCs | Function-design documents |
+| --- | --- | ---: | --- |
+| **MF-01 — Account, Trust & Access Control** | Identity, authentication, account lifecycle, consent, security governance, and audit controls. | 16 | [Account Registration, Authentication, and Sessions](MF01_Account_Trust_Access_Control/01_Account_Registration_Authentication_and_Sessions.md) — `UC-AC-01, UC-AC-02, UC-AC-03, UC-AC-04, UC-AC-05, UC-AC-07`<br>[Profile, Notifications, Privacy, and Account State](MF01_Account_Trust_Access_Control/02_Profile_Notifications_Privacy_and_Account_State.md) — `UC-AC-06, UC-AC-08, UC-AC-09, UC-AC-10, UC-AC-11`<br>[Admin Account Governance, Security, and Audit](MF01_Account_Trust_Access_Control/03_Admin_Account_Governance_Security_and_Audit.md) — `UC-AD-01, UC-AD-02, UC-AD-03, UC-AD-04, UC-AD-05` |
+| **MF-02 — Mother Care Journey** | Maternal journey onboarding, health tracking, screening, records, planning, checklists, and safe exercise. | 19 | [Mother Journey Onboarding, Lifecycle, and Recommendations](MF02_Mother_Care_Journey/01_Mother_Journey_Onboarding_Lifecycle_and_Recommendations.md) — `UC-MH-01, UC-MH-02, UC-MH-03, UC-MH-04, UC-MH-05, UC-MH-06`<br>[Maternal Metrics, Fetal Movement, Hydration, and AI Screening](MF02_Mother_Care_Journey/02_Maternal_Metrics_Fetal_Movement_Hydration_and_AI_Screening.md) — `UC-MH-07, UC-MH-08, UC-MH-09, UC-MH-11`<br>[Pregnancy Exercise Safety and Session](MF02_Mother_Care_Journey/03_Pregnancy_Exercise_Safety_and_Session.md) — `UC-MH-18, UC-MH-19`<br>[Personal Health Record and Attachment Lifecycle](MF02_Mother_Care_Journey/04_Personal_Health_Record_and_Attachment_Lifecycle.md) — `UC-MH-12`<br>[Appointments, Reminders, Checklists, and Today Tasks](MF02_Mother_Care_Journey/05_Appointments_Reminders_Checklists_and_Today_Tasks.md) — `UC-MH-13, UC-MH-14, UC-MH-15, UC-MH-16, UC-MH-17`<br>[EPDS Screening, History, and Family Notification](MF02_Mother_Care_Journey/06_EPDS_Screening_History_and_Family_Notification.md) — `UC-MH-10` |
+| **MF-03 — Baby Care Journey, Growth & Vaccination** | Baby profile and daily care, growth/development tracking, vaccination records, schedules, and reminders. | 8 | [Baby Profile, Daily Care, and Summary](MF03_Baby_Care_Journey_Growth_Vaccination/01_Baby_Profile_Daily_Care_and_Summary.md) — `UC-BC-01, UC-BC-02, UC-BC-03, UC-BC-04`<br>[Growth and Development Tracking](MF03_Baby_Care_Journey_Growth_Vaccination/02_Growth_and_Development_Tracking.md) — `UC-BC-05, UC-BC-06`<br>[Vaccination Record, Schedule, and Reminder](MF03_Baby_Care_Journey_Growth_Vaccination/03_Vaccination_Record_Schedule_and_Reminder.md) — `UC-BC-07, UC-BC-08` |
+| **MF-04 — Community Q&A & Moderation** | Community discovery, questions, answers, engagement, reporting, taxonomy, moderation, and AI policy controls. | 10 | [Community Q&A, Search, and Engagement](MF04_Community_QA_Moderation/01_Community_QA_Search_and_Engagement.md) — `UC-CO-01, UC-CO-02, UC-CO-03, UC-CO-04`<br>[Reporting, Moderation, Taxonomy, and AI Policy](MF04_Community_QA_Moderation/02_Reporting_Moderation_Taxonomy_and_AI_Policy.md) — `UC-CO-06, UC-AD-09, UC-AD-16, UC-AD-17, UC-AD-18, UC-AD-19` |
+| **MF-05 — Verified Expert Network** | Expert onboarding and trust, directory/availability, consultation requests, shared-care access, messaging, and calls. | 14 | [Expert Onboarding, Identity, Credentials, and Trust](MF05_Verified_Expert_Network/01_Expert_Onboarding_Identity_Credentials_and_Trust.md) — `UC-EX-01, UC-EX-02, UC-EX-03, UC-EX-04, UC-EX-05, UC-AD-06`<br>[Expert Directory and Availability](MF05_Verified_Expert_Network/02_Expert_Directory_and_Availability.md) — `UC-EX-06, UC-EX-07`<br>[Consultation Request and Shared Care Lifecycle](MF05_Verified_Expert_Network/03_Consultation_Request_and_Shared_Care_Lifecycle.md) — `UC-EX-08, UC-EX-09, UC-EX-12`<br>[Direct Messaging, Attachments, and Calls](MF05_Verified_Expert_Network/04_Direct_Messaging_Attachments_and_Calls.md) — `UC-EX-10, UC-EX-11, UC-AD-07` |
+| **MF-06 — AI Nurse Assistant** | RAG-backed conversational assistance with audience minimization, citations, clinical safety floor, and operational knowledge controls. | 3 | [AI Nurse RAG Chat and Safety Guardrails](MF06_AI_Nurse_Assistant/01_AI_Nurse_RAG_Chat_and_Safety_Guardrails.md) — `UC-AI-01`<br>[AI Knowledge Base and Diagnostics Operations](MF06_AI_Nurse_Assistant/02_AI_Knowledge_Base_and_Diagnostics_Operations.md) — `UC-AD-20, UC-AD-21` |
+| **MF-07 — Emergency Map & Nearby Care Support** | Nearby care discovery, route handoff, emergency sessions, location sharing, family alerts, and response. | 3 | [Emergency Map, Facility, Route, and Navigation](MF07_Emergency_Map_Nearby_Care_Support/01_Emergency_Map_Facility_Route_and_Navigation.md) — `UC-ES-01`<br>[Emergency Session, Family Alert, and Response](MF07_Emergency_Map_Nearby_Care_Support/02_Emergency_Session_Family_Alert_and_Response.md) — `UC-ES-02, UC-ES-03` |
+| **MF-08 — Family Sync & Cooperative Care** | Care groups, membership, permissions, care tasks, shared records, checklists, notes, and family dashboard views. | 5 | [Care Group and Membership Lifecycle](MF08_Family_Sync_Cooperative_Care/01_Care_Group_and_Membership_Lifecycle.md) — `UC-FM-01, UC-FM-02`<br>[Family Permissions and Shared Care Monitoring](MF08_Family_Sync_Cooperative_Care/02_Family_Permissions_and_Shared_Care_Monitoring.md) — `UC-FM-03, UC-FM-05`<br>[Family Care Task Assignment and Status](MF08_Family_Sync_Cooperative_Care/03_Family_Care_Task_Assignment_and_Status.md) — `UC-FM-04` |
+| **MF-09 — Content Hub** | Verified content lifecycle, checklist template versioning/distribution, exercise catalogue, and posture configuration. | 8 | [Verified Content Browse and Consumption](MF09_Content_Hub/01_Verified_Content_Browse_and_Consumption.md) — `UC-CO-05`<br>[Content Authoring, Review, Publishing, and Archive](MF09_Content_Hub/02_Content_Authoring_Review_Publishing_and_Archive.md) — `UC-AD-08, UC-AD-14, UC-AD-15`<br>[Checklist Template Versioning and Runtime Distribution](MF09_Content_Hub/03_Checklist_Template_Versioning_and_Runtime_Distribution.md) — `UC-AD-10, UC-AD-11`<br>[Exercise Catalogue and Posture Configuration](MF09_Content_Hub/04_Exercise_Catalogue_and_Posture_Configuration.md) — `UC-AD-12, UC-AD-13` |
+| **MF-10 — Smart Activity Monitoring & Safety Support** | Consent-bound fall-detection configuration, sensor self-test, impact events, safety checks, alerts, and feedback. | 2 | [Fall Detection Consent, Configuration, and Self-Test](MF10_Smart_Activity_Monitoring_Safety_Support/01_Fall_Detection_Consent_Configuration_and_Self_Test.md) — `UC-ES-04`<br>[Detected Impact, Safety Check, Alert, and Feedback](MF10_Smart_Activity_Monitoring_Safety_Support/02_Detected_Impact_Safety_Check_Alert_and_Feedback.md) — `UC-ES-05` |
 
-| Feature | Spec file | Use cases |
-| --- | --- | --- |
-| MF-01 — Account, Trust & Access Control | [01_Account_Registration_Authentication_Lifecycle.md](./MF01_Account_Trust_AccesControl/01_Account_Registration_Authentication_Lifecycle.md) | UC-01 Register Account; UC-02 Login; UC-03 Logout; UC-04 Reset Password; UC-05 Change Password |
-|  | [02_Account_Profile_Notifications_Privacy_Sessions.md](./MF01_Account_Trust_AccesControl/02_Account_Profile_Notifications_Privacy_Sessions.md) | UC-06 Manage Account Profile; UC-07 Manage Notifications; UC-08 Manage Privacy and Data Permissions; UC-09 Deactivate or Delete Own Account; UC-10 Submit Account Lock Appeal; UC-19 Manage Own Login Sessions |
-|  | [03_Admin_Account_Governance_Security_Audit.md](./MF01_Account_Trust_AccesControl/03_Admin_Account_Governance_Security_Audit.md) | UC-69 View Admin Dashboard; UC-70 Manage User Accounts and Roles; UC-71 Create Staff Account; UC-72 Review Account Lock Appeals; UC-73 Review Audit and Security Operations; UC-74 Manage System Configuration |
-| MF-02 — Mother Care Journey | [01_Mother_Journey_Lifecycle_Dashboard.md](./MF02_Mother_Care_Journey/01_Mother_Journey_Lifecycle_Dashboard.md) | UC-20 Manage Mother Journey; UC-33 View Personalized Care Recommendations |
-|  | [02_Maternal_Health_Postpartum_Quick_Notes.md](./MF02_Mother_Care_Journey/02_Maternal_Health_Postpartum_Quick_Notes.md) | UC-21 Manage Maternal Health Metrics; UC-22 Manage Postpartum Logs; UC-31 Record Quick Health Notes |
-|  | [03_Pregnancy_Exercise_Session_Safety.md](./MF02_Mother_Care_Journey/03_Pregnancy_Exercise_Session_Safety.md) | UC-27 Browse Pregnancy Exercises; UC-28 Complete Pre-exercise Safety Check; UC-29 Perform Camera-guided Exercise Session; UC-30 View Exercise History and Results |
-|  | [04_Personal_Health_Record_Lifecycle_Timeline.md](./MF02_Mother_Care_Journey/04_Personal_Health_Record_Lifecycle_Timeline.md) | UC-23 Manage Maternal Health Records |
-|  | [05_Appointment_Reminder_Today_Tasks.md](./MF02_Mother_Care_Journey/05_Appointment_Reminder_Today_Tasks.md) | UC-24 Manage Appointments; UC-25 Manage Reminders and Schedules; UC-26 View Today Care Tasks |
-|  | [06_EPDS_Screening_History_Safety.md](./MF02_Mother_Care_Journey/06_EPDS_Screening_History_Safety.md) | UC-32 Manage EPDS Screening |
-| MF-03 — Baby Care Journey, Growth & Vaccination | [01_Baby_Profile_Daily_Care_Overview.md](./MF03_Baby_Care_Growth_Vaccination/01_Baby_Profile_Daily_Care_Overview.md) | UC-34 Manage Baby Profiles; UC-35 Manage Baby Daily Logs; UC-39 Manage Baby Health Records |
-|  | [02_Growth_Development_Tracking.md](./MF03_Baby_Care_Growth_Vaccination/02_Growth_Development_Tracking.md) | UC-36 Manage Development Milestones; UC-37 Manage Baby Growth |
-|  | [03_Vaccination_Record_Schedule_Reminder.md](./MF03_Baby_Care_Growth_Vaccination/03_Vaccination_Record_Schedule_Reminder.md) | UC-38 Manage Vaccination Journey |
-| MF-04 — Community Q&A & Moderation | [01_Community_Question_Answer_Flow.md](./MF04_Community_QA_Moderation/01_Community_Question_Answer_Flow.md) | UC-11 Browse Community Q&A; UC-40 Manage Community Questions; UC-41 Manage Community Answers |
-|  | [02_Content_Moderation_Enforcement_Pipeline.md](./MF04_Community_QA_Moderation/02_Content_Moderation_Enforcement_Pipeline.md) | UC-42 Report Community Content or Account; UC-75 View Moderator Dashboard; UC-76 Review Pending Community Content; UC-77 Monitor Published Community Content; UC-78 Manage Community Reports; UC-79 Apply and Review Moderation Actions; UC-80 Review AI Moderation Assessment; UC-81 Manage Community Topics |
-| MF-05 — Verified Expert Network & Contribution | [01_Expert_Verification_Profile_Trust.md](./MF05_Verified_Expert_Network_Contribution/01_Expert_Verification_Profile_Trust.md) | UC-13 Register and Submit Expert Application; UC-14 Manage Expert Professional Profile; UC-82 Review Expert Applications and Trust |
-|  | [02_Expert_Directory_Availability.md](./MF05_Verified_Expert_Network_Contribution/02_Expert_Directory_Availability.md) | UC-15 Manage Expert Availability; UC-43 Browse Expert Directory |
-|  | [03_Expert_Conversation_Request_Lifecycle.md](./MF05_Verified_Expert_Network_Contribution/03_Expert_Conversation_Request_Lifecycle.md) | UC-16 Process Expert Conversation Requests; UC-44 Manage Own Expert Conversation Requests |
-|  | [04_Direct_Chat_Attachment_Voice_Video_Call.md](./MF05_Verified_Expert_Network_Contribution/04_Direct_Chat_Attachment_Voice_Video_Call.md) | UC-17 Use Direct Expert Chat; UC-18 Conduct Direct Voice or Video Call |
-| MF-06 — AI Nurse Assistant & Risk Triage | [01_AI_Symptom_Intake_Risk_Triage_Emergency_Handoff.md](./MF06_AI_Nurse_Assistant_Risk_Triage/01_AI_Symptom_Intake_Risk_Triage_Emergency_Handoff.md) | UC-45 Use AI Nurse Symptom Triage; UC-46 View AI Triage History; UC-47 Escalate AI Triage to Emergency Support; UC-48 Request Expert Support from AI Triage |
-| MF-07 — Emergency Map & Nearby Care Support | [01_Emergency_Map_Facility_Route_Navigation.md](./MF07_Emergency_Map_Nearby_Care_Support/01_Emergency_Map_Facility_Route_Navigation.md) | UC-49 Find Nearby Care Facility; UC-50 Call or Navigate to Care Facility |
-|  | [02_Emergency_Call_Family_Alert.md](./MF07_Emergency_Map_Nearby_Care_Support/02_Emergency_Call_Family_Alert.md) | UC-51 Call Emergency Number 115; UC-52 Alert Family During Emergency; UC-53 View Emergency or Family Alert |
-| MF-08 — Family Sync & Cooperative Care | [01_Care_Group_Invitation_Lifecycle.md](./MF08_Family_Sync_Cooperative_Care/01_Care_Group_Invitation_Lifecycle.md) | UC-54 Manage Care Groups; UC-55 Manage Care Group Invitations; UC-60 Manage Care Group Membership |
-|  | [02_Family_Permission_Shared_Visibility.md](./MF08_Family_Sync_Cooperative_Care/02_Family_Permission_Shared_Visibility.md) | UC-56 Manage Family Permissions; UC-57 View Shared Care Data; UC-58 View Shared Care Calendar; UC-61 View Family Alerts |
-|  | [03_Family_Care_Task_Assignment.md](./MF08_Family_Sync_Cooperative_Care/03_Family_Care_Task_Assignment.md) | UC-59 Manage Cooperative Care Tasks |
-| MF-09 — Verified Content & Checklist Hub | [01_Content_Browse_Consumption.md](./MF09_Verified_Content_Checklist_Hub/01_Content_Browse_Consumption.md) | UC-62 Browse Verified Content and FAQ |
-|  | [02_Content_Authoring_Review_Publishing_Lifecycle.md](./MF09_Verified_Content_Checklist_Hub/02_Content_Authoring_Review_Publishing_Lifecycle.md) | UC-84 View Content Administration Workspace; UC-85 Manage Verified Articles; UC-86 Manage Verified FAQs; UC-87 Manage Content Topics; UC-88 Review and Approve Content |
-|  | [03_Checklist_Template_Personal_Runtime.md](./MF09_Verified_Content_Checklist_Hub/03_Checklist_Template_Personal_Runtime.md) | UC-63 Manage Personal Care Checklist; UC-89 Manage Checklist Templates |
-|  | [04_Exercise_Content_Posture_Configuration.md](./MF09_Verified_Content_Checklist_Hub/04_Exercise_Content_Posture_Configuration.md) | UC-90 Manage Pregnancy Exercise Content; UC-91 Manage Exercise Posture Configuration |
-| MF-10 — Smart Activity Monitoring & Safety Support | [01_Monitoring_Configuration_Enable_Disable.md](./MF10_Smart_Activity_Monitoring_Safety_Support/01_Monitoring_Configuration_Enable_Disable.md) | UC-64 Manage Safety Monitoring Settings |
-|  | [02_Fall_Detection_Safety_Check_False_Positive_Feedback.md](./MF10_Smart_Activity_Monitoring_Safety_Support/02_Fall_Detection_Safety_Check_False_Positive_Feedback.md) | UC-65 Respond to Suspected Fall or Impact; UC-66 Send Safety Emergency Alert; UC-67 Review Safety Events and Report False Positive; UC-68 Open Emergency Support from Safety Alert |
+## Design Rules
 
-Total: 10 MF folders and 31 detailed Spec files.
+1. Report1 section 6.2 controls the 10 MF names; code controls functions and runtime logic.
+2. Every function table cites exact routes, handlers, delegated functions, authorization, and source files when resolvable.
+3. Class diagrams do not invent layers absent from code.
+4. Sequence diagrams keep actor → UI → middleware → controller/route → service/policy → repository/data store → external-system order, sequential numbering, balanced activation, and dashed returns.
+5. Images are not generator-owned. Existing `images/` files remain untouched so they can be cropped or replaced manually.
+6. `docs/AI/01_THIET_KE_KIEN_TRUC_AI_RAG_VA_BAO_VE_DO_AN.md` is an approved reference for MF-06 and is never rewritten by this generator.
+7. Structured AI triage session/history/handoff is Partial until a reachable client owns that lifecycle; AI Nurse release-1 design is the current RAG chat plus its safety guardrails and separate operator endpoints.
 
-## 4. Diagram convention
+## Regeneration and Validation
 
-Class diagrams use current UI, controller, service, repository, entity and external-service names. Sequence diagrams declare lifelines in call order, number every message, use nested branch numbering, pair synchronous calls with dashed returns and mirror processing with activation bars. HTTP outcomes show status codes. No State Machine Diagram is included.
+```bash
+python3 scripts/docs/generate_code_first_detailed_design.py
+python3 scripts/docs/generate_code_first_detailed_design.py --check
+```
 
-## 5. Review status
-
-All Specs are Draft. Known implementation gaps such as the Expert Web reject-method mismatch are documented as code gaps rather than redesigned as successful flows.
+`--check` verifies folder names, 31 documents, unique 88-UC ownership, required sections, PlantUML boundaries, numbered sequence messages, and exact generated content. It does not modify or validate image crops.

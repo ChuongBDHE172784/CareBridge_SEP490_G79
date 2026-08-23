@@ -376,7 +376,7 @@ Project-wide backend regression ở một số lần chạy vẫn đỏ do basel
 - Superseded Story 6.5 historical archive (not current behavior evidence)
 - `_bmad-output/implementation-artifacts/6-6-guarantee-deterministic-safety-escalation-and-postpartum-triage.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-17.md` — story-point baseline đã được phê duyệt (63 điểm)
-- `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/`
+- `02_Requirements/SRS/Report3_Functional_Specifications.md` — current consolidated UC catalogue
 - `_bmad-output/test-artifacts/test-design-epic-6.md`
 - `_bmad-output/test-artifacts/test-design-progress.md`
 - `_bmad-output/test-artifacts/story-6-5-manual/manual-run-summary.md` (superseded historical evidence)

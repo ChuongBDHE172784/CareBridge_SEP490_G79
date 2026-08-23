@@ -4,7 +4,6 @@ import 'package:untitled/features/checklist/services/user_checklist_service.dart
 import 'package:untitled/features/familySync/services/family_home_service.dart';
 import 'package:untitled/features/home/screens/family_member_home_screen.dart';
 import 'package:untitled/features/home/screens/mother_home_screen.dart';
-import 'package:untitled/features/reminder/screens/today_tasks_screen.dart';
 import 'package:untitled/features/reminder/services/today_task_service.dart';
 import 'package:untitled/features/reminder/widgets/today_tasks_panel.dart';
 
@@ -137,7 +136,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(TodayTasksScreen), findsNothing);
     expect(find.byType(TodayTasksPanel), findsOneWidget);
     expect(
       find.byKey(const Key('family-home-checklist-history-button')),

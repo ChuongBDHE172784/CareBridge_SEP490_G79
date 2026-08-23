@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/auth/blocked_account_state.dart';
-import '../../../../core/constants/support_contact.dart';
+import '../../../core/constants/support_contact.dart';
 import '../services/auth_service.dart';
 
 class BlockedAccountScreen extends StatefulWidget {

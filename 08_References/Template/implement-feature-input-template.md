@@ -10,7 +10,7 @@ Implement function theo workflow `implement-feature`:
 - Function ID: [e.g. 3.1.1.3]
 - Function name: [e.g. Login]
 - UC number: [e.g. UC03]
-- Workspace path: [optional; e.g. 04_Implement/UC03 - Login/]
+- Workspace path: [optional; e.g. 04_Implement/<feature-folder>/]
 - Requested mode: [Gemini handoff / review implementation returned by Gemini / readiness check only]
 - Approved artifacts:
   - TDS: [path + Approved by/date]
@@ -46,10 +46,10 @@ Implement function theo workflow `implement-feature`:
 ```md
 Implement function theo workflow `implement-feature`:
 
-- Function ID: 3.1.1.16
-- Function name: Manage Own Sessions
-- UC number: UC16
-- Workspace path: 04_Implement/UC16 - Manage Own Sessions/
+- Function ID: 3.2.1
+- Function name: Manage Own Login Sessions
+- UC number: UC-19
+- Workspace path: 04_Implement/<feature-folder>/
 - Requested mode: Gemini handoff
 - Approved artifacts:
   - TDS: Approved by user on 2026-06-25

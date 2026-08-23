@@ -855,8 +855,7 @@ Một lần chạy mới không được kết luận PASS chỉ dựa trên man
 
 ## 12. Tài liệu Tham khảo
 
-- `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/UC22 - Canonical Mother Lifecycle and Transition History_TDS.md`
-- `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/UC22 - Canonical Mother Lifecycle and Transition History_Test-Spec.md`
+- `02_Requirements/SRS/Report3_Functional_Specifications.md` — current consolidated UC catalogue
 - `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260718090000__canonical_mother_lifecycle_history.sql`
 - `05_Development/CareBridgeAPI/src/main/resources/db/migration/V20260718091000__enforce_mother_journey_transition_immutability.sql`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/controller/JourneyController.java`
