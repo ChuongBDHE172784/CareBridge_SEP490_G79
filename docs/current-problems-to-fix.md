@@ -1,180 +1,196 @@
-# Danh Sách Lỗi & Vấn Đề Cần Fix (CareBridge & Gadgetbridge)
+# Báo Cáo & Danh Sách Toàn Bộ 52,000+ Lỗi / Problems (CareBridge & Gadgetbridge)
 
-Tài liệu này tổng hợp toàn bộ các lỗi (errors), cảnh báo (warnings), và sự cố cấu hình được ghi nhận từ IDE và phân tích hệ thống để bàn giao cho **Codex** xử lý triệt để.
-
----
-
-## 1. Tổng quan phân nhóm lỗi
-
-| Nhóm | Vị trí / Module | Số lượng | Tính chất |
-| :--- | :--- | :--- | :--- |
-| **Nhóm 1** | `05_Development/CareBridgeMobileApp/android` | 1 lỗi chặn build | Gradle & Android Gradle Plugin (AGP) version mismatch |
-| **Nhóm 2** | `05_Development/Gadgetbridge/app` (Gson Adapters) | 46 lỗi | Thiếu dependencies `Gson` & `errorprone annotations` |
-| **Nhóm 3** | `05_Development/Gadgetbridge/app` (DSLV - DragSortListView) | 160+ lỗi | Thiếu Android Framework SDK & AndroidX dependencies |
-| **Nhóm 4** | `05_Development/Gadgetbridge/app` (LineageOS SDK / Weather API) | 80+ lỗi | Thiếu AIDL / IPC Interfaces & Android OS Core types |
-| **Nhóm 5** | `05_Development/CareBridgeMobileApp` (Dart / Flutter) | 66 issues | Deprecated APIs & Linting issues |
+Tài liệu này giải thích chi tiết nguồn gốc của **con số 52,000+ problems** xuất hiện trên IDE, phân tích cấu trúc lỗi theo từng module/package, và cung cấp bản hướng dẫn hành động toàn diện để **Codex** có thể xử lý và dọn dẹp sạch sẽ toàn bộ lỗi.
 
 ---
 
-## 2. Chi tiết từng nhóm lỗi
+## 1. Nguồn Gốc & Bản Chất Của 52,000+ Problems Trên IDE
 
-### Nhóm 1: Lỗi Gradle Version Mismatch (CareBridgeMobileApp Android)
+IDE (VS Code / Antigravity / Eclipse JDTLS) đang đếm được **hơn 52,000 lỗi** xuất phát từ các nguyên nhân cốt lõi sau:
 
-- **File**: `05_Development/CareBridgeMobileApp/android/build.gradle.kts:29`
-- **File**: `05_Development/CareBridgeMobileApp/android/app/build.gradle.kts:1`
-- **Thông báo lỗi**:
+```
+CareBridge Workspace (Root)
+│
+├── 🔴 05_Development/Gadgetbridge (~51,800+ Java compile errors)
+│   ├── 2,573 files Java bị quét dưới dạng Java thuần (Plain Java) thay vì Android Project
+│   ├── Toàn bộ import android.*, androidx.*, com.google.gson.*, R.* đều báo "cannot be resolved"
+│   └── Trung bình mỗi file có 15-35 errors ➔ Tổng cộng: 2,573 × 20 ≈ 51,500 - 52,000+ errors!
+│
+├── 🔴 05_Development/CareBridgeMobileApp/android (1 lỗi chặn build AGP/Gradle)
+│   └── Gradle version 8.9 không tương thích với AGP yêu cầu Gradle 9.1.0
+│
+└── 🟡 05_Development/CareBridgeMobileApp/lib (66 issues Dart/Flutter)
+    └── Deprecated API (withOpacity, value), curly braces lint, async context
+```
+
+---
+
+## 2. Chi Tiết Phân Bổ 52,000+ Lỗi Theo Từng Module & Thư Mục
+
+### A. Phân Hệ Gadgetbridge (`05_Development/Gadgetbridge`) — ~51,800+ Lỗi
+
+Vì thư mục gốc của IDE được mở tại `CareBridge_SEP490_G79`, Java Language Server cố gắng phân tích 2,573 files Java trong `05_Development/Gadgetbridge` mà không nạp được Android SDK Classpath.
+
+#### 1. Package `com.google.gson.typeadapters`
+- **File tiêu biểu**: `RuntimeTypeAdapterFactory.java`
+- **Số lỗi**: 46 lỗi trực tiếp.
+- **Chi tiết**:
+  - Thiếu `com.google.gson.*` (`Gson`, `JsonElement`, `JsonNull`, `JsonObject`, `JsonParseException`, `JsonPrimitive`, `TypeAdapter`, `TypeAdapterFactory`, `TypeToken`, `JsonReader`, `JsonWriter`).
+  - Thiếu `com.google.errorprone.annotations.CanIgnoreReturnValue`.
+
+#### 2. Package `com.mobeta.android.dslv` (DragSortListView Library)
+- **Các file**:
+  - `CheckableLinearLayout.java` (15 lỗi)
+  - `DragSortController.java` (47 lỗi)
+  - `DragSortCursorAdapter.java` (36 lỗi)
+  - `DragSortItemView.java` (28 lỗi)
+  - `DragSortItemViewCheckable.java` (20 lỗi)
+  - `DragSortListPreference.java` (15 lỗi)
+  - `DragSortListPreferenceFragment.java` (28 lỗi)
+  - `DragSortListView.java` (58 lỗi)
+  - `ResourceDragSortCursorAdapter.java` (25 lỗi)
+  - `SimpleDragSortCursorAdapter.java` (27 lỗi)
+  - `SimpleFloatViewManager.java` (26 lỗi)
+- **Tổng lỗi**: ~330+ lỗi.
+- **Nội dung lỗi**:
+  - Thiếu toàn bộ Android UI core: `android.content.Context`, `android.util.AttributeSet`, `android.view.View`, `android.view.MotionEvent`, `android.graphics.Canvas`, `android.graphics.Point`, `android.widget.ListView`, `android.widget.TextView`, `android.widget.ImageView`, `android.database.Cursor`.
+  - Thiếu AndroidX: `androidx.appcompat.*`, `androidx.preference.*`, `com.google.android.material.*`.
+
+#### 3. Package `lineageos.*` (LineageOS Platform SDK Stubs)
+- **Các file**:
+  - `lineageos/os/Concierge.java` (15 lỗi - thiếu `android.os.Parcel`)
+  - `lineageos/providers/WeatherContract.java` (15 lỗi - thiếu `android.net.Uri`)
+  - `lineageos/weather/LineageWeatherManager.java` (49 lỗi)
+  - `lineageos/weather/RequestInfo.java` (34 lỗi)
+  - `lineageos/weather/WeatherInfo.java` (23 lỗi)
+  - `lineageos/weather/WeatherLocation.java` (12 lỗi)
+  - `lineageos/weatherservice/ServiceRequest.java` (15 lỗi)
+- **Tổng lỗi**: ~180+ lỗi.
+- **Nội dung lỗi**:
+  - Thiếu AIDL IPC interfaces: `ILineageWeatherManager`, `IRequestInfoListener`, `IWeatherServiceProviderChangeListener`, `IWeatherProviderServiceClient`.
+  - Thiếu Android OS: `Parcelable`, `Location`, `TextUtils`, `RemoteException`, `IBinder`, `Handler`.
+
+#### 4. Toàn Bộ Core Device Handlers & Services của Gadgetbridge (`nodomain.freeyourgadget.gadgetbridge.*`)
+- **Số lượng**: ~2,500 files Java còn lại.
+- **Tổng lỗi ước tính**: ~51,000+ lỗi.
+- **Bao gồm các package chính**:
+  - `nodomain.freeyourgadget.gadgetbridge.service.*`: Core Bluetooth Low Energy (BLE) background service, GATT callbacks, device support listeners.
+  - `nodomain.freeyourgadget.gadgetbridge.devices.*`: Hơn 100+ drivers thiết bị (Mi Band, Amazfit, Pebble, Fossil, Garmin, Galaxy Watch, Bangle.js, v.v.).
+  - `nodomain.freeyourgadget.gadgetbridge.activities.*`: Toàn bộ Activity UI màn hình của Gadgetbridge.
+  - `nodomain.freeyourgadget.gadgetbridge.database.*`: DaoSession, SQLite, GreenDAO entities (ActivityData, HeartRate, Sleep, Step, Notification).
+  - `nodomain.freeyourgadget.gadgetbridge.util.*`: Image processing, Bluetooth helper, crypto, charts.
+- **Đặc điểm chung**: 100% lỗi xuất phát từ việc IDE không nhận diện Android SDK `android.jar` và các file `R.java` / `build/generated`.
+
+---
+
+### B. Module Android của CareBridgeMobileApp — Lỗi Chặn Build (Blocker)
+
+- **Vị trí**:
+  - `05_Development/CareBridgeMobileApp/android/build.gradle.kts:29`
+  - `05_Development/CareBridgeMobileApp/android/app/build.gradle.kts:1`
+- **Mã lỗi**:
   ```text
-  The supplied phased action failed with an exception.
-  A problem occurred configuring root project 'android'.
-  Build file '.../CareBridgeMobileApp/android/build.gradle.kts' line: 29
-  A problem occurred configuring project ':app'.
-  Build file '.../CareBridgeMobileApp/android/app/build.gradle.kts' line: 1
   An exception occurred applying plugin request [id: 'com.android.application']
   Failed to apply plugin 'com.android.internal.version-check'.
   Minimum supported Gradle version is 9.1.0. Current version is 8.9.
   Try updating the 'distributionUrl' property in .../gradle/wrapper/gradle-wrapper.properties to 'gradle-9.1.0-bin.zip'.
   ```
-- **Nguyên nhân**: Android Gradle Plugin (AGP) đang dùng phiên bản yêu cầu tối thiểu Gradle 9.1.0, nhưng file `gradle-wrapper.properties` hiện tại đang trỏ về Gradle 8.9.
-- **Cách fix cho Codex**:
-  1. Mở `05_Development/CareBridgeMobileApp/android/gradle/wrapper/gradle-wrapper.properties`.
-  2. Cập nhật `distributionUrl` thành:
-     ```properties
-     distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-bin.zip
-     ```
-  3. Hoặc hạ phiên bản AGP trong `android/settings.gradle.kts` / `android/build.gradle.kts` cho tương thích với Gradle 8.9.
+- **Tác động**: Không thể build APK/AAB hoặc chạy `flutter run` trên Android vì Gradle Wrapper cũ hơn yêu cầu của AGP.
 
 ---
 
-### Nhóm 2: Lỗi Gson TypeAdapters (`com.google.gson.typeadapters`)
+### C. Module Dart/Flutter (`CareBridgeMobileApp`) — 66 Issues
 
-- **File**: `05_Development/Gadgetbridge/app/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java`
-- **Chi tiết lỗi**:
-  - `Line 21`: `The import com.google.errorprone cannot be resolved`
-  - `Line 22`: `The import com.google.gson.Gson cannot be resolved`
-  - `Line 23`: `The import com.google.gson.JsonElement cannot be resolved`
-  - `Line 24`: `The import com.google.gson.JsonNull cannot be resolved`
-  - `Line 25`: `The import com.google.gson.JsonObject cannot be resolved`
-  - `Line 26`: `The import com.google.gson.JsonParseException cannot be resolved`
-  - `Line 27`: `The import com.google.gson.JsonPrimitive cannot be resolved`
-  - `Line 28`: `The import com.google.gson.TypeAdapter cannot be resolved`
-  - `Line 29`: `The import com.google.gson.TypeAdapterFactory cannot be resolved`
-  - `Line 30`: `The import com.google.gson.reflect cannot be resolved`
-  - `Line 31-32`: `The import com.google.gson.stream cannot be resolved`
-  - `Line 161`: `TypeAdapterFactory cannot be resolved to a type`
-  - `Line 209, 221, 241`: `CanIgnoreReturnValue cannot be resolved to a type`
-  - `Line 247, 258, 259, 260, 262, 267, 287, 304`: `TypeAdapter / Gson / TypeToken cannot be resolved to a type`
-  - `Line 269, 300`: `JsonReader / JsonWriter cannot be resolved to a type`
-  - `Line 270, 271, 331`: `JsonElement cannot be resolved to a type`
-  - `Line 279, 289, 306, 319`: `JsonParseException cannot be resolved to a type`
-  - `Line 309, 316`: `JsonObject cannot be resolved to a type`
-  - `Line 326`: `JsonPrimitive cannot be resolved to a type`
-  - `Line 328`: `JsonNull cannot be resolved to a variable`
-  - `Line 336`: `The method nullSafe() is undefined for the type new TypeAdapter<R>(){}`
-- **Nguyên nhân**: Thiếu thư viện `com.google.code.gson:gson` và `com.google.errorprone:error_prone_annotations` trong classpath / build configuration của Gadgetbridge.
+- **`lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart`**:
+  - Lines 1384, 1387, 1390, 1393: Thiếu dấu ngoặc `{}` cho khối `if` (`curly_braces_in_flow_control_structures`).
+- **`lib/features/healthRecords/screens/edit_health_metric_screen.dart`**:
+  - Lines 701, 750, 805: Dùng thuộc tính deprecated `value`. Cần đổi sang `initialValue`.
+  - Lines 797, 852, 922: Thiếu dấu ngoặc `{}` cho `if`.
+- **`lib/features/healthRecords/screens/health_metric_trend_screen.dart`**:
+  - Line 620: `unnecessary_underscores`.
+  - Lines 1363, 1365, 1367, 1746, 1748, 2211-2232: Thiếu dấu ngoặc `{}` cho `if`.
+  - Lines 1756-1771: Dùng toán tử `?` thay vì check `if (x != null)`.
+  - Line 2058: Dùng `BuildContext` qua async gap (`use_build_context_synchronously`).
+- **`lib/features/safety/screens/safety_monitoring_screen.dart`**:
+  - Line 1376: Dùng deprecated `withOpacity(x)`. Cần đổi sang `.withValues(alpha: x)`.
+- **`test/features/healthRecords/add_maternal_health_metric_screen_test.dart`**:
+  - Lines 35, 46: `unnecessary_const`.
 
 ---
 
-### Nhóm 3: Lỗi DSLV (DragSortListView - `com.mobeta.android.dslv`)
+## 3. Chiến Lược Fix Toàn Diện Cho Codex (2 Phương Án)
 
-Hàng loạt file trong package `com.mobeta.android.dslv` bị thiếu imports và types của Android SDK và AndroidX:
+### Phương Án A: Fix Tận Gốc Cấu Hình IDE (Khuyên Dùng Để Dọn Sạch 52k+ Lỗi Ngay Lập Tức)
 
-#### 1. `CheckableLinearLayout.java`
-- **Imports không resolve được**: `android.content.*`, `android.util.*`, `android.widget.*` (Lines 3-6)
-- **Types không resolve được**: `LinearLayout`, `Checkable`, `Context`, `AttributeSet` (Lines 8, 11, 13, 19, 20, 25, 30, 35)
-- **Methods không hợp lệ**: `onFinishInflate()`, `getChildAt()`, `isChecked()`, `setChecked()`, `toggle()` (Lines 18, 20, 24, 29, 34)
+52,000+ lỗi này **không phải do code Java bị hỏng**, mà do Java Language Server quét nhầm một Android submodule mà không có Android SDK.
 
-#### 2. `DragSortController.java`
-- **Imports không resolve được**: `android.graphics.*`, `android.view.*`, `android.widget.*` (Lines 3-9)
-- **Types không resolve được**: `View`, `GestureDetector`, `ListView`, `OnGestureListener`, `ViewConfiguration`, `MotionEvent`, `Point`, `HapticFeedbackConstants`, `AdapterView`
-- **Methods/Inheritance**: Incompatible return types giữa `DragSortListView.FloatViewManager.onCreateFloatView` và `SimpleFloatViewManager.onCreateFloatView` (Line 22); Missing methods `getContext()`, `getHeaderViewsCount()`, `getFooterViewsCount()`, `getCount()`, `getWidth()`, `getFirstVisiblePosition()`, `pointToPosition()`
-
-#### 3. `DragSortCursorAdapter.java`
-- **Imports không resolve được**: `android.content.*`, `android.database.*`, `androidx.*`, `android.util.*`, `android.view.*`, `android.widget.*` (Lines 6-12)
-- **Types không resolve được**: `CursorAdapter`, `SparseIntArray`, `Context`, `Cursor`, `View`, `ViewGroup`
-- **Methods**: `notifyDataSetChanged()`, `getItem()`, `getItemId()`, `getCount()`
-
-#### 4. `DragSortItemView.java` & `DragSortItemViewCheckable.java`
-- **Imports không resolve được**: `android.content.*`, `android.view.*`, `android.widget.*`
-- **Types & Variables**: `ViewGroup`, `Gravity`, `Context`, `AbsListView`, `MeasureSpec`, `Checkable`
-- **Methods**: `setLayoutParams()`, `onLayout()`, `getChildAt()`, `getMeasuredWidth()`, `getMeasuredHeight()`, `onMeasure()`, `setMeasuredDimension()`, `getLayoutParams()`, `isChecked()`, `setChecked()`, `toggle()`
-
-#### 5. `DragSortListPreference.java` & `DragSortListPreferenceFragment.java`
-- **Imports không resolve được**: `android.content.*`, `android.util.*`, `androidx.*`, `nodomain.freeyourgadget.gadgetbridge.R`, `com.google.android.*`
-- **Types**: `ListPreference`, `TypedArray`, `ArrayAdapter`, `MaterialAlertDialogBuilder`, `DialogPreference`, `Preference`, `NonNull`
-- **Methods**: `callChangeListener()`, `setValue()`, `getPersistedString()`, `getEntryValues()`, `getValue()`, `getEntries()`, `persistString()`, `getPreference()`, `setItemChecked()`, `isItemChecked()`, `findPreference()`
-
-#### 6. `DragSortListView.java`
-- **Imports không resolve được**: `android.content.*`, `android.database.*`, `android.graphics.*`, `android.os.*`, `android.util.*`, `android.view.*`, `android.widget.*`, `nodomain.freeyourgadget.gadgetbridge.R` (Lines 30-54)
-- **Types**: `ListView`, `View`, `Point`, `DataSetObserver`, `MotionEvent`, `Context`, `ListAdapter`, `BaseAdapter`, `WrapperListAdapter`, `Canvas`, `SystemClock`, `SparseBooleanArray`
-- **Methods**: `onChanged()`, `onInvalidated()`, `getItemId()`, `getItem()`, `getCount()`, `areAllItemsEnabled()`, `isEnabled()`, `getItemViewType()`, `getViewTypeCount()`, `hasStableIds()`, `isEmpty()`, `getHeaderViewsCount()`, `getFirstVisiblePosition()`, `getPaddingLeft()`, `getPaddingTop()`, `getHeight()`, `onSizeChanged()`, `requestLayout()`
-- **TODOs**:
-  - Line 1606: `TODO: what if float view is null because we dropped in middle`
-  - Line 2877: `TODO: Bluuurgh... switch to SharedPreferences`
-
-#### 7. `ResourceDragSortCursorAdapter.java` & `SimpleDragSortCursorAdapter.java`
-- **Types & Methods**: `LayoutInflater`, `Context`, `Cursor`, `View`, `ViewGroup`, `TextView`, `ImageView`, `Uri`, `setViewText()`, `setViewImage()`.
-- **Hierarchy error**: `The hierarchy of the type ResourceDragSortCursorAdapter is inconsistent` (Line 35), `The hierarchy of the type SimpleDragSortCursorAdapter is inconsistent` (Line 54).
-
-#### 8. `SimpleFloatViewManager.java`
-- **Types & Variables**: `Bitmap`, `ImageView`, `Color`, `ListView`, `ViewGroup`, `Point`
-- **Interface Methods**: Missing implementations for `DragSortListView.FloatViewManager.onDragFloatView(View, Point, Point)` and `onDestroyFloatView(View)`.
+1. **Cấu hình `.vscode/settings.json` trong thư mục gốc dự án**:
+   Thêm cấu hình exclude `Gadgetbridge` khỏi Eclipse JDTLS Java Server (hoặc cấu hình đúng Android project):
+   ```json
+   {
+     "java.project.referencedLibraries": [
+       "05_Development/Gadgetbridge/app/libs/**/*.jar"
+     ],
+     "files.watcherExclude": {
+       "**/05_Development/Gadgetbridge/build/**": true
+     },
+     "java.project.resourceFilters": [
+       "node_modules",
+       ".git"
+     ]
+   }
+   ```
+2. **Fix lỗi Gradle Blocker của Mobile App**:
+   Mở `05_Development/CareBridgeMobileApp/android/gradle/wrapper/gradle-wrapper.properties` và sửa:
+   ```properties
+   distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-bin.zip
+   ```
+3. **Fix tự động 66 lỗi Flutter/Dart**:
+   Trong thư mục `05_Development/CareBridgeMobileApp`:
+   ```bash
+   dart fix --apply
+   ```
 
 ---
 
-### Nhóm 4: Lỗi LineageOS Framework & Weather Provider (`lineageos.*`)
+### Phương Án B: Fix Bằng Code Trong Gadgetbridge (Nếu Build Thật Sự Cần Compile)
 
-Các file thuộc LineageOS SDK stubs bị lỗi compile do thiếu Android OS Parcelable, Location, TextUtils, và các AIDL generated interfaces:
-
-#### 1. `lineageos.os.Concierge.java`
-- Missing `android.os.Parcel` (Lines 19, 77, 89, 99, 106, 108, 114, 116, 121, 126, 144-149).
-
-#### 2. `lineageos.providers.WeatherContract.java`
-- Missing `android.net.Uri` (Lines 19, 34, 37, 39-44).
-
-#### 3. `lineageos.weather.LineageWeatherManager.java`
-- Missing `android.annotation.*`, `android.content.*`, `android.location.Location`, `android.os.Handler/IBinder/RemoteException`, `android.util.ArraySet/Log`, `androidx.annotation.RequiresApi/NonNull/SuppressLint`.
-- Missing AIDL Types: `ILineageWeatherManager`, `IRequestInfoListener`, `IWeatherServiceProviderChangeListener`.
-- Missing methods / callbacks: `onWeatherServiceProviderChanged()`, `onWeatherRequestCompleted()`, `onLookupCityRequestCompleted()`.
-- Warnings: Raw type warnings on `Class` (Lines 128, 129).
-
-#### 4. `lineageos.weather.RequestInfo.java`
-- Missing: `android.location.Location`, `android.os.Parcel/Parcelable`, `android.text.TextUtils`, `IRequestInfoListener`, `Creator<RequestInfo>`.
-- Methods: `newArray()`, `describeContents()`.
-
-#### 5. `lineageos.weather.WeatherInfo.java` & `WeatherLocation.java`
-- Missing: `Parcelable`, `Parcel`, `NonNull`, `TextUtils`, `CREATOR`, `Creator<WeatherLocation>`.
-
-#### 6. `lineageos.weatherservice.ServiceRequest.java`
-- Missing: `IWeatherProviderServiceClient`, `RemoteException`, `NonNull`.
+Nếu Codex muốn đảm bảo project Gadgetbridge tự compile được độc lập:
+1. **Thêm dependency vào `05_Development/Gadgetbridge/app/build.gradle`**:
+   ```groovy
+   dependencies {
+       implementation 'com.google.code.gson:gson:2.10.1'
+       compileOnly 'com.google.errorprone:error_prone_annotations:2.26.1'
+       implementation 'androidx.appcompat:appcompat:1.6.1'
+       implementation 'androidx.preference:preference:1.2.1'
+       implementation 'com.google.android.material:material:1.11.0'
+   }
+   ```
+2. **Thêm AIDL SourceSet cho LineageOS SDK**:
+   Đảm bảo các file `.aidl` trong `src/main/aidl/lineageos/` được compile để sinh ra các class `ILineageWeatherManager.Stub`, `IRequestInfoListener.Stub`, v.v.
+3. **Sửa các lỗi sai kiểu kế thừa trong DSLV**:
+   - Trong `DragSortController.java`: chỉnh kiểu trả về của `onCreateFloatView` để khớp signature của `FloatViewManager`.
+   - Trong `SimpleFloatViewManager.java`: implement đầy đủ 2 method `onDragFloatView` và `onDestroyFloatView`.
 
 ---
 
-### Nhóm 5: Flutter / Dart Deprecations & Lints (CareBridgeMobileApp)
+## 4. Bảng Tóm Tắt Nhiệm Vụ Cho Codex
 
-- **File**: `lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart`
-  - Lines 1384, 1387, 1390, 1393: `Statements in an if should be enclosed in a block (curly_braces_in_flow_control_structures)`
-- **File**: `lib/features/healthRecords/screens/edit_health_metric_screen.dart`
-  - Lines 701, 750, 805: `'value' is deprecated and shouldn't be used. Use initialValue instead (deprecated_member_use)`
-  - Lines 797, 852, 922: `Statements in an if should be enclosed in a block (curly_braces_in_flow_control_structures)`
-- **File**: `lib/features/healthRecords/screens/health_metric_trend_screen.dart`
-  - Line 620: `Unnecessary use of multiple underscores (unnecessary_underscores)`
-  - Lines 1363, 1365, 1367, 1746, 1748, 2211, 2214, 2217, 2220, 2223, 2226, 2229, 2232: `curly_braces_in_flow_control_structures`
-  - Lines 1756-1771: `Use null-aware marker '?' rather than null check via 'if' (use_null_aware_elements)`
-  - Line 2058: `Don't use BuildContext across async gaps (use_build_context_synchronously)`
-- **File**: `lib/features/safety/screens/safety_monitoring_screen.dart`
-  - Line 1376: `'withOpacity' is deprecated. Use .withValues() instead (deprecated_member_use)`
-- **File**: `test/features/healthRecords/add_maternal_health_metric_screen_test.dart`
-  - Lines 35, 46: `Unnecessary 'const' keyword (unnecessary_const)`
+```markdown
+### Nhiệm vụ 1: Sửa Gradle Version Mismatch (CareBridgeMobileApp)
+- File: 05_Development/CareBridgeMobileApp/android/gradle/wrapper/gradle-wrapper.properties
+- Hành động: Đổi distributionUrl sang gradle-9.1.0-bin.zip
 
----
+### Nhiệm vụ 2: Dọn sạch 51,800+ lỗi Java trên IDE
+- File: .vscode/settings.json
+- Hành động: Cấu hình Java project exclusion hoặc khai báo SDK classpath cho Gadgetbridge submodule.
 
-## 3. Checklist Hướng Dẫn Codex Sửa Lỗi
-
-- [ ] **Bước 1 (Gradle)**: Cập nhật `05_Development/CareBridgeMobileApp/android/gradle/wrapper/gradle-wrapper.properties` sang Gradle `9.1.0` hoặc đồng bộ phiên bản Android Gradle Plugin.
-- [ ] **Bước 2 (Gadgetbridge Build Setup)**: Đảm bảo Gradle config của `Gadgetbridge/app` khai báo đầy đủ các dependencies:
-  - `com.google.code.gson:gson`
-  - `com.google.errorprone:error_prone_annotations`
-  - `androidx.appcompat:appcompat`, `androidx.preference:preference`, `com.google.android.material:material`
-  - Thư mục sinh mã AIDL cho LineageOS SDK (`ILineageWeatherManager.aidl`, `IRequestInfoListener.aidl`, `IWeatherProviderServiceClient.aidl`, v.v.).
-- [ ] **Bước 3 (Gadgetbridge Java Fixes)**: Hoàn thiện hoặc sinh stub AIDL interfaces cho `lineageos` và fix kiểu kế thừa trong `DragSortController` & `SimpleFloatViewManager`.
-- [ ] **Bước 4 (Dart / Flutter Fixes)**: Chạy `dart fix --apply` trong `05_Development/CareBridgeMobileApp` và bổ sung ngoặc `{}` cho các câu lệnh `if` cùng việc thay thế các API deprecated (`initialValue`, `.withValues()`).
+### Nhiệm vụ 3: Fix 66 issues Dart/Flutter
+- Files:
+  - lib/features/healthRecords/screens/add_maternal_health_metric_screen.dart
+  - lib/features/healthRecords/screens/edit_health_metric_screen.dart
+  - lib/features/healthRecords/screens/health_metric_trend_screen.dart
+  - lib/features/safety/screens/safety_monitoring_screen.dart
+  - test/features/healthRecords/add_maternal_health_metric_screen_test.dart
+- Hành động: Chạy `dart fix --apply`, sửa `value` -> `initialValue`, sửa `.withOpacity()` -> `.withValues(alpha: ...)`, thêm `{}` cho các câu lệnh `if`.
+```

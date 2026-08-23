@@ -50,6 +50,7 @@ public class UserSession {
     private Instant lastActivityAt;
 
     @Transient
+    @Builder.Default
     private boolean isCurrent = false;
 
     @Column(name = "expires_at", nullable = false)

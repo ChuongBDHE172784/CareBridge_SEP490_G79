@@ -52,6 +52,7 @@ public class EmergencyMapHandoff {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "action_status", nullable = false, length = 20)
+    @Builder.Default
     private HandoffStatus status = HandoffStatus.OPEN;
 
     @CreationTimestamp

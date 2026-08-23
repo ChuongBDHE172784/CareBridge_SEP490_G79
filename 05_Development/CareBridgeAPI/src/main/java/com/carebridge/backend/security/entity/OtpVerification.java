@@ -70,6 +70,7 @@ public class OtpVerification {
     private Instant usedAt;
 
     @jakarta.persistence.Transient
+    @Builder.Default
     private boolean verified = false;
 
     @Builder.Default

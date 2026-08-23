@@ -22,6 +22,7 @@ public class NearbySearchRequest {
     @DecimalMax(value = "180.0")
     private BigDecimal lng;
 
+    @Builder.Default
     private Integer radiusMeters = 5000;
 
     private String type;

@@ -159,6 +159,10 @@ docs/Report6/
 .pytest_cache/
 .venv/
 .vscode/
+!.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/java-compiler-settings.prefs
 .codex_tmp/
 code-review-graph/
 
