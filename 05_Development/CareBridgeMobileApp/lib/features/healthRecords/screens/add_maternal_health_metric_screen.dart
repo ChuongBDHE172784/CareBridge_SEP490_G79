@@ -296,22 +296,30 @@ class _AddMaternalHealthMetricScreenState
 
       if (mounted) {
         setState(() {
-          if (results[0].dataPoints.isNotEmpty)
+          if (results[0].dataPoints.isNotEmpty) {
             _latestBp = results[0].dataPoints.last;
-          if (results[1].dataPoints.isNotEmpty)
+          }
+          if (results[1].dataPoints.isNotEmpty) {
             _latestBmi = results[1].dataPoints.last;
-          if (results[2].dataPoints.isNotEmpty)
+          }
+          if (results[2].dataPoints.isNotEmpty) {
             _latestGlucose = results[2].dataPoints.last;
-          if (results[3].dataPoints.isNotEmpty)
+          }
+          if (results[3].dataPoints.isNotEmpty) {
             _latestKicks = results[3].dataPoints.last;
-          if (results[4].dataPoints.isNotEmpty)
+          }
+          if (results[4].dataPoints.isNotEmpty) {
             _latestHydration = results[4].dataPoints.last;
-          if (results[5].dataPoints.isNotEmpty)
+          }
+          if (results[5].dataPoints.isNotEmpty) {
             _latestEpds = results[5].dataPoints.last;
-          if (results[6].dataPoints.isNotEmpty)
+          }
+          if (results[6].dataPoints.isNotEmpty) {
             _latestHeartRate = results[6].dataPoints.last;
-          if (results[7].dataPoints.isNotEmpty)
+          }
+          if (results[7].dataPoints.isNotEmpty) {
             _latestTemp = results[7].dataPoints.last;
+          }
         });
       }
     } catch (_) {}
@@ -806,8 +814,9 @@ class _AddMaternalHealthMetricScreenState
     // Kết hợp thông tin tiền sử/khảo sát survey đã lưu
     for (final c in _surveyRiskConditions) {
       if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
-      if (c == 'CHRONIC_HYPERTENSION')
+      if (c == 'CHRONIC_HYPERTENSION') {
         symptoms.add('Bệnh nền: Tăng huyết áp mạn');
+      }
       if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM') {
         symptoms.add('Tiền sử Đái tháo đường');
       }
@@ -821,8 +830,8 @@ class _AddMaternalHealthMetricScreenState
     final payload = {
       'stage': 'PREGNANCY',
       'gestational_age_weeks': gestationalAge,
-      if (sbp != null) 'systolic_bp': sbp,
-      if (dbp != null) 'diastolic_bp': dbp,
+      'systolic_bp': ?sbp,
+      'diastolic_bp': ?dbp,
       if (glucose != null) ...{
         'blood_glucose': glucose,
         'is_fasting_glucose': _glucoseContext == 'FASTING',
@@ -831,14 +840,14 @@ class _AddMaternalHealthMetricScreenState
         'fetal_movements_count': kicks,
         'fetal_movements_duration_hours': 2,
       },
-      if (bmi != null) 'bmi': bmi,
-      if (rawWeight != null) 'weight_kg': rawWeight,
-      if (rawHeight != null) 'height_cm': rawHeight,
-      if (heartRate != null) 'heart_rate': heartRate,
-      if (waterIntake != null) 'water_intake_ml': waterIntake,
-      if (epds != null) 'epds_score': epds,
-      if (epdsQ10 != null) 'epds_question_10_score': epdsQ10,
-      if (temp != null) 'temperature': temp,
+      'bmi': ?bmi,
+      'weight_kg': ?rawWeight,
+      'height_cm': ?rawHeight,
+      'heart_rate': ?heartRate,
+      'water_intake_ml': ?waterIntake,
+      'epds_score': ?epds,
+      'epds_question_10_score': ?epdsQ10,
+      'temperature': ?temp,
       if (note != null && note.isNotEmpty) 'free_text_notes': note,
       'symptoms': symptoms,
     };
@@ -1230,8 +1239,7 @@ class _AddMaternalHealthMetricScreenState
           ? (w / ((h / 100) * (h / 100)))
           : null;
       displayValue =
-          '${_primaryCtrl.text.trim()}kg, ${_secondaryCtrl.text.trim()}cm' +
-          (bmiVal != null ? ' (BMI: ${bmiVal.toStringAsFixed(1)})' : '');
+          '${_primaryCtrl.text.trim()}kg, ${_secondaryCtrl.text.trim()}cm${bmiVal != null ? ' (BMI: ${bmiVal.toStringAsFixed(1)})' : ''}';
     } else {
       displayValue = '${_primaryCtrl.text.trim()} $_unit';
     }
@@ -1370,27 +1378,35 @@ class _AddMaternalHealthMetricScreenState
                 Navigator.of(dialogCtx).pop();
                 Navigator.of(context).pop(true);
                 final vitalsMap = <String, String>{};
-                if (_latestBp != null)
+                if (_latestBp != null) {
                   vitalsMap['Huyết áp'] = '${_latestBp!.valueDisplay} mmHg';
-                if (_latestBmi != null)
+                }
+                if (_latestBmi != null) {
                   vitalsMap['BMI'] = _latestBmi!.valueDisplay;
-                if (_latestGlucose != null)
+                }
+                if (_latestGlucose != null) {
                   vitalsMap['Đường huyết'] =
                       '${_latestGlucose!.valueDisplay} mmol/L';
-                if (_latestKicks != null)
+                }
+                if (_latestKicks != null) {
                   vitalsMap['Cử động thai'] =
                       '${_latestKicks!.valueDisplay} lần/2h';
-                if (_latestHydration != null)
+                }
+                if (_latestHydration != null) {
                   vitalsMap['Lượng nước'] =
                       '${_latestHydration!.valueDisplay} ml';
-                if (_latestEpds != null)
+                }
+                if (_latestEpds != null) {
                   vitalsMap['Tâm trạng EPDS'] =
                       '${_latestEpds!.valueDisplay}/30 đ';
-                if (_latestHeartRate != null)
+                }
+                if (_latestHeartRate != null) {
                   vitalsMap['Nhịp tim'] =
                       '${_latestHeartRate!.valueDisplay} bpm';
-                if (_latestTemp != null)
+                }
+                if (_latestTemp != null) {
                   vitalsMap['Thân nhiệt'] = '${_latestTemp!.valueDisplay} °C';
+                }
 
                 context.push(
                   '/rag/chat',

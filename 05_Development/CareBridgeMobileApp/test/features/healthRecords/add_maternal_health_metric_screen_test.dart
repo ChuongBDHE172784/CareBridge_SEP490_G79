@@ -32,7 +32,7 @@ class _FakeHealthMetricService extends HealthMetricService {
           deviceImportSupported: false,
           canonicalUnit: 'mmHg',
           acceptedInputUnits: ['mmHg'],
-          requiredContextSchema: const {},
+          requiredContextSchema: {},
         ),
         MetricCapability(
           metricCode: 'TEMPERATURE',
@@ -43,7 +43,7 @@ class _FakeHealthMetricService extends HealthMetricService {
           deviceImportSupported: false,
           canonicalUnit: '°C',
           acceptedInputUnits: ['°C', 'Cel'],
-          requiredContextSchema: const {
+          requiredContextSchema: {
             'required': ['measurementSite'],
           },
         ),

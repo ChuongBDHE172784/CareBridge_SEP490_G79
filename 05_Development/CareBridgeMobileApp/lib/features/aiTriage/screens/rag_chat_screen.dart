@@ -106,8 +106,6 @@ class RagChatScreen extends StatefulWidget {
 
 class _RagChatScreenState extends State<RagChatScreen> {
   static const _primary = Color(0xFFC98C7B);
-  static const _primaryDark = Color(0xFFA86F60);
-  static const _surface = Color(0xFFFDFBF9);
   static const _bg = Color(0xFFF6F1EC);
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -119,7 +117,6 @@ class _RagChatScreenState extends State<RagChatScreen> {
   List<_ChatSession> _sessions = [];
   String _currentSessionId = '';
   bool _sending = false;
-  bool _loadingHistory = true;
   Map<String, dynamic>? _attachedContext;
   String? _journeyType;
   int? _pregnancyWeek;
@@ -128,16 +125,17 @@ class _RagChatScreenState extends State<RagChatScreen> {
   String? _surveyStatus;
 
   String get _effectiveStage {
-    final jt = _journeyType ??
+    final jt =
+        _journeyType ??
         _attachedContext?['journeyType'] as String? ??
         (_attachedContext?['stage'] == 'PRECONCEPTION'
             ? 'PRE_PREGNANCY'
             : (_attachedContext?['stage'] == 'POSTPARTUM'
-                ? 'POSTPARTUM'
-                : (_attachedContext?['gestationalAge'] != null ||
-                        _attachedContext?['gestationalWeeks'] != null
-                    ? 'PREGNANCY'
-                    : null)));
+                  ? 'POSTPARTUM'
+                  : (_attachedContext?['gestationalAge'] != null ||
+                            _attachedContext?['gestationalWeeks'] != null
+                        ? 'PREGNANCY'
+                        : null)));
 
     if (jt == 'PRE_PREGNANCY' || jt == 'PRECONCEPTION') {
       return 'PRECONCEPTION';
@@ -200,7 +198,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
     _attachedContext = widget.attachedHealthContext;
     if (_attachedContext != null) {
       _journeyType = _attachedContext!['journeyType'] as String?;
-      final week = _attachedContext!['gestationalAge'] ??
+      final week =
+          _attachedContext!['gestationalAge'] ??
           _attachedContext!['gestationalWeeks'];
       if (week != null) {
         _pregnancyWeek = (week is int) ? week : int.tryParse(week.toString());
@@ -222,14 +221,16 @@ class _RagChatScreenState extends State<RagChatScreen> {
       if (res is Map && mounted) {
         final data = (res['data'] is Map) ? res['data'] : res;
         final type = data['journeyType'] as String?;
-        final week = data['pregnancyWeek'] ??
+        final week =
+            data['pregnancyWeek'] ??
             data['completedGestationalWeek'] ??
             data['effectivePregnancyWeek'];
         setState(() {
           if (type != null) _journeyType = type;
           if (week != null) {
-            _pregnancyWeek =
-                (week is int) ? week : int.tryParse(week.toString());
+            _pregnancyWeek = (week is int)
+                ? week
+                : int.tryParse(week.toString());
           }
         });
       }
@@ -297,7 +298,6 @@ class _RagChatScreenState extends State<RagChatScreen> {
       }
     } catch (_) {}
     if (mounted) {
-      setState(() => _loadingHistory = false);
       if (widget.autoSendInitialPrompt &&
           widget.initialPrompt != null &&
           widget.initialPrompt!.trim().isNotEmpty) {
@@ -472,8 +472,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
         requestPayload['survey_profile'] = _surveyProfile;
       }
       if (_attachedContext != null) {
-        final metricType =
-            _attachedContext!['metricType']?.toString().toUpperCase();
+        final metricType = _attachedContext!['metricType']
+            ?.toString()
+            .toUpperCase();
         final val = _attachedContext!['value'];
         final Map<String, dynamic> recentMetrics = {};
         if (metricType == 'BLOOD_PRESSURE' && val is Map) {
@@ -486,8 +487,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
         } else if (metricType == 'TEMPERATURE' ||
             metricType == 'BODY_TEMPERATURE') {
           if (val is num) recentMetrics['temperature'] = val.toDouble();
-        } else if (metricType == 'BLOOD_GLUCOSE' ||
-            metricType == 'GLUCOSE') {
+        } else if (metricType == 'BLOOD_GLUCOSE' || metricType == 'GLUCOSE') {
           if (val is num) recentMetrics['blood_glucose'] = val.toDouble();
         } else if (metricType == 'FETAL_MOVEMENT' ||
             metricType == 'FETAL_MOVEMENTS') {
@@ -521,7 +521,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
         if (response.statusCode == 200) {
           final decoded = jsonDecode(utf8.decode(response.bodyBytes));
           answerText = decoded['answer']?.toString() ?? '';
-          isWarning = decoded['has_critical_warning'] == true ||
+          isWarning =
+              decoded['has_critical_warning'] == true ||
               decoded['need_expert_consultation'] == true;
 
           if (decoded['sources'] is List) {
@@ -686,8 +687,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
 
   Future<void> _navigateToDoctorOrExperts() async {
     try {
-      final conversations =
-          await DirectChatService.instance.listMyConversations();
+      final conversations = await DirectChatService.instance
+          .listMyConversations();
       if (!mounted) return;
       if (conversations.isNotEmpty) {
         context.push('/direct-chats');
@@ -883,7 +884,11 @@ class _RagChatScreenState extends State<RagChatScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.gavel_rounded, size: 16, color: Color(0xFFC62828)),
+                        Icon(
+                          Icons.gavel_rounded,
+                          size: 16,
+                          color: Color(0xFFC62828),
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'Tuyên bố miễn trừ trách nhiệm:',
@@ -920,7 +925,11 @@ class _RagChatScreenState extends State<RagChatScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.monitor_heart_rounded, size: 16, color: Color(0xFFF57F17)),
+                        Icon(
+                          Icons.monitor_heart_rounded,
+                          size: 16,
+                          color: Color(0xFFF57F17),
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'Yêu cầu tự theo dõi:',
@@ -1047,12 +1056,12 @@ class _RagChatScreenState extends State<RagChatScreen> {
                         child: Text(
                           isMother
                               ? (_effectiveStage == 'PRECONCEPTION'
-                                  ? 'Đồng hành Chuẩn bị mang thai • 24/7'
-                                  : (_effectiveStage == 'POSTPARTUM'
-                                      ? 'Đồng hành Hậu sản & Chăm bé • 24/7'
-                                      : (_pregnancyWeek != null
-                                          ? 'Đồng hành cùng Mẹ bầu (Tuần $_pregnancyWeek) • 24/7'
-                                          : 'Đồng hành cùng Mẹ bầu • 24/7')))
+                                    ? 'Đồng hành Chuẩn bị mang thai • 24/7'
+                                    : (_effectiveStage == 'POSTPARTUM'
+                                          ? 'Đồng hành Hậu sản & Chăm bé • 24/7'
+                                          : (_pregnancyWeek != null
+                                                ? 'Đồng hành cùng Mẹ bầu (Tuần $_pregnancyWeek) • 24/7'
+                                                : 'Đồng hành cùng Mẹ bầu • 24/7')))
                               : 'Hỗ trợ Gia đình chăm sóc mẹ & bé',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1146,7 +1155,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFC98C7B).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFFC98C7B,
+                            ).withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -1176,7 +1187,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
                                     ),
                                   ),
                                   () {
-                                    final st = _attachedContext!['stage'] ??
+                                    final st =
+                                        _attachedContext!['stage'] ??
                                         _attachedContext!['journeyType'];
                                     String? stageTag;
                                     if (st == 'PRECONCEPTION' ||
@@ -1186,7 +1198,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
                                         st == 'BABY_CARE') {
                                       stageTag = 'Hậu sản & Chăm bé';
                                     } else {
-                                      final w = _attachedContext!['gestationalAge'] ??
+                                      final w =
+                                          _attachedContext!['gestationalAge'] ??
                                           _attachedContext!['gestationalWeeks'];
                                       if (w != null) stageTag = 'Tuần $w';
                                     }
@@ -1203,7 +1216,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFC98C7B),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Text(
                                           stageTag,
@@ -1248,7 +1263,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
                           icon: const Icon(Icons.close_rounded, size: 18),
                           color: const Color(0xFF845143),
                           tooltip: 'Gỡ đính kèm',
-                          onPressed: () => setState(() => _attachedContext = null),
+                          onPressed: () =>
+                              setState(() => _attachedContext = null),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -1410,7 +1426,7 @@ class _HistoryBottomSheet extends StatelessWidget {
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: sessions.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     Divider(height: 1, indent: 64, color: Colors.grey.shade200),
                 itemBuilder: (ctx, i) {
                   final s = sessions[i];
@@ -1487,8 +1503,7 @@ class _HistoryBottomSheet extends StatelessWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () =>
-                                    Navigator.of(dialogCtx).pop(),
+                                onPressed: () => Navigator.of(dialogCtx).pop(),
                                 child: const Text(
                                   'Hủy',
                                   style: TextStyle(color: Colors.grey),
@@ -2199,9 +2214,11 @@ class _MessageBubble extends StatelessWidget {
                   ),
                   ...message.followups.map((f) {
                     final lower = f.toLowerCase();
-                    final is115 = lower.contains('115') ||
+                    final is115 =
+                        lower.contains('115') ||
                         (lower.contains('cấp cứu') && lower.contains('gọi'));
-                    final isHospital = (lower.contains('bệnh viện') ||
+                    final isHospital =
+                        (lower.contains('bệnh viện') ||
                             lower.contains('cơ sở y tế') ||
                             lower.contains('phụ sản')) &&
                         (lower.contains('gần nhất') ||
@@ -2225,22 +2242,23 @@ class _MessageBubble extends StatelessWidget {
                               color: is115
                                   ? const Color(0xFFFFF2F0)
                                   : (isHospital
-                                      ? const Color(0xFFF0F7FF)
-                                      : Colors.white),
+                                        ? const Color(0xFFF0F7FF)
+                                        : Colors.white),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: is115
                                     ? const Color(0xFFFFCCC7)
                                     : (isHospital
-                                        ? const Color(0xFFBAE0FF)
-                                        : const Color(0xFFE8DFD8)),
+                                          ? const Color(0xFFBAE0FF)
+                                          : const Color(0xFFE8DFD8)),
                                 width: (is115 || isHospital) ? 1.2 : 1.0,
                               ),
                               boxShadow: [
                                 BoxShadow(
                                   color: is115
-                                      ? const Color(0xFFFF4D4F)
-                                          .withValues(alpha: 0.08)
+                                      ? const Color(
+                                          0xFFFF4D4F,
+                                        ).withValues(alpha: 0.08)
                                       : Colors.black.withValues(alpha: 0.02),
                                   blurRadius: 3,
                                   offset: const Offset(0, 1),
@@ -2254,14 +2272,15 @@ class _MessageBubble extends StatelessWidget {
                                   is115
                                       ? Icons.phone_in_talk_rounded
                                       : (isHospital
-                                          ? Icons.local_hospital_rounded
-                                          : Icons.chat_bubble_outline_rounded),
+                                            ? Icons.local_hospital_rounded
+                                            : Icons
+                                                  .chat_bubble_outline_rounded),
                                   size: 15,
                                   color: is115
                                       ? const Color(0xFFCF1322)
                                       : (isHospital
-                                          ? const Color(0xFF0958D9)
-                                          : const Color(0xFFC98C7B)),
+                                            ? const Color(0xFF0958D9)
+                                            : const Color(0xFFC98C7B)),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -2272,8 +2291,8 @@ class _MessageBubble extends StatelessWidget {
                                       color: is115
                                           ? const Color(0xFFA8071A)
                                           : (isHospital
-                                              ? const Color(0xFF003EB3)
-                                              : const Color(0xFF4A3731)),
+                                                ? const Color(0xFF003EB3)
+                                                : const Color(0xFF4A3731)),
                                       height: 1.35,
                                       fontWeight: (is115 || isHospital)
                                           ? FontWeight.w600
@@ -2287,14 +2306,14 @@ class _MessageBubble extends StatelessWidget {
                                   is115
                                       ? Icons.call_rounded
                                       : (isHospital
-                                          ? Icons.near_me_rounded
-                                          : Icons.arrow_forward_ios_rounded),
+                                            ? Icons.near_me_rounded
+                                            : Icons.arrow_forward_ios_rounded),
                                   size: (is115 || isHospital) ? 14 : 11,
                                   color: is115
                                       ? const Color(0xFFCF1322)
                                       : (isHospital
-                                          ? const Color(0xFF0958D9)
-                                          : const Color(0xFFBCAAA4)),
+                                            ? const Color(0xFF0958D9)
+                                            : const Color(0xFFBCAAA4)),
                                 ),
                               ],
                             ),
@@ -2459,13 +2478,15 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metricLabel =
-        contextData['metricLabel'] ?? contextData['metricType'] ?? 'Chỉ số sức khỏe';
+        contextData['metricLabel'] ??
+        contextData['metricType'] ??
+        'Chỉ số sức khỏe';
     final displayValue =
         contextData['displayValue'] ?? contextData['value'] ?? '';
     final gestationalAge =
         contextData['gestationalAge'] ?? contextData['gestationalWeeks'];
-    final note =
-        (contextData['note'] ?? contextData['free_text_notes'])?.toString();
+    final note = (contextData['note'] ?? contextData['free_text_notes'])
+        ?.toString();
     final rawSurvey = contextData['surveyRiskConditions'];
     final surveyRisks = (rawSurvey is Iterable)
         ? rawSurvey.map((e) => e.toString()).toList()
@@ -2772,7 +2793,8 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       }
     }
 
-    final hasAnySurveyData = bmiItems.isNotEmpty ||
+    final hasAnySurveyData =
+        bmiItems.isNotEmpty ||
         reproItems.isNotEmpty ||
         conditionItems.isNotEmpty ||
         lifestyleItems.isNotEmpty ||
@@ -2857,7 +2879,8 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                 children: [
                   // Thông tin Giai đoạn / Tuần thai
                   () {
-                    final st = contextData['stage'] ?? contextData['journeyType'];
+                    final st =
+                        contextData['stage'] ?? contextData['journeyType'];
                     if (st == 'PRECONCEPTION' || st == 'PRE_PREGNANCY') {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -2987,7 +3010,9 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                                       color: Color(0xFF6B3A2D),
                                     ),
                                   ),
-                                  if (getTrimester(gestationalAge).isNotEmpty) ...[
+                                  if (getTrimester(
+                                    gestationalAge,
+                                  ).isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       getTrimester(gestationalAge),
@@ -3042,7 +3067,9 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF845143).withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF845143,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

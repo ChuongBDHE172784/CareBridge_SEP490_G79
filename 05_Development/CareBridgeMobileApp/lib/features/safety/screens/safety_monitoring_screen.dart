@@ -1373,7 +1373,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: _onSurfaceVariant.withOpacity(0.3),
+                      color: _onSurfaceVariant.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),

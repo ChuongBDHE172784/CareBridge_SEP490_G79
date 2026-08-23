@@ -698,7 +698,8 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
               if (_isGlucose) ...[
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: _glucoseUnits.any((item) => item.value == _glucoseUnit)
+                  initialValue:
+                      _glucoseUnits.any((item) => item.value == _glucoseUnit)
                       ? _glucoseUnit
                       : 'mg/dL',
                   decoration: InputDecoration(
@@ -747,7 +748,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value:
+                  initialValue:
                       _glucoseContexts.any(
                         (item) => item.value == _glucoseContext,
                       )
@@ -793,8 +794,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                   items: _glucoseContexts,
                   onChanged: enabled
                       ? (val) {
-                          if (val != null)
+                          if (val != null) {
                             setState(() => _glucoseContext = val);
+                          }
                         }
                       : null,
                 ),
@@ -802,7 +804,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
               if (_isTemperature) ...[
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value:
+                  initialValue:
                       _temperatureSites.any(
                         (item) => item.value == _temperatureSite,
                       )
@@ -848,8 +850,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                   items: _temperatureSites,
                   onChanged: enabled
                       ? (val) {
-                          if (val != null)
+                          if (val != null) {
                             setState(() => _temperatureSite = val);
+                          }
                         }
                       : null,
                 ),
@@ -918,8 +921,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   double? get _bmiPreview {
     final weight = double.tryParse(_valuePrimaryCtrl.text.trim());
     final height = double.tryParse(_valueSecondaryCtrl.text.trim());
-    if (weight == null || weight <= 0 || height == null || height <= 0)
+    if (weight == null || weight <= 0 || height == null || height <= 0) {
       return null;
+    }
     return weight / ((height / 100) * (height / 100));
   }
 

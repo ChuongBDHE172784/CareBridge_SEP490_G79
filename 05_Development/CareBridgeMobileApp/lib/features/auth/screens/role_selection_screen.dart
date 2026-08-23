@@ -58,13 +58,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       try {
         final selected = await _service.selectRole(role);
         if (selected.role.isNotEmpty) effectiveRole = selected.role;
-      } on ApiException catch (selectionError) {
+      } on ApiException {
         // The role write may have committed even when its response was lost.
         // Re-read the profile so retrying is idempotent instead of leaving the
         // user stuck on a "role already assigned" error.
         try {
           final recovered = await _service.getProfile();
-          if (recovered.role.isEmpty) throw selectionError;
+          if (recovered.role.isEmpty) rethrow;
           effectiveRole = recovered.role;
         } catch (_) {
           rethrow;

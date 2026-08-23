@@ -617,7 +617,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: entryOptions.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         const Divider(height: 1, color: _surfaceContainer),
                     itemBuilder: (ctx, i) {
                       final opt = entryOptions[i];
@@ -1359,12 +1359,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   runSpacing: 6,
                   children: _surveyRiskConditions.map((c) {
                     var label = c;
-                    if (c == 'PRIOR_PREECLAMPSIA')
+                    if (c == 'PRIOR_PREECLAMPSIA') {
                       label = 'Tiền sử Tiền sản giật';
-                    if (c == 'CHRONIC_HYPERTENSION')
+                    }
+                    if (c == 'CHRONIC_HYPERTENSION') {
                       label = 'Tăng huyết áp mạn';
-                    if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM')
+                    }
+                    if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM') {
                       label = 'Tiền sử ĐTĐ thai kỳ';
+                    }
                     return Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -1742,10 +1745,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     final symptoms = <String>[];
     for (final c in _surveyRiskConditions) {
       if (c == 'PRIOR_PREECLAMPSIA') symptoms.add('Tiền sử Tiền sản giật');
-      if (c == 'CHRONIC_HYPERTENSION')
+      if (c == 'CHRONIC_HYPERTENSION') {
         symptoms.add('Bệnh nền: Tăng huyết áp mạn');
-      if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM')
+      }
+      if (c == 'PREGESTATIONAL_DIABETES' || c == 'PRIOR_GDM') {
         symptoms.add('Tiền sử Đái tháo đường');
+      }
     }
 
     final gestationalAge = _journeyGestationalWeeks ?? 20;
@@ -1753,8 +1758,8 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     final payload = {
       'stage': 'PREGNANCY',
       'gestational_age_weeks': gestationalAge,
-      if (sbp != null) 'systolic_bp': sbp,
-      if (dbp != null) 'diastolic_bp': dbp,
+      'systolic_bp': ?sbp,
+      'diastolic_bp': ?dbp,
       if (glucose != null) ...{
         'blood_glucose': glucose,
         'is_fasting_glucose': true,
@@ -1763,12 +1768,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         'fetal_movements_count': kicks,
         'fetal_movements_duration_hours': 2,
       },
-      if (bmi != null) 'bmi': bmi,
-      if (heartRate != null) 'heart_rate': heartRate,
-      if (waterIntake != null) 'water_intake_ml': waterIntake,
-      if (epds != null) 'epds_score': epds,
-      if (epdsQ10 != null) 'epds_question_10_score': epdsQ10,
-      if (temp != null) 'temperature': temp,
+      'bmi': ?bmi,
+      'heart_rate': ?heartRate,
+      'water_intake_ml': ?waterIntake,
+      'epds_score': ?epds,
+      'epds_question_10_score': ?epdsQ10,
+      'temperature': ?temp,
       if (_symptomNoteCtrl.text.isNotEmpty)
         'free_text_notes': _symptomNoteCtrl.text.trim(),
       'symptoms': symptoms,
@@ -2054,9 +2059,8 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                       );
                     } catch (_) {}
                   }
-                  if (context.mounted) {
-                    context.push('/emergency/map?mode=triage&stage=PREGNANCY');
-                  }
+                  if (!mounted) return;
+                  context.push('/emergency/map?mode=triage&stage=PREGNANCY');
                 },
               ),
               const SizedBox(height: 8),
@@ -2207,30 +2211,38 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                 onPressed: () {
                   Navigator.of(dialogCtx).pop();
                   final vitalsMap = <String, String>{};
-                  if (_latestBp != null)
+                  if (_latestBp != null) {
                     vitalsMap['Huyết áp'] =
                         '${_latestBp!.valueNumeric.round()}/${_latestBp!.valueSecondary?.round() ?? 0} mmHg';
-                  if (_latestBmi != null)
+                  }
+                  if (_latestBmi != null) {
                     vitalsMap['BMI'] =
                         '${_latestBmi!.valueNumeric.toStringAsFixed(1)} kg/m²';
-                  if (_latestGlucose != null)
+                  }
+                  if (_latestGlucose != null) {
                     vitalsMap['Đường huyết'] =
                         '${_latestGlucose!.valueNumeric} mg/dL';
-                  if (_latestKicks != null)
+                  }
+                  if (_latestKicks != null) {
                     vitalsMap['Cử động thai'] =
                         '${_latestKicks!.valueNumeric.round()} lần/2h';
-                  if (_latestHydration != null)
+                  }
+                  if (_latestHydration != null) {
                     vitalsMap['Lượng nước'] =
                         '${_latestHydration!.valueNumeric.round()} ml';
-                  if (_latestHeartRate != null)
+                  }
+                  if (_latestHeartRate != null) {
                     vitalsMap['Nhịp tim'] =
                         '${_latestHeartRate!.valueNumeric.round()} bpm';
-                  if (_latestEpds != null)
+                  }
+                  if (_latestEpds != null) {
                     vitalsMap['Điểm EPDS'] =
                         '${_latestEpds!.valueNumeric.round()}/30';
-                  if (_latestTemp != null)
+                  }
+                  if (_latestTemp != null) {
                     vitalsMap['Thân nhiệt'] =
                         '${_latestTemp!.valueNumeric.toStringAsFixed(1)} °C';
+                  }
 
                   final isPrePregnancy = _journeyType == 'PRE_PREGNANCY';
                   final isPostpartum =
