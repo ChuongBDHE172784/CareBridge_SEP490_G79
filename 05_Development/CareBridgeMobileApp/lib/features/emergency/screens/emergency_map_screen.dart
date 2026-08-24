@@ -815,7 +815,10 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         Geolocator.getPositionStream(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.bestForNavigation,
-            distanceFilter: 10,
+            // 2m: chỉ dẫn rẽ bám sát bước chân thay vì nhảy từng đoạn 10m. Đổi
+            // lại máy xử lý vị trí dày hơn, nên _handlingNavigationPosition ở
+            // dưới càng quan trọng — nó chặn hai lượt chồng lên nhau.
+            distanceFilter: 2,
           ),
         ).listen(
           (position) => unawaited(_handleNavigationPosition(position)),
@@ -952,7 +955,9 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           position,
           route.coordinates,
         );
-        if (distanceToRoute > 80) await _reroute(position);
+        // 50m: bắt được việc rẽ nhầm một ngã tư, thay vì đợi lệch tới 80m
+        // mới nhận ra. Hàm _reroute vẫn tự chặn tần suất gọi API bên trong.
+        if (distanceToRoute > 50) await _reroute(position);
       }
       await _syncMapAnnotations(fitCamera: false);
     } finally {
@@ -964,7 +969,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     final now = DateTime.now();
     if (_lastNavigationConsentCheck != null &&
         now.difference(_lastNavigationConsentCheck!) <
-            const Duration(seconds: 30)) {
+            const Duration(seconds: 15)) {
       return _navigationConsentValid;
     }
     _lastNavigationConsentCheck = now;
@@ -1590,16 +1595,21 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       if (point.longitude < minLng) minLng = point.longitude;
       if (point.longitude > maxLng) maxLng = point.longitude;
     }
+    // Thẻ "Bệnh viện gần bạn" nằm đè lên đáy bản đồ, nên đệm đều 40px mọi phía
+    // sẽ khớp khung vào TOÀN bộ khung nhìn — kể cả phần bị thẻ che. Đoạn cuối
+    // tuyến đường vì thế biến mất sau thẻ đúng lúc cần nhìn nhất. Đệm đáy phải
+    // vượt chiều cao thẻ; con số bám theo trạng thái thu gọn/mở rộng của nó.
+    final bottomPadding = _panelCollapsed ? 230.0 : 460.0;
     await controller.animateCamera(
       CameraUpdate.newLatLngBounds(
         LatLngBounds(
           southwest: LatLng(minLat, minLng),
           northeast: LatLng(maxLat, maxLng),
         ),
-        left: 40,
-        top: 40,
-        right: 40,
-        bottom: 40,
+        left: 48,
+        top: 96,
+        right: 48,
+        bottom: bottomPadding,
       ),
     );
   }
