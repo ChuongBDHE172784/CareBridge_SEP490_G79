@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
-import 'package:universal_io/io.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/auth/auth_state.dart';
@@ -408,24 +405,6 @@ class _RagChatScreenState extends State<RagChatScreen> {
     });
   }
 
-  List<String> get _pythonCandidates {
-    final list = <String>[];
-    try {
-      final uri = Uri.parse(apiBaseUrl);
-      if (uri.host.isNotEmpty) {
-        list.add('${uri.scheme}://${uri.host}:8001');
-      }
-    } catch (_) {}
-    if (kIsWeb) {
-      list.add('http://127.0.0.1:8001');
-    } else if (Platform.isAndroid) {
-      list.addAll(['http://10.0.2.2:8001', 'http://127.0.0.1:8001']);
-    } else {
-      list.addAll(['http://127.0.0.1:8001', 'http://localhost:8001']);
-    }
-    return list;
-  }
-
   Future<void> _send([String? customPrompt]) async {
     final question = (customPrompt ?? _inputCtrl.text).trim();
     if (question.isEmpty || _sending) return;
@@ -446,7 +425,11 @@ class _RagChatScreenState extends State<RagChatScreen> {
     List<String> followupsList = [];
     bool isWarning = false;
 
-    // 1. Prioritize direct Python FastAPI AI RAG Service (PGVector + Gemini + Citations)
+    // The RAG service (pgvector + Gemini + citations) is reached through the
+    // backend, not directly: it listens on 8001 inside the server's Docker
+    // network and is deliberately not published. The backend forwards the
+    // conversation context and falls back to its own answer when that service is
+    // down, so this call has a single path and a single failure mode.
     final role = (AuthState.instance.role ?? 'MOTHER').toUpperCase();
     final isMother = role == 'MOTHER';
 
@@ -458,18 +441,16 @@ class _RagChatScreenState extends State<RagChatScreen> {
         .toList();
 
     final Map<String, dynamic> requestPayload = {
-      'message': question,
-      'stage': isMother ? _effectiveStage : 'ALL',
-      'user_role': isMother ? 'MOTHER' : 'FAMILY',
-      'conversation_history': historyPayload,
+      'query': question,
+      'conversationHistory': historyPayload,
     };
 
     if (isMother) {
       if (_pregnancyWeek != null) {
-        requestPayload['gestational_age_weeks'] = _pregnancyWeek;
+        requestPayload['gestationalAgeWeeks'] = _pregnancyWeek;
       }
       if (_surveyProfile != null && _surveyProfile!.isNotEmpty) {
-        requestPayload['survey_profile'] = _surveyProfile;
+        requestPayload['surveyProfile'] = _surveyProfile;
       }
       if (_attachedContext != null) {
         final metricType = _attachedContext!['metricType']
@@ -500,83 +481,42 @@ class _RagChatScreenState extends State<RagChatScreen> {
           recentMetrics['symptoms'] = [notes];
         }
         if (recentMetrics.isNotEmpty) {
-          requestPayload['recent_metrics'] = recentMetrics;
+          requestPayload['recentMetrics'] = recentMetrics;
         }
       }
     }
 
-    for (final base in _pythonCandidates) {
-      try {
-        final response = await http
-            .post(
-              Uri.parse('$base/api/v1/chat/message'),
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Internal-API-Key': 'carebridge',
-              },
-              body: jsonEncode(requestPayload),
-            )
-            .timeout(const Duration(seconds: 15));
+    try {
+      final data = await apiPost('/api/v1/rag/answer', requestPayload);
+      final resData = (data is Map && data.containsKey('data'))
+          ? data['data']
+          : data;
 
-        if (response.statusCode == 200) {
-          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-          answerText = decoded['answer']?.toString() ?? '';
-          isWarning =
-              decoded['has_critical_warning'] == true ||
-              decoded['need_expert_consultation'] == true;
+      if (resData is Map) {
+        answerText = resData['answer']?.toString() ?? '';
+        isWarning =
+            resData['hasCriticalWarning'] == true ||
+            resData['needExpertConsultation'] == true;
 
-          if (decoded['sources'] is List) {
-            for (final s in decoded['sources']) {
-              if (s is Map && s['title'] != null) {
-                final title = s['title'].toString().trim();
-                final sec = s['section']?.toString().trim();
-                final formatted =
-                    (sec != null &&
-                        sec.isNotEmpty &&
-                        sec.toLowerCase() != title.toLowerCase())
-                    ? '$title ($sec)'
-                    : title;
-                if (!sourcesList.contains(formatted)) {
-                  sourcesList.add(formatted);
-                }
+        if (resData['sources'] is List) {
+          for (final s in resData['sources']) {
+            if (s is Map && s['title'] != null) {
+              final title = s['title'].toString().trim();
+              if (title.isNotEmpty && !sourcesList.contains(title)) {
+                sourcesList.add(title);
               }
             }
           }
-          if (decoded['suggested_followups'] is List) {
-            followupsList = (decoded['suggested_followups'] as List)
-                .map((e) => e.toString())
-                .toList();
-          }
-          if (answerText.isNotEmpty) {
-            break;
-          }
         }
-      } catch (_) {}
-    }
-
-    // 2. Fallback to Spring Boot /api/v1/rag/answer if Python service was unreachable
-    if (answerText.isEmpty) {
-      try {
-        final data = await apiPost('/api/v1/rag/answer', {'query': question});
-
-        final resData = (data is Map && data.containsKey('data'))
-            ? data['data']
-            : data;
-
-        if (resData is Map) {
-          answerText = resData['answer']?.toString() ?? '';
-          if (resData['sources'] is List) {
-            for (final s in resData['sources']) {
-              if (s is Map && s['title'] != null) {
-                sourcesList.add(s['title'].toString());
-              }
-            }
-          }
-        } else if (resData is String) {
-          answerText = resData;
+        if (resData['suggestedFollowups'] is List) {
+          followupsList = (resData['suggestedFollowups'] as List)
+              .map((e) => e.toString())
+              .toList();
         }
-      } catch (_) {}
-    }
+      } else if (resData is String) {
+        answerText = resData;
+      }
+    } catch (_) {}
 
     if (!mounted) return;
 
