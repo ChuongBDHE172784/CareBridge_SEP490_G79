@@ -265,6 +265,11 @@ class GoogleIdTokenAcquirer {
        _webProvider = webProvider,
        _nativeProvider = nativeProvider;
 
+  static const String _defaultServerClientId =
+      '772548995876-07kb6bsci0s1joi0q81l8qgkmh62d6ak.apps.googleusercontent.com';
+  static const String _defaultIosClientId =
+      '772548995876-uurp64uddnp6s2b2t7h245c6ia8523ts.apps.googleusercontent.com';
+
   final bool _isWeb;
   final TargetPlatform _platform;
   final GoogleIdTokenProvider? _webProvider;
@@ -289,7 +294,12 @@ class GoogleIdTokenAcquirer {
   }
 
   static Future<String> _acquireNativeToken() async {
-    await GoogleSignIn.instance.initialize();
+    await GoogleSignIn.instance.initialize(
+      serverClientId: _defaultServerClientId,
+      clientId: defaultTargetPlatform == TargetPlatform.iOS
+          ? _defaultIosClientId
+          : null,
+    );
     final googleUser = await GoogleSignIn.instance.authenticate();
     final googleAuth = googleUser.authentication;
     final credential = firebase.GoogleAuthProvider.credential(

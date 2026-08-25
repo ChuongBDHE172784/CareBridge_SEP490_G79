@@ -3,18 +3,17 @@ package com.carebridge.backend.security.service.impl;
 import com.carebridge.backend.security.service.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Profile;
-import org.springframework.context.annotation.Primary;
 
 import org.springframework.stereotype.Service;
 
 /**
- * Mock implementation của EmailService cho môi trường dev.
+ * Mock implementation của EmailService cho môi trường test hoặc khi chưa cấu hình email thật.
  * Log nội dung email thay vì gửi thật.
  */
 @Service
-@Profile({ "dev", "test" })
-@Primary
+@ConditionalOnMissingBean(GmailEmailService.class)
 public class MockEmailService implements EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(MockEmailService.class);

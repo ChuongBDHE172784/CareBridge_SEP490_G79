@@ -5,6 +5,8 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -12,22 +14,24 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile("!dev & !test")
+@Profile("!test")
+@ConditionalOnProperty(prefix = "spring.mail", name = "username", matchIfMissing = false)
+@Primary
 public class GmailEmailService implements EmailService {
 
-private static final Logger logger = LoggerFactory.getLogger(GmailEmailService.class);
+    private static final Logger logger = LoggerFactory.getLogger(GmailEmailService.class);
 
-private final JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
 
-@Value("${carebridge.supabase.mail.from-address:noreply@carebridge.app}")
-private String fromAddress;
+    @Value("${carebridge.mail.from-address:${spring.mail.username:carebridge490@gmail.com}}")
+    private String fromAddress;
 
-@Value("${carebridge.supabase.mail.from-name:CareBridge}")
-private String fromName;
+    @Value("${carebridge.mail.from-name:CareBridge}")
+    private String fromName;
 
-public GmailEmailService(JavaMailSender mailSender) {
-this.mailSender = mailSender;
-}
+    public GmailEmailService(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
 
 @Override
 public void sendOtpVerificationEmail(String to, String otp, int expiryMinutes) {
