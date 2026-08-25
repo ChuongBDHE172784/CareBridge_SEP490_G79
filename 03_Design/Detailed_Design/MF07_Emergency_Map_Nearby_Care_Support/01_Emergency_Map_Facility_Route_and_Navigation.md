@@ -120,17 +120,54 @@ end
 5. Where the current implementation requires an external system, the service waits for its response before completing the domain result.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **EmergencyMapHandoff.status, with the consumer-visible FacilityStatus as the discovery precondition**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01EmergencyMapFacilityRouteandNavigation
+hide empty description
+[*] --> NoHandoff
+
+NoHandoff --> HandoffOpen : selectFacilityForNavigation() [facility is discoverable] / persistHandoff(OPEN)
+HandoffOpen --> HandoffAccepted : externalMapAppLaunched() / setStatus(ACCEPTED)
+HandoffOpen --> NoHandoff : startNewHandoff() / supersedePreviousHandoff()
+HandoffAccepted --> NoHandoff : startNewHandoff() / supersedePreviousHandoff()
+
+HandoffOpen : HandoffStatus = OPEN
+HandoffAccepted : HandoffStatus = ACCEPTED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Emergency Map, Facility, Route, and Navigation**
+
+**Brief Explanation:**
+
+1. Facility discovery itself stores no per-user state; the lifecycle begins only when the user selects a facility and a handoff row is created.
+2. `EmergencyMapHandoffMapper` creates the handoff in `OPEN`, recording the intent to navigate before any external application is involved.
+3. `EmergencyMapHandoffServiceImpl` writes `ACCEPTED` when the external map application has actually been launched, which is the boundary where CareBridge stops controlling the route.
+4. `FacilityStatus` is a catalogue-side attribute rather than a transition of this object; only a discoverable facility satisfies the guard on the first transition.
+5. `HandoffStatus` also declares `COMPLETED` and `CANCELLED`, but no reachable code path writes either, so they are deliberately absent from this diagram rather than drawn as if implemented.
+6. Starting a new handoff supersedes the previous one instead of mutating it, which keeps each navigation attempt individually auditable.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/handoffstatus/HandoffStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/map/mapper/EmergencyMapHandoffMapper.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/service/impl/EmergencyMapHandoffServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/map/facilitystatus/FacilityStatus.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-ES-01` | Location use is consent/permission gated. Map/provider failure must not report a false route or facility verification state. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/map/controller/CareFacilityController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/controller/EmergencyMapHandoffController.java`

@@ -392,7 +392,63 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **Reminder.status, with the AppointmentNotificationJob delivery lifecycle nested inside a pending reminder**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_05AppointmentsRemindersChecklistsandTodayTasks
+hide empty description
+[*] --> Pending
+
+Pending --> Snoozed : snoozeReminder() / setSnoozedUntil()
+Snoozed --> Pending : snoozeWindowElapses() / restoreDueAt()
+Pending --> Completed : completeReminder() / setStatus(COMPLETED)
+Snoozed --> Completed : completeReminder() / setStatus(COMPLETED)
+Pending --> Skipped : skipReminder() / setStatus(SKIPPED)
+Snoozed --> Skipped : skipReminder() / setStatus(SKIPPED)
+Pending --> Cancelled : cancelReminder() / setStatus(CANCELLED)
+Snoozed --> Cancelled : cancelReminder() / setStatus(CANCELLED)
+Cancelled --> Pending : enableReminder() [status == CANCELLED] / clearSnoozeAndBumpOccurrenceGeneration()
+
+state Pending {
+  [*] --> JobPending
+  JobPending --> JobProcessing : claimNotificationJob() [status == PENDING] / setJobStatus(PROCESSING)
+  JobProcessing --> JobSent : dispatchNotification() [delivery accepted] / setJobStatus(SENT)
+  JobProcessing --> JobFailed : dispatchNotification() [retry budget exhausted] / setJobStatus(FAILED)
+  JobProcessing --> JobPending : dispatchNotification() [retry budget remains] / setJobStatus(PENDING)
+  JobProcessing --> JobSuppressed : evaluateJob() [stale backlog, appointment inactive, or push disabled] / setJobStatus(SUPPRESSED)
+  JobPending --> JobCancelled : cancelReminder() / setJobStatus(CANCELLED)
+  JobProcessing --> JobCancelled : cancelReminder() / setJobStatus(CANCELLED)
+}
+
+Pending : ReminderStatus = PENDING
+Snoozed : ReminderStatus = SNOOZED
+Completed : ReminderStatus = COMPLETED
+Skipped : ReminderStatus = SKIPPED
+Cancelled : ReminderStatus = CANCELLED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Appointments, Reminders, Checklists, and Today Tasks**
+
+**Brief Explanation:**
+
+1. A reminder starts in `Pending`, the state the unified today-task projection reads together with `Snoozed`.
+2. `snoozeReminder()` moves the reminder to `Snoozed` and the action stores `snoozedUntil`, which `ReminderRecurrenceService` uses to recompute the effective due time.
+3. `Completed`, `Skipped`, and `Cancelled` are reachable from both `Pending` and `Snoozed`, which is why each is drawn from both states; `enableReminder()` then makes `Cancelled` reversible back to `Pending`.
+4. Recurrence is not drawn as a transition: `ReminderRecurrenceService` derives a per-date occurrence status for the projection and never writes the stored status, so a completed recurring reminder stays `COMPLETED` in the database.
+5. Inside `Pending`, the notification job is claimed into `JobProcessing` before dispatch, so two workers cannot deliver the same reminder.
+6. `AppointmentNotificationProcessingService` suppresses rather than sends a job that is a stale backlog entry, belongs to an inactive appointment, or has push disabled, keeping `SUPPRESSED` distinct from a genuine delivery `FAILED`; a failed attempt with retry budget left returns the job to `PENDING`.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/reminder/entity/ReminderStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/reminder/service/ReminderRecurrenceService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/reminder/notification/entity/AppointmentNotificationJobStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/reminder/notification/service/AppointmentNotificationProcessingService.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -402,11 +458,11 @@ end
 | `UC-MH-16` | System-distributed and user-created items have different mutation rules. Checklist operations remain scoped to the active lifecycle/authorized group. | No additional gap recorded in the code-first baseline. |
 | `UC-MH-17` | The task kind/id pair is resolved server-side and ownership/membership is rechecked. Actions are idempotent only where the owning domain defines that semantic. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/reminder/appointment/controller/AppointmentController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/reminder/appointment/controller/CareGroupAppointmentController.java`

@@ -431,7 +431,57 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **The member-owned User.accountStatus and AccountLockAppeal, with the ConsentGrant lifecycle nested inside an active account**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02ProfileNotificationsPrivacyandAccountState
+hide empty description
+[*] --> Active
+
+Active --> Deactivated : deactivateOwnAccount() / setAccountStatus(DEACTIVATED)
+Active --> Locked : accountLockApplied() / persistAccountLock()
+Locked --> AppealSubmitted : submitAccountLockAppeal() [no PENDING appeal exists] / createAppeal(PENDING)
+AppealSubmitted --> Active : reviewAppeal() [decision == APPROVE] / clearAccountLock()
+AppealSubmitted --> Locked : reviewAppeal() [decision == REJECT] / setAppealStatus(REJECTED)
+AppealSubmitted --> Locked : cancelAppeal() [caller owns the appeal] / setAppealStatus(CANCELLED)
+
+state Active {
+  [*] --> ConsentNotGranted
+  ConsentNotGranted --> ConsentGranted : grantConsent(dataType, purpose) / setGrantedAt()
+  ConsentGranted --> ConsentNotGranted : revokeConsent(consentId) [grant owned by caller] / setRevokedAt()
+  ConsentGranted --> ConsentGranted : updateProfile() / persistProfileFields()
+  ConsentGranted --> ConsentGranted : acknowledgeNotification() / markNotificationRead()
+}
+
+Active : accountStatus = ACTIVE
+Deactivated : accountStatus = DEACTIVATED
+AppealSubmitted : AccountLockAppealStatus = PENDING
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Profile, Notifications, Privacy, and Account State**
+
+**Brief Explanation:**
+
+1. The member starts in `Active`, the only state from which self-service profile, notification, and privacy operations are accepted.
+2. Inside `Active`, `grantConsent()` stamps `grantedAt` and `revokeConsent()` stamps `revokedAt`; a `ConsentGrant` is never deleted, so revocation is a state change rather than a removal.
+3. `updateProfile()` and `acknowledgeNotification()` are self-transitions — they change stored fields without moving the account between lifecycle states.
+4. The event `deactivateOwnAccount()` sets `accountStatus = DEACTIVATED`, which `AuthenticationPolicy` then treats as a non-signable account.
+5. When a lock is applied, `submitAccountLockAppeal()` is guarded so that only one `PENDING` appeal may exist at a time.
+6. The guard on `reviewAppeal()` decides the outcome: `APPROVE` clears the lock and restores `Active`, while `REJECT` and `cancelAppeal()` both return the account to `Locked`.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/entity/User.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consent/entity/ConsentGrant.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consent/service/impl/ConsentServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/entity/AccountLockAppealStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AccountLockAppealServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/notification/entity/NotificationRecordStatus.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -441,12 +491,12 @@ end
 | `UC-AC-10` | Only the authenticated account may initiate self-deactivation. Deactivation is not a client-only logout and must use the server lifecycle. | No focused Mobile widget test was found. |
 | `UC-AC-11` | Appeal eligibility and duplicate-pending rules are server authoritative. Submitting an appeal does not remove the block before review. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - Web Account Profile privacy shortcuts are static and are not a functional self-service UI.
 - No focused Mobile widget test was found.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/controller/AuthController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/profile/controller/ProfileController.java`

@@ -142,17 +142,61 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **The EPDS HealthMetricObservation.recordStatus, with the severity band and its family-notification side effect nested inside a stored screening**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_06EPDSScreeningHistoryandFamilyNotification
+hide empty description
+[*] --> NotScreened
+
+NotScreened --> Screened : submitEpdsQuestionnaire() [owning journey is ACTIVE] / persistTypedMetric(ACTIVE)
+Screened --> Deleted : deleteScreening() [caller owns the observation] / setRecordStatus(DELETED)
+Screened --> NotScreened : submitEpdsQuestionnaire() / supersedeWithNewerScreening()
+
+state Screened {
+  [*] --> BandEvaluated
+  BandEvaluated --> LowConcern : classifyScore() [score below concern threshold] / storeBand()
+  BandEvaluated --> ElevatedConcern : classifyScore() [score at or above concern threshold] / storeBand()
+  ElevatedConcern --> FamilyNotified : notifyFamily() [family notification consent granted] / dispatchNotificationRecord()
+  ElevatedConcern --> FamilyNotSharable : notifyFamily() [family notification consent absent] / suppressNotification()
+}
+
+Screened : recordStatus = ACTIVE
+Deleted : recordStatus = DELETED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: EPDS Screening, History, and Family Notification**
+
+**Brief Explanation:**
+
+1. A mother starts in `NotScreened`; EPDS is stored as a typed journey metric, so the same `ACTIVE` journey guard as other maternal metrics applies.
+2. The event `submitEpdsQuestionnaire()` persists the observation with `MetricStatus.ACTIVE` and immediately enters the nested band evaluation.
+3. The guard `classifyScore()` applies `EpdsSeverityPolicy` to split the result into `LowConcern` and `ElevatedConcern`; the severity band is stored, not inferred at read time.
+4. The family-notification side effect fires only from `ElevatedConcern`, so a low-concern screening never generates an alert.
+5. The second guard is consent: without a granted family-notification consent the action suppresses the notification rather than widening the audience.
+6. Submitting a newer questionnaire supersedes the previous screening, and deletion is soft — `recordStatus = DELETED` preserves the history row.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/entity/MetricStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/policy/EpdsSeverityPolicy.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/service/impl/HealthMetricServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/notification/entity/NotificationRecordStatus.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-MH-10` | EPDS is screening, not diagnosis. The self-harm item follows the deterministic safety-event floor even if the total score is lower. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/controller/JourneyMetricController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/epds_screen.dart`

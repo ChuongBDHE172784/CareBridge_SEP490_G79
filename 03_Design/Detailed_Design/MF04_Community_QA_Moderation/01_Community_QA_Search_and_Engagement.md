@@ -358,7 +358,55 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **CommunityQuestion.status (CommunityAnswer.status follows the same lifecycle without LOCKED)**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01CommunityQASearchandEngagement
+hide empty description
+[*] --> AiPending
+
+AiPending --> Approved : applyAiOutcome() [classification is safe] / setStatus(APPROVED)
+AiPending --> PendingHumanReview : applyAiOutcome() [classification is not safe] / setStatus(PENDING)
+PendingHumanReview --> Approved : moderatorApproves() / setStatus(APPROVED)
+Approved --> Hidden : moderatorHides() / setStatus(HIDDEN)
+PendingHumanReview --> Hidden : moderatorHides() / setStatus(HIDDEN)
+Hidden --> PendingHumanReview : revertModeration() / setStatus(PENDING)
+Approved --> Locked : moderatorLocks() / setStatus(LOCKED)
+Approved --> Approved : postAnswer() or voteOrBookmark() [status == APPROVED] / persistEngagement()
+Approved --> Deleted : authorDeletes() [caller owns the question] / setStatus(DELETED)
+PendingHumanReview --> Deleted : authorDeletes() [caller owns the question] / setStatus(DELETED)
+
+AiPending : QuestionStatus = AI_PENDING
+PendingHumanReview : QuestionStatus = PENDING
+Approved : QuestionStatus = APPROVED
+Hidden : QuestionStatus = HIDDEN
+Locked : QuestionStatus = LOCKED
+Deleted : QuestionStatus = DELETED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Community Q&A, Search, and Engagement**
+
+**Brief Explanation:**
+
+1. Newly authored content starts in `AI_PENDING` — `CommunityQuestionMapper` sets that status on creation so nothing is published before the moderation scan runs.
+2. The guard on `applyAiOutcome()` is the AI classification: safe content reaches `APPROVED`, anything else falls back to `PENDING` for a human moderator rather than being auto-hidden.
+3. `CommunityQuestionMapper` presents `AI_PENDING` to clients as `PENDING`, so the pre-scan state is never surfaced as a distinct public status.
+4. Only `Approved` accepts engagement — the self-transition for answering, voting, and bookmarking is guarded on `status == APPROVED`.
+5. `Locked` keeps a question readable but closed to new answers, which is why it is drawn only from `Approved`.
+6. Author deletion is a soft transition to `DELETED`, and moderation reversal returns hidden content to `PENDING` rather than straight back to public visibility.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/community/entity/QuestionStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/community/entity/AnswerStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/community/mapper/CommunityQuestionMapper.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/community/service/CommunityQuestionServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/aimoderation/service/AiModerationOutcomeApplier.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -367,11 +415,11 @@ end
 | `UC-CO-03` | Answer ownership and question/moderation state are server authoritative. Answer notification/presentation effects do not bypass canonical state. | No additional gap recorded in the code-first baseline. |
 | `UC-CO-04` | Each actor-target toggle is unique/idempotent according to its owning service. Engagement cannot make hidden/ineligible content visible. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/community/controller/CommunityFeedController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/community/controller/CommunityQuestionController.java`

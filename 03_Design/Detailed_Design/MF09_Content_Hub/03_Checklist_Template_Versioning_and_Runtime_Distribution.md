@@ -204,18 +204,63 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **ChecklistTemplate.status**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_03ChecklistTemplateVersioningandRuntimeDistribution
+hide empty description
+[*] --> Draft
+
+Draft --> PendingReview : submitVersionForReview() [status is DRAFT or PENDING_REVIEW] / setStatus(PENDING_REVIEW)
+PendingReview --> Draft : withdrawVersion() [status is DRAFT or PENDING_REVIEW] / setStatus(DRAFT)
+PendingReview --> Approved : approveVersion() / setStatus(APPROVED)
+PendingReview --> Rejected : rejectVersion() / setStatus(REJECTED)
+Rejected --> Draft : reviseVersion() / setStatus(DRAFT)
+Approved --> Archived : archiveTemplate() [status != ARCHIVED] / setStatus(ARCHIVED)
+Draft --> Archived : archiveTemplate() [status != ARCHIVED] / setStatus(ARCHIVED)
+Rejected --> Archived : archiveTemplate() [status != ARCHIVED] / setStatus(ARCHIVED)
+Approved --> Approved : distributeToRuntime() [status == APPROVED] / materializePersonalChecklist()
+Draft --> Draft : editVersion() [status is DRAFT or PENDING_REVIEW] / persistTemplateVersion()
+
+Draft : ChecklistTemplateStatus = DRAFT
+PendingReview : ChecklistTemplateStatus = PENDING_REVIEW
+Approved : ChecklistTemplateStatus = APPROVED
+Rejected : ChecklistTemplateStatus = REJECTED
+Archived : ChecklistTemplateStatus = ARCHIVED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Checklist Template Versioning and Runtime Distribution**
+
+**Brief Explanation:**
+
+1. A template version is created in `DRAFT` and `AdminChecklistTemplateServiceImpl` blocks edits once the version is `APPROVED` or `ARCHIVED`.
+2. Unlike content items, this lifecycle keeps an explicit `REJECTED` state rather than pushing a rejection straight back to `DRAFT`, so the rejection remains on the version record.
+3. A rejected version is revised into a new `DRAFT` rather than being re-submitted in place, which preserves the version history.
+4. Only `APPROVED` may be distributed: the self-transition that materializes personal checklists is guarded on that status, so an unapproved template never reaches a mother's runtime.
+5. Archiving is reachable from every non-archived state and is guarded against re-archiving an already-archived template.
+6. Personal checklist execution and today-task projection are consumers of the distributed output and are owned by MF-02, so they add no transition to this template lifecycle.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/entity/ChecklistTemplateStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/AdminChecklistTemplateServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/entity/ChecklistTemplateType.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-AD-10` | Content Admin authors; approval/activation is a separate System Admin UC. Import/version/template validation is server authoritative. | No additional gap recorded in the code-first baseline. |
 | `UC-AD-11` | System Admin approval is distinct from Content Admin authoring. Version transition and distribution idempotency are server authoritative. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - Personal checklist execution and today tasks are owned by MF-02 and are referenced consumers, not duplicated UC ownership here.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminChecklistTemplateController.java`
 - `05_Development/CareBridgeWebApp/src/features/contentManagement/pages/ChecklistListPage.tsx`

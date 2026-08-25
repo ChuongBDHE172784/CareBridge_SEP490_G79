@@ -229,7 +229,48 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **ConsultationRequest.status**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_03ConsultationRequestandSharedCareLifecycle
+hide empty description
+[*] --> Pending
+
+Pending --> Accepted : accept() [caller is the assigned expert && expert still eligible] / openDirectConversation()
+Pending --> Rejected : reject() [caller is the assigned expert] / storeRejectReason()
+Pending --> Cancelled : cancel() [caller is the requester] / stampRespondedAt()
+Pending --> Expired : expireOverdueRequests() [expiresAt < now] / publishRequestExpired()
+
+Accepted --> Accepted : readSharedMaternalCare() [consent scope still valid] / composeSharedCareView()
+
+Pending : ConsultationRequestStatus = PENDING
+Accepted : ConsultationRequestStatus = ACCEPTED
+Rejected : ConsultationRequestStatus = REJECTED
+Cancelled : ConsultationRequestStatus = CANCELLED
+Expired : ConsultationRequestStatus = EXPIRED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Consultation Request and Shared Care Lifecycle**
+
+**Brief Explanation:**
+
+1. A request is created in `PENDING`, the only non-terminal state in this lifecycle.
+2. All four outgoing transitions run through the repository's `tryTransition()` compare-and-set, whose SQL predicate requires `status = PENDING` — so the first writer wins and a decided request can never be re-decided.
+3. The guard on `accept()` is the strongest: the caller must be the assigned expert and `assertExpertStillEligibleForConsultation()` must pass against a locked profile and account row.
+4. The action on `accept()` opens the direct conversation and stores its id on the request, which is what later authorizes shared maternal-care access.
+5. `cancel()` is guarded to the requester and `reject()` to the expert, so the two parties cannot act on each other's behalf.
+6. `expireOverdueRequests()` is the only system-driven transition; it uses the same compare-and-set, so a request accepted moments earlier is never retroactively expired.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consultation/entity/ConsultationRequestStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consultation/service/impl/ConsultationRequestServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consultation/repository/ConsultationRequestRepository.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -237,13 +278,13 @@ end
 | `UC-EX-09` | Eligibility and current state are rechecked for every decision. A client cannot assign an ineligible request by UI state alone. | Web reject currently sends POST while the backend requires PATCH; reject is broken on Web and remains Partial there. |
 | `UC-EX-12` | The active sharing/consultation relationship is rechecked by the backend. Read access must not broaden to unrelated journeys or accounts. | No dedicated shared-record backend resource exists; this UC composes existing authorized endpoints. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - Paid booking, payment, refund/dispute, and custom care-plan authoring are not reachable release-1 functions.
 - Web reject currently sends POST while the backend requires PATCH; reject is broken on Web and remains Partial there.
 - No dedicated shared-record backend resource exists; this UC composes existing authorized endpoints.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consultation/controller/ConsultationRequestController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/consultation/screens/consultation_request_form_screen.dart`

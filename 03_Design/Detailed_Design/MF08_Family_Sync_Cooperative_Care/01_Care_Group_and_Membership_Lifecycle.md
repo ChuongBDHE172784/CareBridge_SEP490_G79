@@ -201,18 +201,68 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **CareGroup.status, with CareGroupMember.inviteStatus nested inside an active group**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01CareGroupandMembershipLifecycle
+hide empty description
+[*] --> NoGroup
+
+NoGroup --> ActiveGroup : createCareGroup() [owner is below the active-group quota] / persistGroup(ACTIVE)
+ActiveGroup --> ArchivedGroup : archiveCareGroup() [status != ARCHIVED] / setStatus(ARCHIVED)
+
+state ActiveGroup {
+  [*] --> NotInvited
+  NotInvited --> InvitePending : inviteMember() [no non-revoked membership exists] / persistMember(PENDING)
+  InvitePending --> InviteAccepted : acceptInvite() / setInviteStatus(ACCEPTED)
+  InvitePending --> InviteRejected : rejectInvite() / setInviteStatus(REJECTED)
+  InvitePending --> InviteExpired : inviteWindowElapses() / setInviteStatus(EXPIRED)
+  InvitePending --> InviteRevoked : revokeInvite() [caller is the group owner] / setInviteStatus(REVOKED)
+  InviteAccepted --> InviteRevoked : removeMember() [caller is the group owner] / setInviteStatus(REVOKED)
+  InviteAccepted --> NotInvited : leaveGroup() [caller is the member] / clearMembership()
+  InviteRejected --> InvitePending : inviteMember() / setInviteStatus(PENDING)
+  InviteExpired --> InvitePending : inviteMember() / setInviteStatus(PENDING)
+}
+
+ActiveGroup : CareGroupStatus = ACTIVE
+ArchivedGroup : CareGroupStatus = ARCHIVED
+InvitePending : InviteStatus = PENDING
+InviteAccepted : InviteStatus = ACCEPTED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Care Group and Membership Lifecycle**
+
+**Brief Explanation:**
+
+1. A group is created in `ACTIVE`, and `CareGroupServiceImpl` guards creation against the owner's active-group quota.
+2. `ACTIVE` is a live precondition rather than a one-time check: quick notes, dashboards, appointments, and baby access all re-verify it before serving data.
+3. Archiving is one-way — no reachable transition returns an archived group to `ACTIVE`.
+4. Inside the group, `inviteMember()` is guarded so an existing non-revoked membership is re-used instead of creating a duplicate row.
+5. `ACCEPTED` is the only membership state that grants shared access, which is why every consuming policy filters on it specifically rather than on membership existence.
+6. A rejected or expired invite can be re-issued back to `PENDING`, while `REVOKED` is the owner's terminal removal and `leaveGroup()` is the member's own exit.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/entity/CareGroupStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/entity/InviteStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/service/impl/CareGroupServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/repository/CareGroupMemberRepository.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-FM-01` | Group ownership/membership and journey compatibility are server authoritative. Delete/leave/relink have distinct guarded effects. | No additional gap recorded in the code-first baseline. |
 | `UC-FM-02` | Invitation/join-request states, expiry, uniqueness, and actor authority are server authoritative. A token or UI state cannot bypass membership policy. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/controller/CareGroupController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/familySync/screens/care_groups_screen.dart`

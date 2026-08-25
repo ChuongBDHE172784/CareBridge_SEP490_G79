@@ -227,18 +227,63 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **VaccinationRecord.status**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_03VaccinationRecordScheduleandReminder
+hide empty description
+[*] --> NotPlanned
+
+NotPlanned --> Scheduled : buildVaccinationBook() / persistRecord(SCHEDULED)
+NotPlanned --> Completed : recordAdministeredDose() / persistRecord(COMPLETED)
+Scheduled --> Completed : recordAdministeredDose() [status != DELETED] / setStatus(COMPLETED)
+Scheduled --> Postponed : postponeDose() [status != DELETED] / setStatus(POSTPONED)
+Postponed --> Scheduled : rescheduleDose() / setDueDate()
+Postponed --> Completed : recordAdministeredDose() / setStatus(COMPLETED)
+Scheduled --> Deleted : deleteRecord() [status != DELETED] / setStatus(DELETED)
+Completed --> Deleted : deleteRecord() [status != DELETED] / setStatus(DELETED)
+Postponed --> Deleted : deleteRecord() [status != DELETED] / setStatus(DELETED)
+Scheduled --> Scheduled : createDoseReminder() / persistReminder(PENDING)
+
+Scheduled : VaccinationRecordStatus = SCHEDULED
+Completed : VaccinationRecordStatus = COMPLETED
+Postponed : VaccinationRecordStatus = POSTPONED
+Deleted : VaccinationRecordStatus = DELETED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Vaccination Record, Schedule, and Reminder**
+
+**Brief Explanation:**
+
+1. A dose starts in `NotPlanned`; it may enter the lifecycle either as a computed schedule entry (`SCHEDULED`) or directly as recorded evidence (`COMPLETED`).
+2. Every mutating transition is guarded on the record not already being `DELETED`, because `VaccinationServiceImpl` rejects writes against a deleted row.
+3. `postponeDose()` keeps the dose in the schedule as `POSTPONED` rather than dropping it, so a deferred vaccination stays visible.
+4. A postponed dose can be rescheduled back to `SCHEDULED` or completed directly, which is why both transitions leave `Postponed`.
+5. The self-transition `createDoseReminder()` creates a `PENDING` reminder without changing the record state — the schedule and the reminder are separate rows.
+6. `Deleted` is a soft terminal state reachable from every live state; the record is filtered out of schedules and history rather than removed.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/vaccination/entity/VaccinationRecordStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/vaccination/service/impl/VaccinationServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/vaccination/service/impl/VaccinationBookService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/reminder/entity/ReminderStatus.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-BC-07` | Dose identity, chronology, duplication, and baby authorization are server authoritative. A record does not change the vaccine catalogue itself. | No additional gap recorded in the code-first baseline. |
 | `UC-BC-08` | Schedule/suggestion state comes from canonical vaccination records and catalogue rules. Creating a reminder does not mark a dose completed. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/vaccination/controller/VaccinationController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/healthRecords/screens/vaccination_record_form_screen.dart`

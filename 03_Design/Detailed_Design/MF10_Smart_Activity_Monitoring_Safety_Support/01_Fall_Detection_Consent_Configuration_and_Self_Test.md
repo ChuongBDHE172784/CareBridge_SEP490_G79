@@ -111,17 +111,69 @@ end
 4. The service applies the business policy and coordinates downstream collaborators while its caller remains active.
 5. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **SafetyMonitoringConfig + ImuMonitoringSession (with the SENSOR_SELF_TEST SafetyEvent nested inside an active session)**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01FallDetectionConsentConfigurationandSelfTest
+hide empty description
+[*] --> Unconfigured
+
+Unconfigured --> DetectionDisabled : configure() [fallDetectionEnabled == false] / saveSafetyMonitoringConfig()
+Unconfigured --> DetectionEnabled : configure() [fallDetectionEnabled == true] / saveSafetyMonitoringConfig()
+DetectionDisabled --> DetectionEnabled : configure() [fallDetectionEnabled == true] / publishSafetyConfigChanged()
+DetectionEnabled --> DetectionDisabled : configure() [fallDetectionEnabled == false] / publishSafetyConfigChanged()
+
+DetectionEnabled --> Monitoring : enable() [sensorConsentGranted && sensorPermissionGranted] / openImuMonitoringSession()
+Monitoring --> DetectionEnabled : disable() / stopImuMonitoringSession()
+
+state Monitoring {
+  [*] --> SelfTestIdle
+  SelfTestIdle --> SelfTestOpen : createSensorSelfTest() [signalKey not duplicated] / armCountdownDeadline()
+  SelfTestOpen --> SelfTestOpen : createSensorSelfTest() [signalKey duplicated] / returnExistingSelfTestEvent()
+  SelfTestOpen --> SelfTestTimedOut : completeSensorSelfTest() [status == TEST_OPEN] / recordSelfTestResponse()
+  SelfTestTimedOut --> SelfTestOpen : createSensorSelfTest() / armCountdownDeadline()
+}
+
+DetectionDisabled : fallDetectionEnabled = false
+DetectionEnabled : fallDetectionEnabled = true
+Monitoring : ImuSessionStatus = ACTIVE
+SelfTestOpen : SafetyEventStatus = TEST_OPEN
+SelfTestTimedOut : SafetyEventStatus = TIMED_OUT
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Fall Detection Consent, Configuration, and Self-Test**
+
+**Brief Explanation:**
+
+1. The user starts in `Unconfigured` because `SafetyConfigStore.findByUserId()` holds no `SafetyMonitoringConfig` row yet.
+2. The event `configure()` persists the configuration, and the guard on `fallDetectionEnabled` decides whether the user settles in `DetectionDisabled` or `DetectionEnabled`; the action publishes `SafetyConfigChanged`.
+3. The event `enable()` moves the user to `Monitoring` only when the guard `sensorConsentGranted && sensorPermissionGranted` holds, because `FallDetectionService.enable()` calls `requireSensorCollection()` and rejects a missing device permission with `SAFETY-009`; the action opens an `ImuMonitoringSession` with `ImuSessionStatus.ACTIVE`.
+4. Inside `Monitoring`, `createSensorSelfTest()` opens a `SENSOR_SELF_TEST` event in `TEST_OPEN` and arms the countdown deadline; a duplicated `signalKey` re-enters `SelfTestOpen` and returns the existing event rather than creating a second one.
+5. The event `completeSensorSelfTest()` is accepted only under the guard `status == TEST_OPEN`, and the action records the response before the event settles in `TIMED_OUT` — a self-test never reaches the real alert states.
+6. The event `disable()` leaves `Monitoring` from the active session only, stopping it with `ImuSessionStatus.STOPPED` and returning the user to `DetectionEnabled` with the configuration intact.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/ImuSessionStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/SafetyEventStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/service/impl/SafetyConfigService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/service/impl/FallDetectionService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/service/impl/SensorSelfTestService.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-ES-04` | Consent, device permission, and latest server configuration are required before monitoring. A failed self-test must not be presented as an enabled healthy detector. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/controller/SafetyConfigController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/controller/SensorSelfTestController.java`

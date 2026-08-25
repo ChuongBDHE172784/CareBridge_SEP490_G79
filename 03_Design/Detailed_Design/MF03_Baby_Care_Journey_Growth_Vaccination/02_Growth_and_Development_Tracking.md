@@ -204,18 +204,66 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **MilestoneRecord.status, with the derived MilestoneAchievementStatus nested inside an active record**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02GrowthandDevelopmentTracking
+hide empty description
+[*] --> NotRecorded
+
+NotRecorded --> RecordActive : recordGrowthOrMilestone() [BabyAccessPolicy grants write access] / persistRecord(ACTIVE)
+RecordActive --> RecordActive : updateRecord() [caller owns or shares the baby] / persistRevisedValue()
+RecordActive --> RecordDeleted : deleteRecord() [caller owns the record] / setStatus(DELETED)
+
+state RecordActive {
+  [*] --> Achieved
+  Achieved --> Pending : updateMilestone(status = PENDING) [caller may manage the baby] / setMilestoneStatus(PENDING)
+  Achieved --> Delayed : updateMilestone(status = DELAYED) [caller may manage the baby] / setMilestoneStatus(DELAYED)
+  Pending --> Achieved : updateMilestone(status = ACHIEVED) [achievedDate is not null] / setMilestoneStatus(ACHIEVED)
+  Delayed --> Achieved : updateMilestone(status = ACHIEVED) [achievedDate is not null] / setMilestoneStatus(ACHIEVED)
+  Pending --> Delayed : updateMilestone(status = DELAYED) / setMilestoneStatus(DELAYED)
+  Delayed --> Pending : updateMilestone(status = PENDING) / setMilestoneStatus(PENDING)
+}
+
+RecordActive : MilestoneRecordStatus = ACTIVE
+RecordDeleted : MilestoneRecordStatus = DELETED
+Achieved : MilestoneAchievementStatus = ACHIEVED
+Pending : MilestoneAchievementStatus = PENDING
+Delayed : MilestoneAchievementStatus = DELAYED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Growth and Development Tracking**
+
+**Brief Explanation:**
+
+1. Growth measurements and development milestones start in `NotRecorded` and require `BabyAccessPolicy` to grant write access before a row is persisted.
+2. The event `recordGrowthOrMilestone()` persists the record with `MilestoneRecordStatus.ACTIVE`; charts and projections read only this state.
+3. Deletion is soft, so `RecordDeleted` removes the record from charts without destroying the measurement history.
+4. Inside `RecordActive`, a `DevelopmentMilestone` is created with `MilestoneAchievementStatus.ACHIEVED` as its field default, so the nested region starts there rather than in `PENDING`.
+5. The achievement status is supplied by the caller on `updateMilestone()` and stored — `MilestoneServiceImpl` does not derive it from the age window, so no automatic evaluation transition is drawn.
+6. The one server-enforced guard is that `ACHIEVED` requires a non-null `achievedDate`; the service rejects the update otherwise, so no milestone can be marked achieved without a date.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/carejourney/entity/MilestoneRecordStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/carejourney/entity/MilestoneAchievementStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/baby/policy/BabyAccessPolicy.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-BC-05` | Measurement units, ranges, chronology, and baby authorization are server authoritative. Growth charts are informational and not a diagnosis. | No additional gap recorded in the code-first baseline. |
 | `UC-BC-06` | Milestone ownership and chronology are server authoritative. Milestone status is tracking information, not a diagnosis. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/carejourney/controller/GrowthMeasurementController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/carejourney/controller/GrowthChartController.java`

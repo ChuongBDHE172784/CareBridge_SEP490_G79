@@ -215,18 +215,64 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **EmergencySession.status, with the family alert and acknowledgement nested inside an active session**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02EmergencySessionFamilyAlertandResponse
+hide empty description
+[*] --> NoSession
+
+NoSession --> Active : startEmergency() [no active session for this user] / persistSession(ACTIVE)
+Active --> Resolved : resolveEmergency() [caller owns the session] / setStatus(RESOLVED)
+Active --> Cancelled : cancelEmergency() [caller owns the session] / setStatus(CANCELLED)
+
+state Active {
+  [*] --> AlertPending
+  AlertPending --> AlertDelivered : notifyFamilyMembers() [active care group resolves recipients] / dispatchEmergencyAlert()
+  AlertPending --> NoRecipient : notifyFamilyMembers() [no active care group member found] / recordUndeliverableAlert()
+  AlertDelivered --> Acknowledged : familyMemberResponds() / recordAcknowledgement()
+  AlertDelivered --> AlertDelivered : shareLocation() [location consent granted] / persistBoundedLocationPoint()
+  Acknowledged --> Acknowledged : shareLocation() [location consent granted] / persistBoundedLocationPoint()
+}
+
+Active : EmergencyStatus = ACTIVE
+Resolved : EmergencyStatus = RESOLVED
+Cancelled : EmergencyStatus = CANCELLED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Emergency Session, Family Alert, and Response**
+
+**Brief Explanation:**
+
+1. A session starts in `ACTIVE` and `EmergencyService` guards creation so a single user cannot hold two concurrent active emergencies.
+2. Both terminal transitions are owner-guarded, and neither is automatic — an emergency is never silently closed by the system.
+3. Inside `Active`, recipients are resolved through the mother's `ACTIVE` care groups, so alert delivery depends on live membership rather than a stored recipient list.
+4. `NoRecipient` is modelled explicitly because an undeliverable alert must remain visible rather than being presented as a delivered one.
+5. Family acknowledgement moves the alert to `Acknowledged` but does not resolve the session — only the owner can close it, so an acknowledgement never suppresses escalation.
+6. Location sharing is a guarded self-transition available in both alert states: each point is written only while location consent holds, and the share stays bounded to the session.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/EmergencyStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/service/impl/EmergencyService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/adapter/FamilyMemberPortAdapter.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consent/entity/ConsentGrant.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-ES-02` | Emergency session state is canonical; delivery retries cannot create duplicate active incidents. Location sharing is consent gated and is a subflow, not a separate UC. | No additional gap recorded in the code-first baseline. |
 | `UC-ES-03` | Family authorization and active-session state are rechecked. Acknowledgement does not resolve the mother's emergency session. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/controller/EmergencyController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/emergency/controller/FamilyLocationShareController.java`

@@ -233,17 +233,64 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **SafetyEvent.status for a detected impact (the SENSOR_SELF_TEST variant is modelled in document 01)**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02DetectedImpactSafetyCheckAlertandFeedback
+hide empty description
+[*] --> NoEvent
+
+NoEvent --> Open : processImuData() [fall analysis confirms a suspected impact] / persistEvent(OPEN) and armCountdown()
+Open --> ConfirmedSafe : confirmSafetyCheck() [event has no response yet] / recordResponse(I_AM_OK)
+Open --> FalsePositive : reportFalsePositive() [event has no response yet] / recordResponse(FALSE_POSITIVE)
+Open --> EscalationRequested : sendEmergencyAlert() [event has no response yet] / recordResponse(NEED_HELP)
+Open --> TimedOut : processExpiredCountdowns() [deadline passed && emergencyAutoAlert == false] / recordSystemTimeout()
+Open --> EscalationRequested : processExpiredCountdowns() [deadline passed && emergencyAutoAlert == true] / autoEscalate()
+EscalationRequested --> EmergencyAlertSent : familyAlertDispatched() [status == ESCALATION_REQUESTED] / setStatus(EMERGENCY_ALERT_SENT)
+ConfirmedSafe --> ConfirmedSafe : submitFeedback() / recordFalsePositiveFeedback()
+FalsePositive --> FalsePositive : submitFeedback() / recordFalsePositiveFeedback()
+
+Open : SafetyEventStatus = OPEN
+ConfirmedSafe : SafetyEventStatus = CONFIRMED_SAFE
+FalsePositive : SafetyEventStatus = FALSE_POSITIVE
+TimedOut : SafetyEventStatus = TIMED_OUT
+EscalationRequested : SafetyEventStatus = ESCALATION_REQUESTED
+EmergencyAlertSent : SafetyEventStatus = EMERGENCY_ALERT_SENT
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Detected Impact, Safety Check, Alert, and Feedback**
+
+**Brief Explanation:**
+
+1. An event is only created when the fall-analysis service confirms a suspected impact, and it enters `OPEN` with a countdown deadline already armed.
+2. The three user responses are mutually exclusive: each is guarded on the event not already carrying a response, so the first answer wins and cannot be overwritten.
+3. When the countdown expires without an answer, the guard on `emergencyAutoAlert` decides the outcome — auto-alert escalates, otherwise the event settles as `TIMED_OUT`.
+4. `TIMED_OUT` is deliberately not treated as safe; it records that no confirmation arrived rather than asserting the user is well.
+5. `EMERGENCY_ALERT_SENT` is reached only from `ESCALATION_REQUESTED` and only once the family alert has actually been dispatched, so the state reflects delivery rather than intent.
+6. False-positive feedback is a self-transition on the already-resolved states: it tunes future detection without rewriting the recorded outcome of a past event.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/SafetyEventStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/SafetyEventType.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/service/impl/FallDetectionService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/service/SafetyCountdownJob.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/service/FamilyAlertSentHandler.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-ES-05` | Server event state and deterministic detector rules are canonical. Late/repeated signals must not reopen a resolved event or duplicate emergency alerts. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/controller/FallDetectionController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/safety/service/impl/FallDetectionService.java`

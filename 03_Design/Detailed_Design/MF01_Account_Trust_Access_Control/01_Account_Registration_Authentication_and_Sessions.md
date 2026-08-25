@@ -654,7 +654,59 @@ end
 6. Where the current implementation requires an external system, the service waits for its response before completing the domain result.
 7. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **User.accountStatus, with the signed-in session lifecycle nested inside an active account**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01AccountRegistrationAuthenticationandSessions
+hide empty description
+[*] --> PendingActivation
+
+PendingActivation --> PendingActivation : requestOtp() / issueOtpVerification()
+PendingActivation --> Active : verifyOtp() [codeHash matches && expiresAt not passed] / setAccountStatus(ACTIVE)
+
+Active --> TemporarilyLocked : authenticate() [failed-attempt threshold reached] / applyAccountLock(TEMPORARY)
+TemporarilyLocked --> Active : lockWindowElapses() / clearAccountLock()
+Active --> AdminLocked : adminLockAccount() / applyAccountLock(ADMIN)
+
+state Active {
+  [*] --> SignedOut
+  SignedOut --> SignedIn : authenticate() [credentials valid && account not locked] / issueAccessAndRefreshTokens()
+  SignedIn --> SignedOut : logout() / revokeCurrentSession()
+  SignedIn --> SignedOut : revokeSession() [session belongs to caller] / revokeRefreshSession()
+  SignedIn --> SignedIn : changePassword() [current password verified] / rotateCredential()
+  SignedIn --> SignedIn : linkGoogleIdentity() / attachFederatedIdentity()
+  SignedOut --> SignedOut : recoverForgottenPassword() [reset proof valid] / resetCredential()
+}
+
+PendingActivation : accountStatus = PENDING_ACTIVATION
+Active : accountStatus = ACTIVE
+TemporarilyLocked : AccountLockType = TEMPORARY
+AdminLocked : AccountLockType = ADMIN
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Account Registration, Authentication, and Sessions**
+
+**Brief Explanation:**
+
+1. A new registration starts in `PendingActivation` because `AuthServiceImpl` creates the `User` with `accountStatus = PENDING_ACTIVATION` and issues an `OtpVerification`.
+2. The event `verifyOtp()` promotes the account to `Active` only under the guard that the stored `codeHash` matches and `expiresAt` has not passed; the action sets `accountStatus = ACTIVE`.
+3. Inside `Active`, `authenticate()` moves the account from `SignedOut` to `SignedIn` and the action issues the access and refresh tokens that back a session.
+4. The events `logout()` and `revokeSession()` both return the account to `SignedOut`, but `revokeSession()` carries the guard that the targeted session must belong to the caller.
+5. `changePassword()` and `linkGoogleIdentity()` are self-transitions on `SignedIn`: they mutate credentials without ending the session.
+6. Repeated failed authentication moves the whole account to `TemporarilyLocked` via `AccountLockType.TEMPORARY`, which `AuthenticationPolicy` re-checks on every later sign-in attempt.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/entity/User.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/entity/OtpVerification.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/entity/AccountLockType.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/service/impl/AuthServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/policy/AuthenticationPolicy.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -665,7 +717,7 @@ end
 | `UC-AC-05` | The authenticated principal, not a client-supplied user id, owns the change. The new password must satisfy the server password policy. | No focused end-to-end change-password test was found. |
 | `UC-AC-07` | A federated identity cannot be linked to multiple CareBridge accounts. The server verifies provider identity; client display state is not proof of linkage. | No reachable Web linked-account UI exists. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - Deleted legacy federated-registration pages are not valid Web entry points.
 - No focused Mobile widget test was found.
@@ -673,7 +725,7 @@ end
 - No focused end-to-end change-password test was found.
 - No reachable Web linked-account UI exists.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/controller/AuthController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/auth/screens/register_screen.dart`

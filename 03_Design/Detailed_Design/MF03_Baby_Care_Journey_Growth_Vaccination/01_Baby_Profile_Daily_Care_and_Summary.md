@@ -282,7 +282,50 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **BabyDailyLog.status, with the owning baby profile as the enclosing precondition**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01BabyProfileDailyCareandSummary
+hide empty description
+[*] --> NoBabyProfile
+
+NoBabyProfile --> BabyProfileOwned : createBabyProfile() / persistBabyProfile()
+BabyProfileOwned --> NoBabyProfile : deleteBabyProfile() [caller owns the baby] / removeBabyProfile()
+
+state BabyProfileOwned {
+  [*] --> NoLogToday
+  NoLogToday --> LogActive : createDailyLog() [BabyAccessPolicy grants write access] / persistLog(ACTIVE)
+  LogActive --> LogActive : updateDailyLog() [caller owns or shares the baby] / persistRevisedLog()
+  LogActive --> LogDeleted : deleteDailyLog() [caller owns the log] / setStatus(DELETED)
+  LogActive --> LogActive : readDailyLogSummary() [status == ACTIVE] / composeSummary()
+}
+
+LogActive : BabyDailyLogStatus = ACTIVE
+LogDeleted : BabyDailyLogStatus = DELETED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Baby Profile, Daily Care, and Summary**
+
+**Brief Explanation:**
+
+1. The lifecycle starts in `NoBabyProfile`; no daily-care operation is reachable until a baby profile exists.
+2. `BabyAccessPolicy` is the guard on entering `LogActive` — it resolves both direct ownership and access through an `ACTIVE` care group.
+3. The event `createDailyLog()` persists the entry with `BabyDailyLogStatus.ACTIVE`, the only state the care hub and summary read.
+4. `updateDailyLog()` and `readDailyLogSummary()` are self-transitions: they revise or compose from the stored entry without changing its lifecycle state.
+5. Deletion is soft — the action sets `status = DELETED`, which removes the entry from the summary projection while keeping the row.
+6. `LogDeleted` is terminal; the code has no transition that restores a deleted daily log.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/carejourney/entity/BabyDailyLogStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/carejourney/service/impl/BabyDailyLogServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/baby/policy/BabyAccessPolicy.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/entity/CareGroupStatus.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -291,11 +334,11 @@ end
 | `UC-BC-03` | Type-specific field validation and baby authorization are server authoritative. Log time/order uses server-normalized values. | No additional gap recorded in the code-first baseline. |
 | `UC-BC-04` | The summary is derived from canonical logs and must not expose another baby's data. Empty periods return a stable empty summary rather than fabricated values. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - Web BabyCareHub has no focused test; backend `care-overview`/`care-timeline` routes have no client consumer.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/baby/controller/BabyController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/baby/screens/baby_profiles_screen.dart`

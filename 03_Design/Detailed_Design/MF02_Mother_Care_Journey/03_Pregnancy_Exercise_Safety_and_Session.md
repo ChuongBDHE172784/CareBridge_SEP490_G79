@@ -308,18 +308,62 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **ExerciseSession.sessionStatus**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_03PregnancyExerciseSafetyandSession
+hide empty description
+[*] --> NotStarted
+
+NotStarted --> InProgress : startSession() [pre-exercise safety check passed] / createSession(IN_PROGRESS)
+InProgress --> Paused : pauseSession() [sessionStatus == IN_PROGRESS] / setSessionStatus(PAUSED)
+Paused --> InProgress : resumeSession() [sessionStatus == PAUSED] / setSessionStatus(IN_PROGRESS)
+InProgress --> Completed : completeSession() / setSessionStatus(COMPLETED)
+Paused --> Completed : completeSession() / setSessionStatus(COMPLETED)
+InProgress --> Abandoned : abandonSession() / setSessionStatus(ABANDONED)
+Paused --> Abandoned : abandonSession() / setSessionStatus(ABANDONED)
+InProgress --> InProgress : submitPostureFrame() [sessionStatus == IN_PROGRESS] / analysePosture()
+Completed --> Completed : readSessionResult() [sessionStatus == COMPLETED] / returnStoredResult()
+
+InProgress : sessionStatus = IN_PROGRESS
+Paused : sessionStatus = PAUSED
+Completed : sessionStatus = COMPLETED
+Abandoned : sessionStatus = ABANDONED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Pregnancy Exercise Safety and Session**
+
+**Brief Explanation:**
+
+1. A session starts in `NotStarted`; the pre-exercise safety check is the guard that must pass before `startSession()` creates the row.
+2. `pauseSession()` and `resumeSession()` each carry an explicit status guard, so the pair cannot be replayed out of order.
+3. Both `InProgress` and `Paused` may complete or be abandoned, which is why `completeSession()` and `abandonSession()` are drawn from each of them rather than only from `InProgress`.
+4. The action `analysePosture()` runs as a self-transition on `InProgress` only — `PostureAnalysisServiceImpl` rejects frames for any other status, so a paused session cannot be scored.
+5. `ExerciseSessionResultServiceImpl` guards result reads on `sessionStatus == COMPLETED`, so an abandoned session never exposes a result.
+6. `Completed` and `Abandoned` are terminal: no transition in the code returns a session from either state.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/entity/SessionStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/service/impl/ExerciseSessionServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/service/impl/ExerciseSessionResultServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/service/impl/PostureAnalysisServiceImpl.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-MH-18` | Stage/publication eligibility and safety-check policy are server authoritative. A failed/blocked safety check cannot be bypassed by client navigation. | No additional gap recorded in the code-first baseline. |
 | `UC-MH-19` | Server session state is canonical; camera/model feedback is advisory. The sidecar inference contract validates sequence and landmark payloads; provider failure follows the implemented backend fallback/degraded path. Late frames and retries must not mutate a completed/aborted session. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/controller/ExerciseController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/policy/SafetyCheckPolicy.java`

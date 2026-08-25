@@ -254,7 +254,52 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **ContentItem.status**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02ContentAuthoringReviewPublishingandArchive
+hide empty description
+[*] --> Draft
+
+Draft --> PendingReview : submitForReview() [status is DRAFT or PENDING_REVIEW] / setStatus(PENDING_REVIEW)
+PendingReview --> Draft : withdrawSubmission() [status is DRAFT or PENDING_REVIEW] / setStatus(DRAFT)
+PendingReview --> Approved : reviewContent() [decision == APPROVE && status == PENDING_REVIEW] / publishContent()
+PendingReview --> Draft : reviewContent() [decision == REJECT && status == PENDING_REVIEW] / returnToAuthorWithFeedback()
+Approved --> Archived : unpublishContent() [status == APPROVED] / setStatus(ARCHIVED)
+Draft --> Archived : archiveContent() [status != ARCHIVED] / setStatus(ARCHIVED)
+PendingReview --> Archived : archiveContent() [status != ARCHIVED] / setStatus(ARCHIVED)
+Draft --> Draft : editContent() [status is DRAFT or PENDING_REVIEW] / persistNewVersion()
+
+Draft : ContentStatus = DRAFT
+PendingReview : ContentStatus = PENDING_REVIEW
+Approved : ContentStatus = APPROVED
+Archived : ContentStatus = ARCHIVED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Content Authoring, Review, Publishing, and Archive**
+
+**Brief Explanation:**
+
+1. `ContentMapper` creates every item in `DRAFT`, so nothing enters the corpus already published.
+2. Editing is guarded on the item being `DRAFT` or `PENDING_REVIEW` — `AdminContentServiceImpl` refuses content edits once an item is approved or archived.
+3. `ContentApprovalServiceImpl` guards the review decision on `status == PENDING_REVIEW`, so an approval cannot be replayed against an already-published item.
+4. The `ContentDecision` guard splits the review outcome: `APPROVE` publishes the item, while `REJECT` returns it to `DRAFT` with feedback rather than archiving it.
+5. `APPROVED` is the only state consumers can read, which is why unpublishing is modelled as a transition to `ARCHIVED` rather than a separate visibility flag.
+6. `ContentUnpublishServiceImpl` guards unpublish on `status == APPROVED`, and archiving is otherwise rejected when the item is already `ARCHIVED`; `ARCHIVED` is terminal, because the only other `DRAFT` write creates a new content item rather than restoring an archived one.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/entity/ContentStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/entity/ContentDecision.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/mapper/ContentMapper.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/AdminContentServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/ContentApprovalServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/ContentUnpublishServiceImpl.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -262,11 +307,11 @@ end
 | `UC-AD-14` | Only an eligible submitted version can be decided. Approval is auditable and controls later consumer visibility according to lifecycle. | No additional gap recorded in the code-first baseline. |
 | `UC-AD-15` | Unpublish/archive permissions and state transitions are server authoritative. This remediation action is distinct from System Admin approval/rejection. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminContentController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/recommendation/controller/RecommendationAdminController.java`

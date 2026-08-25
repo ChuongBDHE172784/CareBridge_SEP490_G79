@@ -144,17 +144,56 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **The consumer-visible ContentItem as seen through browse and detail reads — the authoring lifecycle itself is owned by MF-09 document 02**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01VerifiedContentBrowseandConsumption
+hide empty description
+[*] --> NotVisible
+
+NotVisible --> Visible : contentBecomesApproved() [status == APPROVED] / includeInBrowseResults()
+Visible --> NotVisible : contentLeavesApproved() [status != APPROVED] / excludeFromBrowseResults()
+Visible --> Visible : browseContent() [stage matches the reader] / returnStageFilteredList()
+Visible --> Opened : openContentDetail() [status == APPROVED] / returnFullArticle()
+Opened --> Visible : closeContentDetail() / returnToBrowseResults()
+Opened --> NotVisible : contentLeavesApproved() [status != APPROVED] / denySubsequentDetailReads()
+
+Visible : ContentStatus = APPROVED
+NotVisible : DRAFT, PENDING_REVIEW, or ARCHIVED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Verified Content Browse and Consumption**
+
+**Brief Explanation:**
+
+1. This package is read-only, so the lifecycle shown is the consumer's view of a content item rather than an editorial workflow; the authoring states are owned by the Content Authoring package and are not duplicated here.
+2. `Visible` corresponds exactly to `ContentStatus.APPROVED` — `ContentServiceImpl` queries `findByIdAndStatus(id, APPROVED)`, so no other status is reachable through a consumer route.
+3. Browse is a guarded self-transition on `Visible`: results are additionally filtered by `ContentStage`, so a reader only sees material matching their lifecycle stage.
+4. `openContentDetail()` re-checks `status == APPROVED` rather than trusting the browse result, which is why the detail read carries its own guard.
+5. Unpublishing or archiving an item moves it out of `Visible` immediately, and an already-open article stops serving further detail reads.
+6. There is no consumer transition that writes content state — every transition here is driven by editorial changes made elsewhere or by the reader's own navigation.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/entity/ContentStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/ContentServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/recommendation/service/RecommendationEligibilityPolicy.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/entity/ContentStage.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-CO-05` | Only publication/lifecycle-eligible content is consumer-visible. Verified content is editorial content, not community Q&A. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ContentController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/community/screens/view_content_screen.dart`

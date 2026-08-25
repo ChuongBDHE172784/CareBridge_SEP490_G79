@@ -374,7 +374,57 @@ end
 6. Where the current implementation requires an external system, the service waits for its response before completing the domain result.
 7. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **ConversationCall.callStatus, enclosed by the accepted direct conversation that must exist first**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_04DirectMessagingAttachmentsandCalls
+hide empty description
+[*] --> NoConversation
+
+NoConversation --> ConversationOpen : consultationRequestAccepted() [expert verificationStatus == APPROVED] / findOrCreateConversation()
+ConversationOpen --> ConversationOpen : sendMessage() or attachFile() [caller is a conversation participant] / persistMessage()
+
+state ConversationOpen {
+  [*] --> NoCall
+  NoCall --> Initiated : startCall() [no live call on this conversation] / persistCall(INITIATED)
+  Initiated --> Ringing : calleeNotified() / setCallStatus(RINGING)
+  Ringing --> Answered : answerCall() / setCallStatus(ANSWERED)
+  Ringing --> Declined : declineCall() / setCallStatus(DECLINED)
+  Ringing --> Missed : ringTimeoutElapses() / setCallStatus(MISSED)
+  Initiated --> Cancelled : cancelCall() [status is INITIATED or RINGING] / setCallStatus(CANCELLED)
+  Ringing --> Cancelled : cancelCall() [status is INITIATED or RINGING] / setCallStatus(CANCELLED)
+  Answered --> Ended : endCall() [status == ANSWERED] / setCallStatus(ENDED)
+  Initiated --> Failed : providerError() / setCallStatus(FAILED)
+}
+
+Initiated : CallStatus = INITIATED
+Ringing : CallStatus = RINGING
+Answered : CallStatus = ANSWERED
+Ended : CallStatus = ENDED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Direct Messaging, Attachments, and Calls**
+
+**Brief Explanation:**
+
+1. No messaging or call surface exists until a consultation acceptance opens the direct conversation, and the policy re-checks that the expert is still `APPROVED`.
+2. Messages and attachments are self-transitions on `ConversationOpen`: they append to the conversation without changing its lifecycle state.
+3. A call is created in `INITIATED` and moves to `RINGING` only once the callee has actually been notified.
+4. `ANSWERED`, `DECLINED`, `MISSED`, `CANCELLED`, `ENDED`, and `FAILED` are all terminal — the transitions are append-only, so no terminal call state is ever revisited.
+5. The guard on `cancelCall()` restricts it to `INITIATED` or `RINGING`, which is why an answered call must be ended rather than cancelled.
+6. `endCall()` is guarded on `status == ANSWERED`, so a call that was never picked up settles as `MISSED` or `DECLINED` instead of `ENDED`.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/directchat/entity/CallStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/directchat/service/impl/ConversationCallServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/directchat/repository/ConversationCallRepository.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/directchat/policy/DirectConversationPolicyImpl.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -382,11 +432,11 @@ end
 | `UC-EX-11` | Conversation membership and call state are server authoritative. Provider secrets never belong in UI state; recording requires implemented consent. | No additional gap recorded in the code-first baseline. |
 | `UC-AD-07` | Only authorized admins may access recordings. Recording consent, purpose-bound URLs, retention, deletion, and audit are server authoritative. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - These are current direct communication functions; paid consultation commerce remains Version 2.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/directchat/controller/DirectConversationController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/directchat/controller/DirectMessageController.java`

@@ -545,7 +545,57 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **Report.status, with the AiScanJob lifecycle that can raise an automated case nested alongside it**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02ReportingModerationTaxonomyandAIPolicy
+hide empty description
+[*] --> Pending
+
+Pending --> InReview : claimReport() [no other moderator holds the claim] / setAssignedModerator()
+InReview --> Pending : releaseReport() / clearAssignedModerator()
+InReview --> Resolved : resolveReport() [outcome is an enforcing action] / applyModerationAction()
+InReview --> Dismissed : resolveReport() [outcome == DISMISS] / setStatus(DISMISSED)
+
+state Pending {
+  [*] --> ScanQueued
+  ScanQueued --> ScanProcessing : claimScanJob() [status == QUEUED] / setStatus(PROCESSING)
+  ScanProcessing --> ScanCompleted : recordAssessment() / setStatus(COMPLETED)
+  ScanProcessing --> ScanFailed : recordAssessment() [model call failed] / setStatus(FAILED)
+  ScanProcessing --> ScanSkipped : recordAssessment() [target gone or no active policy] / setStatus(SKIPPED)
+  ScanFailed --> ScanQueued : requeueScanJob() [retry budget remains] / setStatus(QUEUED)
+}
+
+Pending : ReportStatus = PENDING
+InReview : ReportStatus = IN_REVIEW
+Resolved : ReportStatus = RESOLVED
+Dismissed : ReportStatus = DISMISSED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Reporting, Moderation, Taxonomy, and AI Policy**
+
+**Brief Explanation:**
+
+1. A report enters as `PENDING`, whether it was raised by a user through `ReportServiceImpl` or opened automatically as an AI moderation case.
+2. `claimReport()` is guarded so only one moderator holds a case at a time, and the release transition returns it to the shared `PENDING` queue.
+3. The guard on `resolveReport()` splits the terminal outcome: `DISMISS` records no enforcement, while every other `ResolutionOutcome` applies a moderation action before the case becomes `RESOLVED`; `ReportStatus` also declares `CLOSED`, but no reachable code path writes it, so it is omitted here.
+4. The nested scan job is claimed from `QUEUED` into `PROCESSING` with a compare-and-set, so concurrent workers cannot scan the same target twice.
+5. `FAILED` is deliberately distinct from a safe verdict — `AiScanResultRecorder` never interprets a failed scan as clean, and `SKIPPED` separately covers a missing target or an inactive policy.
+6. Only a failed job may be requeued, and only while retry budget remains; a completed or skipped job is terminal.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/entity/ReportStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/ReportServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/ModerationServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/aimoderation/entity/AiScanJobStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/aimoderation/service/AiScanProcessingService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/aimoderation/service/AiScanResultRecorder.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -556,11 +606,11 @@ end
 | `UC-AD-18` | Role, current account state, action severity, expiry, and undo eligibility are server authoritative. Every enforcement and reversal is auditable. | No additional gap recorded in the code-first baseline. |
 | `UC-AD-19` | Only System Admin manages policies. Deterministic server policy decides cases; Gemini output is advisory signal and medical symptom text is not automatically a violation. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ReportController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/service/ReportServiceImpl.java`

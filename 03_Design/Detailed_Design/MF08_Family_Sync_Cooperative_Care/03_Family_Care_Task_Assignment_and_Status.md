@@ -148,17 +148,63 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **CareTask.status, whose legal transitions are declared by CareTaskStatus.canTransitionTo()**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_03FamilyCareTaskAssignmentandStatus
+hide empty description
+[*] --> Open
+
+Open --> InProgress : updateTaskStatus(IN_PROGRESS) [canTransitionTo allows it] / persistStatus()
+Open --> NeedsSupport : updateTaskStatus(NEEDS_SUPPORT) [canTransitionTo allows it] / persistStatus()
+Open --> Done : updateTaskStatus(DONE) [canTransitionTo allows it] / stampCompletion()
+InProgress --> NeedsSupport : updateTaskStatus(NEEDS_SUPPORT) [canTransitionTo allows it] / persistStatus()
+InProgress --> Done : updateTaskStatus(DONE) [canTransitionTo allows it] / stampCompletion()
+NeedsSupport --> InProgress : updateTaskStatus(IN_PROGRESS) [canTransitionTo allows it] / persistStatus()
+NeedsSupport --> Done : updateTaskStatus(DONE) [canTransitionTo allows it] / stampCompletion()
+Open --> Cancelled : cancelFamilyTask() [status is OPEN or IN_PROGRESS] / stampCancellation()
+InProgress --> Cancelled : cancelFamilyTask() [status is OPEN or IN_PROGRESS] / stampCancellation()
+Open --> Open : updateTaskStatus(OPEN) / acceptIdempotentRepeat()
+InProgress --> InProgress : updateTaskStatus(IN_PROGRESS) / acceptIdempotentRepeat()
+
+Open : CareTaskStatus = OPEN
+InProgress : CareTaskStatus = IN_PROGRESS
+NeedsSupport : CareTaskStatus = NEEDS_SUPPORT
+Done : CareTaskStatus = DONE
+Cancelled : CareTaskStatus = CANCELLED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Family Care Task Assignment and Status**
+
+**Brief Explanation:**
+
+1. A task is always created in `OPEN`; assignment sets the assignee but does not move the task out of `OPEN`.
+2. The guard on every status change is `CareTaskStatus.canTransitionTo()`, a finite-state method on the enum itself, so the rule is enforced in one place rather than per call site.
+3. `DONE` and `CANCELLED` are terminal — `canTransitionTo()` returns false for every outbound transition from either, so a completed task cannot be reopened.
+4. Self-transitions are explicitly allowed and idempotent, which lets a client retry the same status update safely.
+5. Cancellation is a separate endpoint with its own guard: only `OPEN` or `IN_PROGRESS` may be cancelled, so a task in `NEEDS_SUPPORT` must first move back to `IN_PROGRESS`.
+6. `NEEDS_SUPPORT` is a working state rather than a failure state — it retains routes to both `IN_PROGRESS` and `DONE`.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/entity/CareTaskStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/service/impl/CareTaskServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/family/entity/CareTaskStatusFsmTest.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-FM-04` | Assignee membership, ownership, and finite-state transitions are server authoritative. Retries cannot create duplicate assignments beyond current policy. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/controller/CareGroupController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/service/impl/CareTaskServiceImpl.java`

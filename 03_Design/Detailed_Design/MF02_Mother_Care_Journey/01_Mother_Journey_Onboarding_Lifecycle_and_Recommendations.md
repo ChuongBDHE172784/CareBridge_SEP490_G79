@@ -474,7 +474,56 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **MotherJourney.status, with the owner-scoped RecommendationProfileStatus nested inside an active journey**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01MotherJourneyOnboardingLifecycleandRecommendations
+hide empty description
+[*] --> NoJourney
+
+NoJourney --> ActiveJourney : completeOnboarding() / createMotherJourney(ACTIVE)
+ActiveJourney --> CompletedJourney : recordPregnancyOutcome() [current journey is ACTIVE] / setStatus(COMPLETED)
+CompletedJourney --> ActiveJourney : startNextJourney() / createMotherJourney(ACTIVE)
+CompletedJourney --> ArchivedJourney : archiveJourney() / setStatus(ARCHIVED)
+
+state ActiveJourney {
+  [*] --> ProfileNotStarted
+  ProfileNotStarted --> ProfileActive : submitRecommendationProfile() / setRecommendationProfileStatus(ACTIVE)
+  ProfileNotStarted --> ProfileDeclined : declineRecommendationProfile() / setRecommendationProfileStatus(DECLINED)
+  ProfileActive --> ProfileReviewRequired : journeyContextChanges() / setRecommendationProfileStatus(REVIEW_REQUIRED)
+  ProfileReviewRequired --> ProfileActive : reconfirmRecommendationProfile() / setRecommendationProfileStatus(ACTIVE)
+  ProfileActive --> ProfileRevoked : revokeRecommendationProfile() / clearStoredProfileJson()
+  ProfileReviewRequired --> ProfileRevoked : revokeRecommendationProfile() / clearStoredProfileJson()
+}
+
+ActiveJourney : JourneyStatus = ACTIVE
+CompletedJourney : JourneyStatus = COMPLETED
+ArchivedJourney : JourneyStatus = ARCHIVED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Mother Journey Onboarding, Lifecycle, and Recommendations**
+
+**Brief Explanation:**
+
+1. A mother starts in `NoJourney` because no `MotherJourney` row exists until onboarding completes.
+2. The event `completeOnboarding()` creates the canonical journey with `JourneyStatus.ACTIVE`; every downstream metric, checklist, and recommendation guard re-checks this state.
+3. `recordPregnancyOutcome()` is guarded on the current journey still being `ACTIVE`, so a completed journey cannot be closed twice.
+4. Inside `ActiveJourney`, the recommendation profile carries its own lifecycle: it begins `NOT_STARTED` and only a submitted profile reaches `ACTIVE`.
+5. When journey context changes, the action moves an `ACTIVE` profile to `REVIEW_REQUIRED`, and only an explicit re-confirmation returns it to `ACTIVE` — stale personalization is never silently reused.
+6. Revocation is terminal for the profile and its action clears the stored raw JSON, which is why the inactive profile states deliberately hold no payload.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/entity/JourneyStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/service/impl/JourneyServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/service/impl/JourneyTransitionServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/recommendation/entity/RecommendationProfileStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/recommendation/service/RecommendationService.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -485,11 +534,11 @@ end
 | `UC-MH-05` | Recommendation profile data belongs to the authenticated mother and is consent gated. Validation and supported enum/range values are server authoritative. | No additional gap recorded in the code-first baseline. |
 | `UC-MH-06` | Recommendations are informational and do not replace clinical advice. Consent, stage, and publication eligibility filter the server result. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/controller/JourneyOnboardingController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/journey/services/journey_onboarding_service.dart`

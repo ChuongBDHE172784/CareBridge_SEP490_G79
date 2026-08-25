@@ -212,18 +212,61 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **ExpertAvailabilitySlot.status, enclosed by the approved-expert precondition that makes a slot publishable**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02ExpertDirectoryandAvailability
+hide empty description
+[*] --> NotPublishable
+
+NotPublishable --> Publishable : expertVerificationApproved() [verificationStatus == APPROVED] / unlockAvailabilityManagement()
+Publishable --> NotPublishable : expertVerificationWithdrawn() / rejectFurtherSlotWrites()
+
+state Publishable {
+  [*] --> NoSlot
+  NoSlot --> Available : publishSlot() / persistSlot(AVAILABLE)
+  Available --> Unavailable : withdrawSlot() / setStatus(UNAVAILABLE)
+  Unavailable --> Available : republishSlot() / setStatus(AVAILABLE)
+  Available --> Available : listEligibleExperts() [status == AVAILABLE] / includeExpertInDirectory()
+}
+
+NotPublishable : verificationStatus != APPROVED
+Available : AvailabilityStatus = AVAILABLE
+Unavailable : AvailabilityStatus = UNAVAILABLE
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Expert Directory and Availability**
+
+**Brief Explanation:**
+
+1. The lifecycle starts in `NotPublishable`: `ExpertAvailabilityServiceImpl` rejects every slot write unless the owning profile is `VerificationStatus.APPROVED`.
+2. Approval is therefore drawn as the guarded transition into `Publishable`, not as a hidden precondition — losing approval closes availability management again.
+3. Inside `Publishable`, a newly published slot is `AVAILABLE`, the only status the consumer-facing directory query includes.
+4. `AvailabilityStatus` also declares `BUSY`, but no reachable code path writes it, so it is deliberately omitted rather than drawn as an implemented occupancy state.
+5. `Unavailable` is the expert's explicit withdrawal from `Available`; it can be republished rather than being terminal.
+6. The self-transition on `Available` is the directory read itself, which re-filters on the live slot status on every query instead of trusting a cached listing.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expertavailability/availabilitystatus/AvailabilityStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expertavailability/service/impl/ExpertAvailabilityServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expert/verificationstatus/VerificationStatus.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-EX-06` | Availability ownership and overlap/state rules are server authoritative. Another expert cannot mutate the owner's slots. | No additional gap recorded in the code-first baseline. |
 | `UC-EX-07` | Only directory-eligible verified experts are returned. The consumer directory is a Mobile flow; the Web portal is expert/admin oriented. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expertavailability/controller/ExpertAvailabilityController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/expert/screens/expert_calendar_screen.dart`

@@ -310,7 +310,51 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **HealthMetricObservation.recordStatus, with the request-scoped screening outcome nested inside a stored observation**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02MaternalMetricsFetalMovementHydrationandAIScreening
+hide empty description
+[*] --> NotRecorded
+
+NotRecorded --> Recorded : recordObservation() [owning journey is ACTIVE] / persistObservation(ACTIVE)
+Recorded --> Recorded : updateObservation() [caller owns the observation] / persistRevisedValue()
+Recorded --> Deleted : deleteObservation() [caller owns the observation] / setRecordStatus(DELETED)
+
+state Recorded {
+  [*] --> NotScreened
+  NotScreened --> ScreenedNormal : screenMetrics() [no threshold breached] / returnRoutineGuidance()
+  NotScreened --> ScreenedAttention : screenMetrics() [threshold breached] / returnEscalationGuidance()
+  ScreenedNormal --> NotScreened : recordObservation() / invalidatePreviousScreening()
+  ScreenedAttention --> NotScreened : recordObservation() / invalidatePreviousScreening()
+}
+
+Recorded : recordStatus = ACTIVE
+Deleted : recordStatus = DELETED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Maternal Metrics, Fetal Movement, Hydration, and AI Screening**
+
+**Brief Explanation:**
+
+1. An observation starts in `NotRecorded`; `HealthMetricServiceImpl` refuses to create one unless the owning `MotherJourney` is `ACTIVE`.
+2. The event `recordObservation()` persists the row with `MetricStatus.ACTIVE`, which is the only state that later reads and screening consider.
+3. Deletion is a soft transition: the action sets `recordStatus = DELETED` rather than removing the row, so history and audit remain intact.
+4. Inside `Recorded`, `screenMetrics()` is a separate metrics endpoint, not AI Nurse chat; its guard is whether a clinical threshold is breached.
+5. The guard splits the outcome into `ScreenedNormal` and `ScreenedAttention`, and the action returns the corresponding guidance without writing a diagnosis.
+6. Recording a newer observation invalidates the previous screening result, returning the nested region to `NotScreened` so guidance is never served from stale data.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/entity/MetricStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/service/impl/HealthMetricServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/entity/MetricType.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/entity/JourneyStatus.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -319,12 +363,12 @@ end
 | `UC-MH-09` | Amount/unit/range validation is server authoritative. Hydration tracking does not diagnose dehydration. | No focused hydration-screen test was found. |
 | `UC-MH-11` | Deterministic thresholds establish the safety result; retrieval/generation cannot lower it. The feature is screening and guidance, not diagnosis. | Mobile currently embeds an internal key and calls Python directly; replace with a server-side gateway before production. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No focused hydration-screen test was found.
 - Mobile currently embeds an internal key and calls Python directly; replace with a server-side gateway before production.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/controller/JourneyMetricController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/controller/HealthMetricController.java`

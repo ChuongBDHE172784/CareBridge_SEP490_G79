@@ -224,18 +224,63 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **The effective shared-care access grant for one care-group member — accepted membership combined with PermissionFlag scope and the owner's ConsentGrant**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02FamilyPermissionsandSharedCareMonitoring
+hide empty description
+[*] --> NoAccess
+
+NoAccess --> MembershipOnly : inviteAccepted() [inviteStatus == ACCEPTED] / establishMembership()
+MembershipOnly --> NoAccess : membershipRevoked() / dropAllSharedAccess()
+MembershipOnly --> ScopedAccess : grantPermissionFlag() [caller is the group owner] / persistPermissionScope()
+ScopedAccess --> MembershipOnly : revokeAllPermissionFlags() / clearPermissionScope()
+ScopedAccess --> ScopedAccess : updatePermissionFlags() [caller is the group owner] / persistRevisedScope()
+ScopedAccess --> ConsentBlocked : ownerRevokesConsent() / suppressSharedCategory()
+ConsentBlocked --> ScopedAccess : ownerGrantsConsent() / restoreSharedCategory()
+ScopedAccess --> ScopedAccess : readSharedCareProjection() [flag covers the requested category] / composeScopedView()
+ConsentBlocked --> NoAccess : membershipRevoked() / dropAllSharedAccess()
+
+MembershipOnly : inviteStatus = ACCEPTED, no PermissionFlag
+ScopedAccess : PermissionFlag covers a SharedDataCategory
+ConsentBlocked : owner ConsentGrant revoked
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Family Permissions and Shared Care Monitoring**
+
+**Brief Explanation:**
+
+1. This package governs access rather than a single status column, so the lifecycle models the effective access grant a member holds; that is stated here so the states are not read as one persisted enum.
+2. Accepted membership alone reaches only `MembershipOnly` — it conveys no health-data visibility, because every shared projection additionally requires a permission flag.
+3. `grantPermissionFlag()` is owner-guarded and moves the member to `ScopedAccess`, where the flag names the exact `SharedDataCategory` that becomes visible.
+4. Reads are guarded self-transitions: the projection is re-scoped on every request, so a widened or narrowed flag takes effect immediately rather than at the next session.
+5. `ConsentBlocked` is deliberately separate from permission removal — an owner's consent revocation suppresses the category while leaving the member's permission scope intact, and restoring consent returns the previous scope.
+6. Losing membership collapses the member straight to `NoAccess` from any state, so revocation is never partially applied.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/entity/PermissionFlag.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/entity/InviteStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/entity/SharedDataCategory.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/service/impl/CareGroupServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/service/FamilyDashboardService.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/consent/service/impl/ConsentServiceImpl.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-FM-03` | Only the authorized owner/mother may change member permissions. Revoked permissions must affect subsequent data reads immediately according to policy. | No additional gap recorded in the code-first baseline. |
 | `UC-FM-05` | Membership, permission, and consent are rechecked for every projection. Family emergency alerts are specified under UC-ES-03, not duplicated here. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/family/controller/CareGroupController.java`
 - `05_Development/CareBridgeMobileApp/lib/features/familySync/screens/manage_family_permission_screen.dart`

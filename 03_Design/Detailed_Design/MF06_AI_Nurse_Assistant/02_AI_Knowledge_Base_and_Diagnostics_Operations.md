@@ -271,19 +271,59 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **The knowledge-base document as it moves through ingestion into the pgvector corpus (operator-driven, AI service side)**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_02AIKnowledgeBaseandDiagnosticsOperations
+hide empty description
+[*] --> NotIngested
+
+NotIngested --> Ingested : ingestRawText() or uploadDocumentFile() [internal API key verified] / chunkEmbedAndStoreVectors()
+NotIngested --> Ingested : syncRawDocumentsDirectory() / ingestEachDirectoryDocument()
+Ingested --> Ingested : reingestSameTitle() / replaceStoredChunks()
+Ingested --> Retrievable : similaritySearchMatches() / returnChunksToRagAnswer()
+Retrievable --> Ingested : searchReturnsNoMatch() / leaveCorpusUnchanged()
+Ingested --> NotIngested : deleteDocumentByTitle() / removeStoredChunks()
+Retrievable --> NotIngested : clearAllKnowledge() / purgeEntireCorpus()
+
+Ingested : chunks embedded and stored in pgvector
+Retrievable : chunk returned by similarity search
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: AI Knowledge Base and Diagnostics Operations**
+
+**Brief Explanation:**
+
+1. Every transition here is operator-driven and gated by the internal API key dependency, which is why no end-user actor appears in this lifecycle.
+2. A document reaches `Ingested` through three distinct entry points — raw text, an uploaded file, or a directory sync — and all three end in the same chunk-embed-and-store action.
+3. Re-ingesting the same title is a self-transition that replaces the stored chunks, so the corpus does not accumulate duplicate copies of a revised document.
+4. `Retrievable` is the state a chunk occupies when a similarity search actually returns it; it is a read-time condition over the stored corpus, not a separate persisted flag.
+5. Deletion by title and the corpus-wide clear are the only transitions that return content to `NotIngested`, and both are irreversible without re-ingestion.
+6. The diagnostic endpoints — model listing, prompt testing, and batch clinical simulation — read this corpus without moving a document between states, so they add no transition.
+
+**State sources:**
+
+- `05_Development/CareBridgeAITriageService/app/api/v1/documents.py`
+- `05_Development/CareBridgeAITriageService/app/services/ingestion_service.py`
+- `05_Development/CareBridgeAITriageService/app/api/v1/chat.py`
+- `05_Development/CareBridgeAITriageService/app/api/v1/metrics.py`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-AD-20` | All operations require the configured internal API key. File type/size/name validation and curated source metadata are required. Deleting knowledge changes future retrieval but does not prove generated answers are error-free. | Current operation is API/Swagger-based rather than a role-authenticated Web administration page. |
 | `UC-AD-21` | Diagnostic endpoints are operational tools, not consumer clinical flows. Historical counts, latency, uptime, or accuracy are not current requirements unless rerun and dated. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - The approved AI architecture document is a referenced design authority and is never generated or edited by this package.
 - Current operation is API/Swagger-based rather than a role-authenticated Web administration page.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAITriageService/app/api/v1/documents.py`
 - `05_Development/CareBridgeAITriageService/app/services/ingestion_service.py`

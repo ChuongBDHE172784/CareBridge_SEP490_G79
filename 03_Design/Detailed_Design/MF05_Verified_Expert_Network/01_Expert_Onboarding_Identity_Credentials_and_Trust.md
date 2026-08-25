@@ -437,7 +437,58 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **ExpertProfile.verificationStatus, with the IdentityReviewStatus of a verification attempt nested inside review**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01ExpertOnboardingIdentityCredentialsandTrust
+hide empty description
+[*] --> NoProfile
+
+NoProfile --> Pending : submitExpertProfile() / setVerificationStatus(PENDING)
+Pending --> UnderReview : submitCredentialEvidence() / openIdentityVerificationAttempt()
+UnderReview --> Approved : adminApprove() [reviewStatus == APPROVED] / setVerificationStatus(APPROVED)
+UnderReview --> Rejected : adminReject() [reviewStatus == REJECTED] / setVerificationStatus(REJECTED)
+Rejected --> Pending : renewSubmission() [verificationStatus == REJECTED] / setVerificationStatus(PENDING)
+Approved --> Suspended : suspendExpert() / setTrustStatus(SUSPENDED)
+Suspended --> Approved : reinstateExpert() / setTrustStatus(ACTIVE)
+
+state UnderReview {
+  [*] --> AwaitingAutomatedCheck
+  AwaitingAutomatedCheck --> ManualReviewRequired : runFaceAndRegistryCheck() [no confident automated match] / setReviewStatus(MANUAL_REVIEW_REQUIRED)
+  AwaitingAutomatedCheck --> ReadyForDecision : runFaceAndRegistryCheck() [face MATCHED and registry consistent] / setReviewStatus(PENDING_REVIEW)
+  ManualReviewRequired --> ReadyForDecision : moderatorCompletesManualCheck() / attachReviewerFindings()
+}
+
+Pending : VerificationStatus = PENDING
+UnderReview : VerificationStatus = UNDER_REVIEW
+Approved : VerificationStatus = APPROVED
+Rejected : VerificationStatus = REJECTED
+Suspended : TrustStatus = SUSPENDED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Expert Onboarding, Identity, Credentials, and Trust**
+
+**Brief Explanation:**
+
+1. An applicant starts with `NoProfile`; `ExpertProfileServiceImpl` writes `VerificationStatus.PENDING` when the profile is first submitted.
+2. Only `APPROVED` unlocks expert capability — availability publishing, direct conversations, and consultation acceptance all re-check this status independently.
+3. Inside `UnderReview`, the automated face and registry check decides the guard: a confident match reaches a decision directly, anything less is routed to `MANUAL_REVIEW_REQUIRED`.
+4. The administrative decision is the only transition that writes `APPROVED` or `REJECTED`; the automated check never approves an expert on its own.
+5. A rejection is recoverable — `renewSubmission()` is guarded on `verificationStatus == REJECTED` and returns the profile to `PENDING`; `EXPIRED` is declared and read as a renewal guard but is never written by reachable code, so it is not drawn as a state.
+6. Suspension acts on `TrustStatus` rather than the verification decision, so a suspended expert keeps their approved credential record while losing active privileges.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expert/verificationstatus/VerificationStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expert/truststatus/TrustStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expert/service/impl/ExpertProfileServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expertverification/enums/IdentityReviewStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expertverification/service/impl/ExpertIdentityVerificationServiceImpl.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -448,12 +499,12 @@ end
 | `UC-EX-05` | Only the owning expert may update mutable professional fields. Verification/trust fields cannot be self-escalated. | Mobile avatar update currently calls nonexistent `PATCH /api/v1/users/me/profile`; avatar editing is Partial. |
 | `UC-AD-06` | Backend verification state, not UI state, grants expert eligibility. Sensitive evidence access is purpose-bound and review decisions are audited. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No focused backend ExpertContract test was found.
 - Mobile avatar update currently calls nonexistent `PATCH /api/v1/users/me/profile`; avatar editing is Partial.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expert/controller/ExpertProfileController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/expertverification/controller/ExpertIdentityVerificationController.java`

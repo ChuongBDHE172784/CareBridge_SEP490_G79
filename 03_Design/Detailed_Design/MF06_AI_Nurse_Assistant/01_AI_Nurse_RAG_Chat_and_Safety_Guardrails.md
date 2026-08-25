@@ -175,20 +175,62 @@ deactivate UI
 5. When the Python service is unreachable, RagChatScreen uses the bearer-authenticated Spring RAG fallback and its audience-bounded policy service.
 6. The UI displays the non-diagnostic answer, provenance, disclaimer, and safety guidance returned by the selected path.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **The request-scoped RAG answer (in-memory, not a persisted row) as evaluated by RagPolicyServiceImpl and the AI service chat path**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_01AINurseRAGChatandSafetyGuardrails
+hide empty description
+[*] --> QueryReceived
+
+QueryReceived --> EmergencyGuidanceReturned : checkSafetyFilter() [safety.isRedFlag()] / returnEmergencyGuidance()
+QueryReceived --> AudienceResolved : checkSafetyFilter() [no red flag] / resolveAudienceAndStage()
+AudienceResolved --> ContextRetrieved : retrieveKnowledge() / similaritySearchOverApprovedCorpus()
+ContextRetrieved --> AnswerGrounded : generateAnswer() [model call succeeded] / attachCitationsAndDisclaimer()
+ContextRetrieved --> AnswerFallback : generateAnswer() [model unavailable] / returnFallbackAnswer()
+AnswerGrounded --> [*]
+AnswerFallback --> [*]
+EmergencyGuidanceReturned --> [*]
+
+EmergencyGuidanceReturned : fallback = true, sources = empty
+AnswerGrounded : citations attached, disclaimer attached
+AnswerFallback : fallback = true
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: AI Nurse RAG Chat and Safety Guardrails**
+
+**Brief Explanation:**
+
+1. This package has no persisted status column, so the lifecycle shown is the request-scoped state of a single answer rather than a database row; that is stated here so the diagram is not read as persistence.
+2. The safety filter runs first and short-circuits everything else: when `safety.isRedFlag()` holds, `RagPolicyServiceImpl` returns emergency guidance with empty sources and never reaches retrieval or the model.
+3. Only a non-red-flag query proceeds to `AudienceResolved`, where the canonical stage is taken from the triage intake when present and otherwise from the caller's lifecycle state.
+4. Retrieval happens before generation, so a grounded answer is assembled from the approved corpus rather than from model memory alone.
+5. The guard on `generateAnswer()` distinguishes a grounded answer from the fallback path; both terminal answers carry the disclaimer, and the fallback is explicitly flagged as such.
+6. Every terminal state is an answer the user actually receives — the safety floor degrades the response rather than failing the request, so urgent-care routing is never withheld.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/service/RagPolicyServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/service/GeminiRagServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/service/FallbackRagServiceImpl.java`
+- `05_Development/CareBridgeAITriageService/app/api/v1/chat.py`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-AI-01` | Python `RagChatRequest` carries message, stage, optional mother-only gestational age/survey/recent metrics, role, and conversation history; `RagChatResponse` returns answer, critical/expert flags, follow-ups, citations, disclaimer, and generated time. Mobile currently calls Python directly with literal internal key `carebridge`, then falls back to authenticated Spring `/api/v1/rag/answer`; this compiled-key boundary is not production-safe. Python retrieval defaults stage to `PREGNANCY`, includes stage plus `ALL`, requests top 4, and excludes returned chunks with similarity below `0.35` before prompting. Hybrid retrieval ranks by `0.35 * vector similarity + 0.20 * keyword ratio + title/phrase boosts` and de-duplicates title/section candidates. Retrieval-query expansion uses the latest user/human turn among the last two history messages; the prompt includes at most the last six messages. Family requests exclude gestational age, survey profile, and recent metrics; Mother requests include only supported formatted fields. Citations are created only from valid retrieved chunks, de-duplicated by title/section, and omit a generic root citation when a specific section exists. Generation tries distinct configured/fallback Gemini models and returns a bounded static response when all provider calls fail. Model tags are removed from visible text and mapped to critical/expert flags/follow-ups; deterministic abnormal-metric rules can raise but never lower expert consultation. Every Python success/degraded response includes the configured medical disclaimer; Spring returns its own constant disclaimer and explicit fallback flag. RAG is advisory/non-diagnostic; deterministic safety rules are the floor and citations must come from retrieved knowledge. | Structured triage session/history/handoff backend infrastructure has no reachable intake UI and remains Partial. The literal `carebridge` key is accepted even when another expected production key is configured; record this as a failing production-security expectation. No focused Mobile test currently proves Python failure to Spring fallback and response-shape downgrade. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - Structured symptom-intake session/history/handoff remains Partial because no reachable Mobile intake owns that lifecycle.
 - Structured triage session/history/handoff backend infrastructure has no reachable intake UI and remains Partial.
 - The literal `carebridge` key is accepted even when another expected production key is configured; record this as a failing production-security expectation.
 - No focused Mobile test currently proves Python failure to Spring fallback and response-shape downgrade.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `docs/AI/01_THIET_KE_KIEN_TRUC_AI_RAG_VA_BAO_VE_DO_AN.md`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/controller/RagController.java`

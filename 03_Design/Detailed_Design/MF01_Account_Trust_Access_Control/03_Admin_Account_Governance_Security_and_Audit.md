@@ -451,7 +451,56 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **The administered User account, with the AccountLockAppeal lifecycle nested inside a locked account**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_03AdminAccountGovernanceSecurityandAudit
+hide empty description
+[*] --> Active
+
+Active --> Disabled : disableUser() [caller has SYSTEM_ADMIN] / setAccountStatus(DISABLED)
+Disabled --> AwaitingActivation : enableUser() / setAccountStatus(PENDING_ACTIVATION)
+AwaitingActivation --> Active : verifyOtp() / setAccountStatus(ACTIVE)
+Active --> Locked : lockAccount() / persistAccountLock(ADMIN)
+Locked --> Active : reviewAppeal() [decision == APPROVE] / clearAccountLock()
+
+state Locked {
+  [*] --> NoAppeal
+  NoAppeal --> AppealPending : submitAppeal() / createAppeal(PENDING)
+  AppealPending --> AppealRejected : reviewAppeal() [decision == REJECT] / setStatus(REJECTED)
+  AppealPending --> NoAppeal : cancelAppeal() [caller owns the appeal] / setStatus(CANCELLED)
+  AppealRejected --> AppealPending : submitAppeal() / createAppeal(PENDING)
+}
+
+Active : accountStatus = ACTIVE
+Disabled : accountStatus = DISABLED
+AwaitingActivation : accountStatus = PENDING_ACTIVATION
+Locked : AccountLockType = ADMIN
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Admin Account Governance, Security, and Audit**
+
+**Brief Explanation:**
+
+1. An administered account starts in `Active`; every transition below is written by `AdminUserServiceImpl` under a SYSTEM_ADMIN guard and is recorded through `AuditService`.
+2. The event `disableUser()` sets `accountStatus = DISABLED`, and re-enabling does not restore access directly — `enableUser()` sets `PENDING_ACTIVATION` so the holder must re-prove the account.
+3. The event `lockAccount()` persists an `AccountLockType.ADMIN` lock, which is the only lock type an appeal can contest.
+4. Inside `Locked`, `submitAppeal()` creates an appeal in `PENDING`; the guard on `reviewAppeal()` splits the outcome between `APPROVED` and `REJECTED`.
+5. Only `decision == APPROVE` clears the lock and returns the account to `Active`; a rejection leaves the account locked with the appeal recorded as `REJECTED`.
+6. A rejected appeal is not terminal for the account — `submitAppeal()` may open a new `PENDING` appeal, so the nested region re-enters `AppealPending`.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AdminUserServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/entity/AccountLockAppealStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/service/impl/AccountLockAppealServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/security/entity/AccountLockType.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/entity/AuditAction.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
@@ -461,11 +510,11 @@ end
 | `UC-AD-04` | Audit access is restricted and returned payloads must not contain raw secrets or unnecessary health data. There is no separate full audit-log page in the current Web router. | No additional gap recorded in the code-first baseline. |
 | `UC-AD-05` | Only System Admin may mutate configuration. Validation, version/concurrency, maintenance allow-list, and audit behavior are server authoritative. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminUserController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/identity/admin/controller/AdminRoleController.java`

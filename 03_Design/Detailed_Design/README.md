@@ -37,9 +37,10 @@ The same UC is owned by one MF only. Cross-feature consumers are noted as refere
 2. Every function table cites exact routes, handlers, delegated functions, authorization, and source files when resolvable.
 3. Class diagrams do not invent layers absent from code.
 4. Sequence diagrams keep actor → UI → middleware → controller/route → service/policy → repository/data store → external-system order, sequential numbering, balanced activation, and dashed returns.
-5. Images are not generator-owned. Existing `images/` files remain untouched so they can be cropped or replaced manually.
-6. `docs/AI/01_THIET_KE_KIEN_TRUC_AI_RAG_VA_BAO_VE_DO_AN.md` is an approved reference for MF-06 and is never rewritten by this generator.
-7. Structured AI triage session/history/handoff is Partial until a reachable client owns that lifecycle; AI Nurse release-1 design is the current RAG chat plus its safety guardrails and separate operator endpoints.
+5. State chart diagrams follow `SKILL.md` section 12: states are stable persisted conditions taken from the declared status enums, transitions use `event [guard] / action`, and each diagram cites the enum and service sources that back it. Where a package has no persisted status column, the diagram states explicitly that the lifecycle is request-scoped or access-scoped.
+6. Images are not generator-owned. Existing `images/` files remain untouched so they can be cropped or replaced manually.
+7. `docs/AI/01_THIET_KE_KIEN_TRUC_AI_RAG_VA_BAO_VE_DO_AN.md` is an approved reference for MF-06 and is never rewritten by this generator.
+8. Structured AI triage session/history/handoff is Partial until a reachable client owns that lifecycle; AI Nurse release-1 design is the current RAG chat plus its safety guardrails and separate operator endpoints.
 
 ## Regeneration and Validation
 
@@ -48,4 +49,4 @@ python3 scripts/docs/generate_code_first_detailed_design.py
 python3 scripts/docs/generate_code_first_detailed_design.py --check
 ```
 
-`--check` verifies folder names, 31 documents, unique 88-UC ownership, required sections, PlantUML boundaries, numbered sequence messages, and exact generated content. It does not modify or validate image crops.
+`--check` verifies folder names, 31 documents, unique 88-UC ownership, required sections, PlantUML boundaries, numbered sequence messages, one state model per spec, state-chart transition/guard syntax, and exact generated content. It does not modify or validate image crops.

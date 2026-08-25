@@ -196,18 +196,58 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **Exercise.status, with posture configuration bound to a published exercise**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_04ExerciseCatalogueandPostureConfiguration
+hide empty description
+[*] --> Draft
+
+Draft --> Published : publishExercise() [status != PUBLISHED] / setStatus(PUBLISHED)
+Published --> Archived : archiveExercise() [status != ARCHIVED] / setStatus(ARCHIVED)
+Draft --> Archived : archiveExercise() [status != ARCHIVED] / setStatus(ARCHIVED)
+Archived --> Published : republishExercise() / setStatus(PUBLISHED)
+Draft --> Draft : editExerciseDefinition() / persistCatalogueFields()
+Published --> Published : configurePostureModel() [status == PUBLISHED] / persistPostureConfiguration()
+Published --> Published : listPublishedExercises() [status == PUBLISHED] / returnCatalogueEntry()
+
+Draft : ExerciseStatus = DRAFT
+Published : ExerciseStatus = PUBLISHED
+Archived : ExerciseStatus = ARCHIVED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Exercise Catalogue and Posture Configuration**
+
+**Brief Explanation:**
+
+1. `ExerciseMapper` creates every catalogue entry as `DRAFT`, so a new exercise is never immediately offered to mothers.
+2. `AdminExerciseServiceImpl` guards `publishExercise()` against an already-published entry and `archiveExercise()` against an already-archived one, making both operations safe to retry.
+3. `PUBLISHED` is the only state the mother-facing catalogue query returns, which is why the consumer read is drawn as a guarded self-transition on that state.
+4. Posture configuration is bound to `PUBLISHED` as well, so a draft exercise cannot carry an active posture model into a session.
+5. Archiving withdraws an exercise from the catalogue without deleting it, and `republishExercise()` makes that withdrawal reversible.
+6. Mother-side exercise consumption and session state are owned by MF-02, so this lifecycle stops at catalogue and configuration governance.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/entity/ExerciseStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/mapper/ExerciseMapper.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/service/impl/AdminExerciseServiceImpl.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-AD-12` | Content Admin owns catalogue authoring; consumer visibility follows server lifecycle. Posture-analysis configuration is a separate System Admin lifecycle. | No additional gap recorded in the code-first baseline. |
 | `UC-AD-13` | Only System Admin may mutate posture configuration. Version uniqueness, activation exclusivity, compatibility, and lifecycle state are server authoritative. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - Mother exercise consumption and sessions are owned by MF-02.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/exercise/controller/AdminExerciseController.java`
 - `05_Development/CareBridgeWebApp/src/features/contentManagement/pages/PregnancyExerciseListPage.tsx`

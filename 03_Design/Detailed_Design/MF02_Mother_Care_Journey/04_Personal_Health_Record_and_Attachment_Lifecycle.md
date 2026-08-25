@@ -150,17 +150,63 @@ end
 5. The repository executes the represented persistence operation and returns the stored or queried result before its activation ends.
 6. The HTTP response unwinds through middleware when present, and the UI renders the server-authoritative outcome to the actor.
 
-## 5. Business Rules Applied
+## 5. State Chart Diagram
+
+The lifecycle below belongs to **HealthRecord.status, with the purpose-bound FileStatus of its attachments nested inside an active record**. Its states are the persisted constants declared in the sources cited under this diagram, and every transition, guard, and action is taken from the service method that writes that constant. No unreachable state is introduced.
+
+```plantuml
+@startuml StateChartDiagram_04PersonalHealthRecordandAttachmentLifecycle
+hide empty description
+[*] --> NoRecord
+
+NoRecord --> ActiveRecord : createHealthRecord() [caller owns the subject] / persistRecord(ACTIVE)
+ActiveRecord --> ActiveRecord : updateHealthRecord() [status != ARCHIVED] / persistRevision()
+ActiveRecord --> ArchivedRecord : archiveHealthRecord() [status != ARCHIVED] / setStatus(ARCHIVED)
+
+state ActiveRecord {
+  [*] --> NoAttachment
+  NoAttachment --> AttachmentActive : uploadAttachment() [purpose allowed for record type] / persistFile(ACTIVE)
+  AttachmentActive --> AttachmentActive : readAttachment() [FileAccessPolicy grants purpose-bound access] / streamFile()
+  AttachmentActive --> AttachmentDeleted : deleteAttachment() [caller owns the file] / setFileStatus(DELETED)
+}
+
+ActiveRecord : HealthRecordStatus = ACTIVE
+ArchivedRecord : HealthRecordStatus = ARCHIVED
+AttachmentActive : FileStatus = ACTIVE
+AttachmentDeleted : FileStatus = DELETED
+@enduml
+```
+
+**Figure 2 — State Chart Diagram: Personal Health Record and Attachment Lifecycle**
+
+**Brief Explanation:**
+
+1. A record starts in `NoRecord`; creation is guarded on the caller owning the subject of the record.
+2. The event `updateHealthRecord()` is a self-transition guarded on the record not being archived — `HealthRecordServiceImpl` rejects writes once `status == ARCHIVED`.
+3. Archiving is one-way: `ArchivedRecord` has no outgoing transition in the code, so an archived record is a stable terminal condition rather than a deletion.
+4. Inside `ActiveRecord`, an attachment enters `AttachmentActive` only when its `FilePurpose` is allowed for the record type.
+5. Every read is a guarded self-transition, because `FileAccessPolicyImpl` re-evaluates purpose-bound access on each request rather than trusting a previously issued link.
+6. Attachment deletion is soft — the action sets `FileStatus.DELETED`, keeping the row for audit while removing it from every later projection.
+
+**State sources:**
+
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/entity/HealthRecordStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/service/impl/HealthRecordServiceImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/file/entity/FileStatus.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/file/policy/FileAccessPolicyImpl.java`
+- `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/file/enums/FilePurpose.java`
+
+## 6. Business Rules Applied
 
 | UC | Enforced business/security rules | Known boundary or gap |
 | --- | --- | --- |
 | `UC-MH-12` | File purpose, owner, share expiry, and consultation context determine access. Archive is the supported record lifecycle; file deletion follows explicit policy. | No additional gap recorded in the code-first baseline. |
 
-## 6. Partial / Excluded Boundaries
+## 7. Partial / Excluded Boundaries
 
 - No extra release boundary beyond the code-first UC catalogue is introduced by this package.
 
-## 7. Code and Test Evidence
+## 8. Code and Test Evidence
 
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/health/controller/HealthRecordController.java`
 - `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/file/controller/FileController.java`
