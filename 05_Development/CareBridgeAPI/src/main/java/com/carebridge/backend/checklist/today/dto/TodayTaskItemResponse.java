@@ -35,10 +35,40 @@ public record TodayTaskItemResponse(
         String description,
         ChecklistSupportFunction supportFunction,
         TaskCadence cadence,
-        ContentStage stage) {
+        ContentStage stage,
+        String sourceUrl) {
 
     public TodayTaskItemResponse {
         cadence = cadence == null ? TaskCadence.ONCE : cadence;
+    }
+
+    /** Compatibility constructor for response consumers before sourceUrl was exposed. */
+    public TodayTaskItemResponse(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String careGroupLabel,
+            String careContextLabel,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            TaskTimeBucket timeBucket,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            ReminderType type,
+            String description,
+            ChecklistSupportFunction supportFunction,
+            TaskCadence cadence,
+            ContentStage stage) {
+        this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
+                careContextId, careGroupLabel, careContextLabel, title, targetSubject,
+                origin, status, timeBucket, allowedActions, dueAt, type, description,
+                supportFunction, cadence, stage, null);
     }
 
     /** Compatibility constructor for response consumers before lifecycle stage was exposed. */
@@ -66,7 +96,7 @@ public record TodayTaskItemResponse(
         this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
                 careContextId, careGroupLabel, careContextLabel, title, targetSubject,
                 origin, status, timeBucket, allowedActions, dueAt, type, description,
-                supportFunction, cadence, null);
+                supportFunction, cadence, null, null);
     }
 
     /** Compatibility constructor for response consumers before cadence was exposed. */

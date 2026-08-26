@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/today_task_model.dart';
 import '../services/today_task_service.dart';
@@ -68,6 +69,8 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
     }
     return description;
   }
+
+  String get _sourceLabel => widget.task.sourceLabel;
 
   String get _targetLabel => switch (widget.task.target) {
     TodayTaskTarget.mother => 'Mẹ',
@@ -155,9 +158,17 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           children: [
-            _TaskHeaderCard(task: task, targetLabel: _targetLabel),
+            _TaskHeaderCard(
+              task: task,
+              targetLabel: _targetLabel,
+              sourceLabel: _sourceLabel,
+            ),
             const SizedBox(height: 20),
             _DetailSection(description: _description),
+            if (task.sourceUrl?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: 20),
+              _SourceReferenceCard(sourceUrl: task.sourceUrl!.trim()),
+            ],
             if (widget.showSupportFunction && supportFunction != null) ...[
               const SizedBox(height: 20),
               _SupportFunctionCard(
@@ -216,13 +227,26 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
 }
 
 class _TaskHeaderCard extends StatelessWidget {
-  const _TaskHeaderCard({required this.task, required this.targetLabel});
+  const _TaskHeaderCard({
+    required this.task,
+    required this.targetLabel,
+    required this.sourceLabel,
+  });
 
   final TodayTask task;
   final String targetLabel;
+  final String sourceLabel;
 
   @override
   Widget build(BuildContext context) {
+    final sourceIcon = switch (task.origin) {
+      TodayTaskOrigin.systemTemplate => Icons.auto_awesome_rounded,
+      TodayTaskOrigin.userCreated => Icons.person_outline_rounded,
+      TodayTaskOrigin.unknown => task.isChecklist
+          ? Icons.auto_awesome_rounded
+          : Icons.person_outline_rounded,
+    };
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -272,6 +296,11 @@ class _TaskHeaderCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
+              _MetadataPill(
+                icon: sourceIcon,
+                label: 'Nguồn',
+                value: sourceLabel,
+              ),
               _MetadataPill(
                 icon: task.target == TodayTaskTarget.baby
                     ? Icons.child_care_outlined
@@ -486,6 +515,114 @@ class _SupportFunctionCard extends StatelessWidget {
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SourceReferenceCard extends StatelessWidget {
+  const _SourceReferenceCard({required this.sourceUrl});
+
+  final String sourceUrl;
+
+  Future<void> _launchUrl(BuildContext context) async {
+    final rawUrl = sourceUrl.trim();
+    final urlString = rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+        ? rawUrl
+        : 'https://$rawUrl';
+    final uri = Uri.tryParse(urlString);
+    if (uri != null) {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể mở liên kết nguồn tham khảo.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _ChecklistTaskDetailScreenState._surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _ChecklistTaskDetailScreenState._border),
+        boxShadow: [
+          BoxShadow(
+            color: _ChecklistTaskDetailScreenState._text.withValues(alpha: .04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.menu_book_rounded,
+                size: 20,
+                color: _ChecklistTaskDetailScreenState._accent,
+              ),
+              SizedBox(width: 9),
+              Text(
+                'Nguồn tham khảo y khoa',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: _ChecklistTaskDetailScreenState._text,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            key: const Key('task-detail-source-url-button'),
+            onTap: () => _launchUrl(context),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F5F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFEADBCE),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.open_in_new_rounded,
+                    size: 18,
+                    color: _ChecklistTaskDetailScreenState._primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      sourceUrl.trim(),
+                      key: const Key('task-detail-source-url'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: _ChecklistTaskDetailScreenState._primary,
+                        decoration: TextDecoration.underline,
+                        decorationColor: _ChecklistTaskDetailScreenState._primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

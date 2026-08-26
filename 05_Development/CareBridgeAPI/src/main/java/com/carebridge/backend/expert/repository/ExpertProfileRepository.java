@@ -213,4 +213,17 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      LIMIT 1
      """, nativeQuery = true)
  Optional<String> findLatestProfileRejectionReason(@Param("expertProfileId") UUID expertProfileId);
+
+ @Query(value = """
+     SELECT u.* FROM users u
+     WHERE u.role = 'EXPERT'
+       AND u.expert_type = 'CONTRACTED'
+       AND u.verification_status = 'APPROVED'
+       AND u.trust_status = 'ACTIVE'
+       AND u.enabled = true AND u.locked = false
+       AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+            OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
+     ORDER BY u.rating_avg DESC NULLS LAST, u.user_id ASC
+     """, nativeQuery = true)
+ List<ExpertProfile> findActiveContractedExperts();
 }

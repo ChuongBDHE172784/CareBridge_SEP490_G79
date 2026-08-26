@@ -33,6 +33,7 @@ import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQ
 import ExpertConsultationRequestsPage from '../../features/expert/pages/ExpertConsultationRequestsPage';
 import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
 import ExpertSharedRecordsPage from '../../features/expert/pages/ExpertSharedRecordsPage';
+import ExpertContentApprovalQueuePage from '../../features/expert/pages/ExpertContentApprovalQueuePage';
 
 // Contribution screens
 
@@ -243,6 +244,8 @@ export const router = createBrowserRouter([
                   {
                     element: <ExpertOnboardingGuard />,
                     children: [
+                      // Expert Content Approval Queue (Contracted Expert review)
+                      { path: '/expert/content-approval', element: <ExpertContentApprovalQueuePage /> },
                       { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
                       { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
                       // CB-055: Expert Profile

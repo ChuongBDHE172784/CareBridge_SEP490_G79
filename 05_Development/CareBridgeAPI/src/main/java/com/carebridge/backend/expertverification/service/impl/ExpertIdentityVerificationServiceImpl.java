@@ -504,7 +504,6 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
             ExpertType expertType, boolean hasAvailability) {
         if (verificationStatus == VerificationStatus.APPROVED) {
             if (expertType == ExpertType.PENDING_CONTRACT) return "CONTRACT";
-            if (expertType == ExpertType.CONTRACTED && !hasAvailability) return "AVAILABILITY";
             return "COMPLETE";
         }
         if (expertType == null) return "EXPERT_TYPE";

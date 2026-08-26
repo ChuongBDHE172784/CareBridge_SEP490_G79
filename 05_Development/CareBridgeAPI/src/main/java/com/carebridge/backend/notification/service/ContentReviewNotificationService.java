@@ -41,6 +41,29 @@ public class ContentReviewNotificationService {
                 .build());
     }
 
+    public void notifyAssignedForReview(
+            UUID expertUserId,
+            UUID targetId,
+            String targetType,
+            String targetTitle) {
+        if (expertUserId == null) {
+            return;
+        }
+        Instant now = Instant.now();
+        notificationRecordRepository.save(NotificationRecord.builder()
+                .userId(expertUserId)
+                .type(NotificationType.CONTENT_REVIEW)
+                .title("Nội dung mới cần thẩm định")
+                .body("Bạn được phân công thẩm định " + (targetType.equalsIgnoreCase("CHECKLIST") ? "checklist" : "nội dung") + ": \"" + targetTitle + "\"")
+                .referenceId(targetId)
+                .referenceType(targetType)
+                .status(NotificationRecordStatus.SENT)
+                .channel("IN_APP")
+                .sentAt(now)
+                .metadata(Map.of("route", "/expert/content-approval"))
+                .build());
+    }
+
     /**
      * Notifies the author of reported community content that a moderator has acted on it
      * (UC-102 report resolution: REQUEST_REVISION / WARN).

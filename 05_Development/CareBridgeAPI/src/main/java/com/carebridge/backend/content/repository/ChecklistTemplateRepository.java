@@ -93,4 +93,33 @@ public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemp
             @Param("status") ChecklistTemplateStatus status,
             @Param("keyword") String keyword,
             Pageable pageable);
+
+    Page<ChecklistTemplate> findByAssignedExpertIdAndStatus(
+            UUID assignedExpertId, ChecklistTemplateStatus status, Pageable pageable);
+
+    @Query("SELECT t FROM ChecklistTemplate t WHERE " +
+           "t.assignedExpertId = :expertId AND " +
+           "(:status IS NULL OR t.status = :status) AND " +
+           "(:stage IS NULL OR t.stage = :stage) AND " +
+           "(:keyword IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) " +
+           "   OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%'))) " +
+           "ORDER BY t.assignedAt DESC NULLS LAST, t.updatedAt DESC")
+    Page<ChecklistTemplate> findByExpertFilters(
+            @Param("expertId") UUID expertId,
+            @Param("status") ChecklistTemplateStatus status,
+            @Param("stage") ContentStage stage,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    long countByAssignedExpertIdAndStatus(UUID assignedExpertId, ChecklistTemplateStatus status);
+
+    @Query("SELECT t.assignedExpertId, COUNT(t) FROM ChecklistTemplate t " +
+           "WHERE t.status = :status AND t.assignedExpertId IN :expertIds " +
+           "GROUP BY t.assignedExpertId")
+    List<Object[]> countPendingByAssignedExpertIds(
+            @Param("status") ChecklistTemplateStatus status,
+            @Param("expertIds") Collection<UUID> expertIds);
+
+    @Query("SELECT MAX(t.assignedAt) FROM ChecklistTemplate t WHERE t.assignedExpertId = :expertId")
+    java.time.Instant findLatestAssignedAtByExpertId(@Param("expertId") UUID expertId);
 }

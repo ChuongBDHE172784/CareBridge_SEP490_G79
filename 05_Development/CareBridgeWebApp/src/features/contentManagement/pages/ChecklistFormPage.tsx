@@ -112,7 +112,7 @@ function newRow(targetless = false, repeatWeekly = false, repeatDaily = false): 
 
 function sourceUrlValidationError(value: string): string | null {
   const normalizedValue = value.trim();
-  if (!normalizedValue) return null;
+  if (!normalizedValue) return 'Vui lòng nhập link nguồn.';
   if (normalizedValue.length > MAX_SOURCE_URL_LENGTH) {
     return 'Link nguồn không được vượt quá 2.048 ký tự.';
   }
@@ -248,11 +248,11 @@ export default function ChecklistFormPage() {
 
   const hasMotherRecipient = recipientRoles.includes('MOTHER');
   const isTargetlessV2 = checklistContractVersion === 2;
-  const populatedItems = items.filter((row) => row.itemText.trim());
+  const populatedItems = items.filter((row) => row.itemText.trim() || row.sourceUrl.trim());
   const cadenceFlags = populatedItems;
   const hasWeeklyItems = cadenceFlags.some((row) => row.repeatWeekly);
   const hasDailyItems = cadenceFlags.some((row) => row.repeatDaily);
-  const hasInvalidSourceUrl = items.some((row) => sourceUrlValidationError(row.sourceUrl) !== null);
+  const hasIncompleteItems = populatedItems.some((row) => !row.itemText.trim() || sourceUrlValidationError(row.sourceUrl) !== null);
 
   const listRepeatWeekly = items.length > 0 && items.every((row) => row.repeatWeekly);
   const listRepeatDaily = items.length > 0 && items.every((row) => row.repeatDaily);
@@ -302,10 +302,10 @@ export default function ChecklistFormPage() {
     && (!hasMotherRecipient || (stage !== ''
       && (stage === 'PRE_PREGNANCY' || (substage !== null && substage.anchor !== 'NONE'))))
     && !hasUnsupportedPrePregnancyWeekly
-    && !hasInvalidSourceUrl
+    && !hasIncompleteItems
     && populatedItems.every((row) => isTargetlessV2
-      ? row.targetSubject == null && row.isRequired != null
-      : row.targetSubject != null && row.isRequired != null)
+      ? row.targetSubject == null
+      : row.targetSubject != null)
     && (!sequenceEligible || (Number.isInteger(displayOrder) && displayOrder >= 1));
 
 
@@ -332,13 +332,13 @@ export default function ChecklistFormPage() {
       ? {
         ...row,
         targetSubject: null,
-        isRequired: row.isRequired ?? true,
+        isRequired: true,
         repeatWeekly: value === 'PRE_PREGNANCY' ? false : row.repeatWeekly,
       }
       : {
         ...row,
         targetSubject: value === 'BABY_CARE' ? 'BABY' : 'MOTHER',
-        isRequired: row.isRequired ?? true,
+        isRequired: true,
         repeatWeekly: value === 'PRE_PREGNANCY' ? false : row.repeatWeekly,
       }));
   };
@@ -397,10 +397,10 @@ export default function ChecklistFormPage() {
         ...(row.id ? { id: row.id } : {}),
         itemText: row.itemText.trim(),
         order: index + 1,
-        isRequired: row.isRequired,
+        isRequired: true,
         ...(isTargetlessV2 ? {} : { targetSubject: row.targetSubject }),
         ...(description ? { description } : {}),
-        ...(sourceUrl ? { sourceUrl } : {}),
+        sourceUrl,
         ...(row.supportFunction ? { supportFunction: row.supportFunction } : {}),
         repeatWeekly: row.repeatWeekly,
         repeatDaily: row.repeatDaily,
@@ -498,9 +498,7 @@ export default function ChecklistFormPage() {
             {isEdit && versionNo !== null && <span className="inline-flex items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary">Version v{versionNo}</span>}
           </div>
           <p className="mt-1 text-sm text-on-surface-variant">
-            {isTargetlessV2
-              ? 'Checklist V2 lưu nội dung khuyến nghị; mỗi mục vẫn có thể đánh dấu bắt buộc.'
-              : 'Thiết lập người nhận, giai đoạn và nhịp lặp cho checklist.'}
+            Thiết lập người nhận, giai đoạn và nhịp lặp cho checklist.
           </p>
           {stage && (
             <span role="status" className="mt-2 inline-flex rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary">
@@ -529,22 +527,6 @@ export default function ChecklistFormPage() {
             <div className="grid gap-5">
               <label className="grid gap-2 text-sm font-semibold text-on-surface">Tên checklist <input aria-label="Template name" disabled={isImmutable} value={name} onChange={(event) => setName(event.target.value)} className={field} /></label>
               <label className="grid gap-2 text-sm font-semibold text-on-surface">Mô tả <textarea aria-label="Template description" disabled={isImmutable} value={description} onChange={(event) => setDescription(event.target.value)} rows={3} className={`${field} py-3`} /></label>
-            </div>
-          </section>
-
-          <section aria-label="Checklist type" className={card}>
-            <div className="mb-5 flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Loại checklist</h2></div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className={`cursor-pointer rounded-2xl border p-4 ${templateType === 'MANDATORY' ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
-                <input aria-label="Mandatory checklist" type="radio" name="templateType" value="MANDATORY" disabled={isImmutable} checked={templateType === 'MANDATORY'} onChange={() => setTemplateType('MANDATORY')} className="mr-2 accent-primary" />
-                <span className="font-semibold text-on-surface">Bắt buộc</span>
-                <p className="mt-1 text-xs text-on-surface-variant">Tự động hiển thị trong “Việc hôm nay” của người dùng phù hợp.</p>
-              </label>
-              <label className={`cursor-pointer rounded-2xl border p-4 ${templateType === 'OPTIONAL' ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
-                <input aria-label="Optional checklist" type="radio" name="templateType" value="OPTIONAL" disabled={isImmutable} checked={templateType === 'OPTIONAL'} onChange={() => setTemplateType('OPTIONAL')} className="mr-2 accent-primary" />
-                <span className="font-semibold text-on-surface">Không bắt buộc</span>
-                <p className="mt-1 text-xs text-on-surface-variant">Người dùng tự thêm từ tab Checklist trong “Nội dung & FAQ”.</p>
-              </label>
             </div>
           </section>
 
@@ -637,8 +619,7 @@ export default function ChecklistFormPage() {
             </div>
             <div className="grid gap-4">
               {items.map((row, index) => {
-                const sourceUrlError = sourceUrlValidationError(row.sourceUrl);
-                const sourceUrlHintId = `source-url-hint-${row.key}`;
+                const sourceUrlError = row.sourceUrl.trim() || row.itemText.trim() ? sourceUrlValidationError(row.sourceUrl) : null;
                 const sourceUrlErrorId = `source-url-error-${row.key}`;
                 return (
                 <div key={row.key} className="grid gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
@@ -662,10 +643,10 @@ export default function ChecklistFormPage() {
                     <textarea aria-label={`Nội dung chi tiết mục ${index + 1}`} disabled={isImmutable} value={row.description} onChange={(event) => updateItem(row.key, { description: event.target.value })} rows={3} className={`${field} py-3`} />
                   </label>
                   <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">
-                    Link nguồn (không bắt buộc)
+                    <span>Link nguồn <span className="text-error">*</span></span>
                     <input
                       aria-label={`Link nguồn mục ${index + 1}`}
-                      aria-describedby={`${sourceUrlHintId}${sourceUrlError ? ` ${sourceUrlErrorId}` : ''}`}
+                      aria-describedby={sourceUrlError ? sourceUrlErrorId : undefined}
                       aria-invalid={sourceUrlError ? 'true' : undefined}
                       type="url"
                       inputMode="url"
@@ -675,9 +656,6 @@ export default function ChecklistFormPage() {
                       onChange={(event) => updateItem(row.key, { sourceUrl: event.target.value })}
                       className={`${field} ${sourceUrlError ? 'border-error focus:border-error focus:ring-error/20' : ''}`}
                     />
-                    <span id={sourceUrlHintId} className="text-xs font-normal text-on-surface-variant">
-                      Chỉ chấp nhận liên kết đầy đủ bắt đầu bằng http:// hoặc https://.
-                    </span>
                     {sourceUrlError && <span id={sourceUrlErrorId} role="alert" className="text-xs font-normal text-error">{sourceUrlError}</span>}
                   </label>
                   <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">Chức năng hỗ trợ
@@ -686,7 +664,6 @@ export default function ChecklistFormPage() {
                       {CHECKLIST_SUPPORT_FUNCTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
-                  <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-2"><input type="checkbox" disabled={isImmutable} checked={Boolean(row.isRequired)} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
                 </div>
                 );
               })}

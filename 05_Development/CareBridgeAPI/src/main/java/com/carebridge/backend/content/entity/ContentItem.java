@@ -112,6 +112,18 @@ public class ContentItem {
     @Builder.Default
     private List<ContentSource> sources = new ArrayList<>();
 
+    @Column(name = "assigned_expert_id")
+    private UUID assignedExpertId;
+
+    @Column(name = "assigned_at")
+    private Instant assignedAt;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
     @Column(name = "published_at")
     private Instant publishedAt;
 

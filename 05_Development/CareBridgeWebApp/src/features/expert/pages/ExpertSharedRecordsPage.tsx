@@ -229,9 +229,10 @@ export default function ExpertSharedRecordsPage() {
         map.set(key, existing);
       }
 
-      // Update latest timestamp
+      // Update latest timestamp and conversationId
       if (new Date(record.createdAt).getTime() > new Date(existing.lastActiveAt).getTime()) {
         existing.lastActiveAt = record.createdAt;
+        existing.conversationId = record.conversationId;
       }
 
       // Update gestational week
@@ -806,7 +807,7 @@ export default function ExpertSharedRecordsPage() {
                               const personalCount = currentList.filter(
                                 (i) => getTaskOriginCategory(i) === 'USER'
                               ).length;
-                              const currentOriginFilter = cardOriginFilters[card.conversationId] || 'ALL';
+                              const currentOriginFilter = cardOriginFilters[cardKey] || 'ALL';
 
                               const displayedList = currentList.filter((item) => {
                                 const originCat = getTaskOriginCategory(item);
@@ -825,7 +826,7 @@ export default function ExpertSharedRecordsPage() {
                                       onClick={() =>
                                         setCardOriginFilters((prev) => ({
                                           ...prev,
-                                          [card.conversationId]: 'ALL',
+                                          [cardKey]: 'ALL',
                                         }))
                                       }
                                       className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
@@ -841,7 +842,7 @@ export default function ExpertSharedRecordsPage() {
                                       onClick={() =>
                                         setCardOriginFilters((prev) => ({
                                           ...prev,
-                                          [card.conversationId]: 'CAREBRIDGE',
+                                          [cardKey]: 'CAREBRIDGE',
                                         }))
                                       }
                                       className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
@@ -857,7 +858,7 @@ export default function ExpertSharedRecordsPage() {
                                       onClick={() =>
                                         setCardOriginFilters((prev) => ({
                                           ...prev,
-                                          [card.conversationId]: 'PERSONAL',
+                                          [cardKey]: 'PERSONAL',
                                         }))
                                       }
                                       className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${

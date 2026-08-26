@@ -5,7 +5,10 @@ import {
   decideChecklistTemplate,
   decideContent,
   fetchAdminChecklists,
+  fetchContractedExperts,
   fetchStaffContentList,
+  reassignChecklist,
+  reassignContent,
 } from '../services/contentApi';
 import type { AdminChecklistTemplate, ContentDetail, ContentStage, ContentType } from '../models/content';
 import { STAGE_LABELS, STAGE_OPTIONS, TYPE_LABELS } from '../models/content';
@@ -36,6 +39,8 @@ type QueueEntry = {
   recipientRoles?: AdminChecklistTemplate['recipientRoles'];
   checklistContractVersion?: number | null;
   provenanceStatus?: string | null;
+  assignedExpertId?: string | null;
+  assignedAt?: string | null;
   submittedAt: string | null;
   searchText: string;
 };
@@ -61,6 +66,8 @@ function toContentEntry(item: ContentDetail): QueueEntry {
     stage: item.stage,
     stageLabel,
     detail,
+    assignedExpertId: item.assignedExpertId,
+    assignedAt: item.assignedAt,
     submittedAt: item.updatedAt ?? item.createdAt,
     searchText: [item.title, typeLabel, stageLabel, detail, item.sourceLabel ?? ''].join(' ').toLowerCase(),
   };
@@ -86,6 +93,8 @@ function toChecklistEntry(item: AdminChecklistTemplate): QueueEntry {
     recipientRoles: item.recipientRoles,
     checklistContractVersion: item.checklistContractVersion,
     provenanceStatus: item.provenanceStatus,
+    assignedExpertId: item.assignedExpertId,
+    assignedAt: item.assignedAt,
     submittedAt: item.updatedAt,
     searchText: [item.name, typeLabel, stageLabel, detail, item.description, recipientLabel,
       item.provenanceStatus ?? ''].join(' ').toLowerCase(),
@@ -121,6 +130,14 @@ export default function ContentApprovalQueuePage() {
   const [sortKey, setSortKey] = useState<QueueSortKey>('submittedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
+  // Reassign state
+  const [contractedExperts, setContractedExperts] = useState<Array<{ userId: string; fullName: string; specialty: string }>>([]);
+  const [reassignItem, setReassignItem] = useState<QueueEntry | null>(null);
+  const [targetExpertId, setTargetExpertId] = useState<string>('');
+  const [reassignReason, setReassignReason] = useState<string>('');
+  const [isReassigning, setIsReassigning] = useState<boolean>(false);
+  const [reassignError, setReassignError] = useState<string>('');
+
   // Dropdown & Batch publish state
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
   const [batchTarget, setBatchTarget] = useState<BatchTarget | null>(null);
@@ -146,6 +163,13 @@ export default function ContentApprovalQueuePage() {
     setIsLoading(true);
     setError('');
     try {
+      try {
+        const experts = await fetchContractedExperts();
+        setContractedExperts(experts);
+      } catch (err) {
+        console.error('Failed to load contracted experts:', err);
+      }
+
       let allContent: ContentDetail[] = [];
       let contentPageNum = 0;
       let contentTotalPages = 1;
@@ -176,13 +200,11 @@ export default function ContentApprovalQueuePage() {
         checklistPageNum += 1;
       } while (checklistPageNum < checklistTotalPages && checklistPageNum < 50);
 
-      setItems([
-        ...allContent.map(toContentEntry),
-        ...allChecklists.map(toChecklistEntry),
-      ]);
-    } catch {
-      setItems([]);
-      setError('Không tải được hàng đợi phê duyệt.');
+      const contentEntries = allContent.map(toContentEntry);
+      const checklistEntries = allChecklists.map(toChecklistEntry);
+      setItems([...contentEntries, ...checklistEntries]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Không thể tải hàng đợi phê duyệt.');
     } finally {
       setIsLoading(false);
     }
@@ -258,7 +280,41 @@ export default function ContentApprovalQueuePage() {
     setPage(0);
   };
 
-  const openDecision = (entry: QueueEntry, decision: PendingDecision['decision']) => {
+  const openReassign = (entry: QueueEntry) => {
+    setReassignItem(entry);
+    setTargetExpertId(entry.assignedExpertId || (contractedExperts[0]?.userId ?? ''));
+    setReassignReason('');
+    setReassignError('');
+  };
+
+  const handleCloseReassign = () => {
+    if (isReassigning) return;
+    setReassignItem(null);
+    setTargetExpertId('');
+    setReassignReason('');
+    setReassignError('');
+  };
+
+  const handleSubmitReassign = async () => {
+    if (!reassignItem || !targetExpertId) return;
+    setIsReassigning(true);
+    setReassignError('');
+    try {
+      if (reassignItem.kind === 'CHECKLIST') {
+        await reassignChecklist(reassignItem.id, targetExpertId, reassignReason.trim() || undefined);
+      } else {
+        await reassignContent(reassignItem.id, targetExpertId, reassignReason.trim() || undefined);
+      }
+      handleCloseReassign();
+      await load();
+    } catch (err: unknown) {
+      setReassignError(err instanceof Error ? err.message : 'Không thể chuyển chuyên gia thẩm định');
+    } finally {
+      setIsReassigning(false);
+    }
+  };
+
+  const openDecision = (entry: QueueEntry, decision: 'APPROVE' | 'REJECT') => {
     setDialogError('');
     setPendingDecision({ entry, decision });
   };
@@ -609,12 +665,16 @@ export default function ContentApprovalQueuePage() {
                           onClick={() => changeSort(key)}
                         />
                       ))}
+                      <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">CHUYÊN GIA PHỤ TRÁCH</th>
                       <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pagedItems.map((entry) => {
                       const workingKey = `${entry.kind}-${entry.id}`;
+                      const assignedExpert = entry.assignedExpertId
+                        ? contractedExperts.find((e) => e.userId === entry.assignedExpertId)
+                        : null;
                       return (
                         <tr key={workingKey} className="border-b border-surface-container-highest hover:bg-surface-bright">
                           <td className="py-3.5 px-2 max-w-[340px]">
@@ -629,6 +689,18 @@ export default function ContentApprovalQueuePage() {
                           <td className="py-3.5 px-2 text-[13px] text-on-surface-variant whitespace-nowrap">{entry.stageLabel}</td>
                           <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">{entry.detail}</td>
                           <td className="py-3.5 px-2 text-[13px] text-outline whitespace-nowrap">{formatDateTime(entry.submittedAt)}</td>
+                          <td className="py-3.5 px-2 text-xs whitespace-nowrap">
+                            {assignedExpert ? (
+                              <div className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-emerald-600 text-[16px]">verified_user</span>
+                                <span className="font-medium text-on-surface">{assignedExpert.fullName}</span>
+                              </div>
+                            ) : entry.assignedExpertId ? (
+                              <span className="text-outline">Chuyên gia #{entry.assignedExpertId.substring(0, 8)}</span>
+                            ) : (
+                              <span className="text-outline italic">Chưa gán</span>
+                            )}
+                          </td>
                           <td className="py-3.5 px-2">
                             <div className="flex items-center gap-1.5 justify-end">
                               <button
@@ -639,6 +711,16 @@ export default function ContentApprovalQueuePage() {
                               >
                                 <span className="material-symbols-outlined text-base">visibility</span>
                                 Xem
+                              </button>
+                              <button
+                                type="button"
+                                disabled={working === workingKey || isBatchPublishing}
+                                onClick={() => openReassign(entry)}
+                                className="h-8 py-1 px-2.5 rounded-lg border border-outline-variant bg-surface text-on-surface-variant text-xs font-semibold cursor-pointer flex items-center gap-1 hover:bg-surface-container-low disabled:opacity-50"
+                                title="Chuyển chuyên gia thẩm định"
+                              >
+                                <span className="material-symbols-outlined text-base">swap_horiz</span>
+                                Chuyển
                               </button>
                               <button
                                 type="button"
@@ -721,7 +803,7 @@ export default function ContentApprovalQueuePage() {
           : undefined}
         icon={pendingDecision?.decision === 'APPROVE' ? 'publish' : 'assignment_return'}
         tone={pendingDecision?.decision === 'APPROVE' ? 'default' : 'danger'}
-        confirmLabel={pendingDecision?.decision === 'APPROVE' ? 'Xuất bản' : 'Trả về nháp'}
+        confirmLabel={pendingDecision?.decision === 'APPROVE' ? 'Xuất bản ngay' : 'Xác nhận trả nháp'}
         reasonLabel={pendingDecision?.decision === 'REJECT' ? 'Lý do trả về nháp (bắt buộc)' : undefined}
         reasonPlaceholder="Nêu rõ phần cần chỉnh sửa để Content Admin xử lý..."
         submitting={pendingDecision !== null && working === `${pendingDecision.entry.kind}-${pendingDecision.entry.id}`}
@@ -729,6 +811,102 @@ export default function ContentApprovalQueuePage() {
         onConfirm={confirmDecision}
         onCancel={() => setPendingDecision(null)}
       />
+
+      {/* Reassign Dialog */}
+      {reassignItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-outline-variant bg-surface p-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-outline-variant pb-3 mb-4">
+              <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[22px]">swap_horiz</span>
+                Chuyển chuyên gia thẩm định
+              </h3>
+              <button
+                type="button"
+                onClick={handleCloseReassign}
+                disabled={isReassigning}
+                className="text-outline hover:text-on-surface cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs text-on-surface">
+              <div className="rounded-lg bg-surface-container-low p-3">
+                <p className="font-semibold text-sm text-on-surface">{reassignItem.title}</p>
+                <div className="mt-1 text-[11px] text-outline">
+                  Loại: {reassignItem.typeLabel} · Giai đoạn: {reassignItem.stageLabel}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-on-surface-variant mb-1">
+                  Chọn chuyên gia hợp đồng (Contracted Expert) <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={targetExpertId}
+                  onChange={(e) => setTargetExpertId(e.target.value)}
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-xs text-on-surface focus:border-primary focus:outline-none cursor-pointer"
+                >
+                  {contractedExperts.map((exp) => (
+                    <option key={exp.userId} value={exp.userId}>
+                      {exp.fullName} ({exp.specialty})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-on-surface-variant mb-1">
+                  Lý do điều chuyển (tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
+                  placeholder="Ví dụ: Tối ưu tải lượng, chuyên gia cũ bận lịch..."
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-xs text-on-surface focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {reassignError && (
+                <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 p-2.5 text-rose-600 text-xs">
+                  {reassignError}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3 border-t border-outline-variant pt-4">
+              <button
+                type="button"
+                onClick={handleCloseReassign}
+                disabled={isReassigning}
+                className="rounded-lg border border-outline-variant bg-surface px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-low disabled:opacity-50 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitReassign}
+                disabled={isReassigning || !targetExpertId}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-on-primary hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+              >
+                {isReassigning ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                    Xác nhận chuyển
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Batch Publish Confirm Dialog */}
       <ConfirmDialog
@@ -820,5 +998,3 @@ export default function ContentApprovalQueuePage() {
     </div>
   );
 }
-
-

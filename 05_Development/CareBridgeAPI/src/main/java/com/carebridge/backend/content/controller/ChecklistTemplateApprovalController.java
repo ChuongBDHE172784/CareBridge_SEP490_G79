@@ -20,19 +20,30 @@ import org.springframework.web.bind.annotation.RestController;
 // exactly like ContentApprovalController coexists with AdminContentController on /api/v1/admin/content.
 @RestController
 @RequestMapping("/api/v1/admin/checklist-templates")
-@PreAuthorize("hasRole('SYSTEM_ADMIN')")
 @RequiredArgsConstructor
 public class ChecklistTemplateApprovalController {
 
     private final ChecklistTemplateApprovalService checklistTemplateApprovalService;
+    private final com.carebridge.backend.content.service.ExpertContentApprovalService expertContentApprovalService;
 
     @PostMapping("/{id}/decision")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'EXPERT')")
     public ResponseEntity<ApiResponse<ChecklistTemplateDecisionResponse>> decide(
             @PathVariable UUID id,
             @Valid @RequestBody ContentDecisionRequest request,
             Principal principal) {
         ChecklistTemplateDecisionResponse response = checklistTemplateApprovalService.decide(id, request, principal);
         return ResponseEntity.ok(ApiResponse.success(response, "Checklist template decision recorded successfully"));
+    }
+
+    @PostMapping("/{id}/reassign")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> reassign(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.carebridge.backend.content.dto.request.ReassignContentRequest request,
+            Principal principal) {
+        expertContentApprovalService.reassignChecklist(id, request, principal);
+        return ResponseEntity.ok(ApiResponse.success(null, "Checklist template reassigned successfully"));
     }
 
     @PostMapping("/{lineageId}/versions/{versionId}/approve")

@@ -3,6 +3,7 @@ import { useAuth } from '../../shared/auth/useAuth';
 
 const NAV_ITEMS = [
   { label: 'Tổng quan', icon: 'dashboard', path: '/expert/dashboard' },
+  { label: 'Thẩm định nội dung', icon: 'rate_review', path: '/expert/content-approval' },
   { label: 'Yêu cầu tư vấn', icon: 'contact_support', path: '/expert/consultation-requests' },
   { label: 'Trò chuyện trực tiếp', icon: 'chat', path: '/expert/direct-chats' },
   { label: 'Chỉ số & Checklist chia sẻ', icon: 'monitoring', path: '/expert/shared-records' },

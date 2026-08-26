@@ -40,7 +40,9 @@ public record AdminChecklistTemplateResponse(
         @Nullable @Schema(nullable = true) Integer eligibilityStartInclusive,
         @Nullable @Schema(nullable = true) Integer eligibilityEndInclusive,
         @Nullable @Schema(nullable = true) String checklistQuarantineReasonCode,
-        @Nullable @Schema(nullable = true) String provenanceStatus) {
+        @Nullable @Schema(nullable = true) String provenanceStatus,
+        @Nullable @Schema(nullable = true) UUID assignedExpertId,
+        @Nullable @Schema(nullable = true) Instant assignedAt) {
 
     public AdminChecklistTemplateResponse {
         recipientRoles = recipientRoles == null ? List.of() : List.copyOf(recipientRoles);
@@ -57,7 +59,7 @@ public record AdminChecklistTemplateResponse(
             long itemCount) {
         this(id, name, stage, ChecklistTemplateType.MANDATORY,
                 status, description, versionNo, updatedAt, itemCount, null, null, List.of(), null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     public AdminChecklistTemplateResponse(
@@ -72,7 +74,7 @@ public record AdminChecklistTemplateResponse(
             ReviewFeedbackResponse latestReviewFeedback) {
         this(id, name, stage, ChecklistTemplateType.MANDATORY,
                 status, description, versionNo, updatedAt, itemCount, latestReviewFeedback, null, List.of(), null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     /** Source-compatible constructor for the original canonical record shape. */
@@ -89,7 +91,7 @@ public record AdminChecklistTemplateResponse(
             ReviewFeedbackResponse latestReviewFeedback) {
         this(id, name, stage, templateType, status, description, versionNo, updatedAt, itemCount,
                 latestReviewFeedback, null, List.of(), null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     public AdminChecklistTemplateResponse(
@@ -107,6 +109,6 @@ public record AdminChecklistTemplateResponse(
             ReviewFeedbackResponse latestReviewFeedback) {
         this(id, name, stage, templateType, status, description, versionNo, updatedAt, itemCount,
                 latestReviewFeedback, displayOrder, recipientRoles, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

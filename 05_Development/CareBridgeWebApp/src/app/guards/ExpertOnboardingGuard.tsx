@@ -10,9 +10,21 @@ export default function ExpertOnboardingGuard() {
   useEffect(() => {
     let active = true;
     getExpertOnboarding()
-      .then((state) => { if (active) setComplete(state.nextStep === 'COMPLETE'); })
-      .catch(() => { if (active) setComplete(false); });
-    return () => { active = false; };
+      .then((state) => {
+        if (active) {
+          const isComplete =
+            state.nextStep === 'COMPLETE' ||
+            state.nextStep === 'AVAILABILITY' ||
+            (state.verificationStatus === 'APPROVED' && state.expertType !== 'PENDING_CONTRACT');
+          setComplete(isComplete);
+        }
+      })
+      .catch(() => {
+        if (active) setComplete(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (complete === null) {

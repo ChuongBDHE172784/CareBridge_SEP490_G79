@@ -181,6 +181,10 @@ public class ContentMapper {
                                 s.getTitle(), s.getUrl(), s.getPublisher()))
                         .toList())
                 .contentStale(contentStale)
+                .assignedExpertId(item.getAssignedExpertId())
+                .assignedAt(item.getAssignedAt())
+                .approvedBy(item.getApprovedBy())
+                .approvedAt(item.getApprovedAt())
                 .build();
     }
 
@@ -234,7 +238,8 @@ public class ContentMapper {
                 template.getMaterializationPolicy(), template.getScheduleGroupKey(),
                 template.getScheduleContextType(), template.getScheduleEndMode(), template.getWeekBoundaryRule(),
                 template.getEligibilityStartInclusive(), template.getEligibilityEndInclusive(),
-                template.getChecklistQuarantineReasonCode(), provenanceStatus(template));
+                template.getChecklistQuarantineReasonCode(), provenanceStatus(template),
+                template.getAssignedExpertId(), template.getAssignedAt());
     }
 
     public AdminChecklistTemplateDetailResponse toAdminChecklistTemplateDetailResponse(
@@ -260,6 +265,8 @@ public class ContentMapper {
                 .templateType(template.getTemplateType())
                 .approvedAt(template.getApprovedAt())
                 .approvedBy(template.getApprovedBy())
+                .assignedExpertId(template.getAssignedExpertId())
+                .assignedAt(template.getAssignedAt())
                 .migrationReviewedAt(template.getMigrationReviewedAt())
                 .migrationReviewedBy(template.getMigrationReviewedBy())
                 .provenance(toChecklistProvenance(template))

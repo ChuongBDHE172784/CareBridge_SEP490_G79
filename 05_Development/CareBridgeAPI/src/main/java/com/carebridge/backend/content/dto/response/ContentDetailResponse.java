@@ -44,4 +44,8 @@ public class ContentDetailResponse {
     private Instant createdAt;
     private List<ContentSourceResponse> sources;
     private boolean contentStale;
+    private UUID assignedExpertId;
+    private Instant assignedAt;
+    private UUID approvedBy;
+    private Instant approvedAt;
 }

@@ -145,7 +145,7 @@ public class CareGroupChecklistService {
                         item.targetSubject(), item.origin(), item.status(), item.timeBucket(),
                         Set.of(), // Family cannot tick mother's tasks!
                         item.dueAt(),
-                        item.description(), item.supportFunction()))
+                        item.description(), item.supportFunction(), item.sourceUrl()))
                 .toList();
     }
 

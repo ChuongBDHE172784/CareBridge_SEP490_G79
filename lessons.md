@@ -831,3 +831,8 @@
   accepting a lockfile update. `google_mlkit_pose_detection 0.15.0` declares iOS 15.5
   in both its README and podspec, while this app still targets iOS 13.0; either raising
   the product floor or pinning an audited older ML Kit line is a human-owned decision.
+## 2026-08-25 - Multi-expert content review assignment planning
+
+- Do not infer clinical specialty from content titles, tags, stages, or free-text expert specialties; use a general contracted pool until content carries a canonical required-specialty contract.
+- A review lease must bind assignee, opaque token, and immutable submission version so an expired claim cannot approve a resubmitted version.
+- For a small system, atomic oldest-first `claim-next` with capacity and renewable lease is safer than push-assigning work to experts who may be eligible but unavailable.

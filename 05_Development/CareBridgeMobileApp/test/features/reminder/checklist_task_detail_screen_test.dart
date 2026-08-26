@@ -23,9 +23,11 @@ TodayTask _task({
   String? description = 'Mang theo kết quả xét nghiệm gần nhất.',
   TodayTaskSupportFunction? supportFunction,
   TodayTaskTarget target = TodayTaskTarget.baby,
+  TodayTaskOrigin origin = TodayTaskOrigin.systemTemplate,
   bool completed = false,
   String careContextType = 'BABY',
   String careContextId = 'baby-1',
+  String? sourceUrl,
 }) {
   final action = completed ? TodayTaskAction.reopen : TodayTaskAction.complete;
   return TodayTask.fromJson({
@@ -43,10 +45,15 @@ TodayTask _task({
       TodayTaskTarget.baby => 'BABY',
       TodayTaskTarget.unknown => 'UNKNOWN',
     },
-    'origin': 'SYSTEM_TEMPLATE',
+    'origin': switch (origin) {
+      TodayTaskOrigin.systemTemplate => 'SYSTEM_TEMPLATE',
+      TodayTaskOrigin.userCreated => 'USER_CREATED',
+      TodayTaskOrigin.unknown => 'UNKNOWN',
+    },
     'status': completed ? 'COMPLETED' : 'PENDING',
     'timeBucket': 'TODAY',
     'allowedActions': [action.apiValue],
+    if (sourceUrl != null) 'sourceUrl': sourceUrl,
   });
 }
 
@@ -84,7 +91,7 @@ Future<void> _openDetail(
 }
 
 void main() {
-  testWidgets('renders title, detailed content, target and status metadata', (
+  testWidgets('renders title, detailed content, source, target and status metadata', (
     tester,
   ) async {
     final task = _task();
@@ -96,9 +103,20 @@ void main() {
     expect(find.byKey(const Key('task-detail-title')), findsOneWidget);
     expect(find.text('Chuẩn bị hồ sơ khám'), findsOneWidget);
     expect(find.text('Mang theo kết quả xét nghiệm gần nhất.'), findsOneWidget);
+    expect(find.text('Gợi ý CareBridge'), findsOneWidget);
     expect(find.text('Bé'), findsOneWidget);
     expect(find.text('Đang chờ'), findsOneWidget);
     expect(find.text('Bé An'), findsOneWidget);
+  });
+
+  testWidgets('renders user created task source metadata', (tester) async {
+    final task = _task(origin: TodayTaskOrigin.userCreated);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+    );
+
+    expect(find.text('Việc cá nhân'), findsOneWidget);
   });
 
   testWidgets('renders targetless V2 checklist as a neutral recommendation', (
@@ -113,7 +131,7 @@ void main() {
     );
 
     expect(find.text('Khuyến nghị'), findsOneWidget);
-    expect(find.text('Cá nhân'), findsNothing);
+    expect(find.text('Gợi ý CareBridge'), findsOneWidget);
   });
 
   testWidgets(
@@ -352,6 +370,37 @@ void main() {
       );
       expect(find.text('Chức năng hỗ trợ'), findsNothing);
       expect(find.text('Mở chức năng hỗ trợ'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'displays medical reference source url section when sourceUrl is present',
+    (tester) async {
+      const url = 'https://www.who.int/guidelines/maternal-care';
+      final task = _task(sourceUrl: url);
+
+      await tester.pumpWidget(
+        MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+      );
+
+      expect(find.text('Nguồn tham khảo y khoa'), findsOneWidget);
+      expect(find.byKey(const Key('task-detail-source-url')), findsOneWidget);
+      expect(find.text(url), findsOneWidget);
+      expect(find.byKey(const Key('task-detail-source-url-button')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'hides medical reference source url section when sourceUrl is null or empty',
+    (tester) async {
+      final task = _task(sourceUrl: '   ');
+
+      await tester.pumpWidget(
+        MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+      );
+
+      expect(find.text('Nguồn tham khảo y khoa'), findsNothing);
+      expect(find.byKey(const Key('task-detail-source-url')), findsNothing);
     },
   );
 }

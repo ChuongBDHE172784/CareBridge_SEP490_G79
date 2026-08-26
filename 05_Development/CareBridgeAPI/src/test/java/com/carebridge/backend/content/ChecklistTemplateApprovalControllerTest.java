@@ -45,6 +45,9 @@ class ChecklistTemplateApprovalControllerTest {
     private ChecklistTemplateApprovalService checklistTemplateApprovalService;
 
     @MockitoBean
+    private com.carebridge.backend.content.service.ExpertContentApprovalService expertContentApprovalService;
+
+    @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean

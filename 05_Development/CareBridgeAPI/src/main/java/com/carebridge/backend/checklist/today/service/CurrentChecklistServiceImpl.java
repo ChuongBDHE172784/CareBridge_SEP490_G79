@@ -47,6 +47,6 @@ public class CurrentChecklistServiceImpl implements CurrentChecklistService {
                 item.careContextType(), item.careContextId(), item.careGroupLabel(),
                 item.careContextLabel(), item.title(), item.targetSubject(), item.origin(),
                 item.status(), item.timeBucket(), item.allowedActions(), item.dueAt(),
-                item.description(), item.supportFunction())).toList();
+                item.description(), item.supportFunction(), item.sourceUrl())).toList();
     }
 }

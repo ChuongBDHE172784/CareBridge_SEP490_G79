@@ -38,8 +38,18 @@ function StepCard({
  * thẻ lọc bớt người chọn nhóm hợp tác chỉ vì huy hiệu đẹp hơn, và giảm số ca admin phải xếp
  * xuống nhóm cộng đồng.
  */
-export function ExpertTypeStep({ onDone }: { onDone: () => Promise<void> }) {
-	const [selected, setSelected] = useState<GrantableExpertType | null>(null);
+export function ExpertTypeStep({
+	onDone,
+	currentType,
+}: {
+	onDone: () => Promise<void>;
+	currentType?: GrantableExpertType | string | null;
+}) {
+	const [selected, setSelected] = useState<GrantableExpertType | null>(
+		currentType === 'PENDING_CONTRACT' || currentType === 'COMMUNITY'
+			? (currentType as GrantableExpertType)
+			: null
+	);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -50,8 +60,12 @@ export function ExpertTypeStep({ onDone }: { onDone: () => Promise<void> }) {
 		try {
 			await chooseExpertType(selected);
 			await onDone();
-		} catch {
-			setError('Không lưu được lựa chọn. Vui lòng thử lại.');
+		} catch (caught: any) {
+			const msg =
+				caught?.response?.data?.message ||
+				caught?.message ||
+				'Không lưu được lựa chọn. Vui lòng thử lại.';
+			setError(msg);
 			setSaving(false);
 		}
 	};

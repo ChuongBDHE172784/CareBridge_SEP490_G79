@@ -89,7 +89,27 @@ export interface ContentDetail {
   updatedAt?: string | null;
   sourceLabel?: string | null;
   sources?: ContentSource[];
+  assignedExpertId?: string | null;
+  assignedAt?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
   latestReviewFeedback?: ReviewFeedback | null;
+}
+
+export interface ExpertApprovalQueueItem {
+  id: string;
+  kind: 'CONTENT' | 'CHECKLIST';
+  type: ContentType;
+  title: string;
+  stage: ContentStage;
+  status: string;
+  versionNo?: number;
+  itemCount?: number;
+  summary?: string;
+  sourceLabel?: string;
+  assignedAt?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
 }
 
 export interface RecommendationTag {
@@ -332,6 +352,8 @@ export interface AdminChecklistTemplate {
   itemCount: number;
   migrationReviewRequired?: boolean;
   distributionEnabled?: boolean;
+  assignedExpertId?: string | null;
+  assignedAt?: string | null;
   /** Admin list projection only; consumers must never use this to distribute content. */
   provenanceStatus?: string | null;
   latestReviewFeedback?: ReviewFeedback | null;

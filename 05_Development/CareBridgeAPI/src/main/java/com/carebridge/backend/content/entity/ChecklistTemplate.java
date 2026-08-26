@@ -146,6 +146,12 @@ public class ChecklistTemplate {
     @Column(name = "approved_by")
     private UUID approvedBy;
 
+    @Column(name = "assigned_expert_id")
+    private UUID assignedExpertId;
+
+    @Column(name = "assigned_at")
+    private Instant assignedAt;
+
     @Column(name = "effective_from")
     private Instant effectiveFrom;
 

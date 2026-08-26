@@ -18,8 +18,8 @@ export const ROLE_DEFAULT_ROUTES: Record<UserRole, string> = {
   // the role's default landing page so existing moderator workflows are preserved.
   MODERATOR: '/moderator/reports',
   CONTENT_ADMIN: '/content/dashboard',
-  // The server-owned onboarding aggregate decides whether an expert may enter the portal.
-  EXPERT: '/expert/onboarding',
+  // The server-owned onboarding guard will redirect to /expert/onboarding if incomplete.
+  EXPERT: '/expert/dashboard',
   MOTHER: '/direct-chats',
   FAMILY: '/no-web-access',
 };

@@ -172,4 +172,35 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
             @Param("topicId") UUID topicId,
             @Param("status") ContentStatus status,
             Pageable pageable);
+
+    Page<ContentItem> findByAssignedExpertIdAndStatus(
+            UUID assignedExpertId, ContentStatus status, Pageable pageable);
+
+    @Query("SELECT c FROM ContentItem c WHERE " +
+           "c.assignedExpertId = :expertId AND " +
+           "(:status IS NULL OR c.status = :status) AND " +
+           "(:type IS NULL OR c.type = :type) AND " +
+           "(:stage IS NULL OR c.stage = :stage) AND " +
+           "(:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) " +
+           "   OR LOWER(c.body) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%'))) " +
+           "ORDER BY c.assignedAt DESC NULLS LAST, c.updatedAt DESC")
+    Page<ContentItem> findByExpertFilters(
+            @Param("expertId") UUID expertId,
+            @Param("status") ContentStatus status,
+            @Param("type") ContentType type,
+            @Param("stage") ContentStage stage,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    long countByAssignedExpertIdAndStatus(UUID assignedExpertId, ContentStatus status);
+
+    @Query("SELECT c.assignedExpertId, COUNT(c) FROM ContentItem c " +
+           "WHERE c.status = :status AND c.assignedExpertId IN :expertIds " +
+           "GROUP BY c.assignedExpertId")
+    List<Object[]> countPendingByAssignedExpertIds(
+            @Param("status") ContentStatus status,
+            @Param("expertIds") Collection<UUID> expertIds);
+
+    @Query("SELECT MAX(c.assignedAt) FROM ContentItem c WHERE c.assignedExpertId = :expertId")
+    java.time.Instant findLatestAssignedAtByExpertId(@Param("expertId") UUID expertId);
 }

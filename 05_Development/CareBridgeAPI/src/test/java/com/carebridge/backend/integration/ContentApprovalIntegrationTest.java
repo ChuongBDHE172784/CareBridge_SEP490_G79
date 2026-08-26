@@ -52,6 +52,9 @@ class ContentApprovalIntegrationTest {
     private ContentApprovalService contentApprovalService;
 
     @MockitoBean
+    private com.carebridge.backend.content.service.ExpertContentApprovalService expertContentApprovalService;
+
+    @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean

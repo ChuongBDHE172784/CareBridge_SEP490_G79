@@ -32,10 +32,37 @@ public record TodayTaskCandidate(
         String description,
         ChecklistSupportFunction supportFunction,
         TaskCadence cadence,
-        ContentStage stage) {
+        ContentStage stage,
+        String sourceUrl) {
 
     public TodayTaskCandidate {
         cadence = cadence == null ? TaskCadence.ONCE : cadence;
+    }
+
+    /** Compatibility constructor for callers before sourceUrl was exposed. */
+    public TodayTaskCandidate(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            Instant terminalAt,
+            ReminderType reminderType,
+            String description,
+            ChecklistSupportFunction supportFunction,
+            TaskCadence cadence,
+            ContentStage stage) {
+        this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
+                careContextId, title, targetSubject, origin, status, allowedActions,
+                dueAt, terminalAt, reminderType, description, supportFunction, cadence, stage, null);
     }
 
     /** Compatibility constructor for callers before lifecycle stage was exposed. */
@@ -60,7 +87,7 @@ public record TodayTaskCandidate(
             TaskCadence cadence) {
         this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
                 careContextId, title, targetSubject, origin, status, allowedActions,
-                dueAt, terminalAt, reminderType, description, supportFunction, cadence, null);
+                dueAt, terminalAt, reminderType, description, supportFunction, cadence, null, null);
     }
 
     /** Compatibility constructor for providers that expose task detail but not cadence. */

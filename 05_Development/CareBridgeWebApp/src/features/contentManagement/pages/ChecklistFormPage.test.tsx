@@ -119,12 +119,14 @@ describe('ChecklistFormPage version', () => {
     expect(screen.queryByRole('checkbox', { name: 'Recipient MOTHER' })).toBeNull();
     expect(screen.queryByRole('checkbox', { name: 'Recipient FAMILY' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Checklist contract' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Checklist type' })).toBeNull();
     expect(screen.queryByRole('radio', { name: 'Recommendation-only V2 contract' })).toBeNull();
     expect(screen.queryByRole('radio', { name: 'Legacy V1 target-bearing contract' })).toBeNull();
     expect(screen.getByLabelText('List weekly recurrence')).toBeTruthy();
     expect(screen.getByLabelText('List daily recurrence')).toBeTruthy();
     expect(screen.queryByLabelText('Item 1 target')).toBeNull();
-    expect(screen.getByRole('checkbox', { name: 'Bắt buộc' })).toBeTruthy();
+    expect(screen.queryByRole('checkbox', { name: 'Bắt buộc' })).toBeNull();
+    expect(screen.queryByText(/Checklist V2 lưu nội dung khuyến nghị/)).toBeNull();
   });
 
   it.each(['PREGNANCY', 'POSTPARTUM'] as const)('keeps the lifecycle anchor internal for %s instead of exposing it in the form', async (selectedStage) => {
@@ -137,7 +139,7 @@ describe('ChecklistFormPage version', () => {
     expect(screen.queryByText('Mốc tính')).toBeNull();
   });
 
-  it('keeps V2 item payload targetless while serializing requiredness', async () => {
+  it('keeps V2 item payload targetless while serializing requiredness and required sourceUrl', async () => {
     const user = userEvent.setup();
     harness.createChecklistTemplate.mockResolvedValue({
       id: 'v2-created', name: 'Daily recommendation', description: '', stage: 'PREGNANCY',
@@ -148,21 +150,22 @@ describe('ChecklistFormPage version', () => {
     await user.type(screen.getByLabelText('Template name'), 'Daily recommendation');
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     await user.type(screen.getByLabelText('Item 1 text'), 'Uống đủ nước');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), 'https://carebridge.example/hydration');
     expect(screen.queryByLabelText('Item 1 target')).toBeNull();
-    expect(screen.getByRole('checkbox', { name: 'Bắt buộc' })).toHaveProperty('checked', true);
+    expect(screen.queryByRole('checkbox', { name: 'Bắt buộc' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
       checklistContractVersion: 2,
-      items: [expect.objectContaining({ itemText: 'Uống đủ nước' })],
+      items: [expect.objectContaining({ itemText: 'Uống đủ nước', sourceUrl: 'https://carebridge.example/hydration' })],
     })));
     const payload = harness.createChecklistTemplate.mock.calls[0][0];
     expect(payload.items[0]).not.toHaveProperty('targetSubject');
-    expect(payload.items[0]).not.toHaveProperty('sourceUrl');
+    expect(payload.items[0]).toHaveProperty('sourceUrl', 'https://carebridge.example/hydration');
     expect(payload.items[0]).toHaveProperty('isRequired', true);
   });
 
-  it('trims and serializes an optional source URL for a checklist item', async () => {
+  it('trims and serializes a required source URL for a checklist item', async () => {
     const user = userEvent.setup();
     harness.createChecklistTemplate.mockResolvedValue({
       id: 'created-with-source', name: 'Nguồn tham khảo', description: '', stage: 'PREGNANCY',
@@ -195,7 +198,6 @@ describe('ChecklistFormPage version', () => {
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     await user.type(screen.getByLabelText('Item 1 text'), 'Đọc tài liệu');
     const saveButton = screen.getByRole('button', { name: 'Save draft' });
-    expect(saveButton).toBeEnabled();
 
     const sourceUrlInput = screen.getByLabelText('Link nguồn mục 1');
     await user.type(sourceUrlInput, invalidSourceUrl);
@@ -207,10 +209,7 @@ describe('ChecklistFormPage version', () => {
     expect(harness.createChecklistTemplate).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['https://carebridge.example/updated-guidance', 'https://carebridge.example/updated-guidance'],
-    ['', undefined],
-  ] as const)('round-trips an edited item source URL value %s', async (replacement, expectedSourceUrl) => {
+  it('round-trips an edited item source URL value', async () => {
     const user = userEvent.setup();
     routeId = 'checklist-123';
     harness.fetchChecklistTemplateDetail.mockResolvedValue({
@@ -229,16 +228,12 @@ describe('ChecklistFormPage version', () => {
 
     const sourceUrlInput = await screen.findByLabelText('Link nguồn mục 1');
     await user.clear(sourceUrlInput);
-    if (replacement) await user.type(sourceUrlInput, replacement);
+    await user.type(sourceUrlInput, 'https://carebridge.example/updated-guidance');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.updateChecklistTemplate).toHaveBeenCalled());
     const payloadItem = harness.updateChecklistTemplate.mock.calls[0][1].items[0];
-    if (expectedSourceUrl) {
-      expect(payloadItem).toHaveProperty('sourceUrl', expectedSourceUrl);
-    } else {
-      expect(payloadItem).not.toHaveProperty('sourceUrl');
-    }
+    expect(payloadItem).toHaveProperty('sourceUrl', 'https://carebridge.example/updated-guidance');
   });
 
   it.each([
@@ -274,6 +269,7 @@ describe('ChecklistFormPage version', () => {
     await user.type(screen.getByLabelText('Template name'), 'Baby care');
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'BABY_CARE');
     await user.type(screen.getByLabelText('Item 1 text'), 'Theo dõi giấc ngủ của bé');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), 'https://carebridge.example/baby-sleep');
     expect(screen.getByLabelText('Lifecycle window start')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(
@@ -347,6 +343,7 @@ describe('ChecklistFormPage version', () => {
     await user.type(screen.getByLabelText('Template name'), 'Weekly item');
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     await user.type(screen.getByLabelText('Item 1 text'), 'Theo dõi huyết áp');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), 'https://carebridge.example/bp');
     await user.click(screen.getByLabelText('List weekly recurrence'));
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
@@ -368,9 +365,11 @@ describe('ChecklistFormPage version', () => {
     await user.type(screen.getByLabelText('Template name'), 'Shared cadence');
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     await user.type(screen.getByLabelText('Item 1 text'), 'Theo dõi huyết áp');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), 'https://carebridge.example/bp');
     await user.click(screen.getByLabelText('List weekly recurrence'));
     await user.click(screen.getByRole('button', { name: 'Thêm mục' }));
     await user.type(screen.getByLabelText('Item 2 text'), 'Khám thai lần đầu');
+    await user.type(screen.getByLabelText('Link nguồn mục 2'), 'https://carebridge.example/exam');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
@@ -462,32 +461,31 @@ describe('ChecklistFormPage version', () => {
     })));
   });
 
-  it('supports Muốn mang thai and optional self-service checklist type', async () => {
+  it('defaults to MANDATORY checklist type when creating checklist', async () => {
     const user = userEvent.setup();
     harness.createChecklistTemplate.mockResolvedValue({
-      id: 'pre-optional', name: 'Prepare for pregnancy', description: '', stage: 'PRE_PREGNANCY',
-      templateType: 'OPTIONAL', status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
+      id: 'pre-mandatory', name: 'Prepare for pregnancy', description: '', stage: 'PRE_PREGNANCY',
+      templateType: 'MANDATORY', status: 'DRAFT', versionNo: 1, items: [], recipientRoles: ['MOTHER'],
       substage: { code: 'PRE_PREGNANCY_ALL', anchor: 'NONE', startInclusive: 0, endInclusive: 0, unit: 'DAY' },
     });
     harness.updateChecklistTemplate.mockResolvedValue(undefined);
     render(<ChecklistFormPage />);
 
     await user.type(screen.getByLabelText('Template name'), 'Prepare for pregnancy');
-    await user.click(screen.getByLabelText('Optional checklist'));
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PRE_PREGNANCY');
     expect(screen.queryByLabelText('Lifecycle window start')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Submit for review' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
-      templateType: 'OPTIONAL',
+      templateType: 'MANDATORY',
       recipientRoles: ['MOTHER'],
       stage: 'PRE_PREGNANCY',
       substage: null,
     })));
     await waitFor(() => expect(harness.updateChecklistTemplate).toHaveBeenCalledWith(
-      'pre-optional',
+      'pre-mandatory',
       expect.objectContaining({
-        templateType: 'OPTIONAL',
+        templateType: 'MANDATORY',
         stage: 'PRE_PREGNANCY',
         substage: null,
         status: 'PENDING_REVIEW',
@@ -510,6 +508,7 @@ describe('ChecklistFormPage version', () => {
     expect(screen.getByText('Cửa sổ vòng đời')).toBeTruthy();
     await user.click(screen.getByLabelText('List weekly recurrence'));
     await user.type(screen.getByLabelText('Item 1 text'), 'Prepare documents');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), 'https://carebridge.example/postpartum');
     await user.type(screen.getByLabelText('Nội dung chi tiết mục 1'), 'Chuẩn bị giấy tờ cần thiết.');
     await user.selectOptions(screen.getByLabelText('Chức năng hỗ trợ mục 1'), 'CONTENT_LIBRARY');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
@@ -524,6 +523,7 @@ describe('ChecklistFormPage version', () => {
       }),
       items: [expect.objectContaining({
         description: 'Chuẩn bị giấy tờ cần thiết.',
+        sourceUrl: 'https://carebridge.example/postpartum',
         supportFunction: 'CONTENT_LIBRARY',
       })],
     })));
@@ -540,11 +540,12 @@ describe('ChecklistFormPage version', () => {
     await user.type(screen.getByLabelText('Template name'), 'Theo dõi chỉ số');
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     await user.type(screen.getByLabelText('Item 1 text'), 'Ghi nhận chỉ số sức khỏe');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), 'https://carebridge.example/metrics');
     await user.selectOptions(screen.getByRole('combobox', { name: /hỗ trợ mục 1/i }), 'MATERNAL_HEALTH_METRICS');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
-      items: [expect.objectContaining({ supportFunction: 'MATERNAL_HEALTH_METRICS' })],
+      items: [expect.objectContaining({ supportFunction: 'MATERNAL_HEALTH_METRICS', sourceUrl: 'https://carebridge.example/metrics' })],
     })));
   });
 
@@ -559,18 +560,19 @@ describe('ChecklistFormPage version', () => {
     await user.type(screen.getByLabelText('Template name'), 'Bài tập cho mẹ');
     await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PREGNANCY');
     await user.type(screen.getByLabelText('Item 1 text'), 'Thực hiện bài tập phù hợp');
+    await user.type(screen.getByLabelText('Link nguồn mục 1'), 'https://carebridge.example/exercises');
     await user.selectOptions(screen.getByRole('combobox', { name: /hỗ trợ mục 1/i }), 'MATERNAL_EXERCISES');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
-      items: [expect.objectContaining({ supportFunction: 'MATERNAL_EXERCISES' })],
+      items: [expect.objectContaining({ supportFunction: 'MATERNAL_EXERCISES', sourceUrl: 'https://carebridge.example/exercises' })],
     })));
   });
 
   it('uses AA contrast tokens for readable secondary copy', () => {
     render(<ChecklistFormPage />);
 
-    const guidance = screen.getByText((value) => value.startsWith('Checklist V2'));
+    const guidance = screen.getByText('Thiết lập người nhận, giai đoạn và nhịp lặp cho checklist.');
     expect(guidance.className).toContain('text-on-surface-variant');
     expect(guidance.className).not.toContain('text-[#9C857C]');
   });

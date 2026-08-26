@@ -24,6 +24,7 @@ import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.policy.HtmlContentSanitizer;
 import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.recommendation.service.RecommendationMetadataPolicy;
+import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -55,6 +56,8 @@ public class AdminContentServiceImpl implements AdminContentService {
     private final HtmlContentSanitizer htmlContentSanitizer;
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
+    private final ContentWorkloadDispatcherService contentWorkloadDispatcherService;
+    private final ContentReviewNotificationService contentReviewNotificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -184,8 +187,16 @@ public class AdminContentServiceImpl implements AdminContentService {
             item.setRecommendationPriority(priority);
         }
         item.setStatus(request.status());
+        UUID newlyAssignedExpertId = null;
         if (request.status() == ContentStatus.PENDING_REVIEW) {
+            UUID previousReviewer = item.getRevisionRequestedBy();
             clearReviewFeedback(item);
+            if (item.getAssignedExpertId() == null || previousReviewer != null) {
+                newlyAssignedExpertId = contentWorkloadDispatcherService.dispatchToOptimalExpert(
+                        item.getType(), request.stage(), previousReviewer);
+                item.setAssignedExpertId(newlyAssignedExpertId);
+                item.setAssignedAt(Instant.now());
+            }
         }
         item.setSourceLabel(request.sourceLabel());
         // Omitted sources mean the client did not edit them. An explicit [] intentionally clears them.
@@ -203,6 +214,11 @@ public class AdminContentServiceImpl implements AdminContentService {
         item.setVersionNo(currentVersion + 1);
 
         ContentItem saved = contentRepository.save(item);
+
+        if (newlyAssignedExpertId != null) {
+            contentReviewNotificationService.notifyAssignedForReview(
+                    newlyAssignedExpertId, saved.getId(), saved.getType().name(), saved.getTitle());
+        }
 
         auditService.log(AuditAction.CONTENT_UPDATED, adminUserId,
                 "ContentItem", saved.getId().toString(), snapshotOf(saved));

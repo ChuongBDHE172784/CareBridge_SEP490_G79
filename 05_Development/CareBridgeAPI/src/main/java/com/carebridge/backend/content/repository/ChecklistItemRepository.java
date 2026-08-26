@@ -20,6 +20,9 @@ public interface ChecklistItemRepository extends JpaRepository<ChecklistItem, UU
             "order by case when i.order is null then 1 else 0 end, i.order, i.id")
     List<ChecklistItem> findByTemplate_IdOrderByOrder(@Param("templateId") UUID templateId);
 
+    @Query("select count(i) from ChecklistItem i where i.template.id = :templateId and i.isActive = true")
+    long countActiveByTemplateId(@Param("templateId") UUID templateId);
+
     @Query("select i from ChecklistItem i where i.template.id=:templateId " +
             "order by case when i.order is null then 1 else 0 end, i.order, i.id")
     List<ChecklistItem> findAllByTemplateIdOrderByOrder(@Param("templateId") UUID templateId);

@@ -38,6 +38,9 @@ class ContentApprovalControllerSecurityTest {
     private ContentApprovalService contentApprovalService;
 
     @MockitoBean
+    private com.carebridge.backend.content.service.ExpertContentApprovalService expertContentApprovalService;
+
+    @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean
@@ -84,5 +87,14 @@ class ContentApprovalControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(approveBody()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "e1000000-0000-0000-0000-000000000001", roles = "EXPERT")
+    void decide_asExpertRole_shouldReturn200() throws Exception {
+        mockMvc.perform(post(url()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(approveBody()))
+                .andExpect(status().isOk());
     }
 }

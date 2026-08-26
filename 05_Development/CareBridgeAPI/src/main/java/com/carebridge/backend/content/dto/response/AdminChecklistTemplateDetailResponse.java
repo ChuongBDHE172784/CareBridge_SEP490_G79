@@ -55,6 +55,8 @@ public class AdminChecklistTemplateDetailResponse {
     private String checklistQuarantineReasonCode;
     private Instant approvedAt;
     private UUID approvedBy;
+    private UUID assignedExpertId;
+    private Instant assignedAt;
     private Instant migrationReviewedAt;
     private UUID migrationReviewedBy;
     private ChecklistProvenanceResponse provenance;

@@ -28,7 +28,32 @@ public record CurrentChecklistTaskResponse(
         Set<TaskAction> allowedActions,
         Instant dueAt,
         String description,
-        ChecklistSupportFunction supportFunction) {
+        ChecklistSupportFunction supportFunction,
+        String sourceUrl) {
+
+    /** Compatibility constructor for callers before sourceUrl was exposed. */
+    public CurrentChecklistTaskResponse(
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String careGroupLabel,
+            String careContextLabel,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            TaskTimeBucket timeBucket,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            String description,
+            ChecklistSupportFunction supportFunction) {
+        this(taskId, instanceId, templateVersionId, careGroupId, careContextType, careContextId,
+                careGroupLabel, careContextLabel, title, targetSubject, origin, status,
+                timeBucket, allowedActions, dueAt, description, supportFunction, null);
+    }
 
     /** Compatibility constructor for callers using the original checklist projection. */
     public CurrentChecklistTaskResponse(
@@ -49,6 +74,6 @@ public record CurrentChecklistTaskResponse(
             Instant dueAt) {
         this(taskId, instanceId, templateVersionId, careGroupId, careContextType, careContextId,
                 careGroupLabel, careContextLabel, title, targetSubject, origin, status,
-                timeBucket, allowedActions, dueAt, null, null);
+                timeBucket, allowedActions, dueAt, null, null, null);
     }
 }

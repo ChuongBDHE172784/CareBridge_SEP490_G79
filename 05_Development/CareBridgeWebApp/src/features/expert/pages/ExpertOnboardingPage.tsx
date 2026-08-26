@@ -178,7 +178,7 @@ export default function ExpertOnboardingPage() {
       )}
 
       {error && <ErrorBanner message={error} retry={reload} />}
-      {currentStep === 'EXPERT_TYPE' && <ExpertTypeStep onDone={reload} />}
+      {currentStep === 'EXPERT_TYPE' && <ExpertTypeStep onDone={reload} currentType={state?.expertType} />}
       {currentStep === 'CONTRACT' && <ContractStep onDone={reload} />}
       {(currentStep === 'PROFILE' || currentStep === 'IDENTITY') && (
         <IdentityStep 

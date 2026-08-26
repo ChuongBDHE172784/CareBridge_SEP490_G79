@@ -26,6 +26,7 @@ import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
@@ -60,6 +61,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
     private final AuditService auditService;
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
+    private final ContentWorkloadDispatcherService contentWorkloadDispatcherService;
 
     @Override
     @Transactional(readOnly = true)
@@ -236,7 +238,14 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             template.setApprovedBy(null);
         }
         if (request.status() == ChecklistTemplateStatus.PENDING_REVIEW) {
+            UUID previousReviewer = template.getRevisionRequestedBy();
             clearReviewFeedback(template);
+            if (template.getAssignedExpertId() == null || previousReviewer != null) {
+                UUID assignedExpertId = contentWorkloadDispatcherService.dispatchToOptimalExpert(
+                        ContentType.CHECKLIST, normalizedStage, previousReviewer);
+                template.setAssignedExpertId(assignedExpertId);
+                template.setAssignedAt(Instant.now());
+            }
         }
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 

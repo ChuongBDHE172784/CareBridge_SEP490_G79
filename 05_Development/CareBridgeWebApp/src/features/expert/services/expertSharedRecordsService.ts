@@ -523,7 +523,7 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
           records.push({
             id: item.messageId || item.clientMessageId || `rec-${Date.now()}`,
             conversationId: conversation.conversationId,
-            motherUserId: item.senderUserId || counterpartId,
+            motherUserId: counterpartId,
             motherName: motherDisplayName,
             createdAt: item.createdAt || new Date().toISOString(),
             type: 'HEALTH_METRICS',
@@ -540,7 +540,7 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
           records.push({
             id: item.messageId || item.clientMessageId || `rec-${Date.now()}`,
             conversationId: conversation.conversationId,
-            motherUserId: item.senderUserId || counterpartId,
+            motherUserId: counterpartId,
             motherName: motherDisplayName,
             createdAt: item.createdAt || new Date().toISOString(),
             type: 'CHECKLIST',

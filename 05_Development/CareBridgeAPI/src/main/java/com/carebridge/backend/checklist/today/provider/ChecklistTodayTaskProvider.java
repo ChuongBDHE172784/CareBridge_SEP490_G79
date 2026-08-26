@@ -18,10 +18,14 @@ import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.model.ChecklistMaterializationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistScheduleType;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
+import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -32,6 +36,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,18 +45,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class ChecklistTodayTaskProvider implements TodayTaskProvider {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final ChecklistInstanceRepository instanceRepository;
     private final ChecklistTaskInstanceRepository taskRepository;
     private final UnifiedTaskAccessPolicy accessPolicy;
     private final ChecklistSequenceResolver sequenceResolver;
     private final ChecklistTemplateRepository templateRepository;
     private final ChecklistCurrentScopePolicy currentScopePolicy;
+    private final ChecklistItemRepository itemRepository;
 
     public ChecklistTodayTaskProvider(
             ChecklistInstanceRepository instanceRepository,
             ChecklistTaskInstanceRepository taskRepository,
             UnifiedTaskAccessPolicy accessPolicy) {
-        this(instanceRepository, taskRepository, accessPolicy, null, null, null);
+        this(instanceRepository, taskRepository, accessPolicy, null, null, null, null);
     }
 
     public ChecklistTodayTaskProvider(
@@ -61,7 +69,18 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             ChecklistSequenceResolver sequenceResolver,
             ChecklistTemplateRepository templateRepository) {
         this(instanceRepository, taskRepository, accessPolicy, sequenceResolver,
-                templateRepository, null);
+                templateRepository, null, null);
+    }
+
+    public ChecklistTodayTaskProvider(
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistSequenceResolver sequenceResolver,
+            ChecklistTemplateRepository templateRepository,
+            ChecklistCurrentScopePolicy currentScopePolicy) {
+        this(instanceRepository, taskRepository, accessPolicy, sequenceResolver,
+                templateRepository, currentScopePolicy, null);
     }
 
     @Autowired
@@ -71,13 +90,15 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             UnifiedTaskAccessPolicy accessPolicy,
             ChecklistSequenceResolver sequenceResolver,
             ChecklistTemplateRepository templateRepository,
-            ChecklistCurrentScopePolicy currentScopePolicy) {
+            ChecklistCurrentScopePolicy currentScopePolicy,
+            ChecklistItemRepository itemRepository) {
         this.instanceRepository = instanceRepository;
         this.taskRepository = taskRepository;
         this.accessPolicy = accessPolicy;
         this.sequenceResolver = sequenceResolver;
         this.templateRepository = templateRepository;
         this.currentScopePolicy = currentScopePolicy;
+        this.itemRepository = itemRepository;
     }
 
     @Override
@@ -125,9 +146,27 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
                 .map(authorized -> authorized.instance().getId())
                 .toList();
         Map<UUID, List<ChecklistTaskInstance>> tasksByInstanceId = new HashMap<>();
-        for (var task : taskRepository.findAllByChecklistInstanceIds(instanceIds)) {
+        List<ChecklistTaskInstance> allTasks = taskRepository.findAllByChecklistInstanceIds(instanceIds);
+        for (var task : allTasks) {
             tasksByInstanceId.computeIfAbsent(task.getChecklistInstanceId(), ignored -> new ArrayList<>())
                     .add(task);
+        }
+
+        Map<UUID, String> sourceUrlsByItemId = new HashMap<>();
+        if (itemRepository != null) {
+            List<UUID> itemVersionIds = allTasks.stream()
+                    .map(ChecklistTaskInstance::getTemplateItemVersionId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            if (!itemVersionIds.isEmpty()) {
+                for (ChecklistItem item : itemRepository.findAllById(itemVersionIds)) {
+                    String sourceUrl = extractSourceUrl(item);
+                    if (sourceUrl != null) {
+                        sourceUrlsByItemId.put(item.getId(), sourceUrl);
+                    }
+                }
+            }
         }
 
         List<TodayTaskCandidate> result = new ArrayList<>();
@@ -149,13 +188,16 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
                                 == ChecklistRecipientRole.MOTHER
                         ? null
                         : instance.getCareGroupId();
+                String sourceUrl = task.getTemplateItemVersionId() == null
+                        ? null
+                        : sourceUrlsByItemId.get(task.getTemplateItemVersionId());
                 result.add(new TodayTaskCandidate(TaskKind.CHECKLIST, task.getId(), instance.getId(),
                         instance.getTemplateVersionId(), presentedCareGroupId,
                         instance.getCareContextType(), instance.getCareContextId(),
                         task.getTitleSnapshot(), task.getTargetSubject(), instance.getOrigin(),
                         task.getStatus().name(), actions, task.getDueAt(), terminalAt(task), null,
                         task.getDescriptionSnapshot(), task.getSupportFunction(), cadence(template),
-                        template == null ? null : template.getStage()));
+                        template == null ? null : template.getStage(), sourceUrl));
             }
         }
         return List.copyOf(result);
@@ -256,6 +298,21 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             return TaskCadence.WEEKLY;
         }
         return TaskCadence.ONCE;
+    }
+
+    private static String extractSourceUrl(ChecklistItem item) {
+        if (item == null || item.getConfigurationJson() == null || item.getConfigurationJson().isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode node = OBJECT_MAPPER.readTree(item.getConfigurationJson());
+            JsonNode urlNode = node == null ? null : node.get("sourceUrl");
+            if (urlNode != null && urlNode.isTextual() && !urlNode.asText().isBlank()) {
+                return urlNode.asText().trim();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private record AuthorizedInstance(ChecklistInstance instance, boolean canAct) {

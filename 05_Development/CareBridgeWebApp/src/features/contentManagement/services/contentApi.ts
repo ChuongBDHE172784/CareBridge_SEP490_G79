@@ -22,6 +22,7 @@ import type {
   ContentVersionSnapshot,
   ChecklistTemplateVersionSnapshot,
   RecommendationTagCatalog,
+  ExpertApprovalQueueItem,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -435,4 +436,81 @@ export async function importContentBatch(data: {
 }): Promise<BulkImportResult> {
   const res = await apiClient.post<ApiResponse<BulkImportResult>>('/api/v1/admin/content/import-batch', data);
   return res.data.data;
+}
+
+export async function fetchExpertApprovalQueue(params?: {
+  type?: ContentType;
+  stage?: ContentStage;
+  keyword?: string;
+  page?: number;
+  size?: number;
+}): Promise<PaginatedResponse<ExpertApprovalQueueItem>> {
+  const queryParams: Record<string, string | number> = {
+    page: params?.page ?? 0,
+    size: params?.size ?? 20,
+  };
+  if (params?.type) queryParams.type = params.type;
+  if (params?.stage) queryParams.stage = params.stage;
+  if (params?.keyword?.trim()) queryParams.keyword = params.keyword.trim();
+
+  const res = await apiClient.get<ApiResponse<PaginatedResponse<ExpertApprovalQueueItem>>>(
+    '/api/v1/expert/content-approval/queue',
+    { params: queryParams },
+  );
+  return res.data.data;
+}
+
+export async function decideExpertContent(
+  id: string,
+  decision: ContentDecision,
+  reason?: string,
+): Promise<{ id: string; previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ id: string; previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/expert/content-approval/content/${id}/decision`,
+    { decision, reason },
+  );
+  return res.data.data;
+}
+
+export async function decideExpertChecklist(
+  id: string,
+  decision: ContentDecision,
+  reason?: string,
+): Promise<{ id: string; previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }> {
+  const res = await apiClient.post<ApiResponse<{ id: string; previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }>>(
+    `/api/v1/expert/content-approval/checklists/${id}/decision`,
+    { decision, reason },
+  );
+  return res.data.data;
+}
+
+export async function reassignContent(
+  id: string,
+  expertId: string,
+  reason?: string,
+): Promise<void> {
+  await apiClient.post<ApiResponse<void>>(`/api/v1/admin/content/${id}/reassign`, {
+    expertId,
+    reason,
+  });
+}
+
+export async function reassignChecklist(
+  id: string,
+  expertId: string,
+  reason?: string,
+): Promise<void> {
+  await apiClient.post<ApiResponse<void>>(
+    `/api/v1/admin/checklist-templates/${id}/reassign`,
+    {
+      expertId,
+      reason,
+    },
+  );
+}
+
+export async function fetchContractedExperts(): Promise<Array<{ userId: string; fullName: string; specialty: string }>> {
+  const res = await apiClient.get<ApiResponse<Array<{ userId: string; fullName: string; specialty: string; expertType: string }>>>('/api/v1/expert/admin/profiles');
+  const all = res.data.data || [];
+  return all.filter((e) => e.expertType === 'CONTRACTED');
 }

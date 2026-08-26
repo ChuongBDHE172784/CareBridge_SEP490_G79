@@ -287,6 +287,7 @@ class TodayTask {
   final TodayTimeBucket bucket;
   final TodayTaskCadence cadence;
   final TodayChecklistStage stage;
+  final String? sourceUrl;
   final Set<TodayTaskAction> allowedActions;
 
   const TodayTask({
@@ -315,6 +316,7 @@ class TodayTask {
     required this.bucket,
     this.cadence = TodayTaskCadence.unknown,
     this.stage = TodayChecklistStage.unknown,
+    this.sourceUrl,
     required this.allowedActions,
   });
 
@@ -332,6 +334,12 @@ class TodayTask {
     TodayTaskOrigin.systemTemplate => 'System template',
     TodayTaskOrigin.userCreated => 'My care',
     TodayTaskOrigin.unknown => 'My care',
+  };
+
+  String get sourceLabel => switch (origin) {
+    TodayTaskOrigin.systemTemplate => 'Gợi ý CareBridge',
+    TodayTaskOrigin.userCreated => 'Việc cá nhân',
+    TodayTaskOrigin.unknown => isChecklist ? 'Gợi ý CareBridge' : 'Việc cá nhân',
   };
 
   String get targetLabel => switch (target) {
@@ -420,6 +428,7 @@ class TodayTask {
         materializationPolicy: json['materializationPolicy'],
       ),
       stage: TodayChecklistStageApi.fromApi(json['stage']?.toString()),
+      sourceUrl: (json['sourceUrl'] ?? json['source_url']) as String?,
       allowedActions: actions,
     );
   }
