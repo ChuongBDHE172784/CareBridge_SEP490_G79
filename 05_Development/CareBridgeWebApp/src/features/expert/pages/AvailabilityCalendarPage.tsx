@@ -102,6 +102,8 @@ export default function AvailabilityCalendarPage() {
     return HOURS.filter(hour => isHourPast(targetDates[0], hour, now));
   }, [editingDate, mode, weekdays, monthDays]);
 
+  const dayIsOver = pastHours.length === HOURS.length;
+
   // Bo cac khung gio vua tro thanh qua khu khi doi ngay hoac doi pham vi ap dung,
   // de nut Luu khong gui di thu ma nguoi dung khong con nhin thay minh dang chon.
   useEffect(() => {
@@ -184,17 +186,17 @@ export default function AvailabilityCalendarPage() {
 
   // Quick Preset Helper
   const applyPreset = (preset: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'ALL' | 'CLEAR') => {
+    // Cac nut nhanh phai ton trong dung nhung gio ma luoi da khoa, khong thi bam
+    // "Chon tat ca" se dem ca gio da troi qua vao vung chon.
+    const selectable = (hours: number[]) => hours.filter(hour => !pastHours.includes(hour));
     if (preset === 'MORNING') {
-      const morningHours = [7, 8, 9, 10, 11];
-      setSelectedHours(prev => Array.from(new Set([...prev, ...morningHours])));
+      setSelectedHours(prev => Array.from(new Set([...prev, ...selectable([7, 8, 9, 10, 11])])));
     } else if (preset === 'AFTERNOON') {
-      const afternoonHours = [12, 13, 14, 15, 16, 17];
-      setSelectedHours(prev => Array.from(new Set([...prev, ...afternoonHours])));
+      setSelectedHours(prev => Array.from(new Set([...prev, ...selectable([12, 13, 14, 15, 16, 17])])));
     } else if (preset === 'EVENING') {
-      const eveningHours = [18, 19, 20];
-      setSelectedHours(prev => Array.from(new Set([...prev, ...eveningHours])));
+      setSelectedHours(prev => Array.from(new Set([...prev, ...selectable([18, 19, 20])])));
     } else if (preset === 'ALL') {
-      setSelectedHours([...HOURS]);
+      setSelectedHours(selectable([...HOURS]));
     } else if (preset === 'CLEAR') {
       setSelectedHours([]);
     }
@@ -471,11 +473,23 @@ export default function AvailabilityCalendarPage() {
               </button>
             </div>
 
+            {dayIsOver && (
+              <div className="flex items-start gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3">
+                <span className="material-symbols-outlined text-base text-outline">schedule</span>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Hôm nay đã qua khung giờ cuối (20:00–21:00), nên không còn ca nào để mở.
+                  Hãy chọn một ngày khác, hoặc đổi “Áp dụng lịch này cho” sang cả tuần / cả tháng để đặt cho những ngày tới.
+                </p>
+              </div>
+            )}
+
             {/* Quick Presets Toolbar */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-on-surface">Chọn khung giờ rảnh</span>
-                <span className="text-xs text-outline font-medium">Đã chọn: {selectedHours.length} khung giờ</span>
+                <span className="text-xs text-outline font-medium">
+                  Đã chọn: {selectedHours.filter(hour => !pastHours.includes(hour)).length} khung giờ
+                </span>
               </div>
 
               <div className="flex flex-wrap gap-2 mb-3">
@@ -651,7 +665,7 @@ export default function AvailabilityCalendarPage() {
               </button>
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || dayIsOver}
                 onClick={save}
                 className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary border-0 text-xs font-semibold hover:brightness-110 cursor-pointer shadow-xs disabled:opacity-50 transition-all"
               >
