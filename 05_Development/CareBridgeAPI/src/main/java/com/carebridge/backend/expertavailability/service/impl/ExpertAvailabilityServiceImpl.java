@@ -209,6 +209,16 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
             }
         }
 
+        // Every requested hour landed in the past. Letting this through would be
+        // silently destructive: the day's existing slots have just been deleted and
+        // nothing replaces them, yet the expert is told the save succeeded. Throwing
+        // rolls the deletes back. An empty slot list is a deliberate "clear the day"
+        // and is left alone.
+        if (replacements.isEmpty() && !request.getSlots().isEmpty()) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-013",
+                    "Selected hours have already passed");
+        }
+
         return availabilityRepository.saveAll(replacements).stream()
                 .sorted(Comparator.comparing(ExpertAvailability::getStartAt))
                 .map(availabilityMapper::toResponse)
