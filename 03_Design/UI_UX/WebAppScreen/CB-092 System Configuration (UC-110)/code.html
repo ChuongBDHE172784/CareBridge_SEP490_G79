@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ModPortal - CB-092 System Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#271812",
+                      "surface-container-highest": "#fadcd3",
+                      "primary-fixed": "#ffdbd1",
+                      "surface-container-high": "#ffe2d9",
+                      "on-error": "#ffffff",
+                      "surface": "#fff8f6",
+                      "tertiary-container": "#a09a95",
+                      "surface-container-low": "#fff1ec",
+                      "outline": "#84736f",
+                      "on-tertiary-container": "#36322e",
+                      "on-secondary-container": "#735e56",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "surface-bright": "#fff8f6",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#fab7a4",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "surface-container": "#ffe9e3",
+                      "primary-container": "#c98c7b",
+                      "on-background": "#271812",
+                      "secondary-container": "#f6dacf",
+                      "inverse-surface": "#3e2c26",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "tertiary-fixed": "#e9e1db",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "outline-variant": "#d6c2bd",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "inverse-on-surface": "#ffede7",
+                      "secondary-fixed": "#f8ddd2",
+                      "surface-variant": "#fadcd3",
+                      "on-surface-variant": "#524440",
+                      "secondary": "#6e5a52",
+                      "on-secondary-fixed": "#271812",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed": "#341006",
+                      "primary": "#845143",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "on-secondary": "#ffffff",
+                      "surface-tint": "#845143",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "on-primary-container": "#51271b",
+                      "surface-dim": "#f1d4ca",
+                      "on-error-container": "#93000a",
+                      "inverse-primary": "#fab7a4",
+                      "background": "#fff8f6",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary": "#625d59"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "safe-margin": "24px",
+                      "stack-sm": "8px",
+                      "touch-target-min": "48px",
+                      "stack-lg": "24px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "display-lg": [
+                              "Lexend"
+                      ],
+                      "body-md": [
+                              "Lexend"
+                      ],
+                      "label-md": [
+                              "Lexend"
+                      ],
+                      "headline-lg": [
+                              "Lexend"
+                      ],
+                      "button": [
+                              "Lexend"
+                      ],
+                      "body-lg": [
+                              "Lexend"
+                      ],
+                      "headline-md": [
+                              "Lexend"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "button": [
+                              "16px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md h-screen flex overflow-hidden">
+<!-- SideNav -->
+<nav class="hidden md:flex flex-col bg-surface h-screen w-64 fixed left-0 top-0 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] z-20">
+<div class="flex flex-col h-full p-4 gap-2">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md text-primary font-bold tracking-tight">ModPortal</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Hệ thống kiểm duyệt</p>
+</div>
+</div>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-body-md text-body-md">Tổng quan</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">queue</span>
+<span class="font-body-md text-body-md">Hàng đợi</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">assessment</span>
+<span class="font-body-md text-body-md">Báo cáo</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">gavel</span>
+<span class="font-body-md text-body-md">Vi phạm</span>
+</a>
+<!-- System settings typically sits separate, simulating active state here for the context of CB-092 System Configuration -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold transition-all duration-200 ease-in-out mt-auto shadow-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings_system_daydream</span>
+<span class="font-body-md text-body-md">Cấu hình hệ thống</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">security</span>
+<span class="font-body-md text-body-md">Ca an toàn</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-64 flex flex-col h-full overflow-hidden bg-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-0 md:left-64 h-16 bg-surface/80 backdrop-blur-md shadow-[0px_4px_20px_rgba(90,70,63,0.06)] z-10">
+<div class="flex justify-between items-center px-6 h-full w-full">
+<!-- Search (Left) -->
+<div class="flex-1 flex items-center">
+<div class="relative w-full max-w-md hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full h-10 pl-10 pr-4 bg-surface-container-low border border-outline-variant rounded-full text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body-md text-body-md" placeholder="Tìm kiếm cài đặt..." type="text"/>
+</div>
+</div>
+<!-- Actions (Right) -->
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="ml-2 w-10 h-10 rounded-full overflow-hidden border-2 border-surface-container cursor-pointer">
+<img alt="Moderator Avatar" class="w-full h-full object-cover" data-alt="A close up headshot of a friendly professional Vietnamese woman with short black hair wearing a subtle grey blazer against a bright minimalist studio background, soft warm lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDltzo58-rQZLbPnNc_7NB4W2lw0LeqBsoDBAmSv8GmnlcKpwNJYZ8O3OeYPDqqAwywmmllp53NA-4_wQaFh_LOcJwhP9By2B7vRSCQN79g2JeiWK8HgevihIGVId2m_hx0Os1PnwFMRkkYiIPVm3_5MygDDzeJ-IS2UFXyg7NOl5Qc6yMfW0bpPpOUZhGFjLQYpbjW5j18NTuoh9KePZiIT6lNFgJTcyWyr7gofDXRdkbZyv85xLGZ74dZhYcHVpAUmEACZMyq2nA"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto pt-24 px-safe-margin pb-safe-margin">
+<div class="max-w-5xl mx-auto space-y-stack-lg">
+<!-- Page Header -->
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-2">Cấu hình hệ thống</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Quản lý giới hạn hệ thống, tính năng và thông báo mặc định. <span class="text-error font-medium">Cảnh báo: Thay đổi có thể ảnh hưởng đến toàn bộ hệ thống.</span></p>
+</div>
+<!-- Bento Grid Layout for Settings -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Left Column: Limits & Toggles (Spans 2 cols on lg) -->
+<div class="lg:col-span-2 space-y-6">
+<!-- System Limits Card -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-8 h-8 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">speed</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Giới hạn hệ thống</h3>
+</div>
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant">Tải trọng tối đa API (req/s)</label>
+<input class="w-full h-[56px] px-4 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-on-surface" type="number" value="5000"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant">Thời gian chờ kết nối (ms)</label>
+<input class="w-full h-[56px] px-4 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-on-surface" type="number" value="30000"/>
+</div>
+<div class="space-y-2 md:col-span-2">
+<label class="block font-label-md text-label-md text-on-surface-variant">Giới hạn kích thước tệp tải lên (MB)</label>
+<input class="w-full h-[56px] px-4 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-on-surface" type="number" value="25"/>
+</div>
+</div>
+<div class="flex justify-end pt-4 border-t border-surface-variant">
+<button class="h-[52px] px-6 bg-secondary-container text-on-secondary-container font-button text-button rounded-full hover:bg-surface-container-highest transition-colors" type="button">
+                                        Lưu thay đổi giới hạn
+                                    </button>
+</div>
+</form>
+</div>
+<!-- Feature Toggles Card -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] relative overflow-hidden">
+<!-- Subtle abstract bg hint -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/5 rounded-bl-full pointer-events-none"></div>
+<div class="flex items-center gap-3 mb-6 relative z-10">
+<div class="w-8 h-8 rounded-full bg-secondary-container/50 flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-lg">toggle_on</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Cờ tính năng (Feature Toggles)</h3>
+</div>
+<div class="space-y-4 relative z-10">
+<!-- Toggle 1 -->
+<div class="flex items-center justify-between p-4 rounded-lg bg-surface hover:bg-surface-container-low transition-colors border border-transparent hover:border-surface-variant">
+<div>
+<h4 class="font-body-lg text-body-lg font-medium text-on-surface">Kiểm duyệt tự động AI</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Bật/tắt hệ thống phân loại AI bước 1.</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer min-h-[48px] min-w-[48px] justify-end">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Toggle 2 -->
+<div class="flex items-center justify-between p-4 rounded-lg bg-surface hover:bg-surface-container-low transition-colors border border-transparent hover:border-surface-variant">
+<div>
+<h4 class="font-body-lg text-body-lg font-medium text-on-surface">Chế độ bảo trì hệ thống</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Chặn truy cập người dùng cuối, hiển thị trang bảo trì.</p>
+<span class="inline-flex items-center gap-1 mt-1 font-label-md text-label-md text-error bg-error-container/30 px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-[14px]">warning</span> Rủi ro cao
+                                        </span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer min-h-[48px] min-w-[48px] justify-end">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Notifications & Status -->
+<div class="space-y-6">
+<!-- Notification Defaults -->
+<div class="bg-surface-container-lowest rounded-DEFAULT p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-8 h-8 rounded-full bg-tertiary-container/20 flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined text-lg">notifications_active</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Thông báo mặc định</h3>
+</div>
+<form class="space-y-5">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant">Email quản trị viên chính</label>
+<input class="w-full h-[56px] px-4 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-on-surface" type="email" value="admin@modportal.vn"/>
+</div>
+<div class="space-y-3 pt-2">
+<p class="font-label-md text-label-md text-on-surface-variant">Kênh nhận cảnh báo hệ thống</p>
+<label class="flex items-center gap-3 min-h-[48px] cursor-pointer group">
+<div class="relative flex items-center justify-center w-6 h-6">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-5 h-5 border-2 border-outline rounded bg-surface-container-lowest peer-checked:bg-primary peer-checked:border-primary transition-colors"></div>
+<span class="material-symbols-outlined absolute text-on-primary text-[16px] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Email</span>
+</label>
+<label class="flex items-center gap-3 min-h-[48px] cursor-pointer group">
+<div class="relative flex items-center justify-center w-6 h-6">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-5 h-5 border-2 border-outline rounded bg-surface-container-lowest peer-checked:bg-primary peer-checked:border-primary transition-colors"></div>
+<span class="material-symbols-outlined absolute text-on-primary text-[16px] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">SMS (Việt Nam)</span>
+</label>
+<label class="flex items-center gap-3 min-h-[48px] cursor-pointer group">
+<div class="relative flex items-center justify-center w-6 h-6">
+<input class="peer sr-only" type="checkbox"/>
+<div class="w-5 h-5 border-2 border-outline rounded bg-surface-container-lowest peer-checked:bg-primary peer-checked:border-primary transition-colors"></div>
+<span class="material-symbols-outlined absolute text-on-primary text-[16px] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">Slack / Teams Webhook</span>
+</label>
+</div>
+</form>
+</div>
+<!-- System Status Micro-card -->
+<div class="bg-primary text-on-primary rounded-DEFAULT p-6 shadow-md relative overflow-hidden">
+<!-- Decorative circles -->
+<div class="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
+<div class="absolute -left-4 -bottom-4 w-16 h-16 rounded-full bg-black/10 blur-lg"></div>
+<h3 class="font-headline-md text-headline-md mb-2 relative z-10">Trạng thái cấu hình</h3>
+<p class="font-body-md text-body-md text-primary-fixed mb-4 relative z-10">Tất cả cấu hình hiện tại đang đồng bộ và hoạt động ổn định trên các cụm máy chủ.</p>
+<div class="flex items-center gap-2 text-primary-fixed-dim font-label-md text-label-md relative z-10">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">sync_saved_locally</span>
+                                Đồng bộ lần cuối: 10 phút trước
+                            </div>
+</div>
+</div>
+</div>
+<!-- Global Action Bar -->
+<div class="fixed bottom-0 left-0 md:left-64 right-0 p-4 bg-surface/90 backdrop-blur-md border-t border-surface-variant flex justify-end gap-4 z-10 shadow-[0px_-4px_20px_rgba(90,70,63,0.03)]">
+<button class="h-[52px] px-8 bg-surface-container-high text-on-surface font-button text-button rounded-full hover:bg-surface-variant transition-colors min-w-[48px]">
+                        Hủy
+                    </button>
+<button class="h-[52px] px-8 bg-primary text-on-primary font-button text-button rounded-full hover:bg-surface-tint shadow-[0px_4px_12px_rgba(201,140,123,0.3)] transition-all min-w-[48px] flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">save</span>
+                        Lưu toàn bộ cấu hình
+                    </button>
+</div>
+<!-- Spacer for fixed bottom bar -->
+<div class="h-20"></div>
+</div>
+</div>
+</main>
+</body></html>

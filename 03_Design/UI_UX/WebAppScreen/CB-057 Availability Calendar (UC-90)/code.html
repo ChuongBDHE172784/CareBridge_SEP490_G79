@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Trạng thái hoạt động - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#55433b",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#fff1ec",
+                        "on-primary-container": "#51271b",
+                        "tertiary": "#625d59",
+                        "on-background": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "on-surface": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#a09a95",
+                        "surface-tint": "#845143",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#341006",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#f1d4ca",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-error-container": "#93000a",
+                        "background": "#fff8f6",
+                        "on-secondary-container": "#735e56",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#fadcd3",
+                        "surface": "#fff8f6",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#e9e1db",
+                        "primary-fixed": "#ffdbd1",
+                        "outline": "#84736f",
+                        "surface-container-high": "#ffe2d9",
+                        "inverse-surface": "#3e2c26",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-tertiary-container": "#36322e",
+                        "primary": "#845143",
+                        "inverse-on-surface": "#ffede7",
+                        "secondary": "#6e5a52",
+                        "inverse-primary": "#fab7a4",
+                        "secondary-container": "#f6dacf",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "outline-variant": "#d6c2bd",
+                        "surface-container-highest": "#fadcd3",
+                        "on-secondary-fixed": "#271812",
+                        "primary-container": "#c98c7b",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #F6F1EC;
+            color: #271812;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #C98C7B;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #C98C7B;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+        
+        .pulse-ring {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(132, 81, 67, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(132, 81, 67, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(132, 81, 67, 0);
+            }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex flex-col">
+<!-- TopAppBar (Desktop Web Portal Context) -->
+<header class="bg-background dark:bg-background docked full-width top-0 z-50 flex justify-between items-center px-safe-margin h-touch-target-min w-full">
+<div class="flex items-center gap-4">
+<span class="font-display-lg text-display-lg text-primary dark:text-primary-fixed-dim">CareBridge</span>
+<!-- Desktop Navigation Links (Derived from JSON intent, hidden on mobile) -->
+<nav class="hidden md:flex items-center gap-6 ml-8">
+<a class="font-label-md text-label-md text-on-surface-variant hover:opacity-80 transition-opacity flex items-center gap-2" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 0;">home</span>
+                    Trang chủ
+                </a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:opacity-80 transition-opacity flex items-center gap-2" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories" style="font-variation-settings: 'FILL' 0;">auto_stories</span>
+                    Hành trình
+                </a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:opacity-80 transition-opacity flex items-center gap-2" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 0;">group</span>
+                    Cộng đồng
+                </a>
+<a class="font-label-md text-label-md text-primary dark:text-primary-fixed-dim hover:opacity-80 transition-opacity flex items-center gap-2 border-b-2 border-primary pb-1" href="#">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+                    Hồ sơ
+                </a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button aria-label="Notifications" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="A close-up portrait of a friendly Vietnamese female pediatrician or maternal care expert, smiling warmly, well-lit studio lighting, soft pastel background, high resolution, professional yet approachable vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuArTWEerafIf7Gtix0yt9GM6Lf_EtDPlVRLXHYePbQY3Ae_RG7-SiRT3a-nMOg18_Gf5Vc1I6zTeImpvL8t_z4dppRvxVcm644H-fszRdROnMipEHXanuEcERydDaeYxOS8gpFw5KpRvMUGSnIH9W_CjR6kkUVu1qiYOoXekFTwzMfRPDHIeRKsr-STvVMCBSRpZ1iOsixjkqm0sLo-Hwz7me4LXO7sGgw0haFeu6qHtwpAmxROr9rMYMe_j-ksbO61iqGY1gprkIU"/>
+</div>
+<span class="font-label-md text-label-md hidden md:block text-on-surface">Người dùng</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col md:flex-row max-w-7xl mx-auto w-full px-safe-margin py-stack-lg gap-8 relative">
+<!-- Left Column: Status & Methods -->
+<div class="w-full md:w-1/3 flex flex-col gap-6">
+<!-- Master Status Card (Bento Grid Style) -->
+<section class="glass-card rounded-[2rem] p-6 relative overflow-hidden">
+<!-- Decorative BG Blur -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6 relative z-10">Trạng thái hiện tại</h2>
+<div class="flex flex-col items-center justify-center py-8">
+<!-- Large Status Indicator -->
+<div class="relative mb-6">
+<div class="w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center pulse-ring" id="statusIndicatorRing">
+<div class="w-24 h-24 rounded-full bg-primary flex items-center justify-center shadow-[0px_8px_24px_rgba(90,70,63,0.12)] transition-colors duration-500" id="statusIndicatorInner">
+<span class="material-symbols-outlined text-white text-5xl" data-icon="wifi" id="statusIcon" style="font-variation-settings: 'FILL' 1;">wifi</span>
+</div>
+</div>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-2" id="statusText">Đang trực tuyến</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center max-w-[80%] mb-8">Bạn đang sẵn sàng nhận yêu cầu tư vấn từ các ba mẹ.</p>
+<!-- Master Toggle Switch -->
+<label class="flex items-center cursor-pointer bg-surface-container-low px-6 py-4 rounded-full shadow-sm hover:shadow-md transition-shadow">
+<div class="relative">
+<input checked="" class="sr-only" id="masterStatusToggle" onchange="toggleMasterStatus()" type="checkbox"/>
+<div class="block bg-outline-variant w-14 h-8 rounded-full transition-colors duration-300" id="toggleBg"></div>
+<div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 translate-x-6 flex items-center justify-center shadow-sm" id="toggleDot">
+</div>
+</div>
+<div class="ml-4 font-button text-button text-on-surface">Chuyển sang Ngoại tuyến</div>
+</label>
+</div>
+</section>
+<!-- Location Sharing Card -->
+<section class="glass-card rounded-[2rem] p-6">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+                        Chia sẻ vị trí
+                    </h2>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Hiển thị khu vực hoạt động để phụ huynh gần đó dễ dàng tìm kiếm.</p>
+<div class="h-32 rounded-xl overflow-hidden relative shadow-inner">
+<div class="bg-cover bg-center w-full h-full opacity-80 mix-blend-multiply" data-alt="A beautifully rendered minimalist 3D map interface focusing on a calm residential neighborhood in Vietnam. Soft, warm color palette matching the UI design system (#F6F1EC background, #C98C7B accents). Gentle shadows, smooth geometry, high-end clean aesthetic, no text or labels." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD82hIoZavWkIrifmW8EqHgnH25dzW7gf-KEL36K_r-rgjphtIy3DOspHu-96PH08PXkvKfT_IqQm78chlrSlMTwLX08fI3wObRSXWk5lsQFzEqKw1RCoh-i2hI8olNoR_A2FhjIe-xrFiFfqpYr6MgnFea6RbQMc-y8P3dPHvbQlVkLBYXR2ctCAOPHROm8i0C68xU0UtWz0426WyFcoLDJ0mYFxoCkKSCyaQI3xe1CdDHMM3fkFXjRhFab36ddpdQsrD4GshucLU')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-dim/80 to-transparent flex items-end p-3">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Quận 1, TP. Hồ Chí Minh</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Settings & Schedule -->
+<div class="w-full md:w-2/3 flex flex-col gap-6">
+<!-- Consultation Methods -->
+<section class="glass-card rounded-[2rem] p-6 md:p-8">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Phương thức tư vấn</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">Chọn các hình thức bạn sẵn sàng hỗ trợ hiện tại.</p>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Chat Option -->
+<label class="relative flex flex-col items-center justify-center p-6 border-2 border-primary-container bg-surface-container rounded-xl cursor-pointer hover:bg-surface-container-high transition-colors group">
+<input checked="" class="absolute top-4 left-4 w-5 h-5 text-primary-container border-outline-variant rounded focus:ring-primary-container" type="checkbox"/>
+<div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="chat" style="font-variation-settings: 'FILL' 1;">chat</span>
+</div>
+<span class="font-button text-button text-on-surface">Nhắn tin</span>
+<span class="font-label-md text-label-md text-on-surface-variant mt-1 text-center">Phản hồi nhanh</span>
+</label>
+<!-- Voice Option -->
+<label class="relative flex flex-col items-center justify-center p-6 border-2 border-surface-variant bg-white rounded-xl cursor-pointer hover:bg-surface-container-lowest transition-colors group">
+<input class="absolute top-4 left-4 w-5 h-5 text-primary-container border-outline-variant rounded focus:ring-primary-container" type="checkbox"/>
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-secondary text-3xl" data-icon="call" style="font-variation-settings: 'FILL' 0;">call</span>
+</div>
+<span class="font-button text-button text-on-surface">Gọi thoại</span>
+<span class="font-label-md text-label-md text-on-surface-variant mt-1 text-center">Âm thanh rõ nét</span>
+</label>
+<!-- Video Option -->
+<label class="relative flex flex-col items-center justify-center p-6 border-2 border-primary-container bg-surface-container rounded-xl cursor-pointer hover:bg-surface-container-high transition-colors group">
+<input checked="" class="absolute top-4 left-4 w-5 h-5 text-primary-container border-outline-variant rounded focus:ring-primary-container" type="checkbox"/>
+<div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="videocam" style="font-variation-settings: 'FILL' 1;">videocam</span>
+</div>
+<span class="font-button text-button text-on-surface">Gọi Video</span>
+<span class="font-label-md text-label-md text-on-surface-variant mt-1 text-center">Tương tác trực quan</span>
+</label>
+</div>
+</section>
+<!-- Availability Duration -->
+<section class="glass-card rounded-[2rem] p-6 md:p-8 flex-grow">
+<div class="flex items-center justify-between mb-6">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Khung giờ hoạt động</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Cài đặt thời gian dự kiến bạn sẽ trực tuyến.</p>
+</div>
+<button class="flex items-center gap-2 text-primary hover:text-primary-container transition-colors font-button text-button">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                        Thêm khung giờ
+                    </button>
+</div>
+<div class="space-y-6">
+<!-- Time Slot 1 -->
+<div class="bg-surface rounded-xl p-4 border border-surface-variant flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="schedule">schedule</span>
+</div>
+<div>
+<h4 class="font-button text-button text-on-surface">Hôm nay</h4>
+<span class="font-label-md text-label-md text-primary-container bg-primary-fixed-dim/20 px-2 py-1 rounded-md mt-1 inline-block">Đang diễn ra</span>
+</div>
+</div>
+<div class="flex items-center gap-2 w-full md:w-auto">
+<div class="relative flex-1 md:w-32">
+<input class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container h-touch-target-min" type="time" value="08:00"/>
+</div>
+<span class="text-on-surface-variant font-body-md">đến</span>
+<div class="relative flex-1 md:w-32">
+<input class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container h-touch-target-min" type="time" value="17:00"/>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors ml-2">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Auto-offline Setting -->
+<div class="mt-8 pt-6 border-t border-surface-variant">
+<label class="flex flex-row items-center justify-between cursor-pointer group">
+<div class="flex-1">
+<h4 class="font-button text-button text-on-surface group-hover:text-primary transition-colors">Tự động chuyển Ngoại tuyến</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Hệ thống sẽ tự động cập nhật trạng thái khi hết khung giờ.</p>
+</div>
+<div class="relative">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</div>
+</label>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="mt-8 flex justify-end gap-4">
+<button class="px-6 py-3 rounded-full font-button text-button text-secondary bg-secondary-container hover:bg-secondary-fixed transition-colors min-h-[52px]">
+                        Hủy thay đổi
+                    </button>
+<button class="px-8 py-3 rounded-full font-button text-button text-white bg-primary-container hover:bg-primary transition-colors min-h-[52px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+                        Lưu cài đặt
+                    </button>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg pb-safe-margin">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors rounded-xl p-2 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-md text-label-md whitespace-nowrap text-[10px]">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors rounded-xl p-2 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="auto_stories" style="font-variation-settings: 'FILL' 0;">auto_stories</span>
+<span class="font-label-md text-label-md whitespace-nowrap text-[10px]">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors rounded-xl p-2 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="group" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-label-md text-label-md whitespace-nowrap text-[10px]">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors rounded-xl p-2 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="fact_check" style="font-variation-settings: 'FILL' 0;">fact_check</span>
+<span class="font-label-md text-label-md whitespace-nowrap text-[10px]">Việc làm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-2 py-1 w-16 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md whitespace-nowrap text-[10px]">Hồ sơ</span>
+</a>
+</nav>
+<script>
+        function toggleMasterStatus() {
+            const isChecked = document.getElementById('masterStatusToggle').checked;
+            const toggleBg = document.getElementById('toggleBg');
+            const toggleDot = document.getElementById('toggleDot');
+            const statusText = document.getElementById('statusText');
+            const statusIndicatorInner = document.getElementById('statusIndicatorInner');
+            const statusIndicatorRing = document.getElementById('statusIndicatorRing');
+            const statusIcon = document.getElementById('statusIcon');
+            const labelText = document.querySelector('label[for="masterStatusToggle"] .font-button') || document.querySelector('label .font-button');
+
+            if (isChecked) {
+                // Online State
+                toggleBg.classList.replace('bg-outline-variant', 'bg-primary-container');
+                toggleDot.classList.add('translate-x-6');
+                
+                statusText.textContent = 'Đang trực tuyến';
+                statusText.classList.replace('text-outline', 'text-primary');
+                
+                statusIndicatorInner.classList.replace('bg-outline-variant', 'bg-primary');
+                statusIndicatorRing.classList.add('pulse-ring');
+                statusIndicatorRing.classList.replace('border-outline-variant/20', 'border-primary/20');
+                
+                statusIcon.textContent = 'wifi';
+                
+                if(labelText) labelText.textContent = 'Chuyển sang Ngoại tuyến';
+            } else {
+                // Offline State
+                toggleBg.classList.replace('bg-primary-container', 'bg-outline-variant');
+                toggleDot.classList.remove('translate-x-6');
+                
+                statusText.textContent = 'Đang ngoại tuyến';
+                statusText.classList.replace('text-primary', 'text-outline');
+                
+                statusIndicatorInner.classList.replace('bg-primary', 'bg-outline-variant');
+                statusIndicatorRing.classList.remove('pulse-ring');
+                statusIndicatorRing.classList.replace('border-primary/20', 'border-outline-variant/20');
+                
+                statusIcon.textContent = 'wifi_off';
+                
+                if(labelText) labelText.textContent = 'Chuyển sang Trực tuyến';
+            }
+        }
+        
+        // Initialize state on load to ensure classes match
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('masterStatusToggle');
+            if(toggle.checked) {
+                document.getElementById('toggleBg').classList.add('bg-primary-container');
+                document.getElementById('toggleBg').classList.remove('bg-outline-variant');
+            }
+        });
+    </script>
+</body></html>

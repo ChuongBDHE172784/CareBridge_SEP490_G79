@@ -1,0 +1,88 @@
+package com.carebridge.backend.safety.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "safety_events")
+@org.hibernate.annotations.SQLRestriction("action_type = 'RESPONSE'")
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SafetyEventResponseRecord {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "safety_event_id")
+    private UUID id;
+
+    @Column(name = "parent_event_id", nullable = false, unique = true)
+    private UUID safetyEventId;
+
+    @Column(name = "user_id", nullable = false)
+    private UUID ownerUserId;
+
+    @Column(name = "response_type", nullable = false, length = 30)
+    private String responseType;
+
+    @Column(name = "reason", length = 500)
+    private String reason;
+
+    @Column(name = "responded_at", nullable = false)
+    private Instant respondedAt;
+
+    @Column(name = "created_by_user_id")
+    private UUID createdBy;
+
+    @Column(name = "actor_type", nullable = false, length = 20)
+    private String actorType;
+
+    @Builder.Default
+    @Column(name = "action_type", nullable = false, updatable = false)
+    private String actionType = "RESPONSE";
+
+    @Column(name = "idempotency_key", nullable = false, updatable = false)
+    private String idempotencyKey;
+
+    @Builder.Default
+    @Column(name = "event_type", nullable = false, updatable = false)
+    private String eventType = "ACTION";
+
+    @Builder.Default
+    @Column(name = "record_type", nullable = false, updatable = false)
+    private String recordType = "SAFETY_ACTION";
+
+    @Builder.Default
+    @Column(name = "alert_generation", nullable = false)
+    private long alertGeneration = 0;
+
+    @Builder.Default
+    @Column(name = "alert_successful_recipient_count", nullable = false)
+    private int alertSuccessfulRecipientCount = 0;
+
+    @Builder.Default
+    @Column(name = "alert_failed_recipient_count", nullable = false)
+    private int alertFailedRecipientCount = 0;
+
+    @Column(name = "detected_at", nullable = false, updatable = false)
+    private Instant detectedAt;
+
+    @PrePersist
+    void prepareCanonicalAction() {
+        actionType = "RESPONSE";
+        recordType = "SAFETY_ACTION";
+        if (idempotencyKey == null) idempotencyKey = "response:" + UUID.randomUUID();
+        if (detectedAt == null) detectedAt = respondedAt == null ? Instant.now() : respondedAt;
+    }
+}

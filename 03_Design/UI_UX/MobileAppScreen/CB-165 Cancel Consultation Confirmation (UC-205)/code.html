@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xác nhận hủy tư vấn</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary-container": "#735e56",
+                        "on-background": "#271812",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-container": "#c98c7b",
+                        "inverse-on-surface": "#ffede7",
+                        "background": "#fff8f6",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#51271b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f8ddd2",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-high": "#ffe2d9",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "surface-tint": "#845143",
+                        "secondary": "#6e5a52",
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-surface": "#3e2c26",
+                        "surface-bright": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#845143",
+                        "on-error": "#ffffff",
+                        "surface": "#fff8f6",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "on-surface": "#271812",
+                        "outline": "#84736f",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#a09a95",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ffe9e3",
+                        "surface-variant": "#fadcd3",
+                        "surface-dim": "#f1d4ca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter-mobile": "16px",
+                        "gutter-desktop": "24px",
+                        "container-margin-mobile": "20px",
+                        "sidebar-width": "280px",
+                        "container-margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-sm": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: rgba(90, 70, 63, 0.4); /* Overlay color for modal impression */
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Mobile bottom sheet style */
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Quicksand', sans-serif;
+        }
+        @media (min-width: 768px) {
+            body {
+                align-items: center; /* Center modal on web */
+            }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased">
+<!-- Bottom Sheet / Modal Container -->
+<div class="w-full md:w-[480px] bg-surface rounded-t-xl md:rounded-xl shadow-[0_-4px_20px_rgba(90,70,63,0.15)] md:shadow-[0_4px_20px_rgba(90,70,63,0.15)] flex flex-col transform transition-transform duration-300 translate-y-0">
+<!-- Drag Handle (Mobile only) -->
+<div class="w-full flex justify-center py-unit md:hidden">
+<div class="w-12 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<div class="p-container-margin-mobile flex flex-col gap-6">
+<!-- Header -->
+<div class="flex flex-col items-center text-center gap-4">
+<div class="w-16 h-16 rounded-full bg-error-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[32px] text-error" style="font-variation-settings: 'FILL' 1;">
+                        warning
+                    </span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Xác nhận hủy tư vấn</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Bạn có chắc chắn muốn hủy lịch hẹn này không? Hành động này không thể hoàn tác.</p>
+</div>
+</div>
+<!-- Booking Summary Card -->
+<div class="bg-surface-container-low rounded-DEFAULT p-4 border border-outline-variant/30 flex flex-col gap-3">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional, warm portrait of a female pediatrician in her 30s. She is smiling gently, wearing a light blue clinical scrub top, set against a soft, well-lit medical office background with neutral beige and taupe colors. The lighting is soft and flattering, creating a trustworthy and nurturing atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_RUZgyyCQk6LHlZTVavV8gEB_rgCdh1SpKOppUp-is5smPyNUehU41q3Ui41tDjD-L7pxH4nrhTdabi2rJSw9MT1aqAsT8easWA3ZmXYCxLqkmqv8Ux03AbexT5vuNBmBGOemvRzUZhNupkfqD4tBdNZ_onjkDmYFIj5v1RoeHca_mORl7u0NUoZR4UglPuorIJZyXF5dhBUMdRKGNrO3Avob8DGgbg65JCfc8BlK6nbSBpg9mEjaURW2OQUA6tcAZ2zvZrLTv44"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface">BS. Nguyễn Thu Hà</span>
+<span class="font-body-sm text-body-sm text-secondary">Tư vấn Dinh dưỡng cho bé</span>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/50 my-1"></div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+<span class="font-body-sm text-body-sm">Thời gian</span>
+</div>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">14:00 - Ngày 25/10/2023</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+<span class="font-body-sm text-body-sm">Phí tư vấn</span>
+</div>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">350.000 đ</span>
+</div>
+</div>
+</div>
+<!-- Policy Warning -->
+<div class="bg-surface-container rounded-DEFAULT p-4 flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary mt-0.5">info</span>
+<p class="font-body-sm text-body-sm text-secondary">
+                    Theo chính sách hủy, bạn sẽ được hoàn lại <span class="font-bold text-on-surface">100% phí tư vấn</span> (350.000 đ) do hủy trước 24 giờ so với giờ hẹn. Số tiền sẽ được hoàn về ví trong vòng 1-3 ngày làm việc.
+                </p>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-3 mt-2">
+<button class="w-full h-12 rounded-full bg-error text-on-error font-body-lg text-body-lg hover:bg-error/90 transition-colors shadow-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+                    Xác nhận hủy
+                </button>
+<button class="w-full h-12 rounded-full bg-transparent border-2 border-outline-variant text-on-surface font-body-lg text-body-lg hover:bg-surface-container-low transition-colors flex items-center justify-center">
+                    Quay lại
+                </button>
+</div>
+<!-- Safe area padding for mobile -->
+<div class="h-safe md:hidden"></div>
+</div>
+</div>
+</body></html>

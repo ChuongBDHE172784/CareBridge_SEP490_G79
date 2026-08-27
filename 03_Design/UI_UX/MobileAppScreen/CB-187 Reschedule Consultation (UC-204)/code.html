@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reschedule Consultation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "surface-container-low": "#fff1ec",
+                    "on-secondary-container": "#735e56",
+                    "on-background": "#271812",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "primary-container": "#c98c7b",
+                    "inverse-on-surface": "#ffede7",
+                    "background": "#fff8f6",
+                    "on-primary": "#ffffff",
+                    "on-primary-container": "#51271b",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#f8ddd2",
+                    "primary-fixed": "#ffdbd1",
+                    "surface-container-high": "#ffe2d9",
+                    "primary-fixed-dim": "#fab7a4",
+                    "surface-container-highest": "#fadcd3",
+                    "surface-tint": "#845143",
+                    "secondary": "#6e5a52",
+                    "outline-variant": "#d6c2bd",
+                    "tertiary-fixed": "#e9e1db",
+                    "inverse-surface": "#3e2c26",
+                    "surface-bright": "#fff8f6",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-surface-variant": "#524440",
+                    "tertiary": "#625d59",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "on-tertiary": "#ffffff",
+                    "primary": "#845143",
+                    "on-error": "#ffffff",
+                    "surface": "#fff8f6",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "inverse-primary": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "on-surface": "#271812",
+                    "outline": "#84736f",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-secondary-fixed": "#271812",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#f6dacf",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#a09a95",
+                    "error": "#ba1a1a",
+                    "on-tertiary-container": "#36322e",
+                    "on-secondary": "#ffffff",
+                    "surface-container": "#ffe9e3",
+                    "surface-variant": "#fadcd3",
+                    "surface-dim": "#f1d4ca"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "gutter-mobile": "16px",
+                    "gutter-desktop": "24px",
+                    "container-margin-mobile": "20px",
+                    "sidebar-width": "280px",
+                    "container-margin-desktop": "40px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "Quicksand"
+                    ],
+                    "headline-lg-mobile": [
+                            "Quicksand"
+                    ],
+                    "body-sm": [
+                            "Quicksand"
+                    ],
+                    "headline-md": [
+                            "Quicksand"
+                    ],
+                    "body-lg": [
+                            "Quicksand"
+                    ],
+                    "headline-lg": [
+                            "Quicksand"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { background-color: #fff8f6; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-sm antialiased h-screen flex flex-col max-w-[390px] mx-auto overflow-hidden relative shadow-2xl bg-white">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-gutter-mobile h-16 w-full z-50 bg-background dark:bg-background docked full-width top-0 text-primary dark:text-inverse-primary font-headline-md text-headline-md">
+<button class="hover:opacity-80 transition-opacity flex items-center justify-center p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-inverse-primary truncate flex-1 text-center font-bold">Đổi lịch khám</h1>
+<button class="hover:opacity-80 transition-opacity flex items-center justify-center p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto px-container-margin-mobile pb-24 pt-4 space-y-6">
+<!-- Original Booking Info -->
+<section class="bg-surface-container-low rounded-[1rem] p-4 shadow-[0_4px_20px_rgba(90,70,63,0.08)] border border-outline-variant/30">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a nurturing female pediatrician in a bright, modern medical clinic. The lighting is soft and warm, emphasizing safety and care. She wears a clean white coat over a soft taupe blouse. The background is slightly blurred with a warm, minimalist aesthetic typical of high-end healthcare." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGXzsZ_GxnFaN5q1eATvFb_LDqtdbjpWiyj399H8Z0VkosAINtvDYMIRCRcBMwZn3EkjwUDAZAc4iZO8LpbXvX9xffmBjIz9O-zDhwRHxhnuilDTOnTcqjPQjfIW24OtmRRKYyLt32WGqbPQgeioa3-8JzO8ujnSwi5CrBhlYqDwS_IYSHzBLxKdwFnNfmNdJyOa14cBn10ozhgKVtU5PdH7UoIvkZIh6on6KU9NMy88UA8ilz_boZKOB5geqq4nOEUkUpdC-l79U"/>
+</div>
+<div>
+<h2 class="font-body-lg text-body-lg text-on-background">BS. Nguyễn Thị Lan</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Chuyên khoa Nhi</p>
+<div class="mt-2 flex items-center gap-2 font-body-sm text-body-sm text-on-background bg-error-container/30 text-error px-2 py-1 rounded-md w-fit">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span>Lịch cũ: 15:00 - 15/10/2023</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Calendar / Slots Grid -->
+<section class="space-y-4">
+<h3 class="font-headline-md text-headline-md text-on-background">Chọn lịch mới</h3>
+<!-- Date Scroller (Horizontal) -->
+<div class="flex overflow-x-auto gap-3 pb-2 -mx-container-margin-mobile px-container-margin-mobile snap-x hide-scrollbar">
+<button class="flex flex-col items-center justify-center min-w-[72px] h-[80px] rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant snap-center shrink-0">
+<span class="font-body-sm text-body-sm">T2</span>
+<span class="font-headline-md text-headline-md">16</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[72px] h-[80px] rounded-DEFAULT bg-primary text-on-primary shadow-[0_4px_12px_rgba(132,81,67,0.3)] snap-center shrink-0 border-2 border-primary">
+<span class="font-body-sm text-body-sm text-primary-fixed">T3</span>
+<span class="font-headline-md text-headline-md">17</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[72px] h-[80px] rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant snap-center shrink-0">
+<span class="font-body-sm text-body-sm">T4</span>
+<span class="font-headline-md text-headline-md">18</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[72px] h-[80px] rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant snap-center shrink-0 opacity-50 cursor-not-allowed">
+<span class="font-body-sm text-body-sm">T5</span>
+<span class="font-headline-md text-headline-md">19</span>
+</button>
+</div>
+<!-- Time Slots (Bento Grid Style) -->
+<div class="mt-4">
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-3">Buổi sáng</p>
+<div class="grid grid-cols-3 gap-3">
+<button class="py-3 rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high transition-colors">08:00</button>
+<button class="py-3 rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high transition-colors">09:00</button>
+<button class="py-3 rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high transition-colors">10:00</button>
+<button class="py-3 rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high transition-colors opacity-40 line-through">11:00</button>
+</div>
+</div>
+<div class="mt-4">
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-3">Buổi chiều</p>
+<div class="grid grid-cols-3 gap-3">
+<button class="py-3 rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high transition-colors">14:00</button>
+<button class="py-3 rounded-DEFAULT bg-primary-container text-on-primary-container font-body-sm text-body-sm border-2 border-primary shadow-sm">15:00</button>
+<button class="py-3 rounded-DEFAULT bg-surface border border-outline-variant/50 text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high transition-colors">16:00</button>
+</div>
+</div>
+</section>
+<!-- Reason Input -->
+<section class="space-y-2">
+<label class="font-body-sm text-body-sm text-on-background block">Lý do đổi lịch (Không bắt buộc)</label>
+<div class="relative">
+<textarea class="w-full h-24 rounded-DEFAULT border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-outline p-3 font-body-sm text-body-sm resize-none" placeholder="Nhập lý do của bạn..."></textarea>
+</div>
+</section>
+<!-- Policy Note -->
+<section class="bg-tertiary-fixed border border-tertiary-fixed-dim rounded-DEFAULT p-4 flex gap-3 items-start">
+<span class="material-symbols-outlined text-tertiary mt-0.5 text-[20px]">info</span>
+<p class="font-body-sm text-body-sm text-on-tertiary-fixed-variant leading-relaxed">
+                Bạn có thể đổi lịch miễn phí 1 lần trước giờ khám 24 tiếng. Quá thời gian này, phí dịch vụ có thể được áp dụng theo chính sách.
+            </p>
+</section>
+</main>
+<!-- Bottom Action Area -->
+<div class="fixed bottom-0 w-full max-w-[390px] p-4 bg-background border-t border-surface-variant/50 pb-safe z-50">
+<button class="w-full h-12 bg-[#C98C7B] text-white font-body-lg text-body-lg font-bold rounded-full shadow-[0_4px_12px_rgba(90,70,63,0.15)] flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span>Xác nhận đổi lịch</span>
+</button>
+</div>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+    </style>
+</body></html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ModPortal - Hàng đợi phê duyệt</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#271812",
+                    "surface-container-highest": "#fadcd3",
+                    "primary-fixed": "#ffdbd1",
+                    "surface-container-high": "#ffe2d9",
+                    "on-error": "#ffffff",
+                    "surface": "#fff8f6",
+                    "tertiary-container": "#a09a95",
+                    "surface-container-low": "#fff1ec",
+                    "outline": "#84736f",
+                    "on-tertiary-container": "#36322e",
+                    "on-secondary-container": "#735e56",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "surface-bright": "#fff8f6",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#fab7a4",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "surface-container": "#ffe9e3",
+                    "primary-container": "#c98c7b",
+                    "on-background": "#271812",
+                    "secondary-container": "#f6dacf",
+                    "inverse-surface": "#3e2c26",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "tertiary-fixed": "#e9e1db",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "outline-variant": "#d6c2bd",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "inverse-on-surface": "#ffede7",
+                    "secondary-fixed": "#f8ddd2",
+                    "surface-variant": "#fadcd3",
+                    "on-surface-variant": "#524440",
+                    "secondary": "#6e5a52",
+                    "on-secondary-fixed": "#271812",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed": "#341006",
+                    "primary": "#845143",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-secondary": "#ffffff",
+                    "surface-tint": "#845143",
+                    "error-container": "#ffdad6",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#51271b",
+                    "surface-dim": "#f1d4ca",
+                    "on-error-container": "#93000a",
+                    "inverse-primary": "#fab7a4",
+                    "background": "#fff8f6",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary": "#625d59"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "16px",
+                    "safe-margin": "24px",
+                    "stack-sm": "8px",
+                    "touch-target-min": "48px",
+                    "stack-lg": "24px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "headline-lg": ["Lexend"],
+                    "button": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "headline-md": ["Lexend"]
+            },
+            "fontSize": {
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; background-color: #fff8f6; color: #271812; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .soft-shadow { box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06); }
+        .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .hover-lift:hover { transform: translateY(-2px); box-shadow: 0px 8px 24px rgba(90, 70, 63, 0.12); }
+    </style>
+</head>
+<body class="bg-background text-on-background flex min-h-screen antialiased">
+<!-- SideNavBar -->
+<nav class="hidden md:flex h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-surface-dim shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex-col p-4 gap-2 z-50">
+<div class="mb-8 px-4 py-2">
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim font-bold">ModPortal</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Hệ thống kiểm duyệt</p>
+</div>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-button text-button">Tổng quan</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg font-bold" href="#">
+<span class="material-symbols-outlined">queue</span>
+<span class="font-button text-button">Hàng đợi</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-button text-button">Báo cáo</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">gavel</span>
+<span class="font-button text-button">Vi phạm</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-button text-button">Ca an toàn</span>
+</a>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 md:left-64 h-16 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md flex justify-between items-center px-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] z-40">
+<div class="flex items-center gap-4">
+<button class="md:hidden p-2 text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-full h-10 w-64 focus:outline-none focus:border-primary text-body-md font-body-md placeholder:text-outline text-on-surface" placeholder="Tìm kiếm nội dung..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden ml-2 cursor-pointer border border-outline-variant">
+<img alt="Moderator Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a friendly Vietnamese woman in her 30s, acting as a moderator. She has dark hair tied back neatly, wearing a soft pastel blouse. The lighting is bright and warm, conveying approachability and trust within a clean, modern office setting. Shot in high resolution, natural light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAD9t3b5asu4N0jB2zLNR95S0fJXaMDLJdmIAQpsmwGcLUCkVrpFe8mUDPUy-xF14DN7q8Yoa71GvOkfweKCvOLM0EMbLhWEHgCjQkJ5orNR2KVOv7-0THg0kZOEQiR6cYvsTLk2ch5TsDq5WscyoINnsbMjTSp9qHR81lxwXnpMGLf52si4yCNzBMpu0J9t6XzGJv9PVDCBiIup45WmjVSyXsoMOrKr50LeG-47dWIZN_W7yaG-QVBsO2ihll46lBI9Lqj4V_FMp4"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 mt-16 p-safe-margin pb-24 overflow-y-auto">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Hàng đợi phê duyệt</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Danh sách nội dung đang chờ kiểm duyệt cuối cùng.</p>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-full text-on-surface font-button text-button hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+                        Lọc
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-full text-on-surface font-button text-button hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">sort</span>
+                        Sắp xếp
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout for Queue Items -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Item 1: Bài viết (Article) -->
+<article class="bg-surface-container-lowest rounded-[24px] p-5 soft-shadow hover-lift flex flex-col h-full border border-surface-container-high relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/10 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start mb-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full text-on-surface font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-primary">article</span>
+                            Bài viết
+                        </span>
+<span class="text-on-surface-variant font-label-md text-label-md">2 giờ trước</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2 line-clamp-2">Hướng dẫn chi tiết về dinh dưỡng cho bé 6 tháng tuổi ăn dặm</h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3 mb-4 flex-grow">Bài viết cung cấp thông tin toàn diện về các loại thực phẩm phù hợp, cách chế biến và lịch ăn dặm khoa học cho trẻ bắt đầu làm quen với thức ăn đặc. Bao gồm cả các lưu ý về dị ứng...</p>
+<div class="flex items-center gap-3 mb-4 p-3 bg-surface rounded-xl border border-surface-container-high">
+<img alt="Author" class="w-10 h-10 rounded-full object-cover" data-alt="A friendly profile photo of a Vietnamese pediatrician or child nutrition expert. A middle-aged man wearing glasses and a light blue medical shirt, smiling warmly at the camera. Soft, natural lighting, high quality portrait suitable for a healthcare app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmOp7G150HDuzQX6hFDwA6JcMgaIHzExx-fOP80EPJA6dYDX1EuxNxOpkBr36rV2nT5ZU2rum8rGqUwXms4Ofs7YeKkgY5ttME7nSJCXO-6U6Rq3HA0B2e2soYN_75sFjbYUe8LzHmbRM4JRmUB-GzQhGnwn0e00RDKqZPuqFJQTa5nIYYMf6Kv9AoQ75_Y6pYfojVNvljmEgBzMdeEnLaoAa36WUyDoVMyuIcg52Pma5RcpBx3w8muvcyCFkkV2paOhVeLJSlVNY"/>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">BS. Nguyễn Trần Bảo</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px]">Chuyên gia Dinh dưỡng</p>
+</div>
+</div>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface">Đầy đủ nguồn</span>
+</div>
+<div class="flex gap-2">
+<button class="h-10 w-10 flex items-center justify-center rounded-full bg-error-container text-on-error-container hover:bg-error hover:text-on-error transition-colors" title="Từ chối">
+<span class="material-symbols-outlined">close</span>
+</button>
+<button class="h-10 w-10 flex items-center justify-center rounded-full bg-primary-container text-on-primary hover:bg-primary transition-colors" title="Phê duyệt">
+<span class="material-symbols-outlined">check</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Item 2: FAQ -->
+<article class="bg-surface-container-lowest rounded-[24px] p-5 soft-shadow hover-lift flex flex-col h-full border border-surface-container-high relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-24 h-24 bg-tertiary-container/10 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start mb-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full text-on-surface font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-tertiary">quiz</span>
+                            FAQ
+                        </span>
+<span class="text-on-surface-variant font-label-md text-label-md">4 giờ trước</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2 line-clamp-2">Làm sao để biết bé sơ sinh đã bú đủ no?</h3>
+<div class="bg-surface-container-low p-3 rounded-xl mb-4 flex-grow">
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-4 italic border-l-2 border-tertiary-container pl-3">"Các dấu hiệu nhận biết trẻ đã bú đủ sữa mẹ bao gồm: bé tự nhả bầu vú, tay chân thả lỏng, giấc ngủ sâu kéo dài 2-3 tiếng, và tã ướt khoảng 6-8 lần một ngày. Nếu bé vẫn quấy khóc và mút tay liên tục, có thể bé cần bú thêm."</p>
+</div>
+<div class="flex items-center gap-3 mb-4">
+<img alt="Author" class="w-8 h-8 rounded-full object-cover" data-alt="A headshot of a female Vietnamese maternal care nurse. She looks compassionate and experienced, wearing a standard clinic uniform. The background is a soft, blurred white hospital corridor. Bright, uplifting lighting conveying trust and care." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2Hdm_hvYhJ5kdckPQERoi9zXDkCDg5bnBKtIFcohKbBqtFDyn6l_hp02NWX3R0kVJIgrmP9--9unLhY34BxlRm2ENjOUqhyeZatMrE3NUN8rLwBY54ZFOYnFRR6wUedayPEEa1TFSV5SRFxaxNRIJrcqopDz67qNOrW-Pq0tynvz5IQqNgFMDi2ZCFaGN_SMjjMdxtJkpW7Cr1XvHGCcnU_OTA09yGXpumCRzAiVquE88C2H4WxNP1l6VRXN-UULa39JPsF8YKKk"/>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Điều dưỡng Lê Mai</span>
+</div>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[20px]">warning</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Cần xem lại trích dẫn</span>
+</div>
+<button class="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-full font-button text-button hover:bg-secondary hover:text-on-secondary transition-colors">
+                            Xem chi tiết
+                        </button>
+</div>
+</article>
+<!-- Item 3: Checklist -->
+<article class="bg-surface-container-lowest rounded-[24px] p-5 soft-shadow hover-lift flex flex-col h-full border border-surface-container-high relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-24 h-24 bg-secondary-container/20 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start mb-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full text-on-surface font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-secondary">checklist</span>
+                            Checklist
+                        </span>
+<span class="text-on-surface-variant font-label-md text-label-md">Hôm qua</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2 line-clamp-2">Danh sách đồ đi sinh chuẩn bị đón bé yêu</h3>
+<ul class="font-body-md text-body-md text-on-surface-variant space-y-2 mb-4 flex-grow">
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary mt-0.5">check_box</span>
+<span>Giấy tờ tùy thân &amp; Hồ sơ thai kỳ</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary mt-0.5">check_box</span>
+<span>Quần áo cho mẹ (3-4 bộ)</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary mt-0.5">check_box</span>
+<span>Đồ dùng cho bé (Tã, khăn, quần áo)</span>
+</li>
+<li class="text-center text-outline text-sm italic mt-1">... và 15 mục khác</li>
+</ul>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface">Hoàn thiện 100%</span>
+</div>
+<div class="flex gap-2">
+<button class="h-10 w-10 flex items-center justify-center rounded-full bg-error-container text-on-error-container hover:bg-error hover:text-on-error transition-colors" title="Từ chối">
+<span class="material-symbols-outlined">close</span>
+</button>
+<button class="h-10 w-10 flex items-center justify-center rounded-full bg-primary-container text-on-primary hover:bg-primary transition-colors" title="Phê duyệt">
+<span class="material-symbols-outlined">check</span>
+</button>
+</div>
+</div>
+</article>
+</div>
+</main>
+</div>
+</body></html>

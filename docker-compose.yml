@@ -1,0 +1,107 @@
+name: carebridge-edge-local
+
+services:
+  backend:
+    build:
+      context: ./05_Development/CareBridgeAPI
+    image: carebridge-backend:local
+    env_file:
+      - ./05_Development/CareBridgeAPI/.env
+    environment:
+      CAREBRIDGE_CORS_ALLOWED_ORIGINS: "https://${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}"
+    expose:
+      - "8080"
+    networks:
+      - api-origin
+      - backend-egress
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 45s
+    restart: unless-stopped
+
+  web-dev:
+    image: ${NODE_IMAGE:-node:22.17.1-alpine3.22}
+    working_dir: /app
+    command: ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"]
+    environment:
+      VITE_API_URL: "https://${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}"
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: "${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./05_Development/CareBridgeWebApp:/app
+      - web_node_modules:/app/node_modules
+    expose:
+      - "5173"
+    networks:
+      - portal-origin
+      - dev-egress
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  nginx-edge:
+    image: ${EDGE_NGINX_IMAGE:-nginxinc/nginx-unprivileged:1.29-alpine}
+    environment:
+      CAREBRIDGE_PORTAL_HOSTNAME: ${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}
+      CAREBRIDGE_API_HOSTNAME: ${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}
+      CAREBRIDGE_CLOUDFLARED_IP: ${CAREBRIDGE_CLOUDFLARED_IP:-172.30.0.2}
+    volumes:
+      - ./05_Development/Deployment/nginx/edge-local.conf:/etc/nginx/templates/default.conf.template:ro
+    expose:
+      - "8080"
+    networks:
+      - tunnel
+      - portal-origin
+      - api-origin
+    depends_on:
+      backend:
+        condition: service_healthy
+      web-dev:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://backend:8080/actuator/health/readiness && wget -q -O /dev/null http://web-dev:5173/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  cloudflared:
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.2}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/cloudflare_tunnel_token
+    secrets:
+      - cloudflare_tunnel_token
+    networks:
+      tunnel:
+        ipv4_address: ${CAREBRIDGE_CLOUDFLARED_IP:-172.30.0.2}
+    depends_on:
+      nginx-edge:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  tunnel:
+    ipam:
+      config:
+        - subnet: ${CAREBRIDGE_TUNNEL_SUBNET:-172.30.0.0/29}
+  portal-origin:
+    internal: true
+  api-origin:
+    internal: true
+  dev-egress:
+  backend-egress:
+
+volumes:
+  web_node_modules:
+
+secrets:
+  cloudflare_tunnel_token:
+    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?Set path to the local Cloudflare tunnel token file}

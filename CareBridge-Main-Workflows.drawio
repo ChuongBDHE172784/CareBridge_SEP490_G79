@@ -1,0 +1,1252 @@
+<mxfile host="65bd71144e" pages="7">
+    <diagram id="wf-ov01-mother-lifecycle-orchestration" name="OV-01 Mother Lifecycle Orchestration Overview">
+        <mxGraphModel dx="524" dy="830" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="4000" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ov01_phase_onboarding" value="PHASE 1&#10;ONBOARDING&#10;&amp; PRECONCEPTION" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#1F2937;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="190" width="140" height="1170" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_phase_pregnancy" value="PHASE 2&#10;PREGNANCY CARE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#1F2937;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1360" width="140" height="1050" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_phase_postpartum" value="PHASE 3&#10;POSTPARTUM RECOVERY&#10;&amp; OPTIONAL BABY CARE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#1F2937;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="2410" width="140" height="1190" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_pool" value="MOTHER LIFECYCLE ORCHESTRATION  |  TIME FLOWS TOP TO BOTTOM" style="swimlane;html=1;horizontal=1;startSize=40;collapsible=0;container=1;pointerEvents=0;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#374151;strokeWidth=2;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#111827;align=left;spacingLeft=12;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="150" width="2080" height="3450" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_lane_mother" value="MOTHER" style="swimlane;html=1;startSize=45;horizontal=1;collapsible=0;container=1;pointerEvents=0;connectable=0;fillColor=#FFF7F7;swimlaneFillColor=#FFF7F7;strokeColor=#B85450;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#7F1D1D;" parent="ov01_pool" vertex="1">
+                    <mxGeometry y="40" width="520" height="3410" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#374151;strokeColor=#111827;strokeWidth=2;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="245" y="60" width="30" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_account" value="1. Authenticate / verify account&lt;br&gt;Choose Mother role" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="90" y="130" width="340" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_stage_select" value="4. Select current&#10;lifecycle stage" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="160" y="540" width="200" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_pregnancy_changed" value="8A. Pregnancy status&#10;changed?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="160" y="1110" width="200" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_preg_context" value="5B. Enter / update pregnancy context&#10;LMP, EDD and date source; unknown values allowed&#10;Care-provider information is optional" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="65" y="1340" width="390" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_preg_outcome" value="9B. Pregnancy&#10;outcome / status?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="155" y="1940" width="210" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_post_context" value="5C. Enter postpartum context&#10;Birth date or pregnancy-end date, recovery start and available notes&#10;Baby profile is not required" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="60" y="2360" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_baby_decision" value="8C. Add baby profile&#10;now or later?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="160" y="2730" width="200" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_baby_data" value="9C. Provide minimum baby data for 0..n children&#10;Required identity / birth context only; optional measurements may be added later" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="50" y="2950" width="420" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_continue" value="12. Continue lifecycle&#10;tracking?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="160" y="3120" width="200" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_end" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#FFFFFF;strokeColor=#111827;strokeWidth=3;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="240" y="3330" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_end_inner" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#111827;strokeColor=#111827;strokeWidth=1;connectable=0;pointerEvents=0;" parent="ov01_lane_mother" vertex="1">
+                    <mxGeometry x="248" y="3338" width="24" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_start" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_lane_mother" source="ov01_start" target="ov01_account" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_lane_app" value="APP / PORTAL" style="swimlane;html=1;startSize=45;horizontal=1;collapsible=0;container=1;pointerEvents=0;connectable=0;fillColor=#F5F9FF;swimlaneFillColor=#F5F9FF;strokeColor=#6C8EBF;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#1E3A5F;" parent="ov01_pool" vertex="1">
+                    <mxGeometry x="520" y="40" width="520" height="3410" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_baseline" value="2. Collect minimum baseline&#10;Health context, goals, preferences and required consent" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_app" vertex="1">
+                    <mxGeometry x="70" y="270" width="380" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_pre_dashboard" value="6A. Preconception dashboard&lt;br&gt;Goals, reminders, checklist and reviewed priorities" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_app" vertex="1">
+                    <mxGeometry x="65" y="860" width="390" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_preg_dashboard" value="7B. Pregnancy dashboard&lt;br&gt;Week, appointments, reminders, tracking and safe shortcuts" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_app" vertex="1">
+                    <mxGeometry x="65" y="1645" width="390" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_post_dashboard" value="7C. Postpartum recovery dashboard&lt;br&gt;Recovery logs, mood, reminders, checklist and safe shortcuts" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_app" vertex="1">
+                    <mxGeometry x="60" y="2640" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_lane_backend" value="BACKEND / LIFECYCLE DATA" style="swimlane;html=1;startSize=45;horizontal=1;collapsible=0;container=1;pointerEvents=0;connectable=0;fillColor=#F5FBF4;swimlaneFillColor=#F5FBF4;strokeColor=#82B366;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#24552A;" parent="ov01_pool" vertex="1">
+                    <mxGeometry x="1040" y="40" width="520" height="3410" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_initialize" value="3. Initialize Mother Care Journey&lt;br&gt;Store minimum stage context, dates, preferences and consent evidence" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_backend" vertex="1">
+                    <mxGeometry x="60" y="410" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_set_preconception" value="5A. Set Preconception state&lt;br&gt;Cycle/goals context may be unknown and updated later" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_backend" vertex="1">
+                    <mxGeometry x="65" y="720" width="390" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_set_pregnancy" value="6B. Set Pregnancy state&lt;br&gt;Calculate week / trimester from the best available dated source&lt;br&gt;Preserve source and change history" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_backend" vertex="1">
+                    <mxGeometry x="60" y="1490" width="400" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_record_safety" value="Record safety outcome&#10;Consent, source, risk orientation and chosen action in lifecycle timeline" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=11;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_backend" vertex="1">
+                    <mxGeometry x="110" y="2130" width="300" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_set_postpartum" value="6C. Create / update Postpartum Recovery state&#10;Mother recovery journey remains independent of baby profiles&#10;[UC-22 / UC-23 / MF-02]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_backend" vertex="1">
+                    <mxGeometry x="55" y="2500" width="410" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_register_baby" value="10C. Create standalone Baby Profile&lt;br&gt;Mother recovery remains independent of baby creation" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;fontFamily=Arial;fontSize=12;fontStyle=1;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_backend" vertex="1">
+                    <mxGeometry x="55" y="2950" width="410" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_lane_linked" value="LINKED FEATURES / SAFETY" style="swimlane;html=1;startSize=45;horizontal=1;collapsible=0;container=1;pointerEvents=0;connectable=0;fillColor=#FBF8FC;swimlaneFillColor=#FBF8FC;strokeColor=#9673A6;fontFamily=Arial;fontSize=13;fontStyle=1;fontColor=#55305F;" parent="ov01_pool" vertex="1">
+                    <mxGeometry x="1560" y="40" width="520" height="3410" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_pre_support" value="7A. Invoke reviewed content / checklist&lt;br&gt;Stage-appropriate guidance and warning signs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_linked" vertex="1">
+                    <mxGeometry x="80" y="1030" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_preg_support" value="8B. Invoke reviewed pregnancy support&lt;br&gt;Content, preparation and expert routing when appropriate" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_linked" vertex="1">
+                    <mxGeometry x="95" y="1640" width="330" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_safety_subflow" value="SAFETY SUBFLOW — callable from any active stage&#10;Invoke MF-06 structured, non-diagnostic triage&#10;Green: reviewed guidance / monitor&#10;Yellow: expert or appointment preparation&#10;Red: invoke MF-07 emergency support&#10;AI unavailable / intake incomplete: safe fallback" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=2;fontFamily=Arial;fontSize=10.5;fontStyle=1;fontColor=#7F1D1D;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_linked" vertex="1">
+                    <mxGeometry x="110" y="1870" width="300" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_ongoing_support" value="11. Ongoing reviewed support&#10;Mother recovery always available; baby care uses standalone profiles" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;fontFamily=Arial;fontSize=12;fontStyle=1;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="ov01_lane_linked" vertex="1">
+                    <mxGeometry x="65" y="2950" width="390" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_account_baseline" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_account" target="ov01_baseline" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="780" y="205"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_baseline_init" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_baseline" target="ov01_initialize" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1300" y="340"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_init_stage" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_initialize" target="ov01_stage_select" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="260" y="485"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_stage_pre" value="Planning / preconception" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;" parent="ov01_pool" source="ov01_stage_select" target="ov01_set_preconception" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1300" y="645"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_stage_preg" value="Currently pregnant" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;" parent="ov01_pool" source="ov01_stage_select" target="ov01_preg_context" edge="1">
+                    <mxGeometry x="-0.487" relative="1" as="geometry">
+                        <mxPoint x="1" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="260" y="840.11"/>
+                            <mxPoint x="110" y="840.11"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_stage_post" value="Postpartum / parenting" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;" parent="ov01_pool" source="ov01_stage_select" target="ov01_post_context" edge="1">
+                    <mxGeometry x="0.0384" relative="1" as="geometry">
+                        <mxPoint y="1" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="30.04" y="645"/>
+                            <mxPoint x="30.04" y="2440.04"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_set_pre_dash" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_set_preconception" target="ov01_pre_dashboard" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_pre_dash_support" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_pre_dashboard" target="ov01_pre_support" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="780" y="1100"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_pre_support_changed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;exitX=0.5;exitY=1;" parent="ov01_pool" source="ov01_pre_support" target="ov01_pregnancy_changed" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1820" y="1215"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_changed_no" value="No / not yet" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;" parent="ov01_pool" source="ov01_pregnancy_changed" target="ov01_pre_dashboard" edge="1">
+                    <mxGeometry x="0.3945" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="260" y="930"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_changed_yes" value="Confirmed / update" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="ov01_pool" source="ov01_pregnancy_changed" target="ov01_preg_context" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_preg_context_set" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_preg_context" target="ov01_set_pregnancy" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_set_preg_dash" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_set_pregnancy" target="ov01_preg_dashboard" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_preg_dash_support" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_preg_dashboard" target="ov01_preg_support" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1330" y="1720"/>
+                            <mxPoint x="1330" y="1720"/>
+                        </Array>
+                        <mxPoint x="780" y="1760" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_preg_support_outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;exitX=0.5;exitY=1;" parent="ov01_pool" source="ov01_preg_support" target="ov01_preg_outcome" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1820" y="1850"/>
+                            <mxPoint x="275" y="1850"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_outcome_ongoing" value="Ongoing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;" parent="ov01_pool" source="ov01_preg_outcome" target="ov01_preg_dashboard" edge="1">
+                    <mxGeometry x="0.4215" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="245" y="1720"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_outcome_update" value="Unknown / update dates" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;" parent="ov01_pool" source="ov01_preg_outcome" target="ov01_preg_context" edge="1">
+                    <mxGeometry x="0.1352" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="110" y="2050"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_outcome_birth" value="Live birth" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;" parent="ov01_pool" source="ov01_preg_outcome" target="ov01_post_context" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_outcome_loss" value="Pregnancy ended / loss — recovery support; no baby required" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=10.5;labelBackgroundColor=#FFFFFF;dashed=1;" parent="ov01_pool" source="ov01_preg_outcome" target="ov01_post_context" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="490.11" y="2050.04"/>
+                            <mxPoint x="490.11" y="2440.04"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_post_context_set" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;exitX=0.5;exitY=1;" parent="ov01_pool" source="ov01_post_context" target="ov01_set_postpartum" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="260" y="2580.08"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_set_post_dash" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;exitX=0.5;exitY=1;" parent="ov01_pool" source="ov01_set_postpartum" target="ov01_post_dashboard" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1300" y="2700"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_post_dash_baby" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_post_dashboard" target="ov01_baby_decision" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="260" y="2720"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_baby_yes" value="Yes — now" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="ov01_pool" source="ov01_baby_decision" target="ov01_baby_data" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_baby_data_register" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" parent="ov01_pool" source="ov01_baby_data" target="ov01_register_baby" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_baby_no" value="No / not now" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;exitX=1;exitY=0.5;" parent="ov01_pool" source="ov01_baby_decision" target="ov01_ongoing_support" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_register_support" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" parent="ov01_pool" source="ov01_register_baby" target="ov01_ongoing_support" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_support_continue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;exitX=0.5;exitY=1;" parent="ov01_pool" source="ov01_ongoing_support" target="ov01_continue" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1820" y="3225"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_continue_yes" value="Yes — resume active dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;" parent="ov01_pool" source="ov01_continue" target="ov01_post_dashboard" edge="1">
+                    <mxGeometry x="-0.303" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="260" y="3130"/>
+                            <mxPoint x="780" y="3130"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_continue_no" value="Close / archive current workflow view" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="ov01_pool" source="ov01_continue" target="ov01_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ov01_e_safety_pre" value="Warning sign / unsafe input" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=10.5;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=8 4;exitX=1;exitY=0.5;" parent="ov01_pool" source="ov01_pre_dashboard" target="ov01_safety_subflow" edge="1">
+                    <mxGeometry x="-0.5038" relative="1" as="geometry">
+                        <mxPoint x="1" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="2028" y="930"/>
+                            <mxPoint x="2028" y="1950"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_safety_preg" value="Warning sign / unsafe input" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=10.5;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=8 4;" parent="ov01_pool" source="ov01_preg_dashboard" target="ov01_safety_subflow" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="780" y="1975"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_safety_post" value="Warning sign / unsafe input" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=10.5;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=8 4;" parent="ov01_pool" source="ov01_post_dashboard" target="ov01_safety_subflow" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="2028" y="2740"/>
+                            <mxPoint x="2028" y="2000"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_safety_record" value="Chosen safe action" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=10.5;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" parent="ov01_pool" source="ov01_safety_subflow" target="ov01_record_safety" edge="1">
+                    <mxGeometry x="0.2117" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_e_record_return" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#4B5563;strokeWidth=1.5;" parent="ov01_pool" source="ov01_record_safety" target="ov01_safety_return" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1300" y="2335"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ov01_safety_return" value="Return to the originating active-stage dashboard&#10;with lifecycle state preserved" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;dashed=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;fontStyle=1;fontColor=#374151;align=center;verticalAlign=middle;spacing=8;" parent="ov01_pool" vertex="1">
+                    <mxGeometry x="1670" y="2300" width="300" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="" style="ellipse;whiteSpace=wrap;html=1;strokeWidth=1;" vertex="1" parent="1">
+                    <mxGeometry x="230" y="380" width="80" height="80" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="wf-mf02-mother-care-journey" name="MF-02 Mother Care Journey Workflow">
+        <mxGraphModel dx="824" dy="501" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1500" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="wf-mf02-mother-care-journey_lane_header_0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#7F1D1D;align=center;verticalAlign=middle;" value="Mother" vertex="1">
+                    <mxGeometry height="48" width="320" x="60" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf02-mother-care-journey_lane_body_0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF7F7;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="60" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf02-mother-care-journey_lane_header_1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#1E3A5F;align=center;verticalAlign=middle;" value="Mobile App / Web Portal" vertex="1">
+                    <mxGeometry height="48" width="320" x="380" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf02-mother-care-journey_lane_body_1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F9FF;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="380" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf02-mother-care-journey_lane_header_2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#24552A;align=center;verticalAlign=middle;" value="CareBridge Backend" vertex="1">
+                    <mxGeometry height="48" width="320" x="700" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf02-mother-care-journey_lane_body_2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FBF4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="700" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf02-mother-care-journey_lane_header_3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#55305F;align=center;verticalAlign=middle;" value="Reviewed Content / Safety Rules" vertex="1">
+                    <mxGeometry height="48" width="320" x="1020" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf02-mother-care-journey_lane_body_3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBF8FC;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="1020" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="s" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" value="" vertex="1">
+                    <mxGeometry height="24" width="24" x="208" y="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="open" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="1. Start or update mother care journey" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="290" as="geometry"/>
+                </mxCell>
+                <mxCell id="stage" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="2. Select lifecycle stage and required baseline&#10;(preconception, pregnancy or postpartum)" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="380" as="geometry"/>
+                </mxCell>
+                <mxCell id="create" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" value="3. Initialize or update canonical journey state&lt;br&gt;Preserve source and change history" vertex="1">
+                    <mxGeometry height="58" width="250" x="735" y="470" as="geometry"/>
+                </mxCell>
+                <mxCell id="dash" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="4. Show stage-aware dashboard from canonical journey state" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="560" as="geometry"/>
+                </mxCell>
+                <mxCell id="metric" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="5. Log maternal indicators, symptoms, mood or recovery notes" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="rules" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" value="Warning sign or unsafe input?" vertex="1">
+                    <mxGeometry height="78" width="170" x="1095" y="740" as="geometry"/>
+                </mxCell>
+                <mxCell id="safe" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" value="6A. Invoke MF-06 triage; RED opens or reuses MF-07 emergency session" vertex="1">
+                    <mxGeometry height="58" width="250" x="1055" y="880" as="geometry"/>
+                </mxCell>
+                <mxCell id="save" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" value="6B. Persist trend, source label and lifecycle event idempotently" vertex="1">
+                    <mxGeometry height="58" width="250" x="735" y="880" as="geometry"/>
+                </mxCell>
+                <mxCell id="exercise" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="7. Show APPROVED, stage-aware exercise, checklist and preparation support" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="980" as="geometry"/>
+                </mxCell>
+                <mxCell id="view" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="8. Return to originating dashboard; review timeline, reminders and checklist progress" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="1080" as="geometry"/>
+                </mxCell>
+                <mxCell id="note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#000000;dashed=1;fontFamily=Arial;fontSize=11.5;fontColor=#374151;align=left;verticalAlign=top;spacing=10;" value="Boundary: tracking and reviewed guidance only; no diagnosis or medical-fitness assessment. RED escalation does not depend on a second AI interpretation." vertex="1">
+                    <mxGeometry height="72" width="280" x="1040" y="1190" as="geometry"/>
+                </mxCell>
+                <mxCell id="end" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=1;fontColor=#ffffff;" value="" vertex="1">
+                    <mxGeometry height="34" width="34" x="203" y="1268" as="geometry"/>
+                </mxCell>
+                <mxCell id="end_inner" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" value="" vertex="1">
+                    <mxGeometry height="18" width="18" x="211" y="1276" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" edge="1" parent="1" source="s" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="open" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" edge="1" parent="1" source="open" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="stage" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" edge="1" parent="1" source="stage" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" target="create" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" edge="1" parent="1" source="create" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="dash" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" edge="1" parent="1" source="dash" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" target="metric" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" edge="1" parent="1" source="metric" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="rules" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" edge="1" parent="1" source="rules" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;" target="safe" value="Yes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" edge="1" parent="1" source="rules" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="save" value="No">
+                    <mxGeometry relative="1" x="-0.3155" y="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e9" edge="1" parent="1" source="safe" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="view" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1180" y="1110"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e10" edge="1" parent="1" source="save" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;fillColor=light-dark(#f1f3f4, #1f2f1e);" target="exercise" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="540" y="910"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e11" edge="1" parent="1" source="exercise" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" target="view" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="220" y="1010"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e12" edge="1" parent="1" source="view" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="end" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="wf-mf03-baby-care-journey" name="MF-03 Baby Care Journey, Growth &amp; Vaccination Workflow">
+        <mxGraphModel dx="1084" dy="695" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1500" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="wf-mf03-baby-care-journey_lane_header_0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#7F1D1D;align=center;verticalAlign=middle;" value="Mother / Caregiver" vertex="1">
+                    <mxGeometry height="48" width="320" x="60" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf03-baby-care-journey_lane_body_0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF7F7;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="60" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf03-baby-care-journey_lane_header_1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#1E3A5F;align=center;verticalAlign=middle;" value="Mobile App" vertex="1">
+                    <mxGeometry height="48" width="320" x="380" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf03-baby-care-journey_lane_body_1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F9FF;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="380" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf03-baby-care-journey_lane_header_2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#24552A;align=center;verticalAlign=middle;" value="CareBridge Backend" vertex="1">
+                    <mxGeometry height="48" width="320" x="700" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf03-baby-care-journey_lane_body_2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FBF4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="700" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf03-baby-care-journey_lane_header_3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#55305F;align=center;verticalAlign=middle;" value="Reference Schedule / Notifications" vertex="1">
+                    <mxGeometry height="48" width="320" x="1020" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf03-baby-care-journey_lane_body_3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBF8FC;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1172" width="320" x="1020" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="s" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" value="" vertex="1">
+                    <mxGeometry height="24" width="24" x="208" y="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="profile" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="1. Create, switch, update or archive baby profile&#10;Standalone profiles; ownership checked" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="290" as="geometry"/>
+                </mxCell>
+                <mxCell id="journal" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="2. Record feeding, sleep, diaper, symptom or night-mode journal" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="390" as="geometry"/>
+                </mxCell>
+                <mxCell id="growth" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="3. Add growth measurement or development milestone" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="490" as="geometry"/>
+                </mxCell>
+                <mxCell id="store" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" value="4. Store baby logs, measurements and milestone history with source" vertex="1">
+                    <mxGeometry height="58" width="250" x="735" y="590" as="geometry"/>
+                </mxCell>
+                <mxCell id="reference" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" value="5. Apply age/stage reference labels for observation only" vertex="1">
+                    <mxGeometry height="58" width="250" x="1055" y="690" as="geometry"/>
+                </mxCell>
+                <mxCell id="vaccine" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="6. Add vaccination record or view source-labelled reference schedule" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="790" as="geometry"/>
+                </mxCell>
+                <mxCell id="reminder" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" value="7. Send due/overdue vaccination or appointment reminder" vertex="1">
+                    <mxGeometry height="58" width="250" x="1055" y="890" as="geometry"/>
+                </mxCell>
+                <mxCell id="summary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" value="8. Generate baby-care timeline and appointment-preparation summary" vertex="1">
+                    <mxGeometry height="58" width="250" x="735" y="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="view" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="9. Review active baby journals, growth chart, milestones and vaccination status" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="1090" as="geometry"/>
+                </mxCell>
+                <mxCell id="note" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#000000;dashed=1;fontFamily=Arial;fontSize=11.5;fontColor=#374151;align=left;verticalAlign=top;spacing=10;" value="Boundary: supports observation and appointment preparation; does not diagnose, assess development or replace pediatric care." vertex="1">
+                    <mxGeometry height="72" width="280" x="1040" y="1040" as="geometry"/>
+                </mxCell>
+                <mxCell id="end" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=1;fontColor=#ffffff;" value="" vertex="1">
+                    <mxGeometry height="34" width="34" x="203" y="1268" as="geometry"/>
+                </mxCell>
+                <mxCell id="end_inner" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" value="" vertex="1">
+                    <mxGeometry height="18" width="18" x="211" y="1276" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" edge="1" parent="1" source="s" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="profile" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" edge="1" parent="1" source="profile" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="journal" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" edge="1" parent="1" source="journal" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" target="growth" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" edge="1" parent="1" source="growth" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" target="store" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" edge="1" parent="1" source="store" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="reference" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" edge="1" parent="1" source="reference" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="vaccine" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" edge="1" parent="1" source="vaccine" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" target="reminder" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" edge="1" parent="1" source="reminder" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="summary" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" edge="1" parent="1" source="summary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="view" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" edge="1" parent="1" source="view" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="end" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="wf-mf04-community-moderation" name="MF-04 Community Q&amp;A &amp; Moderation Workflow">
+        <mxGraphModel dx="1212" dy="776" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1700" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="wf-mf04-community-moderation_lane_header_0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#7F1D1D;align=center;verticalAlign=middle;" value="User" vertex="1">
+                    <mxGeometry height="48" width="320" x="60" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf04-community-moderation_lane_body_0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF7F7;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1342" width="320" x="60" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf04-community-moderation_lane_header_1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#1E3A5F;align=center;verticalAlign=middle;" value="CareBridge System" vertex="1">
+                    <mxGeometry height="48" width="320" x="380" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf04-community-moderation_lane_body_1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F9FF;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1342" width="320" x="380" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf04-community-moderation_lane_header_2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#24552A;align=center;verticalAlign=middle;" value="Moderator" vertex="1">
+                    <mxGeometry height="48" width="320" x="700" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf04-community-moderation_lane_body_2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FBF4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1342" width="320" x="700" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf04-community-moderation_lane_header_3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#55305F;align=center;verticalAlign=middle;" value="Verified Expert" vertex="1">
+                    <mxGeometry height="48" width="320" x="1020" y="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf04-community-moderation_lane_body_3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBF8FC;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="1342" width="320" x="1020" y="178" as="geometry"/>
+                </mxCell>
+                <mxCell id="s" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" value="" vertex="1">
+                    <mxGeometry height="24" width="24" x="208" y="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="feed" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="1. View feed, search/filter topics or open question detail" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="290" as="geometry"/>
+                </mxCell>
+                <mxCell id="post" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="2. Create question or answer; choose public or anonymous identity" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="390" as="geometry"/>
+                </mxCell>
+                <mxCell id="screen" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="3. Check spam, abuse, prohibited advertising, reports and health-risk wording" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="490" as="geometry"/>
+                </mxCell>
+                <mxCell id="risky" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" value="Screening outcome?" vertex="1">
+                    <mxGeometry height="78" width="170" x="455" y="590" as="geometry"/>
+                </mxCell>
+                <mxCell id="triage" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="4A. RED health-risk signal: invoke MF-06 rules or open/reuse MF-07 emergency" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="740" as="geometry"/>
+                </mxCell>
+                <mxCell id="review" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" value="4B. Review pending content, report evidence and topic-governance issue" vertex="1">
+                    <mxGeometry height="58" width="250" x="735" y="740" as="geometry"/>
+                </mxCell>
+                <mxCell id="decision" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" value="Approve content?" vertex="1">
+                    <mxGeometry height="78" width="170" x="775" y="850" as="geometry"/>
+                </mxCell>
+                <mxCell id="publish" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="5A. Publish safe content to owning feed/list/detail screen" vertex="1">
+                    <mxGeometry height="58" width="250" x="415" y="970" as="geometry"/>
+                </mxCell>
+                <mxCell id="moderate" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" value="5B. Hide, reject, lock, warn, suspend or request edit; record audit outcome" vertex="1">
+                    <mxGeometry height="58" width="250" x="735" y="970" as="geometry"/>
+                </mxCell>
+                <mxCell id="expert" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" value="6. Add verified-expert answer with label and scoped visibility" vertex="1">
+                    <mxGeometry height="58" width="250" x="1055" y="1090" as="geometry"/>
+                </mxCell>
+                <mxCell id="notify" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" value="7. Notify answer/moderation outcome and retain traceable event" vertex="1">
+                    <mxGeometry height="60" width="250" x="415" y="1220" as="geometry"/>
+                </mxCell>
+                <mxCell id="edit" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" value="8. Edit or soft-delete own post/answer when ownership and locks allow" vertex="1">
+                    <mxGeometry height="58" width="250" x="95" y="1340" as="geometry"/>
+                </mxCell>
+                <mxCell id="end" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=1;fontColor=#ffffff;" value="" vertex="1">
+                    <mxGeometry height="34" width="34" x="203" y="1428" as="geometry"/>
+                </mxCell>
+                <mxCell id="end_inner" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" value="" vertex="1">
+                    <mxGeometry height="18" width="18" x="211" y="1436" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" edge="1" parent="1" source="s" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="feed" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" edge="1" parent="1" source="feed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="post" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" edge="1" parent="1" source="post" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="screen" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" edge="1" parent="1" source="screen" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="risky" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" edge="1" parent="1" source="risky" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="triage" value="Red flag">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" edge="1" parent="1" source="risky" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="review" value="Needs moderation">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" edge="1" parent="1" source="risky" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="publish" value="Safe">
+                    <mxGeometry relative="1" x="0.1182" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="400" y="629.06"/>
+                            <mxPoint x="400" y="999.06"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e8" edge="1" parent="1" source="review" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="decision" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" edge="1" parent="1" source="decision" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="publish" value="Yes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" edge="1" parent="1" source="decision" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="moderate" value="No">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11" edge="1" parent="1" source="publish" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="expert" value="If routed">
+                    <mxGeometry relative="1" x="0.141" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="540" y="1130"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e12" edge="1" parent="1" source="expert" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="notify" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1180" y="1270"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e13" edge="1" parent="1" source="moderate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" target="notify" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="860" y="1250"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e14" edge="1" parent="1" source="triage" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="notify" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="680" y="769.06"/>
+                            <mxPoint x="680" y="1230"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e15" edge="1" parent="1" source="notify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" target="edit" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e16" edge="1" parent="1" source="edit" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" target="end" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="wf-mf05-verified-expert-network" name="MF-05 Verified Expert Network &amp; Contribution Workflow">
+        <mxGraphModel dx="1451" dy="1509" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1500" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="wf-mf05-verified-expert-network_lane_header_0" value="Expert" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#7F1D1D;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf05-verified-expert-network_lane_body_0" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF7F7;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="178" width="320" height="1222" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf05-verified-expert-network_lane_header_1" value="Admin / Reviewer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#1E3A5F;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf05-verified-expert-network_lane_body_1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F9FF;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="178" width="320" height="1222" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf05-verified-expert-network_lane_header_2" value="CareBridge Backend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#24552A;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf05-verified-expert-network_lane_body_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5FBF4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="178" width="320" height="1222" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf05-verified-expert-network_lane_header_3" value="User Directory / Community" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#55305F;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf05-verified-expert-network_lane_body_3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBF8FC;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="178" width="320" height="1222" as="geometry"/>
+                </mxCell>
+                <mxCell id="s" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="208" y="220" width="24" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="submit" value="1. Submit or update expert profile, credentials, expiry and specialty scope" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="290" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="validate" value="2. Validate required documents, expiry, service scope and profile completeness" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="735" y="390" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="review" value="3. Review credentials; request info, approve, reject, suspend or require re-verification" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="415" y="490" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="approved" value="Active verification granted?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="600" width="200" height="78" as="geometry"/>
+                </mxCell>
+                <mxCell id="request" value="4A. Provide missing information or accept rejection/suspension state" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="740" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="publish" value="4B. Publish active verified status, availability and directory visibility" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="735" y="740" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="view" value="5. Users view verified profile, specialty and service scope" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1055" y="840" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="contribute" value="6. Expert contributes answers or reviewed knowledge content" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="940" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="points" value="7. Record eligible participation points, badges and trust restrictions" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="735" y="1040" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="violation" value="Policy or credential violation?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="1140" width="200" height="78" as="geometry"/>
+                </mxCell>
+                <mxCell id="restrict" value="8A. Hide label, restrict contribution, revoke verification or suspend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="735" y="1298" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="note" value="Boundary: badges and points indicate eligible participation only; they do not prove clinical competence or medical accuracy." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#000000;dashed=1;fontFamily=Arial;fontSize=11.5;fontColor=#374151;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="1040" y="1223" width="280" height="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="end" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=1;fontColor=#ffffff;" parent="1" vertex="1">
+                    <mxGeometry x="203" y="1310" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="end_inner" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="211" y="1318" width="18" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="s" target="submit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="submit" target="validate" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="validate" target="review" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="review" target="approved" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="approved" target="request" edge="1">
+                    <mxGeometry x="0.338" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="540" y="770"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e6" value="Resubmit" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=default;" parent="1" source="request" target="submit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="approved" target="publish" edge="1">
+                    <mxGeometry x="-0.3139" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="publish" target="view" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="view" target="contribute" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="contribute" target="points" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="points" target="violation" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e13" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="violation" target="end" edge="1">
+                    <mxGeometry x="-0.3725" y="1" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#82B366;" parent="1" source="restrict" target="end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="wf-mf06-ai-nurse-triage" name="MF-06 AI Nurse Assistant &amp; Risk Triage Workflow">
+        <mxGraphModel dx="798" dy="830" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1500" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_header_0" value="Mother / Caregiver" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#7F1D1D;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_body_0" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF7F7;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="178" width="320" height="1142" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_header_1" value="Mobile App" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#1E3A5F;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_body_1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F9FF;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="178" width="320" height="1142" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_header_2" value="AI Nurse Assistant" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#55305F;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_body_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBF8FC;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="178" width="320" height="1142" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_header_3" value="CareBridge Safety Rules / Next Action" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#55305F;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="130" width="320" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf06-ai-nurse-triage_lane_body_3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBF8FC;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="178" width="350" height="1142" as="geometry"/>
+                </mxCell>
+                <mxCell id="s" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="208" y="220" width="24" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="intake" value="1. Enter symptoms, concern or care question from any active lifecycle stage" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="290" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="context" value="2. Optionally select minimum health-record context with explicit consent" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="415" y="390" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="prompt" value="3. Build structured intake with approved knowledge context and origin token" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="415" y="490" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="ai" value="4. AI returns structured, non-diagnostic orientation and reviewed citations&#10;No final risk classification" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="735" y="590" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="rules" value="CareBridge rules classify&#10;GREEN / YELLOW / RED" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1095" y="690" width="170" height="78" as="geometry"/>
+                </mxCell>
+                <mxCell id="green" value="5A. GREEN: show disclaimer, self-care and monitoring guidance" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#24552A;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1082.5" y="840" width="195" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="yellow" value="5B. YELLOW: offer verified expert/checklist; request minimum-context consent" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#5F4500;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1082.5" y="940" width="195" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="red" value="5C. RED: idempotently open or reuse MF-07 emergency session" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1082.5" y="1040" width="195" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="fallback" value="AI unavailable or intake incomplete: ask focused follow-up questions, then apply deterministic conservative fallback guidance." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#000000;dashed=1;fontFamily=Arial;fontSize=11.5;fontColor=#374151;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="693" width="280" height="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="display" value="6. Persist triage outcome; show safe action; return to originating dashboard" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="1160" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="note" value="Boundary: no diagnosis, prescription, medication instruction or autonomous clinical decision-making." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#000000;dashed=1;fontFamily=Arial;fontSize=11.5;fontColor=#374151;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="720" y="1153" width="280" height="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="end" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=1;fontColor=#ffffff;" parent="1" vertex="1">
+                    <mxGeometry x="203" y="1268" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="end_inner" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="211" y="1276" width="18" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="s" target="intake" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="intake" target="context" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="context" target="prompt" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="prompt" target="ai" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" parent="1" source="ai" target="rules" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" value="Green" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;" parent="1" source="rules" target="green" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" value="Yellow" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;" parent="1" source="rules" target="yellow" edge="1">
+                    <mxGeometry x="0.8182" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="1348" y="729"/>
+                            <mxPoint x="1348" y="969"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e8" value="Red" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;" parent="1" source="rules" target="red" edge="1">
+                    <mxGeometry x="0.8519" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="1348" y="729"/>
+                            <mxPoint x="1348" y="1069"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;" parent="1" source="green" target="display" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="208" y="869"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;" parent="1" source="yellow" target="display" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="232" y="969"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;" parent="1" source="red" target="display" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="257" y="1069"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="fallback" target="display" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="183" y="730"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="display" target="end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="wf-mf07-emergency-map" name="MF-07 Emergency Map &amp; Nearby Care Support Workflow">
+        <mxGraphModel dx="798" dy="830" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="2200" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="wf-mf07-emergency-map_lane_header_0" value="Mother" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#7F1D1D;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="130" width="380" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf07-emergency-map_lane_body_0" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF7F7;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="178" width="380" height="1960" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf07-emergency-map_lane_header_1" value="System&amp;nbsp;&lt;span style=&quot;white-space: pre;&quot;&gt;&#9;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#1E3A5F;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="130" width="640" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf07-emergency-map_lane_body_1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F9FF;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="178" width="640" height="1960" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf07-emergency-map_lane_header_2" value="Family" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Arial;fontColor=#55305F;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1060" y="130" width="360" height="48" as="geometry"/>
+                </mxCell>
+                <mxCell id="wf-mf07-emergency-map_lane_body_2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FBF8FC;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;connectable=0;" parent="1" vertex="1">
+                    <mxGeometry x="1060" y="178" width="360" height="1960" as="geometry"/>
+                </mxCell>
+                <mxCell id="s" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="218" y="220" width="24" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="open" value="1. Open the emergency map from the dashboard SOS action, a RED triage handoff, or by resuming the active session" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="280" width="300" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="session" value="2. Open or reuse the ACTIVE emergency session under a per-user lock (trigger MANUAL or AI_TRIAGE); repeated opens stay idempotent" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="400" width="280" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="dispatch" value="3. For a newly created session, publish the session-opened event and push the family alert; SMS fallback when every push fails" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="530" width="280" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="famrecv" value="4. Receive the emergency push and open the alert detail: mother, trigger and time; coordinates only while her consent is active" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1090" y="530" width="300" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="famact" value="5. Call the mother, open directions to the shared location and acknowledge the alert" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#55305F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1090" y="660" width="300" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="consent" value="Active location-sharing consent?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="660" width="240" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="askconsent" value="6B. Show the consent banner and the disclosure dialog; the 115 quick call and the family alert stay available" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="655" width="280" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="agree" value="Agree to share the current location?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="115" y="800" width="230" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="grant" value="Store the LOCATION / SHARE consent grant, then re-check it" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="810" width="280" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="readloc" value="6. Read the consented current location; offer a retry and keep the 115 call when it cannot be read" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="810" width="280" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="search" value="7. Search nearby care through TrackAsia within 5 / 10 / 15 km (hospital, clinic or health station); drop results outside the radius and rank them by distance" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="940" width="280" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="found" value="Any facility inside the radius?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="1080" width="240" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="noresult" value="8B. Report the empty radius and suggest the next radius or the 115 call" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="1075" width="280" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="refine" value="Widen the radius or change the facility type?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="115" y="1075" width="230" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="display" value="8. Render the TrackAsia map, the facility markers and the ranked list with distance, data source and verification status" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="1230" width="280" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="select" value="9. Select a facility from the list or from a map marker" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#581C1C;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="1360" width="300" height="76" as="geometry"/>
+                </mxCell>
+                <mxCell id="route" value="10. Load the facility detail and request the TrackAsia route: distance, ETA, polyline and turn-by-turn steps; draw it on the map" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="1470" width="280" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="action" value="Which safe action?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=1.5;fontFamily=Arial;fontSize=11.5;fontStyle=1;fontColor=#5F4500;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="115" y="1610" width="230" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="dial" value="11A. Open the dialer for 115 or the facility number; show the number to dial by hand when the dialer cannot open" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="1560" width="280" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="nav" value="11B. Guide the route: follow the position stream, speak the Vietnamese turn instructions, re-route when off-route, and stop on arrival, on signal loss or on consent withdrawal" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="1690" width="280" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="refamily" value="11C. Confirm the family alert; the ACTIVE session is reused, so recipients get no duplicate push" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="1834" width="280" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="leave" value="12. Leave emergency mode: restore the triage return point or the mother dashboard; the session stays ACTIVE until it is resolved from safety monitoring" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.5;fontFamily=Arial;fontSize=12;fontColor=#1E3A5F;align=center;verticalAlign=middle;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="1990" width="280" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="fam_end" value="✕" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=none;strokeColor=#55305F;strokeWidth=2;fontFamily=Arial;fontSize=18;fontColor=#55305F;verticalAlign=middle;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1223" y="756" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_famact_end" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" parent="1" source="famact" target="fam_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="end" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=1;fontColor=#ffffff;" parent="1" vertex="1">
+                    <mxGeometry x="213" y="2010" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="end_inner" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#000000;strokeWidth=1;fontSize=1;fontColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="221" y="2018" width="18" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_start_open" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;" parent="1" source="s" target="open" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_open_session" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="open" target="session" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="230" y="443"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_session_dispatch" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="session" target="dispatch" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_dispatch_family" value="FCM push · SMS fallback" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dispatch" target="famrecv" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_famrecv_famact" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#9673A6;" parent="1" source="famrecv" target="famact" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_dispatch_consent" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="dispatch" target="consent" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_consent_no" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=1;exitY=0.35;exitDx=0;exitDy=0;entryX=0;entryY=0.35;entryDx=0;entryDy=0;" parent="1" source="consent" target="askconsent" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_consent_yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="consent" target="readloc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_askconsent_agree" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="askconsent" target="agree" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="900" y="785"/>
+                            <mxPoint x="230" y="785"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_agree_yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=1;exitY=0.1;exitDx=0;exitDy=0;entryX=0.517;entryY=1.037;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="agree" target="grant" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="400" y="828"/>
+                            <mxPoint x="400" y="920"/>
+                            <mxPoint x="900" y="920"/>
+                            <mxPoint x="900" y="899"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_grant_consent" value="Consent stored" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="grant" target="consent" edge="1">
+                    <mxGeometry x="0.5532" y="25" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="745" y="853"/>
+                            <mxPoint x="745" y="735"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_agree_no" value="No · safe actions only" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="agree" target="action" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="58" y="850"/>
+                            <mxPoint x="58" y="1665"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_readloc_search" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="readloc" target="search" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_search_found" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="search" target="found" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_found_yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;" parent="1" source="found" target="display" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_found_no" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="found" target="noresult" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_noresult_refine" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="noresult" target="refine" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="900" y="1205"/>
+                            <mxPoint x="230" y="1205"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_refine_yes" value="Yes · retry the search" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="refine" target="search" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="230" y="988"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_refine_no" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="refine" target="action" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="400" y="1125"/>
+                            <mxPoint x="400" y="1665"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_display_select" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="display" target="select" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="590" y="1338"/>
+                            <mxPoint x="230" y="1338"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_select_route" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="select" target="route" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="230" y="1518"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_route_action" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="route" target="action" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="590" y="1590"/>
+                            <mxPoint x="230" y="1590"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_action_dial" value="Call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="action" target="dial" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="745" y="1665"/>
+                            <mxPoint x="745" y="1608"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_action_nav" value="Navigate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;exitX=0.35;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="action" target="nav" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="195" y="1745"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_action_refamily" value="Alert family" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#B85450;exitX=0.65;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="action" target="refamily" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="264" y="1882"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_dial_leave" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dial" target="leave" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1050" y="1608"/>
+                            <mxPoint x="1050" y="2038"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_nav_leave" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=0.15;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="nav" target="leave" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="802" y="1815"/>
+                            <mxPoint x="590" y="1815"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_refamily_leave" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#6C8EBF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" parent="1" source="refamily" target="leave" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="900" y="1955"/>
+                            <mxPoint x="660" y="1955"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_leave_end" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=1.5;fontFamily=Arial;fontSize=11;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="leave" target="end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

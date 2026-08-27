@@ -1,0 +1,65 @@
+{
+  "$comment": "CANONICAL OUT-OF-SCOPE COMPLAINT TAXONOMY — deliberately MINIMAL. OUT_OF_SCOPE requires POSITIVE evidence that a complaint belongs to another clinical domain; an unrecognised complaint is NEEDS_MORE_INFO, never OUT_OF_SCOPE. This file therefore lists only categories the team is confident are outside obstetric/paediatric scope, and says nothing about how serious they are. Classifying something out of scope is a statement about CareBridge's coverage, not about the user's risk.",
+  "contractVersion": "1.0.0",
+  "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+  "policy": {
+    "unrecognisedComplaintIsOutOfScope": false,
+    "requiresCompleteGlobalSafetyScreen": true,
+    "requiresNoReproductiveEvidence": true,
+    "$comment": "All three must hold before OUT_OF_SCOPE may be returned. The safety screen requirement is why 'đau cổ tay' is not instantly out of scope: we must first know the person is not also short of breath."
+  },
+  "categories": [
+    {
+      "categoryId": "MUSCULOSKELETAL_NON_REPRODUCTIVE",
+      "displayName": "Cơ xương khớp không liên quan sinh sản",
+      "phrases": [
+        "đau cổ tay", "dau co tay", "cổ tay", "co tay",
+        "đau khuỷu tay", "dau khuyu tay", "khuỷu tay", "khuyu tay",
+        "bong gân", "bong gan", "trật khớp", "trat khop",
+        "đau vai", "dau vai", "đau gối", "dau goi", "đầu gối", "dau goi",
+        "đau cổ", "dau co", "chuột rút bắp chân khi tập", "chuot rut bap chan khi tap"
+      ],
+      "excludedWhenAlso": ["UNILATERAL_LEG_SWELLING_PAIN"],
+      "$comment": "excludedWhenAlso: a swollen, painful single leg after birth is NOT musculoskeletal for our purposes — it is a postpartum green blocker."
+    },
+    {
+      "categoryId": "DENTAL",
+      "displayName": "Răng hàm mặt",
+      "phrases": ["đau răng", "dau rang", "sâu răng", "sau rang", "nhổ răng", "nho rang",
+                  "viêm lợi", "viem loi", "chảy máu chân răng", "chay mau chan rang"],
+      "excludedWhenAlso": []
+    },
+    {
+      "categoryId": "DERMATOLOGY_NON_REPRODUCTIVE",
+      "displayName": "Da liễu không liên quan sinh sản",
+      "phrases": ["mụn trứng cá", "mun trung ca", "nấm da", "nam da",
+                  "vảy nến", "vay nen", "chàm", "cham", "rụng tóc", "rung toc"],
+      "excludedWhenAlso": []
+    },
+    {
+      "categoryId": "OPHTHALMOLOGY_NON_REPRODUCTIVE",
+      "displayName": "Mắt không liên quan sinh sản",
+      "phrases": ["đau mắt đỏ", "dau mat do", "cận thị", "can thi",
+                  "lẹo mắt", "leo mat", "khô mắt", "kho mat"],
+      "excludedWhenAlso": ["VISUAL_DISTURBANCE"],
+      "$comment": "excludedWhenAlso: blurred vision in pregnancy is a danger sign, not an eye complaint."
+    },
+    {
+      "categoryId": "ENT_NON_REPRODUCTIVE",
+      "displayName": "Tai mũi họng không liên quan sinh sản",
+      "phrases": ["viêm xoang", "viem xoang", "ù tai", "u tai",
+                  "viêm amidan", "viem amidan", "nghẹt mũi", "nghet mui"],
+      "excludedWhenAlso": ["SEVERE_BREATHING_DIFFICULTY"]
+    },
+    {
+      "categoryId": "INJURY_FROM_EXERCISE_OR_ACCIDENT",
+      "displayName": "Chấn thương do vận động hoặc tai nạn",
+      "phrases": ["sau khi tập thể thao", "sau khi tap the thao", "sau khi tập gym", "sau khi tap gym",
+                  "bị ngã xe", "bi nga xe", "va đập", "va dap", "chấn thương khi chơi thể thao",
+                  "chan thuong khi choi the thao"],
+      "excludedWhenAlso": ["ALTERED_CONSCIOUSNESS", "SEVERE_BREATHING_DIFFICULTY",
+                           "VAGINAL_BLEEDING", "HEAVY_VAGINAL_BLEEDING"],
+      "$comment": "excludedWhenAlso: a fall in pregnancy with bleeding is emphatically not an out-of-scope sports injury."
+    }
+  ]
+}

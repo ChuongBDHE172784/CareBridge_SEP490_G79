@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareTech Admin - Xác nhận gỡ bỏ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#fef8f4",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-high": "#ede7e3",
+                        "status-active": "#C98C7B",
+                        "outline": "#84736f",
+                        "on-primary-container": "#51271b",
+                        "on-surface-variant": "#524440",
+                        "text-heading": "#2D2A28",
+                        "tertiary": "#605e5a",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-highest": "#e7e1dd",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#e9e1db",
+                        "background": "#fef8f4",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "surface-main": "#FFFFFF",
+                        "inverse-surface": "#32302d",
+                        "primary-fixed": "#ffdbd1",
+                        "inverse-on-surface": "#f6f0eb",
+                        "secondary": "#625d59",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "tertiary-container": "#9e9a96",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#f3ede8",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#d6c2bd",
+                        "text-body": "#524F4C",
+                        "surface-accent-muted": "#F2EAE4",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "primary": "#845143",
+                        "on-background": "#1d1b19",
+                        "surface-accent-light": "#F6F1EC",
+                        "on-surface": "#1d1b19",
+                        "on-tertiary-container": "#34322f",
+                        "on-secondary-container": "#68635f",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#845143",
+                        "inverse-primary": "#fab7a4",
+                        "surface": "#fef8f4",
+                        "surface-container-low": "#f9f2ee",
+                        "tertiary-fixed": "#e6e2dd",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "primary-container": "#c98c7b",
+                        "surface-dim": "#dfd9d5",
+                        "on-primary-fixed": "#341006",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#e9e1db",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface-variant": "#e7e1dd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "grid-gutter": "24px",
+                        "container-padding": "32px",
+                        "sidebar-width": "280px",
+                        "panel-gap": "24px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "nav-item": ["Quicksand"],
+                        "label-md": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-sm": ["Quicksand"],
+                        "body-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Ambient Warm Shadow */
+        .shadow-ambient {
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-surface-bright text-on-surface font-body-md min-h-screen relative antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- App Container -->
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar Component -->
+<nav class="bg-surface-accent-muted dark:bg-surface-variant fixed left-0 top-0 h-screen w-sidebar-width flex flex-col py-container-padding gap-stack-md z-10">
+<!-- Brand Logo -->
+<div class="px-container-padding mb-8">
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed-dim tracking-tight">CareTech Admin</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Healthcare Portal</p>
+</div>
+<!-- New Entry CTA (Not active contextually, but part of shell) -->
+<div class="px-container-padding mb-6">
+<button class="w-full bg-primary-container text-on-primary-container font-label-md text-label-md rounded-full py-3 px-6 flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors duration-200">
+<span class="material-symbols-outlined">add</span>
+                    New Entry
+                </button>
+</div>
+<!-- Main Navigation -->
+<div class="flex-1 overflow-y-auto">
+<ul class="flex flex-col gap-2 px-4">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-r-full text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-nav-item text-nav-item">Overview</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-r-full text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-nav-item text-nav-item">Users</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-r-full text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-nav-item text-nav-item">Security</span>
+</a>
+</li>
+<li>
+<!-- ACTIVE STATE -->
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container dark:bg-primary-fixed-dim text-on-primary-container dark:text-on-primary-fixed-variant font-bold rounded-r-full scale-95 transition-transform duration-150 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined icon-fill" data-icon="description">description</span>
+<span class="font-nav-item text-nav-item">Content Management</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- Footer Navigation -->
+<div class="mt-auto px-4">
+<ul class="flex flex-col gap-2">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-r-full text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-nav-item text-nav-item">Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-r-full text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-nav-item text-nav-item">Support</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-sidebar-width flex flex-col h-screen relative">
+<!-- TopAppBar Component -->
+<header class="bg-background dark:bg-background fixed top-0 right-0 left-sidebar-width h-20 flex justify-between items-center px-container-padding z-10">
+<div class="flex items-center gap-4 w-1/3">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container rounded-full border-2 border-surface-accent-muted focus:border-primary-container focus:outline-none transition-colors text-body-md font-body-md text-on-surface placeholder:text-on-surface-variant" placeholder="Search..." type="text"/>
+</div>
+</div>
+<h2 class="font-headline-md text-headline-md font-bold text-text-heading dark:text-inverse-on-surface text-center flex-1">Healthcare Admin</h2>
+<div class="flex items-center gap-4 justify-end w-1/3">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors px-3 py-1.5 rounded-full hover:bg-surface-container-high">
+                        Help
+                    </button>
+<div class="h-10 w-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-surface-accent-muted cursor-pointer hover:border-primary-container transition-colors ml-2">
+<img alt="Admin Avatar" class="w-full h-full object-cover" data-alt="A small, professional headshot portrait of a healthcare administrator in a bright, modern office setting with warm lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXLpRwtBEgUqdWbziHQ8STIH2BXy2VFXkCHHXnsxzF422tJJMNLxp09CbHieJnOjbnOkczv5fedFRaZdWrqwo1ZrqCiayG0vz-0O9ZS233KizhT4qoNsFoey4F9z4xqAxEgr2VUGsRIupXZxuBMtpR1HEt6D-SZFMD1tLWIcM-IqMMbwH_foA2C2GwQ7tpWv08O7R-od9xLkaHQw8mTHBxJ88e5B2X0vSfHb95koYVoh8rJiMlibnH50l0OmEaTa0iPhoDdcUTR54"/>
+</div>
+</div>
+</header>
+<!-- Scrollable Content Canvas (Blurred/Dimmed for Modal Context) -->
+<div class="mt-20 p-container-padding overflow-y-auto h-full bg-surface-bright z-0 filter blur-sm opacity-80 pointer-events-none">
+<!-- Mock Content to show context beneath the modal -->
+<div class="max-w-5xl mx-auto space-y-panel-gap">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-sm text-headline-sm text-text-heading">Quản lý nội dung</h3>
+</div>
+<div class="bg-surface-main rounded-xl p-8 shadow-ambient border border-surface-accent-muted/50">
+<!-- Mock Table Header -->
+<div class="grid grid-cols-12 gap-4 pb-4 border-b border-surface-accent-muted mb-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+<div class="col-span-5">Tiêu đề</div>
+<div class="col-span-3">Trạng thái</div>
+<div class="col-span-2">Ngày đăng</div>
+<div class="col-span-2 text-right">Thao tác</div>
+</div>
+<!-- Mock Table Rows -->
+<div class="space-y-2">
+<div class="grid grid-cols-12 gap-4 py-4 border-b border-surface-accent-muted items-center">
+<div class="col-span-5 font-body-md text-text-heading">Hướng dẫn an toàn khi ngủ cho trẻ sơ sinh</div>
+<div class="col-span-3"><span class="px-3 py-1 rounded-full bg-status-active/10 text-primary font-label-md">Đã xuất bản</span></div>
+<div class="col-span-2 text-body-md text-on-surface-variant">12/10/2023</div>
+<div class="col-span-2 text-right">
+<span class="material-symbols-outlined text-on-surface-variant">more_vert</span>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 py-4 border-b border-surface-accent-muted items-center bg-surface-container-high/30 rounded-lg -mx-4 px-4">
+<div class="col-span-5 font-body-md text-text-heading font-semibold">Hướng dẫn an toàn khi ngủ</div>
+<div class="col-span-3"><span class="px-3 py-1 rounded-full bg-status-active/10 text-primary font-label-md">Đã xuất bản</span></div>
+<div class="col-span-2 text-body-md text-on-surface-variant">15/10/2023</div>
+<div class="col-span-2 text-right">
+<span class="material-symbols-outlined text-primary">more_vert</span>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 py-4 border-b border-surface-accent-muted items-center">
+<div class="col-span-5 font-body-md text-text-heading">Dinh dưỡng thai kỳ tháng thứ 6</div>
+<div class="col-span-3"><span class="px-3 py-1 rounded-full bg-surface-dim text-on-surface-variant font-label-md">Bản nháp</span></div>
+<div class="col-span-2 text-body-md text-on-surface-variant">--</div>
+<div class="col-span-2 text-right">
+<span class="material-symbols-outlined text-on-surface-variant">more_vert</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- MODAL OVERLAY (CB-195) -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/40 backdrop-blur-sm p-4">
+<!-- Modal Panel -->
+<div class="bg-surface-main w-full max-w-lg rounded-[2rem] shadow-ambient overflow-hidden flex flex-col transform transition-all scale-100 opacity-100">
+<!-- Modal Header -->
+<div class="px-8 pt-8 pb-4 flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-error-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-error icon-fill" style="font-size: 28px;">warning</span>
+</div>
+<div class="flex-1 pt-1">
+<h2 class="font-headline-sm text-headline-sm text-text-heading font-bold mb-1">Xác nhận gỡ bỏ bài viết</h2>
+<p class="font-body-md text-body-md text-on-surface-variant break-words">
+                                Bạn đang thao tác gỡ bỏ bài viết: <br/>
+<strong class="text-text-heading font-semibold">"Hướng dẫn an toàn khi ngủ"</strong>
+</p>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-container-high -mt-2 -mr-2">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Modal Warning Banner -->
+<div class="px-8 pb-6">
+<div class="bg-error-container/30 border border-error-container rounded-xl p-4 flex gap-3 items-start">
+<span class="material-symbols-outlined text-error text-[20px] mt-0.5">info</span>
+<p class="font-body-md text-body-md text-on-error-container">
+                                Hành động này sẽ ẩn nội dung khỏi ứng dụng người dùng nhưng vẫn giữ trong lịch sử hệ thống.
+                            </p>
+</div>
+</div>
+<!-- Modal Body (Form Fields) -->
+<div class="px-8 pb-8 space-y-6">
+<!-- Reason Dropdown -->
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant" for="reason">LÝ DO GỠ BỎ <span class="text-error">*</span></label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-main border-2 border-surface-accent-muted rounded-xl px-4 py-3 font-body-md text-text-heading focus:border-primary-container focus:ring-0 outline-none transition-colors cursor-pointer" id="reason">
+<option disabled="" selected="" value="">Chọn lý do gỡ bài...</option>
+<option value="outdated">Nội dung đã lỗi thời</option>
+<option value="inaccurate">Thông tin không chính xác</option>
+<option value="replaced">Đã có bài viết mới thay thế</option>
+<option value="other">Lý do khác</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Optional Replacement Link -->
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant flex justify-between" for="replacement_link">
+<span>LIÊN KẾT BÀI VIẾT THAY THẾ</span>
+<span class="text-tertiary font-normal normal-case tracking-normal text-[11px]">(Tùy chọn)</span>
+</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">link</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface-main border-2 border-surface-accent-muted rounded-xl font-body-md text-text-heading focus:border-primary-container focus:ring-0 outline-none transition-colors placeholder:text-on-surface-variant/50" id="replacement_link" placeholder="Nhập URL bài viết mới (nếu có)" type="url"/>
+</div>
+</div>
+</div>
+<!-- Modal Footer (Actions) -->
+<div class="bg-surface-container-low px-8 py-6 flex items-center justify-end gap-4 border-t border-surface-accent-muted/50 rounded-b-[2rem]">
+<button class="px-6 py-3 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-accent-muted transition-colors font-semibold">
+                            Hủy
+                        </button>
+<button class="px-6 py-3 rounded-full font-label-md text-label-md bg-status-active text-on-primary font-semibold shadow-ambient hover:scale-95 transition-transform duration-150 flex items-center gap-2">
+                            Xác nhận gỡ bỏ
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

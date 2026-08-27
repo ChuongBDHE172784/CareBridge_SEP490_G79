@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#ffe2d9",
+                    "primary-fixed-dim": "#fab7a4",
+                    "primary": "#845143",
+                    "on-tertiary-container": "#36322e",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#625d59",
+                    "outline-variant": "#d6c2bd",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#f8ddd2",
+                    "inverse-primary": "#fab7a4",
+                    "surface-variant": "#fadcd3",
+                    "surface-dim": "#f1d4ca",
+                    "secondary-container": "#f6dacf",
+                    "on-background": "#271812",
+                    "secondary": "#6e5a52",
+                    "outline": "#84736f",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#a09a95",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff",
+                    "primary-fixed": "#ffdbd1",
+                    "on-primary-fixed": "#341006",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed": "#e9e1db",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-low": "#fff1ec",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "inverse-surface": "#3e2c26",
+                    "on-secondary-container": "#735e56",
+                    "background": "#fff8f6",
+                    "on-surface": "#271812",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-container": "#51271b",
+                    "primary-container": "#c98c7b",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "surface-bright": "#fff8f6",
+                    "surface-container-highest": "#fadcd3",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "on-secondary-fixed": "#271812",
+                    "surface-tint": "#845143",
+                    "surface": "#fff8f6",
+                    "inverse-on-surface": "#ffede7",
+                    "surface-container": "#ffe9e3",
+                    "on-primary-fixed-variant": "#693a2d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "16px",
+                    "touch-target-min": "48px",
+                    "stack-lg": "24px",
+                    "safe-margin": "24px",
+                    "stack-sm": "8px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "button": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "headline-md": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "headline-lg": ["Lexend"]
+            },
+            "fontSize": {
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F6F1EC;
+            color: #271812;
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: contain;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            user-select: none;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+        .active-scale:active {
+            transform: scale(0.98);
+            transition: transform 0.1s ease;
+        }
+        /* Custom scrollbar to match aesthetic */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #C98C7B; border-radius: 10px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md flex justify-center">
+<!-- Mobile Frame Simulation (390x844) -->
+<main class="w-[390px] min-h-[844px] bg-[#F6F1EC] flex flex-col relative overflow-hidden pb-stack-lg">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background/80 backdrop-blur-md sticky top-0 z-50">
+<button aria-label="Quay lại" class="w-touch-target-min h-touch-target-min flex items-center justify-start active-scale text-primary">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary truncate">Gia hạn xác thực</h1>
+<div class="w-touch-target-min"></div> <!-- Spacer for balance -->
+</header>
+<!-- Content Canvas -->
+<div class="flex-1 px-safe-margin pt-stack-md flex flex-col gap-stack-lg">
+<!-- Current Credential Card -->
+<section class="bg-white rounded-lg p-5 custom-shadow border border-surface-variant/30">
+<div class="flex justify-between items-start mb-3">
+<span class="font-label-md text-label-md text-on-surface-variant tracking-wider uppercase">Chứng chỉ hiện tại</span>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[12px] font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span> Sắp hết hạn
+                    </span>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-secondary-container rounded-xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-[16px] text-on-background">Chuyên viên Tư vấn Thai sản</span>
+<span class="font-body-md text-on-surface-variant">Hết hạn: 25/11/2023</span>
+</div>
+</div>
+</section>
+<!-- Info Banner -->
+<div class="bg-surface-container-low rounded-lg p-4 flex gap-3 border border-primary-container/20">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="font-body-md text-on-tertiary-fixed-variant leading-relaxed">
+                    Quy trình gia hạn yêu cầu xét duyệt thủ công bởi đội ngũ CareBridge. Vui lòng cung cấp thông tin chính xác để tránh gián đoạn dịch vụ.
+                </p>
+</div>
+<!-- Renewal Form -->
+<form class="flex flex-col gap-stack-lg" onsubmit="event.preventDefault();">
+<!-- Upload Area -->
+<div class="flex flex-col gap-2">
+<label class="font-button text-on-surface ml-1">Tải lên chứng chỉ mới</label>
+<div class="border-2 border-dashed border-outline-variant bg-white rounded-lg h-32 flex flex-col items-center justify-center gap-2 hover:bg-surface-container-low transition-colors cursor-pointer group active-scale" id="dropzone">
+<div class="w-10 h-10 bg-primary-container/10 rounded-full flex items-center justify-center text-primary-container group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">cloud_upload</span>
+</div>
+<span class="font-label-md text-on-surface-variant">Nhấn để chọn hoặc kéo thả tệp</span>
+<input class="hidden" id="file-upload" type="file"/>
+</div>
+</div>
+<!-- Input Fields -->
+<div class="flex flex-col gap-stack-md">
+<div class="flex flex-col gap-2">
+<label class="font-button text-on-surface ml-1" for="expiry-date">Ngày hết hạn mới</label>
+<div class="relative">
+<input class="w-full h-14 bg-white border border-surface-variant rounded-lg px-4 font-body-lg text-on-surface focus:ring-2 focus:ring-primary-container focus:border-transparent outline-none transition-all" id="expiry-date" type="date"/>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-button text-on-surface ml-1" for="org">Chuyên khoa / Tổ chức cập nhật</label>
+<input class="w-full h-14 bg-white border border-surface-variant rounded-lg px-4 font-body-lg text-on-surface focus:ring-2 focus:ring-primary-container focus:border-transparent outline-none transition-all placeholder:text-outline" id="org" placeholder="VD: Bệnh viện Phụ sản TW" type="text"/>
+</div>
+</div>
+<!-- Preview Image Placeholder (As requested style) -->
+<div class="hidden" id="preview-container">
+<div class="relative w-full h-40 rounded-lg overflow-hidden border border-surface-variant">
+<div class="w-full h-full bg-cover bg-center" data-alt="A professional medical certification document with official seals and signatures, lying on a clean wooden desk under warm, morning sunlight. The lighting is soft and natural, emphasizing the professional and reliable atmosphere of a healthcare expert's workspace. Soft focus on a stethoscope in the background maintains the medical context in an organic minimalist style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBkmtTnm97kHodIcwaNE9dg7sKX8gIeu5DnaU7FiEvt1f7u4sGINvK2iJYZcdlUUy7btHUoTXkCZj5l6Mh_iGgStiHpDwx4DW5rJjm0iYn90VkcvxdT35Dmb6ptZ5Em3-46jKpv0m3JQbOorutgIIVBarkgKUhB4QdymTwBE1vp86IiqJF8ilDA2nhHMsV6P7bbRx3GUicf7Pi2ebqhK40uBg6jffnCJqu27TI2r6xasMjQWYVpE__EM4muK2l5MPqM-pBFlW32qww')"></div>
+<button class="absolute top-2 right-2 bg-white/80 backdrop-blur p-2 rounded-full text-error active-scale">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<!-- Submission Section -->
+<div class="mt-4 flex flex-col gap-4">
+<button class="h-[52px] w-full bg-primary-container text-white font-button text-button rounded-full shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2" type="submit">
+<span class="material-symbols-outlined">send</span>
+                        Gửi yêu cầu
+                    </button>
+<p class="text-center font-label-md text-on-surface-variant px-4">
+                        Bằng cách gửi, bạn đồng ý với <a class="text-primary underline" href="#">Điều khoản xác thực</a> của CareBridge.
+                    </p>
+</div>
+</form>
+</div>
+<!-- Atmospheric Micro-interaction Script -->
+<script>
+            // Simple dropzone visual feedback
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-upload');
+            const preview = document.getElementById('preview-container');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('bg-primary-container/10', 'border-primary-container');
+            });
+
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('bg-primary-container/10', 'border-primary-container');
+            });
+
+            fileInput.addEventListener('change', () => {
+                if(fileInput.files.length > 0) {
+                    preview.classList.remove('hidden');
+                    dropzone.classList.add('hidden');
+                }
+            });
+
+            // Handle date input focus styling
+            const dateInput = document.getElementById('expiry-date');
+            dateInput.addEventListener('focus', () => {
+                dateInput.parentElement.classList.add('scale-[1.01]');
+            });
+            dateInput.addEventListener('blur', () => {
+                dateInput.parentElement.classList.remove('scale-[1.01]');
+            });
+        </script>
+</main>
+</body></html>

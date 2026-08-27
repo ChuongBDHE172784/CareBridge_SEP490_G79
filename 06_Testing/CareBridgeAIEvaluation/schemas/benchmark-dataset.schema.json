@@ -1,0 +1,456 @@
+{
+  "$defs": {
+    "BenchmarkCase": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Z0-9][A-Z0-9_-]{2,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/BenchmarkCategory"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TriageStage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "journeyPhase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JourneyPhase"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "subcategory": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegalSubcategory"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "datasetType": {
+          "$ref": "#/$defs/DatasetType",
+          "default": "TRIAGE_BENCHMARK"
+        },
+        "reviewStatus": {
+          "$ref": "#/$defs/ReviewStatus"
+        },
+        "expectedExecutionStatus": {
+          "$ref": "#/$defs/ExpectedExecutionStatus",
+          "default": "EXECUTE"
+        },
+        "supportedModes": {
+          "items": {
+            "$ref": "#/$defs/ExecutionMode"
+          },
+          "title": "Supportedmodes",
+          "type": "array"
+        },
+        "requiresProfile": {
+          "default": false,
+          "title": "Requiresprofile",
+          "type": "boolean"
+        },
+        "input": {
+          "additionalProperties": true,
+          "title": "Input",
+          "type": "object"
+        },
+        "turns": {
+          "items": {
+            "$ref": "#/$defs/ConversationTurn"
+          },
+          "title": "Turns",
+          "type": "array"
+        },
+        "expected": {
+          "$ref": "#/$defs/CaseExpectation"
+        },
+        "forbiddenBehaviors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbiddenbehaviors",
+          "type": "array"
+        },
+        "requiredDisclaimer": {
+          "title": "Requireddisclaimer",
+          "type": "boolean"
+        },
+        "sourceReferences": {
+          "items": {
+            "$ref": "#/$defs/SourceReference"
+          },
+          "title": "Sourcereferences",
+          "type": "array"
+        },
+        "notes": {
+          "title": "Notes",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "canonicalVectorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Canonicalvectorname"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "reviewStatus",
+        "input",
+        "expected",
+        "forbiddenBehaviors",
+        "requiredDisclaimer",
+        "sourceReferences",
+        "notes"
+      ],
+      "title": "BenchmarkCase",
+      "type": "object"
+    },
+    "BenchmarkCategory": {
+      "enum": [
+        "PEDIATRIC_RED",
+        "NEED_MORE_INFO",
+        "PRECONCEPTION",
+        "PREGNANCY",
+        "POSTPARTUM_MOTHER",
+        "AGE_BAND_CHILD_CARE",
+        "LEGAL_PRIVACY_SAFETY",
+        "PROMPT_INJECTION",
+        "RAG_CITATION"
+      ],
+      "title": "BenchmarkCategory",
+      "type": "string"
+    },
+    "CaseExpectation": {
+      "additionalProperties": false,
+      "properties": {
+        "riskLevel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Risklevel"
+        },
+        "conversationStatus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conversationstatus"
+        },
+        "emergencyActionRequired": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Emergencyactionrequired"
+        },
+        "recommendationCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommendationcode"
+        },
+        "matchedRules": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Matchedrules",
+          "type": "array"
+        },
+        "requiredQuestionKeys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requiredquestionkeys",
+          "type": "array"
+        },
+        "requiredStage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TriageStage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "citationRequired": {
+          "default": false,
+          "title": "Citationrequired",
+          "type": "boolean"
+        },
+        "claimEvidenceRequired": {
+          "default": false,
+          "title": "Claimevidencerequired",
+          "type": "boolean"
+        },
+        "professionalConsultationReminderRequired": {
+          "default": false,
+          "title": "Professionalconsultationreminderrequired",
+          "type": "boolean"
+        },
+        "promptInjectionMustBeContained": {
+          "default": false,
+          "title": "Promptinjectionmustbecontained",
+          "type": "boolean"
+        },
+        "forbiddenOutputTerms": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbiddenoutputterms",
+          "type": "array"
+        },
+        "expectedHttpStatus": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expectedhttpstatus"
+        },
+        "expectedErrorCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expectederrorcode"
+        },
+        "hardcodedRegistryFallbackForbidden": {
+          "default": false,
+          "title": "Hardcodedregistryfallbackforbidden",
+          "type": "boolean"
+        }
+      },
+      "title": "CaseExpectation",
+      "type": "object"
+    },
+    "ConversationTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "answers": {
+          "additionalProperties": true,
+          "title": "Answers",
+          "type": "object"
+        },
+        "expectedQuestionKeys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Expectedquestionkeys",
+          "type": "array"
+        }
+      },
+      "title": "ConversationTurn",
+      "type": "object"
+    },
+    "DatasetType": {
+      "enum": [
+        "TRIAGE_BENCHMARK",
+        "KNOWLEDGE_BASELINE"
+      ],
+      "title": "DatasetType",
+      "type": "string"
+    },
+    "ExecutionMode": {
+      "enum": [
+        "LOCAL_DETERMINISTIC",
+        "API_END_TO_END"
+      ],
+      "title": "ExecutionMode",
+      "type": "string"
+    },
+    "ExpectedExecutionStatus": {
+      "enum": [
+        "EXECUTE",
+        "KNOWN_SCOPE_GAP",
+        "UNSUPPORTED_SCOPE"
+      ],
+      "title": "ExpectedExecutionStatus",
+      "type": "string"
+    },
+    "JourneyPhase": {
+      "enum": [
+        "PRECONCEPTION",
+        "PREGNANCY_WEEK_BASED",
+        "CHILDBIRTH",
+        "POSTPARTUM_MOTHER",
+        "NEWBORN_0_28_DAYS",
+        "INFANT_1_6_MONTHS",
+        "INFANT_6_12_MONTHS",
+        "TODDLER_12_24_MONTHS"
+      ],
+      "title": "JourneyPhase",
+      "type": "string"
+    },
+    "LegalSubcategory": {
+      "enum": [
+        "LEGAL",
+        "MEDICAL_SAFETY",
+        "PRIVACY",
+        "CONSENT"
+      ],
+      "title": "LegalSubcategory",
+      "type": "string"
+    },
+    "ReviewStatus": {
+      "enum": [
+        "CONFIRMED_REVIEWED",
+        "PENDING_MEDICAL_REVIEW",
+        "NOT_APPLICABLE"
+      ],
+      "title": "ReviewStatus",
+      "type": "string"
+    },
+    "SourceReference": {
+      "additionalProperties": false,
+      "properties": {
+        "organization": {
+          "title": "Organization",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization",
+        "title",
+        "url"
+      ],
+      "title": "SourceReference",
+      "type": "object"
+    },
+    "TriageStage": {
+      "enum": [
+        "PRECONCEPTION",
+        "PREGNANCY",
+        "INFANT",
+        "TODDLER"
+      ],
+      "title": "TriageStage",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "pattern": "^2\\.0$",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "canonicalParitySource": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Canonicalparitysource"
+    },
+    "canonicalParitySha256": {
+      "anyOf": [
+        {
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Canonicalparitysha256"
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/BenchmarkCase"
+      },
+      "minItems": 1,
+      "title": "Cases",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "name",
+    "cases"
+  ],
+  "title": "BenchmarkDataset",
+  "type": "object"
+}

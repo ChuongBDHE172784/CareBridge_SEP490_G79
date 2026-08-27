@@ -1,0 +1,5 @@
+I/flutter (10889): [AuthState] init: storage loaded. access=null refresh=present
+I/flutter (10889): [AuthState] init: access expired, refresh present ? sentinel set userId=61000000-0000-0000-0000-000000000008 role=MOTHER
+I/flutter (10889): [ApiClient] _tryRefresh: calling POST /auth/refresh
+I/flutter (10889): [ApiClient] _tryRefresh: status=200
+I/flutter (10889): [ApiClient] _tryRefresh: SUCCESS ? new tokens saved

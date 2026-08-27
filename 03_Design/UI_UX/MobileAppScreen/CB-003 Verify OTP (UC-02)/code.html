@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xác thực mã OTP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "inverse-surface": "#3e2c26",
+                      "error": "#ba1a1a",
+                      "surface-variant": "#fadcd3",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#ffe2d9",
+                      "secondary-container": "#f6dacf",
+                      "on-tertiary-container": "#36322e",
+                      "secondary": "#6e5a52",
+                      "primary-container": "#c98c7b",
+                      "primary-fixed": "#ffdbd1",
+                      "outline-variant": "#d6c2bd",
+                      "on-background": "#271812",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "on-tertiary": "#ffffff",
+                      "outline": "#84736f",
+                      "primary-fixed-dim": "#fab7a4",
+                      "on-error-container": "#93000a",
+                      "surface-bright": "#fff8f6",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "tertiary-container": "#a09a95",
+                      "primary": "#845143",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "surface-container-low": "#fff1ec",
+                      "on-primary-container": "#51271b",
+                      "surface-container-highest": "#fadcd3",
+                      "surface-dim": "#f1d4ca",
+                      "surface": "#fff8f6",
+                      "on-primary": "#ffffff",
+                      "inverse-on-surface": "#ffede7",
+                      "tertiary-fixed": "#e9e1db",
+                      "on-secondary": "#ffffff",
+                      "background": "#fff8f6",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed": "#341006",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "on-surface-variant": "#524440",
+                      "on-secondary-container": "#735e56",
+                      "on-surface": "#271812",
+                      "inverse-primary": "#fab7a4",
+                      "on-secondary-fixed": "#271812",
+                      "secondary-fixed": "#f8ddd2",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "surface-tint": "#845143",
+                      "surface-container": "#ffe9e3",
+                      "tertiary": "#625d59"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-sm": "8px",
+                      "touch-target-min": "48px",
+                      "safe-margin": "24px",
+                      "gutter": "16px",
+                      "stack-lg": "24px",
+                      "stack-md": "16px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Lexend"
+                      ],
+                      "label-md": [
+                              "Lexend"
+                      ],
+                      "display-lg": [
+                              "Lexend"
+                      ],
+                      "headline-md": [
+                              "Lexend"
+                      ],
+                      "headline-lg": [
+                              "Lexend"
+                      ],
+                      "body-md": [
+                              "Lexend"
+                      ],
+                      "button": [
+                              "Lexend"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "button": [
+                              "16px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#F6F1EC] text-on-background font-body-lg text-body-lg min-h-screen flex flex-col items-center justify-start overflow-x-hidden w-full max-w-[390px] mx-auto relative shadow-xl">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-[#F6F1EC] z-10 sticky top-0">
+<button aria-label="Go back" class="h-touch-target-min w-touch-target-min flex items-center justify-start text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface absolute left-1/2 -translate-x-1/2">
+            Xác thực mã OTP
+        </h1>
+<div class="h-touch-target-min w-touch-target-min"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full px-safe-margin pt-stack-lg pb-stack-lg flex flex-col gap-stack-lg">
+<!-- Context Text -->
+<div class="text-center">
+<p class="font-body-lg text-body-lg text-on-surface-variant">
+                Chúng tôi đã gửi mã xác thực đến
+                <br/>
+<span class="font-headline-md text-headline-md text-on-surface block mt-stack-sm">l***@gmail.com</span>
+</p>
+</div>
+<!-- OTP Input Container -->
+<div class="flex flex-col gap-stack-sm items-center mt-stack-md">
+<!-- 6 Cells -->
+<div class="flex justify-center gap-2 w-full">
+<!-- Cell 1: Filled -->
+<input class="w-12 h-14 bg-surface-container-lowest border border-outline-variant rounded-xl text-center font-headline-lg text-headline-lg text-on-surface focus:outline-none shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" inputmode="numeric" maxlength="1" type="text" value="4"/>
+<!-- Cell 2: Filled -->
+<input class="w-12 h-14 bg-surface-container-lowest border border-outline-variant rounded-xl text-center font-headline-lg text-headline-lg text-on-surface focus:outline-none shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" inputmode="numeric" maxlength="1" type="text" value="9"/>
+<!-- Cell 3: Filled -->
+<input class="w-12 h-14 bg-surface-container-lowest border border-outline-variant rounded-xl text-center font-headline-lg text-headline-lg text-on-surface focus:outline-none shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" inputmode="numeric" maxlength="1" type="text" value="2"/>
+<!-- Cell 4: Focused/Active -->
+<input autofocus="" class="w-12 h-14 bg-surface-container-lowest border-2 border-primary rounded-xl text-center font-headline-lg text-headline-lg text-on-surface focus:outline-none focus:border-primary shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" inputmode="numeric" maxlength="1" type="text"/>
+<!-- Cell 5: Empty -->
+<input class="w-12 h-14 bg-surface-container-lowest border border-outline-variant rounded-xl text-center font-headline-lg text-headline-lg text-on-surface focus:outline-none shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" inputmode="numeric" maxlength="1" type="text"/>
+<!-- Cell 6: Empty -->
+<input class="w-12 h-14 bg-surface-container-lowest border border-outline-variant rounded-xl text-center font-headline-lg text-headline-lg text-on-surface focus:outline-none shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" inputmode="numeric" maxlength="1" type="text"/>
+</div>
+<!-- Error Message -->
+<div class="flex items-center gap-2 text-error mt-stack-sm w-full justify-center">
+<span class="material-symbols-outlined text-[16px]">error</span>
+<p class="font-label-md text-label-md">Mã xác thực không hợp lệ hoặc đã hết hạn</p>
+</div>
+</div>
+<!-- Timer / Resend -->
+<div class="flex flex-col items-center justify-center mt-stack-lg">
+<p class="font-body-md text-body-md text-on-surface-variant text-center opacity-70">
+                Gửi lại mã sau <span class="font-headline-md text-headline-md text-on-surface ml-1">00:45</span>
+</p>
+</div>
+<!-- Spacer to push button down if needed, but keeping it in flow works fine here -->
+<div class="flex-1"></div>
+<!-- Primary Action Button -->
+<button class="w-full bg-primary-container text-on-tertiary font-button text-button h-[52px] rounded-full flex items-center justify-center shadow-[0px_8px_24px_rgba(90,70,63,0.12)] hover:opacity-90 active:scale-[0.98] transition-all mt-stack-lg">
+            Xác nhận
+        </button>
+</main>
+<script>
+        // Simple script to auto-advance focus on OTP inputs for prototype feel
+        const inputs = document.querySelectorAll('input[type="text"]');
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                    inputs[index].classList.remove('border-primary', 'border-2');
+                    inputs[index].classList.add('border-outline-variant', 'border');
+                    inputs[index + 1].classList.add('border-primary', 'border-2');
+                    inputs[index + 1].classList.remove('border-outline-variant', 'border');
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+                    inputs[index - 1].focus();
+                    inputs[index].classList.remove('border-primary', 'border-2');
+                    inputs[index].classList.add('border-outline-variant', 'border');
+                    inputs[index - 1].classList.add('border-primary', 'border-2');
+                    inputs[index - 1].classList.remove('border-outline-variant', 'border');
+                }
+            });
+            // Focus styling logic
+            input.addEventListener('focus', () => {
+                input.classList.add('border-primary', 'border-2');
+                input.classList.remove('border-outline-variant', 'border');
+            });
+            input.addEventListener('blur', () => {
+                input.classList.remove('border-primary', 'border-2');
+                input.classList.add('border-outline-variant', 'border');
+            });
+        });
+    </script>
+</body></html>

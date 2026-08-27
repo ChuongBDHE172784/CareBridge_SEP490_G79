@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tổng quan tư vấn - Ứng dụng Mẹ và Bé</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary-container": "#735e56",
+                        "on-background": "#271812",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-container": "#c98c7b",
+                        "inverse-on-surface": "#ffede7",
+                        "background": "#fff8f6",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#51271b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f8ddd2",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-high": "#ffe2d9",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "surface-tint": "#845143",
+                        "secondary": "#6e5a52",
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-surface": "#3e2c26",
+                        "surface-bright": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#845143",
+                        "on-error": "#ffffff",
+                        "surface": "#fff8f6",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "on-surface": "#271812",
+                        "outline": "#84736f",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#a09a95",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ffe9e3",
+                        "surface-variant": "#fadcd3",
+                        "surface-dim": "#f1d4ca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter-mobile": "16px",
+                        "gutter-desktop": "24px",
+                        "container-margin-mobile": "20px",
+                        "sidebar-width": "280px",
+                        "container-margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-sm": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F6F1EC;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .soft-shadow {
+            box-shadow: 0 4px 20px rgba(90, 70, 63, 0.08);
+        }
+        .soft-shadow-hover:hover {
+            box-shadow: 0 8px 24px rgba(90, 70, 63, 0.15);
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-lg pt-safe pb-safe md:hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-gutter-mobile h-16 w-full z-50 bg-background dark:bg-background flat no shadows docked full-width top-0 sticky top-0">
+<button aria-label="Quay lại" class="text-primary dark:text-inverse-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-inverse-primary truncate flex-1 text-center px-4">Ứng dụng Mẹ và Bé</h1>
+<button aria-label="Đóng" class="text-primary dark:text-inverse-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-150 p-2 -mr-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 px-container-margin-mobile pb-8 overflow-y-auto space-y-6">
+<!-- Header Section -->
+<div class="text-center mt-2 mb-6">
+<p class="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-wider mb-1">TỔNG QUAN TƯ VẤN</p>
+<h2 class="font-headline-md text-headline-md text-primary">Dinh dưỡng tháng cuối thai kỳ</h2>
+<p class="font-body-sm text-body-sm text-secondary mt-2">15 tháng 10, 2023 • 45 phút</p>
+</div>
+<!-- Expert Info Card -->
+<div class="bg-surface rounded-[2rem] p-5 soft-shadow flex items-center space-x-4 border border-outline-variant/30 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-surface-container-low rounded-full opacity-50"></div>
+<img alt="Bác sĩ Lê Thị Mai" class="w-16 h-16 rounded-full object-cover shadow-sm border-2 border-surface-container-high relative z-10" data-alt="A professional headshot of a female Asian doctor in her 40s wearing a white lab coat over a warm taupe blouse. She is smiling warmly at the camera. The background is a soft, out-of-focus modern medical office with warm natural lighting filtering through blinds. The lighting is flattering and soft, creating a trustworthy and compassionate atmosphere suitable for a maternity healthcare app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuLi4ivWG50H61WyWYBQLUpOGpciU9MogOVroT-mlW2EpdL8mow6_hqhRJC_Vp80BupzF0BDPBdKFwTae4-Vdsfhp93oddDyiQzVbC7kiucyeyaOMKQgPacnBtkFDx4SQuMXkuex8e0zG0YTnRNOsGhxO4vtebGwC0Ehb09YV_I_q2g6VPxgCVgMFodK5HFTbAuEIPe2z8VXSlPOSpfXx9ZCn6kG9rlUxIGc4_RZqn_w4Qs8NelK1_46P4riyAbmgVvM_AeODGKUA"/>
+<div class="relative z-10">
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">BS. Lê Thị Mai</h3>
+<p class="font-body-sm text-body-sm text-secondary">Chuyên khoa Sản - Dinh dưỡng</p>
+<div class="flex items-center mt-1">
+<span class="material-symbols-outlined text-primary-container text-sm" data-weight="fill">star</span>
+<span class="font-body-sm text-body-sm text-on-surface ml-1 font-semibold">4.9</span>
+<span class="font-body-sm text-body-sm text-outline ml-1">(120+ lượt tư vấn)</span>
+</div>
+</div>
+</div>
+<!-- Summary Content Card -->
+<div class="bg-surface rounded-[2rem] p-6 soft-shadow border border-outline-variant/30 space-y-5">
+<div class="flex items-center space-x-2 border-b border-surface-container pb-3">
+<div class="w-8 h-8 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">description</span>
+</div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface">Nội dung chính</h3>
+</div>
+<div class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed space-y-3">
+<p>Mẹ bé đang ở tuần thứ 34, cân nặng thai nhi phát triển tốt (2.4kg). Các chỉ số huyết áp và đường huyết của mẹ đều trong ngưỡng an toàn.</p>
+<p>Đã trao đổi về triệu chứng ợ nóng và khó ngủ về đêm. Nguyên nhân chủ yếu do thai lớn chèn ép dạ dày và thay đổi nội tiết tố.</p>
+</div>
+</div>
+<!-- Next Steps Bento Grid -->
+<div class="space-y-4">
+<h3 class="font-headline-md text-body-lg font-bold text-primary pl-2">Hướng dẫn từ Bác sĩ</h3>
+<div class="grid grid-cols-1 gap-4">
+<div class="bg-primary-fixed/30 rounded-[1.5rem] p-5 flex items-start space-x-4">
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center flex-shrink-0 mt-1">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<div>
+<h4 class="font-bold text-on-primary-fixed">Chế độ ăn uống</h4>
+<p class="font-body-sm text-body-sm text-on-primary-fixed-variant mt-1">Chia nhỏ bữa ăn thành 5-6 bữa/ngày. Hạn chế đồ ăn cay nóng, dầu mỡ vào buổi tối để giảm ợ nóng. Tăng cường thực phẩm giàu sắt và canxi.</p>
+</div>
+</div>
+<div class="bg-surface-container-high rounded-[1.5rem] p-5 flex items-start space-x-4">
+<div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center flex-shrink-0 mt-1">
+<span class="material-symbols-outlined">bed</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Giấc ngủ &amp; Sinh hoạt</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Nằm nghiêng bên trái khi ngủ, kê gối ôm hoặc gối bầu để hỗ trợ bụng và lưng. Duy trì thói quen đi bộ nhẹ nhàng 20 phút mỗi ngày.</p>
+</div>
+</div>
+<div class="bg-surface-container rounded-[1.5rem] p-5 flex items-start space-x-4 border border-outline-variant/30">
+<div class="w-10 h-10 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center flex-shrink-0 mt-1">
+<span class="material-symbols-outlined">calendar_month</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Lịch hẹn tiếp theo</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Khám thai định kỳ tuần 36 (Dự kiến: 29/10/2023). Đừng quên mang theo kết quả siêu âm gần nhất.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Rating Section Shortcut -->
+<div class="bg-surface rounded-[2rem] p-6 soft-shadow mt-6 flex flex-col items-center text-center border-2 border-surface-container-highest">
+<h4 class="font-headline-md text-headline-md text-primary mb-2">Đánh giá buổi tư vấn</h4>
+<p class="font-body-sm text-body-sm text-secondary mb-4">Ý kiến của bạn giúp chúng tôi cải thiện chất lượng dịch vụ.</p>
+<div class="flex space-x-3 mb-6">
+<button class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline-variant hover:text-primary-container hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[28px]">star</span></button>
+<button class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline-variant hover:text-primary-container hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[28px]">star</span></button>
+<button class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline-variant hover:text-primary-container hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[28px]">star</span></button>
+<button class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline-variant hover:text-primary-container hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[28px]">star</span></button>
+<button class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline-variant hover:text-primary-container hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[28px]">star</span></button>
+</div>
+<button class="w-full min-h-[48px] bg-primary text-on-primary rounded-full font-headline-md text-body-lg font-bold shadow-md hover:bg-surface-tint active:scale-95 transition-all">
+                Gửi đánh giá
+            </button>
+</div>
+</main>
+</body></html>

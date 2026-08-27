@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Thiết lập Khung giá mới - CareTech Admin</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS & Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#9e9a96",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#fef8f4",
+                        "tertiary-fixed": "#e6e2dd",
+                        "secondary-fixed": "#e9e1db",
+                        "outline": "#84736f",
+                        "primary-fixed-dim": "#fab7a4",
+                        "text-body": "#524F4C",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e7e1dd",
+                        "inverse-on-surface": "#f6f0eb",
+                        "secondary": "#625d59",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#f3ede8",
+                        "on-primary-fixed": "#341006",
+                        "on-primary-container": "#51271b",
+                        "surface-accent-muted": "#F2EAE4",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "secondary-container": "#e9e1db",
+                        "surface-dim": "#dfd9d5",
+                        "surface-container-low": "#f9f2ee",
+                        "inverse-surface": "#32302d",
+                        "inverse-primary": "#fab7a4",
+                        "background": "#fef8f4",
+                        "surface-container-high": "#ede7e3",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "on-surface": "#1d1b19",
+                        "surface-tint": "#845143",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "tertiary": "#605e5a",
+                        "primary-fixed": "#ffdbd1",
+                        "surface": "#fef8f4",
+                        "status-active": "#C98C7B",
+                        "surface-container-highest": "#e7e1dd",
+                        "on-secondary-fixed": "#1e1b18",
+                        "text-heading": "#2D2A28",
+                        "on-surface-variant": "#524440",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-background": "#1d1b19",
+                        "on-tertiary-container": "#34322f",
+                        "primary": "#845143",
+                        "surface-main": "#FFFFFF",
+                        "on-tertiary": "#ffffff",
+                        "surface-accent-light": "#F6F1EC",
+                        "primary-container": "#c98c7b",
+                        "on-secondary-container": "#68635f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sidebar-width": "280px",
+                        "grid-gutter": "24px",
+                        "container-padding": "32px",
+                        "panel-gap": "24px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "nav-item": ["Quicksand"],
+                        "headline-sm": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "label-md": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "body-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Quicksand', sans-serif; background-color: #F6F1EC; }
+        .drawer-overlay {
+            background: rgba(45, 42, 40, 0.4);
+            backdrop-filter: blur(2px);
+        }
+        .form-input {
+            border: 2px solid #F2EAE4;
+            border-radius: 1rem;
+            padding: 12px 16px;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+            width: 100%;
+        }
+        .form-input:focus {
+            border-color: #C98C7B;
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+        
+        /* Custom slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #C98C7B;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 4px rgba(201,140,123,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #F2EAE4;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="text-text-body antialiased overflow-hidden w-full h-screen relative">
+<!-- Top Navigation Bar -->
+<header class="bg-surface-main shadow-[0_4px_20px_rgba(201,140,123,0.08)] fixed top-0 right-0 w-[calc(100%-280px)] h-16 flex justify-between items-center px-container-padding z-40 hidden md:flex">
+<div class="flex items-center space-x-6">
+<h1 class="text-headline-sm font-headline-sm text-text-heading">CareTech</h1>
+<nav class="hidden lg:flex space-x-6">
+<!-- Search could go here -->
+</nav>
+</div>
+<div class="flex items-center space-x-4">
+<button class="text-secondary hover:text-primary transition-colors h-10 w-10 flex items-center justify-center rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">help</span>
+</button>
+<button class="text-secondary hover:text-primary transition-colors h-10 w-10 flex items-center justify-center rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden bg-surface-container-high border-2 border-surface-main shadow-sm">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional headshot of a female administrative user, modern bright lighting, warm pastel tones, friendly expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEHkBsyV5zP-ZWaWJqqkZXLRfI0so6RfpFHgJawj1GHAK0gqrGCsgNXMlrpFl5sOjik7Il9epsQ8vybbwtwHuZAm4PeOrf-Rh_OjFag0uQpSOOd44WQYhEsYTalbeggRV4ZCP293iOn96Myr9x65mjQvqFpt6U9kcnuTABM5jYDObqJWSRpA3y0j7rlXjQWP8zuzJ-qwytoXEhKrEo9EyQB8RnFZIGBV67iRpWqf-OsPjspbujI675_uBoo3FghIWBLW4RNV2gIbI"/>
+</div>
+</div>
+</header>
+<!-- Side Navigation Bar -->
+<nav class="bg-surface-accent-light fixed left-0 top-0 h-full w-sidebar-width flex flex-col h-full py-6 z-40 hidden md:flex border-r border-surface-container">
+<div class="px-6 mb-8 flex items-center space-x-3">
+<div class="h-10 w-10 rounded-xl bg-primary-container flex items-center justify-center text-on-primary shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+</div>
+<div>
+<h2 class="text-headline-sm font-headline-sm text-primary">CareTech Admin</h2>
+<p class="text-label-md font-label-md text-secondary">Hệ thống quản lý</p>
+</div>
+</div>
+<div class="flex-1 px-4 space-y-2 overflow-y-auto">
+<a class="flex items-center space-x-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-nav-item text-nav-item">Tổng quan</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-nav-item text-nav-item">Người dùng</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-nav-item text-nav-item">Xác minh</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">edit</span>
+<span class="font-nav-item text-nav-item">Kiểm tra</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-lg mx-2 transition-colors duration-200 active:scale-[0.98] shadow-sm" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-nav-item text-nav-item">Thanh toán</span>
+</a>
+</div>
+<div class="px-4 mt-auto pt-4 border-t border-surface-container space-y-2">
+<a class="flex items-center space-x-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-nav-item text-nav-item">Cài đặt</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-nav-item text-nav-item">Đăng xuất</span>
+</a>
+</div>
+</nav>
+<!-- Main Content (Background List) -->
+<main class="md:ml-[280px] pt-24 px-container-padding pb-8 h-screen overflow-y-auto w-full relative z-10 transition-all duration-300">
+<!-- Mock background content to establish context -->
+<div class="flex justify-between items-center mb-8">
+<h2 class="text-headline-md font-headline-md text-text-heading">Quản lý Khung Giá Tư Vấn</h2>
+<button class="bg-primary-container text-on-primary px-6 py-3 rounded-full font-nav-item text-nav-item flex items-center space-x-2 shadow-sm hover:shadow-md transition-all active:scale-[0.98] opacity-50 cursor-not-allowed">
+<span class="material-symbols-outlined">add</span>
+<span>Tạo khung giá mới</span>
+</button>
+</div>
+<div class="bg-surface-main rounded-[24px] p-8 shadow-[0_4px_20px_rgba(201,140,123,0.08)] opacity-40 select-none pointer-events-none filter blur-[1px]">
+<!-- Dummy Table Structure -->
+<div class="grid grid-cols-5 gap-4 border-b border-surface-accent-muted pb-4 mb-4 text-secondary font-label-md text-label-md">
+<div>KÊNH TƯ VẤN</div>
+<div>THỜI LƯỢNG</div>
+<div>KHOẢNG GIÁ</div>
+<div>TRẠNG THÁI</div>
+<div class="text-right">THAO TÁC</div>
+</div>
+<div class="space-y-4">
+<div class="grid grid-cols-5 gap-4 items-center py-3 border-b border-surface-accent-muted">
+<div class="flex items-center space-x-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">videocam</span>
+</div>
+<span class="font-body-md text-body-md text-text-heading">Video Call</span>
+</div>
+<div class="font-body-md text-body-md">30 phút</div>
+<div class="font-body-md text-body-md">200k - 500k ₫</div>
+<div><span class="bg-primary-container/10 text-primary-container px-3 py-1 rounded-full text-label-md font-label-md">Đang hiệu lực</span></div>
+<div class="text-right text-secondary">
+<span class="material-symbols-outlined">more_horiz</span>
+</div>
+</div>
+<div class="grid grid-cols-5 gap-4 items-center py-3 border-b border-surface-accent-muted">
+<div class="flex items-center space-x-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">call</span>
+</div>
+<span class="font-body-md text-body-md text-text-heading">Voice Call</span>
+</div>
+<div class="font-body-md text-body-md">15 phút</div>
+<div class="font-body-md text-body-md">100k - 300k ₫</div>
+<div><span class="bg-surface-dim text-secondary px-3 py-1 rounded-full text-label-md font-label-md">Đã đóng</span></div>
+<div class="text-right text-secondary">
+<span class="material-symbols-outlined">more_horiz</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Side Drawer Overlay -->
+<div class="fixed inset-0 drawer-overlay z-50 flex justify-end">
+<!-- Side Drawer Panel -->
+<div class="bg-surface-main w-full max-w-[520px] h-full shadow-[-4px_0_24px_rgba(201,140,123,0.12)] flex flex-col transform transition-transform duration-300 translate-x-0 overflow-hidden relative">
+<!-- Drawer Header -->
+<div class="px-8 py-6 border-b border-surface-accent-muted flex justify-between items-center bg-surface-main shrink-0">
+<h2 class="text-headline-md font-headline-md text-text-heading">Thiết lập Khung giá mới</h2>
+<button class="h-10 w-10 rounded-full flex items-center justify-center text-secondary hover:bg-surface-container transition-colors active:scale-95">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Body (Scrollable) -->
+<div class="flex-1 overflow-y-auto p-8 space-y-6">
+<!-- Section 1: Channel & Duration -->
+<div class="bg-surface-bright rounded-[24px] p-6 space-y-5 border border-surface-accent-muted">
+<h3 class="text-body-lg font-body-lg text-text-heading flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">tune</span>
+                        Định dạng dịch vụ
+                    </h3>
+<div class="space-y-4">
+<div>
+<label class="block text-label-md font-label-md text-secondary mb-2 uppercase tracking-wider">Kênh tư vấn</label>
+<div class="grid grid-cols-3 gap-3">
+<label class="cursor-pointer relative">
+<input checked="" class="peer sr-only" name="channel" type="radio"/>
+<div class="w-full text-center py-3 rounded-xl border-2 border-surface-accent-muted peer-checked:border-primary peer-checked:bg-primary-container/10 peer-checked:text-primary transition-all duration-200">
+<span class="material-symbols-outlined block mb-1">videocam</span>
+<span class="text-body-md font-body-md">Video</span>
+</div>
+</label>
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="channel" type="radio"/>
+<div class="w-full text-center py-3 rounded-xl border-2 border-surface-accent-muted peer-checked:border-primary peer-checked:bg-primary-container/10 peer-checked:text-primary transition-all duration-200">
+<span class="material-symbols-outlined block mb-1">call</span>
+<span class="text-body-md font-body-md">Voice</span>
+</div>
+</label>
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="channel" type="radio"/>
+<div class="w-full text-center py-3 rounded-xl border-2 border-surface-accent-muted peer-checked:border-primary peer-checked:bg-primary-container/10 peer-checked:text-primary transition-all duration-200">
+<span class="material-symbols-outlined block mb-1">chat</span>
+<span class="text-body-md font-body-md">Chat</span>
+</div>
+</label>
+</div>
+</div>
+<div>
+<label class="block text-label-md font-label-md text-secondary mb-2 uppercase tracking-wider">Thời lượng</label>
+<div class="relative">
+<select class="form-input appearance-none bg-white text-text-body font-body-md pr-10 cursor-pointer">
+<option disabled="" value="">Chọn thời lượng</option>
+<option value="15">15 Phút</option>
+<option selected="" value="30">30 Phút</option>
+<option value="45">45 Phút</option>
+<option value="60">60 Phút</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-secondary">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Pricing Matrix -->
+<div class="bg-surface-bright rounded-[24px] p-6 space-y-5 border border-surface-accent-muted relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container opacity-5 rounded-bl-[100px] pointer-events-none"></div>
+<h3 class="text-body-lg font-body-lg text-text-heading flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">payments</span>
+                        Cấu trúc chi phí
+                    </h3>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-label-md font-label-md text-secondary mb-2 uppercase tracking-wider">Giá tối thiểu</label>
+<div class="relative">
+<input class="form-input text-right font-body-md pr-12" type="text" value="200,000"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-secondary font-body-md">
+                                    VND
+                                </div>
+</div>
+</div>
+<div>
+<label class="block text-label-md font-label-md text-secondary mb-2 uppercase tracking-wider">Giá tối đa</label>
+<div class="relative">
+<input class="form-input text-right font-body-md pr-12" type="text" value="500,000"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-secondary font-body-md">
+                                    VND
+                                </div>
+</div>
+<div class="mt-2 flex items-center gap-1 text-tertiary-container text-xs">
+<span class="material-symbols-outlined text-[14px] text-green-500">check_circle</span>
+<span class="font-body-md text-secondary text-xs">Hợp lệ (Biên độ &lt; 300%)</span>
+</div>
+</div>
+</div>
+<div class="pt-4 border-t border-surface-accent-muted">
+<div class="flex justify-between items-center mb-3">
+<label class="text-label-md font-label-md text-secondary uppercase tracking-wider">Tỷ lệ chiết khấu (%)</label>
+<span class="text-primary font-body-md font-bold bg-primary-container/10 px-3 py-1 rounded-full">15%</span>
+</div>
+<input class="w-full" max="50" min="0" type="range" value="15"/>
+<div class="flex justify-between text-xs text-secondary mt-2 font-body-md">
+<span>0%</span>
+<span>Mặc định nền tảng (10-20%)</span>
+<span>50%</span>
+</div>
+</div>
+</div>
+<!-- Section 3: Activation & Logs -->
+<div class="bg-surface-bright rounded-[24px] p-6 space-y-5 border border-surface-accent-muted">
+<h3 class="text-body-lg font-body-lg text-text-heading flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">calendar_clock</span>
+                        Hiệu lực &amp; Ghi chú
+                    </h3>
+<div>
+<label class="block text-label-md font-label-md text-secondary mb-2 uppercase tracking-wider">Ngày hiệu lực (Từ - Đến)</label>
+<div class="flex items-center gap-2">
+<div class="relative flex-1">
+<input class="form-input font-body-md pl-10" placeholder="DD/MM/YYYY" type="text" value="01/11/2023"/>
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-secondary">
+<span class="material-symbols-outlined text-[20px]">calendar_today</span>
+</div>
+</div>
+<span class="text-secondary font-body-md">-</span>
+<div class="relative flex-1">
+<input class="form-input font-body-md pl-10" placeholder="Không xác định" type="text"/>
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-secondary">
+<span class="material-symbols-outlined text-[20px]">event_busy</span>
+</div>
+</div>
+</div>
+</div>
+<div>
+<label class="block text-label-md font-label-md text-secondary mb-2 uppercase tracking-wider">Lý do thay đổi / Ghi chú phiên bản</label>
+<textarea class="form-input font-body-md resize-none h-24" placeholder="Nhập lý do áp dụng khung giá này..."></textarea>
+</div>
+</div>
+<!-- Spacer for scrolling past bottom fixed area -->
+<div class="h-24"></div>
+</div>
+<!-- Drawer Footer / Actions (Fixed at bottom) -->
+<div class="absolute bottom-0 w-full px-8 py-6 bg-surface-main/90 backdrop-blur-md border-t border-surface-accent-muted flex justify-end items-center gap-4 z-10">
+<button class="px-6 py-3 rounded-full font-nav-item text-nav-item text-secondary hover:bg-surface-container transition-colors active:scale-[0.98]">
+                    Hủy
+                </button>
+<button class="px-8 py-3 rounded-full font-nav-item text-nav-item bg-primary-container text-on-primary shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">save</span>
+                    Lưu cấu hình
+                </button>
+</div>
+</div>
+</div>
+</body></html>

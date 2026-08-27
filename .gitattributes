@@ -1,0 +1,12 @@
+# AI Triage rule artifacts are verified byte-for-byte against a `.sha256` sidecar at
+# runtime (TriageRuleRegistry.verifyDigest / app.rules.registry._verify_integrity), and the
+# sidecars are generated from the LF canonical files by DevTools/sync_triage_rule_registry.py.
+#
+# Without this, a Windows checkout (core.autocrlf=true) rewrites them to CRLF, every digest
+# stops matching, and Triage V2 fails closed at startup with RULESET_HASH_MISMATCH.
+# Pin them to LF in the working tree so the bytes on disk are the bytes that were hashed.
+05_Development/Contracts/triage/** text eol=lf
+05_Development/CareBridgeAPI/src/main/resources/triage/** text eol=lf
+05_Development/CareBridgeAPI/src/test/resources/triage/** text eol=lf
+05_Development/CareBridgeAITriageService/data/** text eol=lf
+05_Development/CareBridgeAITriageService/tests/data/** text eol=lf

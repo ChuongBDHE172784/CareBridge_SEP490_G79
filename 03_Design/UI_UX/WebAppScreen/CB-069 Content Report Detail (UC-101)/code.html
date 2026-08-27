@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chi tiết báo cáo - ModPortal</title>
+<!-- Google Fonts: Lexend -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-surface-variant": "#524440",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-error-container": "#93000a",
+                    "error-container": "#ffdad6",
+                    "primary-fixed": "#ffdbd1",
+                    "inverse-primary": "#fab7a4",
+                    "surface-container-highest": "#fadcd3",
+                    "on-primary-fixed": "#341006",
+                    "primary": "#845143",
+                    "on-secondary-container": "#735e56",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#f8ddd2",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#f6dacf",
+                    "on-primary-container": "#51271b",
+                    "primary-fixed-dim": "#fab7a4",
+                    "surface-container": "#ffe9e3",
+                    "inverse-on-surface": "#ffede7",
+                    "tertiary-container": "#a09a95",
+                    "surface-container-lowest": "#ffffff",
+                    "on-background": "#271812",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "tertiary-fixed": "#e9e1db",
+                    "outline-variant": "#d6c2bd",
+                    "background": "#fff8f6",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#3e2c26",
+                    "primary-container": "#c98c7b",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "surface-tint": "#845143",
+                    "surface": "#fff8f6",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "secondary": "#6e5a52",
+                    "surface-dim": "#f1d4ca",
+                    "error": "#ba1a1a",
+                    "on-surface": "#271812",
+                    "surface-bright": "#fff8f6",
+                    "outline": "#84736f",
+                    "surface-container-low": "#fff1ec",
+                    "surface-container-high": "#ffe2d9",
+                    "on-secondary-fixed": "#271812",
+                    "surface-variant": "#fadcd3",
+                    "tertiary": "#625d59",
+                    "on-tertiary-container": "#36322e"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "1.5rem",
+                    "xl": "2rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "safe-margin": "24px",
+                    "touch-target-min": "48px",
+                    "stack-sm": "8px",
+                    "stack-lg": "24px",
+                    "gutter": "16px",
+                    "stack-md": "16px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Lexend"],
+                    "button": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "headline-md": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "headline-lg": ["Lexend"],
+                    "display-lg": ["Lexend"]
+            },
+            "fontSize": {
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen">
+<!-- SideNavBar -->
+<nav class="h-screen w-64 fixed left-0 top-0 bg-surface shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col p-4 gap-2 z-20">
+<div class="px-4 py-6 mb-4">
+<h1 class="font-headline-md text-headline-md text-primary font-bold">ModPortal</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Hệ thống kiểm duyệt</p>
+</div>
+<ul class="flex flex-col gap-2 flex-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-button text-button">Tổng quan</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">queue</span>
+<span class="font-button text-button">Hàng đợi</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold shadow-sm" href="#">
+<span class="material-symbols-outlined icon-fill text-primary">assessment</span>
+<span class="font-button text-button text-primary">Báo cáo</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">gavel</span>
+<span class="font-button text-button">Vi phạm</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">security</span>
+<span class="font-button text-button">Ca an toàn</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto px-4 py-4 border-t border-outline-variant/30 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden flex items-center justify-center shrink-0">
+<img alt="Moderator Avatar" class="w-full h-full object-cover" data-alt="A close up portrait of a young professional Vietnamese woman smiling softly in a brightly lit modern office environment. Warm, soft lighting highlights her friendly demeanor. High quality, photorealistic, light mode aesthetic, warm color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaZXp2UHx0Oj5R6ztUYiKBU-3dlWWk1HlNlmLi3FAeDwD0I2xEfa666Ek9P9ogCWpMy0LZz-Z2C0Mcor-WmmqrCAiDeOVCybdSNw4MrQWtdZ45vQWhNcCwQPesEKtuejxtPo_drWRWvCAl-B4fjBh6zqgEp-lzxiTDvCj2gf4hav_wlaQBXd_dfsj3WbyNK5CXyLNS7OxpkSF5YJC_d6V-m_UooUKNJeTeLVV_AqAtaiKmF-C4X7L-pNP3D9zAN5MezFxeJ19ItgM"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-button text-button truncate text-on-surface">Minh Anh</p>
+<p class="font-label-md text-label-md text-on-surface-variant truncate">Moderator</p>
+</div>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 bg-surface/80 backdrop-blur-md shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex justify-between items-center px-6 z-10">
+<div class="flex items-center text-on-surface-variant">
+<button class="flex items-center gap-2 hover:text-primary transition-colors font-button text-button">
+<span class="material-symbols-outlined text-lg">arrow_back</span>
+                Trở lại danh sách
+            </button>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="w-10 h-10 flex items-center justify-center hover:bg-surface-container-low rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border border-surface"></span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 px-safe-margin pb-safe-margin">
+<div class="max-w-[1200px] mx-auto">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-md text-label-md">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+                            Mức độ nghiêm trọng cao
+                        </span>
+<span class="font-label-md text-label-md text-on-surface-variant">ID: #REP-2023-8842</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Chi tiết báo cáo</h2>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+<!-- Left Column: Content & Reason (Wider) -->
+<div class="xl:col-span-2 flex flex-col gap-6">
+<!-- Report Reason Card -->
+<div class="bg-surface-container-lowest rounded-lg p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div class="flex items-center gap-3 border-b border-outline-variant/30 pb-4 mb-4">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container">
+<span class="material-symbols-outlined">flag</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Lý do báo cáo</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Thông tin sai lệch về y tế</p>
+</div>
+</div>
+<div class="bg-surface-container p-4 rounded-DEFAULT mb-4">
+<h4 class="font-button text-button text-on-surface mb-2">Chi tiết từ người dùng:</h4>
+<p class="font-body-md text-body-md text-on-surface-variant italic">
+                                "Bài viết này khuyên các mẹ cho trẻ sơ sinh uống nước mật ong để chữa ho. Điều này rất nguy hiểm vì có thể gây ngộ độc botulinum ở trẻ dưới 1 tuổi. Mong admin kiểm tra và gỡ bỏ."
+                            </p>
+</div>
+<div class="flex items-center justify-between mt-4">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">person_off</span>
+<span class="font-body-md text-body-md">Người báo cáo: <strong class="text-on-surface font-medium">Ẩn danh</strong></span>
+</div>
+<span class="font-label-md text-label-md text-outline">Báo cáo lúc: 10:45 AM, 12/10/2023</span>
+</div>
+</div>
+<!-- Reported Content Preview Card -->
+<div class="bg-surface-container-lowest rounded-lg p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">article</span>
+                            Nội dung bị báo cáo
+                        </h3>
+<div class="border border-outline-variant rounded-DEFAULT p-5 bg-surface">
+<!-- Author Meta -->
+<div class="flex items-center gap-3 mb-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest shrink-0">
+<img alt="Author avatar" class="w-full h-full object-cover" data-alt="A candid profile picture of a young Vietnamese mother holding a baby. Soft natural lighting, warm aesthetic, modern parenting context. High quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQHBjY2vGs0jtje3t8TH8GEoUw-kujwheq2sHtAZvMsjlsCldi6FXM1AUJZoJwMjcewQO4ZAdVDMkerLpBOv0CHY_1iMfrvxFmMPmX1OZjZKTc-nUzx4PJ9wvPAWUB1UUjZEFPP6ilpCVMXiknLQhm_Q6fUgdr-MLMqb6sXBOIswanU5_XNpOq94t7TY2ucGJjjN38kiUVaF0_QbS2gnYBzOiEwRxSQaQUSL_c_tHC34Bsr-lbdsNLrD11GIHUpyaW5Ehc7bhXZjU"/>
+</div>
+<div>
+<p class="font-button text-button text-on-surface">Mẹ Bỉm Sữa 9x</p>
+<p class="font-label-md text-label-md text-on-surface-variant">Đăng trong nhóm: Mẹo chăm con nhàn tênh</p>
+</div>
+</div>
+<!-- Content -->
+<h4 class="font-headline-md text-headline-md text-on-surface mb-2">Bí kíp dứt điểm cơn ho cho bé không cần dùng thuốc!</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 whitespace-pre-line">
+                                Chào các mẹ, bé nhà mình dạo này hay ho khan về đêm. Mình không thích lạm dụng kháng sinh nên đã thử cách dân gian.
+                                
+                                Chỉ cần lấy một thìa mật ong nguyên chất pha với chút nước ấm, cho bé uống trước khi ngủ. Hiệu quả bất ngờ luôn, bé ngủ ngoan tới sáng! Các mẹ lưu lại áp dụng thử nhé. 😊🍯
+                            </p>
+<!-- Evidence / Attached Image -->
+<div class="w-full h-48 rounded-DEFAULT overflow-hidden bg-surface-container relative">
+<img alt="Attached evidence image" class="w-full h-full object-cover" data-alt="A well-lit, aesthetically pleasing photograph of a jar of golden honey next to a small wooden dipper on a clean white kitchen counter. Soft morning light, warm and inviting, organic minimalist style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDN2G89dgLMsiI2yKMAq4qTnC1F8b2pWI8a3dveKTK2rqmSJVE6hl5BQIUWOqmYRJ9juwwTT4YYXPk5DV5UAzJVTaNWRRTsCo4ym8zDfw6a2QKZRqbEnJaoezdeCIRnE_ts7Grsk3KiEbGTcA_B6o76w7CbCA7KdUZiXQGg7l8upzmnl6LHnbe2WdXxWrRhQ0cKjX29AQPKpGOrmhhscBap3yfUJBg4yeCGwnUlsfaRhCsNiLKv1qPTQCYmphIpCV-UTvLicrgMHWE"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Actions & History -->
+<div class="flex flex-col gap-6">
+<!-- Action Card -->
+<div class="bg-surface-container-lowest rounded-lg p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Xử lý vi phạm</h3>
+<div class="flex flex-col gap-3">
+<button class="w-full h-[52px] bg-primary-container text-on-primary-container font-button text-button rounded-full hover:bg-primary-fixed-dim transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">delete_forever</span>
+                                Xóa bài viết
+                            </button>
+<button class="w-full h-[52px] bg-surface-container-high text-on-surface font-button text-button rounded-full hover:bg-secondary-fixed-dim transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">visibility_off</span>
+                                Ẩn nội dung
+                            </button>
+<div class="grid grid-cols-2 gap-3 mt-2">
+<button class="h-[48px] border border-outline-variant text-on-surface-variant font-button text-button rounded-full hover:bg-surface-container transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">done_all</span>
+                                    Bỏ qua
+                                </button>
+<button class="h-[48px] bg-secondary-container text-on-secondary-container font-button text-button rounded-full hover:bg-secondary-fixed transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">escalator_warning</span>
+                                    Chuyển tuyến
+                                </button>
+</div>
+</div>
+</div>
+<!-- History Card -->
+<div class="bg-surface-container-lowest rounded-lg p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Lịch sử báo cáo</h3>
+<div class="relative pl-6 border-l-2 border-surface-container-high space-y-6">
+<!-- Timeline Item -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-error-container border-2 border-surface-container-lowest"></div>
+<p class="font-button text-button text-on-surface">Báo cáo mới nhất</p>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Hôm nay, 10:45 AM</p>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2 text-sm">Thông tin sai lệch (Nguy hiểm cho trẻ sơ sinh)</p>
+</div>
+<!-- Timeline Item -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-high border-2 border-surface-container-lowest"></div>
+<p class="font-button text-button text-on-surface">Báo cáo tương tự</p>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Hôm qua, 20:15 PM</p>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2 text-sm">Spam / Bán hàng trái phép (Nghi ngờ PR sản phẩm)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

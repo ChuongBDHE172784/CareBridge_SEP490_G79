@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tìm kiếm nội dung</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "status-active": "#C98C7B",
+                      "outline": "#84736f",
+                      "primary-fixed": "#ffdbd1",
+                      "surface-tint": "#845143",
+                      "inverse-primary": "#fab7a4",
+                      "text-body": "#524F4C",
+                      "tertiary-fixed": "#e6e2dd",
+                      "on-error": "#ffffff",
+                      "text-heading": "#2D2A28",
+                      "tertiary-container": "#9e9a96",
+                      "surface-container-high": "#ede7e3",
+                      "surface": "#fef8f4",
+                      "primary-fixed-dim": "#fab7a4",
+                      "background": "#fef8f4",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed": "#1d1b19",
+                      "error-container": "#ffdad6",
+                      "inverse-on-surface": "#f6f0eb",
+                      "error": "#ba1a1a",
+                      "tertiary": "#605e5a",
+                      "on-secondary-container": "#68635f",
+                      "on-error-container": "#93000a",
+                      "surface-main": "#FFFFFF",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "surface-container-low": "#f9f2ee",
+                      "surface-container": "#f3ede8",
+                      "secondary-fixed-dim": "#ccc5c0",
+                      "on-secondary-fixed-variant": "#4a4642",
+                      "tertiary-fixed-dim": "#cac6c1",
+                      "on-background": "#1d1b19",
+                      "on-primary-container": "#51271b",
+                      "surface-variant": "#e7e1dd",
+                      "inverse-surface": "#32302d",
+                      "on-surface-variant": "#524440",
+                      "on-secondary": "#ffffff",
+                      "surface-container-highest": "#e7e1dd",
+                      "surface-bright": "#fef8f4",
+                      "on-primary-fixed": "#341006",
+                      "primary": "#845143",
+                      "on-tertiary-fixed-variant": "#484643",
+                      "on-secondary-fixed": "#1e1b18",
+                      "surface-accent-light": "#F6F1EC",
+                      "primary-container": "#c98c7b",
+                      "secondary-container": "#e9e1db",
+                      "surface-dim": "#dfd9d5",
+                      "secondary": "#625d59",
+                      "on-surface": "#1d1b19",
+                      "surface-accent-muted": "#F2EAE4",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#d6c2bd",
+                      "on-tertiary-container": "#34322f",
+                      "secondary-fixed": "#e9e1db"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "panel-gap": "24px",
+                      "grid-gutter": "24px",
+                      "container-padding": "32px",
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "sidebar-width": "280px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Quicksand"
+                      ],
+                      "display-lg": [
+                              "Quicksand"
+                      ],
+                      "body-md": [
+                              "Quicksand"
+                      ],
+                      "nav-item": [
+                              "Quicksand"
+                      ],
+                      "headline-sm": [
+                              "Quicksand"
+                      ],
+                      "headline-md": [
+                              "Quicksand"
+                      ],
+                      "body-lg": [
+                              "Quicksand"
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "nav-item": [
+                              "15px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Hide scrollbar for horizontal scroll areas but allow scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased w-full h-screen flex flex-col md:hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface shadow-sm">
+<div class="flex items-center justify-between px-4 h-16">
+<button class="p-2 text-primary hover:opacity-80 active:scale-95 transition-transform rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Tìm kiếm</h1>
+<button class="p-2 text-primary hover:opacity-80 active:scale-95 transition-transform rounded-full flex items-center justify-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden" data-alt="A small, circular avatar portrait of a friendly female medical expert or consultant, smiling warmly. The lighting is soft and natural, emphasizing approachability and professionalism. The background is a plain, light warm tone (#F6F1EC) to match the UI. The style is modern, realistic, and high-quality." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDxLbHY0grVLFAIPrb_TyZxNM3JYS0Xd51Uy3MFpN_T39EaU801a7NRikTw8FyUBdx0ozcoMcFWUplGOcdSciAUcp-j9uvrFZm_UIzAgF0KJ8UZ4wWsGawy-HzyXQatFgVlUjqh_SaRF7WB-kz36OmsolJOg7C-6oYRGRJQq8Obbr4-zB9fR6AzI62OxnJvi0rCNKFpNBUz-o6zMJYe7kMLlimJRm6MsxLEaA5WKhhm_DkIe7Q2e8Z6h5KNKLKSl8jnn1gJF5NI-YQ')"></div>
+</button>
+</div>
+<!-- Search Input Area -->
+<div class="px-4 pb-4">
+<div class="relative flex items-center w-full">
+<span class="material-symbols-outlined absolute left-4 text-outline z-10" data-icon="search">search</span>
+<input class="w-full pl-12 pr-12 py-3 rounded-full bg-surface-main border-2 border-surface-accent-muted focus:border-status-active focus:ring-0 transition-colors font-body-md text-body-md text-text-heading shadow-[0_4px_20px_rgba(201,140,123,0.08)]" placeholder="Tìm kiếm bài viết, câu hỏi, danh sách..." type="text"/>
+<button class="absolute right-2 p-2 text-primary hover:bg-surface-container-high rounded-full transition-colors flex items-center justify-center z-10">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto pt-[136px] pb-[88px] px-4 space-y-6">
+<!-- Filters Section -->
+<section>
+<h2 class="font-headline-sm text-headline-sm text-text-heading mb-3 px-1">Lọc theo chủ đề</h2>
+<div class="flex overflow-x-auto gap-3 pb-2 no-scrollbar px-1">
+<button class="flex items-center justify-center bg-primary text-on-primary font-body-md text-body-md px-5 py-2 rounded-full whitespace-nowrap shadow-[0_4px_12px_rgba(201,140,123,0.2)] active:scale-98 transition-transform">
+                    Tất cả
+                </button>
+<button class="flex items-center justify-center bg-surface-main border border-outline-variant text-text-body font-body-md text-body-md px-5 py-2 rounded-full whitespace-nowrap hover:bg-surface-accent-light transition-colors">
+                    Dinh dưỡng
+                </button>
+<button class="flex items-center justify-center bg-surface-main border border-outline-variant text-text-body font-body-md text-body-md px-5 py-2 rounded-full whitespace-nowrap hover:bg-surface-accent-light transition-colors">
+                    Sức khỏe mẹ
+                </button>
+<button class="flex items-center justify-center bg-surface-main border border-outline-variant text-text-body font-body-md text-body-md px-5 py-2 rounded-full whitespace-nowrap hover:bg-surface-accent-light transition-colors">
+                    Phát triển bé
+                </button>
+</div>
+<div class="flex overflow-x-auto gap-3 pb-2 mt-2 no-scrollbar px-1">
+<span class="text-text-body font-label-md text-label-md self-center mr-2 uppercase tracking-wider">Định dạng:</span>
+<button class="flex items-center gap-1 bg-surface-accent-light text-primary font-body-md text-body-md px-3 py-1.5 rounded-lg whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]" data-icon="article">article</span>
+                    Bài viết
+                </button>
+<button class="flex items-center gap-1 bg-surface-main border border-surface-accent-muted text-text-body font-body-md text-body-md px-3 py-1.5 rounded-lg whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]" data-icon="quiz">quiz</span>
+                    Hỏi đáp
+                </button>
+<button class="flex items-center gap-1 bg-surface-main border border-surface-accent-muted text-text-body font-body-md text-body-md px-3 py-1.5 rounded-lg whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]" data-icon="checklist">checklist</span>
+                    Danh sách
+                </button>
+</div>
+</section>
+<!-- Search Results -->
+<section class="space-y-4">
+<h2 class="font-headline-sm text-headline-sm text-text-heading px-1">Kết quả nổi bật</h2>
+<!-- Result Card 1 -->
+<article class="bg-surface-main rounded-[24px] p-5 shadow-[0_4px_20px_rgba(201,140,123,0.08)] flex flex-col gap-3">
+<div class="flex justify-between items-start gap-3">
+<h3 class="font-headline-sm text-headline-sm text-text-heading leading-tight flex-1">Thực đơn dinh dưỡng 3 tháng đầu thai kỳ</h3>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="bookmark_border">bookmark_border</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-text-body line-clamp-2">Hướng dẫn chi tiết về các nhóm thực phẩm cần thiết và những món cần tránh trong giai đoạn tam cá nguyệt đầu tiên để thai nhi phát triển khỏe mạnh.</p>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="bg-[#C98C7B]/10 text-primary font-label-md text-label-md px-2 py-1 rounded-md uppercase tracking-wider">Bài viết</span>
+<span class="bg-surface-container text-text-body font-label-md text-label-md px-2 py-1 rounded-md uppercase tracking-wider">3 Tháng đầu</span>
+</div>
+<div class="flex justify-between items-center mt-2 pt-3 border-t border-surface-accent-muted">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="verified" data-weight="fill">verified</span>
+<span class="font-body-md text-body-md text-secondary">BS. Nguyễn Hà</span>
+</div>
+<span class="font-label-md text-label-md text-tertiary">12/10/2023</span>
+</div>
+</article>
+<!-- Result Card 2 -->
+<article class="bg-surface-main rounded-[24px] p-5 shadow-[0_4px_20px_rgba(201,140,123,0.08)] flex flex-col gap-3">
+<div class="flex justify-between items-start gap-3">
+<h3 class="font-headline-sm text-headline-sm text-text-heading leading-tight flex-1">Các dấu hiệu nguy hiểm cần đi khám ngay</h3>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="bookmark_border">bookmark_border</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-text-body line-clamp-2">Tổng hợp các triệu chứng bất thường mẹ bầu cần lưu ý và đến cơ sở y tế ngay lập tức để đảm bảo an toàn.</p>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="bg-secondary-container/50 text-secondary font-label-md text-label-md px-2 py-1 rounded-md uppercase tracking-wider">Hỏi đáp (FAQ)</span>
+<span class="bg-surface-container text-text-body font-label-md text-label-md px-2 py-1 rounded-md uppercase tracking-wider">Sức khỏe</span>
+</div>
+<div class="flex justify-between items-center mt-2 pt-3 border-t border-surface-accent-muted">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="verified" data-weight="fill">verified</span>
+<span class="font-body-md text-body-md text-secondary">Bộ Y Tế</span>
+</div>
+<span class="font-label-md text-label-md text-tertiary">05/11/2023</span>
+</div>
+</article>
+<!-- Result Card 3 -->
+<article class="bg-surface-main rounded-[24px] p-5 shadow-[0_4px_20px_rgba(201,140,123,0.08)] flex flex-col gap-3">
+<div class="flex justify-between items-start gap-3">
+<h3 class="font-headline-sm text-headline-sm text-text-heading leading-tight flex-1">Chuẩn bị giỏ đồ đi sinh mùa đông</h3>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="bookmark_border">bookmark_border</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-text-body line-clamp-2">Danh sách các vật dụng cần thiết cho mẹ và bé khi sinh vào mùa lạnh, giúp mẹ chuẩn bị đầy đủ không bỏ sót.</p>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="bg-[#C98C7B]/10 text-primary font-label-md text-label-md px-2 py-1 rounded-md uppercase tracking-wider">Danh sách</span>
+<span class="bg-surface-container text-text-body font-label-md text-label-md px-2 py-1 rounded-md uppercase tracking-wider">Chuẩn bị sinh</span>
+</div>
+<div class="flex justify-between items-center mt-2 pt-3 border-t border-surface-accent-muted">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="verified" data-weight="fill">verified</span>
+<span class="font-body-md text-body-md text-secondary">Cộng đồng Mẹ &amp; Bé</span>
+</div>
+<span class="font-label-md text-label-md text-tertiary">20/09/2023</span>
+</div>
+</article>
+<button class="w-full py-4 rounded-full border-2 border-surface-accent-muted text-primary font-headline-sm text-headline-sm hover:bg-surface-accent-light transition-colors flex items-center justify-center gap-2 mt-4">
+                Xem thêm kết quả
+                <span class="material-symbols-outlined" data-icon="expand_more">expand_more</span>
+</button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-lg bg-surface shadow-[0_-4px_20px_rgba(90,70,63,0.08)] flex justify-around items-center px-4 py-2">
+<a class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high transition-all duration-200 ease-in-out rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="search" data-weight="fill">search</span>
+<span class="font-label-md text-label-md mt-1">Tìm kiếm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high transition-all duration-200 ease-in-out rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high transition-all duration-200 ease-in-out rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Tài khoản</span>
+</a>
+</nav>
+</body></html>

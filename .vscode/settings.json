@@ -1,0 +1,24 @@
+{
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.import.gradle.enabled": false,
+    "java.settings.url": "${workspaceFolder}/.vscode/java-compiler-settings.prefs",
+    "java.import.exclusions": [
+        "**/05_Development/Gadgetbridge/**"
+    ],
+    "java.project.resourceFilters": [
+        "node_modules",
+        ".git",
+        "Gadgetbridge"
+    ],
+    "java.diagnostic.filter": [
+        "**/05_Development/Gadgetbridge/**/*.java"
+    ],
+    "dart.analysisExcludedFolders": [
+        "05_Development/Gadgetbridge"
+    ],
+    "dart.showTodos": false,
+    "files.watcherExclude": {
+        "**/05_Development/Gadgetbridge/**": true
+    }
+}

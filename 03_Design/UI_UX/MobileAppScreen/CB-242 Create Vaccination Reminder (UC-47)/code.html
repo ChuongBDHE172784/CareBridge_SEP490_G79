@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nhắc Lịch Tiêm Chủng - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-container-high": "#ede7e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface-accent-muted": "#F2EAE4",
+                    "surface-tint": "#845143",
+                    "inverse-surface": "#32302d",
+                    "primary-container": "#c98c7b",
+                    "background": "#fef8f4",
+                    "surface-dim": "#dfd9d5",
+                    "text-heading": "#2D2A28",
+                    "on-secondary-container": "#68635f",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f9f2ee",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "surface-bright": "#fef8f4",
+                    "surface-container-highest": "#e7e1dd",
+                    "error": "#ba1a1a",
+                    "on-background": "#1d1b19",
+                    "on-tertiary-container": "#34322f",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-accent-light": "#F6F1EC",
+                    "secondary": "#625d59",
+                    "surface-variant": "#e7e1dd",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#e9e1db",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "surface": "#fef8f4",
+                    "secondary-fixed": "#e9e1db",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-surface": "#1d1b19",
+                    "status-active": "#C98C7B",
+                    "inverse-primary": "#fab7a4",
+                    "outline": "#84736f",
+                    "tertiary-container": "#9e9a96",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f3ede8",
+                    "primary": "#845143",
+                    "outline-variant": "#d6c2bd",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px",
+                    "container-margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"],
+                    "label-caps": ["Quicksand"],
+                    "headline-lg-mobile": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["22px", {"lineHeight": "28px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .floating-panel {
+            background: #FFFFFF;
+            border-radius: 2rem;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #845143 !important;
+            ring: 0 !important;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d6c2bd;
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-24 md:pb-0 md:pt-16">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-background dark:bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)] flex items-center justify-between px-4 h-16 w-full">
+<button class="text-primary active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">CareBridge</h1>
+<button class="text-primary active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<main class="max-w-4xl mx-auto px-4 pt-20 pb-8">
+<!-- Main Form Section -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-panel-gap">
+<!-- Left Side: Form -->
+<div class="md:col-span-7 space-y-6">
+<div class="floating-panel">
+<header class="mb-8">
+<h2 class="font-headline-md text-headline-md text-text-heading">Đặt nhắc lịch tiêm</h2>
+<p class="font-body-md text-body-md text-secondary">Đừng bỏ lỡ bất kỳ mũi tiêm quan trọng nào của bé yêu.</p>
+</header>
+<form class="space-y-stack-md" id="vaccine-form">
+<!-- Baby Selector -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Bé nhận nhắc lịch *</label>
+<div class="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+<label class="flex-shrink-0 cursor-pointer">
+<input checked="" class="hidden peer" name="baby" type="radio" value="baby_1"/>
+<div class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-surface-accent-muted peer-checked:border-primary peer-checked:bg-primary-fixed bg-white transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A portrait of a smiling baby with soft brown hair and bright eyes, wearing a pastel cream onesie, studio lighting, warm high-end commercial aesthetic, clean background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDddZ9aH1oqI1JBtJRdGJMGyi5DhMtc40y3I8vCsnQafffg7WKRm4FU4AsBBR1gYLymIRKZnavWTJ2cVRaj7GL2__6AgwNDkV1lS5nQDEItyuEhPwd0p_QzkFav6R3uJqnjmKoeFpAhIwF8ttYGCQCl_IQOSNIj7Q84GeTwo9lH8utZyREthxr0N4A-f9KIwootajstm_SGKCFb8onJ9Bsv_ZygQx6jcLr7xVNjIEmya9nY_nMdX6m6u74c9AGFlpEfnakiMt1fosc"/>
+</div>
+<span class="font-label-md text-label-md text-primary">Mina</span>
+</div>
+</label>
+<label class="flex-shrink-0 cursor-pointer">
+<input class="hidden peer" name="baby" type="radio" value="baby_2"/>
+<div class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-surface-accent-muted peer-checked:border-primary peer-checked:bg-primary-fixed bg-white transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A close-up portrait of a toddler boy with curly dark hair laughing, outdoors in a soft focus garden, warm sunlight, professional child photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4h9J4fK6gixt2nJ1_POvHIu_i2UMwUHsU_lu513wITv5pIIlyYwXtldz_9esWIKrHY4BeDqvt9DmraPVaelQfThTyXhDHS5KBMVMPFg5Ejd11jmspq9ciOsX6HeHjqz2UBwNXCtxlqb0FGT5Z9MyEdg6GQzk2qjcM0bBPWiNFhQomJt4KSnjd7gKmqZlla2S-LGKTAmPJ1Tt6q-7iG5kFYr5536GP6ENPWyNtGCKwWeggGzQKEX8scELQV_xS9mPXsBn9IWxYiI4"/>
+</div>
+<span class="font-label-md text-label-md text-secondary">Tôm</span>
+</div>
+</label>
+<button class="flex-shrink-0 flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-outline-variant hover:bg-surface-accent-light transition-all min-w-[76px]" type="button">
+<span class="material-symbols-outlined text-outline">add</span>
+<span class="font-label-md text-label-md text-outline">Thêm bé</span>
+</button>
+</div>
+</div>
+<!-- Vaccine/Reminder Label -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Loại vắc xin / Tên nhắc nhở *</label>
+<div class="relative">
+<input class="w-full h-14 px-4 bg-white border-2 border-surface-accent-muted rounded-xl font-body-md text-body-md text-text-heading focus:border-primary transition-all" id="vaccine_name" placeholder="Ví dụ: 6 trong 1, Cúm mùa..." type="text"/>
+<button class="absolute right-3 top-3 p-1 text-primary hover:bg-surface-accent-light rounded-lg transition-colors" onclick="showSuggestions()" type="button">
+<span class="material-symbols-outlined">auto_awesome</span>
+</button>
+</div>
+<!-- Validation Error Placeholder -->
+<p class="hidden font-label-md text-label-md text-error px-1" id="name-error">Vui lòng nhập tên vắc xin</p>
+</div>
+<!-- Date and Lead Time -->
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Ngày tiêm dự kiến *</label>
+<input class="w-full h-14 px-4 bg-white border-2 border-surface-accent-muted rounded-xl font-body-md text-body-md text-text-heading focus:border-primary transition-all" id="target_date" type="date"/>
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Nhắc trước bao lâu?</label>
+<select class="w-full h-14 px-4 bg-white border-2 border-surface-accent-muted rounded-xl font-body-md text-body-md text-text-heading focus:border-primary transition-all appearance-none" id="lead_time">
+<option value="1">1 ngày</option>
+<option selected="" value="3">3 ngày</option>
+<option value="7">1 tuần</option>
+<option value="14">2 tuần</option>
+</select>
+</div>
+</div>
+<!-- Clinic/Location -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Địa điểm tiêm (tùy chọn)</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-4 text-outline">location_on</span>
+<input class="w-full h-14 pl-12 pr-4 bg-white border-2 border-surface-accent-muted rounded-xl font-body-md text-body-md text-text-heading focus:border-primary transition-all" placeholder="Tên trung tâm tiêm chủng hoặc bệnh viện" type="text"/>
+</div>
+</div>
+<!-- Duplicate Warning -->
+<div class="hidden p-4 rounded-xl bg-error-container text-on-error-container flex items-start gap-3 border border-error/10" id="duplicate-warning">
+<span class="material-symbols-outlined shrink-0">warning</span>
+<p class="font-body-md text-body-md"><strong>Cảnh báo:</strong> Lịch tiêm này có vẻ bị trùng với mũi "6 trong 1" đã đặt trước đó cho bé Mina.</p>
+</div>
+<!-- Save Button -->
+<button class="w-full h-14 mt-4 bg-primary text-white rounded-full font-headline-sm text-headline-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20" type="submit">
+                            Lưu nhắc lịch
+                        </button>
+</form>
+</div>
+</div>
+<!-- Right Side: References/Bento Items -->
+<div class="md:col-span-5 space-y-6">
+<!-- Suggestion Card -->
+<div class="floating-panel bg-primary-container/10 border border-primary-container/20 overflow-hidden relative group">
+<div class="absolute -right-12 -top-12 w-40 h-40 bg-primary-container/20 rounded-full blur-3xl"></div>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4 relative z-10">Lịch tham khảo</h3>
+<div class="space-y-3 relative z-10">
+<div class="p-3 bg-white rounded-xl border border-primary-container/20 hover:shadow-md transition-shadow cursor-pointer flex justify-between items-center group/item" onclick="autoFill('Cúm mùa', '2023-11-20')">
+<div>
+<p class="font-body-lg text-body-lg text-text-heading">Vắc xin Cúm mùa</p>
+<p class="font-label-md text-label-md text-secondary">Đề xuất theo độ tuổi: 6 tháng+</p>
+</div>
+<span class="material-symbols-outlined text-primary opacity-0 group-hover/item:opacity-100 transition-opacity">add_circle</span>
+</div>
+<div class="p-3 bg-white rounded-xl border border-primary-container/20 hover:shadow-md transition-shadow cursor-pointer flex justify-between items-center group/item" onclick="autoFill('Thủy đậu', '2023-12-05')">
+<div>
+<p class="font-body-lg text-body-lg text-text-heading">Vắc xin Thủy đậu</p>
+<p class="font-label-md text-label-md text-secondary">Đề xuất: Cách mũi trước 3 tháng</p>
+</div>
+<span class="material-symbols-outlined text-primary opacity-0 group-hover/item:opacity-100 transition-opacity">add_circle</span>
+</div>
+</div>
+<button class="mt-6 font-label-md text-label-md text-primary flex items-center gap-1 hover:underline">
+                        Xem toàn bộ lịch tiêm quốc gia <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+<!-- Tip Card -->
+<div class="floating-panel p-0 overflow-hidden">
+<div class="relative h-32 w-full">
+<img class="w-full h-full object-cover" data-alt="A macro photograph of high-quality child care essentials like a soft thermometer and small herbal tea bottle, soft focus, warm wooden background, cozy and safe vibe, light brown and peach tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXGCFMEJMAXM7iuefjzf0T1RI9OsU7w284vqmVnWFYunfjeHt4THQjpMkpJPHN012YeEqredtf2LmmO5shcNqqp--Q1zQrJ2jYZCCpwoUK68cG-M7YqQhAg4Z2x46ZRlxcJAO1kG5BtPoPg2jKS5S9u-u8uucjJDdCsgLtgu89thS9M9fIrIuGDEVodKYA8wKq1MApEjCNwF41osWyynX8--36Ls21jUKp4OT1tvpFioGK2oTQ9sFqu29mLWkj5ggJmb2Ay3zXaHY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+<span class="font-label-caps text-label-caps text-white bg-primary px-2 py-1 rounded">Mẹo hay</span>
+</div>
+</div>
+<div class="p-5">
+<h4 class="font-body-lg text-body-lg text-text-heading font-bold mb-2">Chuẩn bị gì trước khi tiêm?</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Mang theo sổ tiêm chủng, áo quần thoáng mát cho bé và kiểm tra thân nhiệt bé tại nhà...</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface dark:bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] rounded-t-lg md:hidden">
+<div class="flex justify-around items-center py-3 px-4">
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-inverse-primary font-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+<span class="font-label-caps text-label-caps">Sức khỏe</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-label-caps text-label-caps">Thông báo</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps">Cá nhân</span>
+</a>
+</div>
+</nav>
+<!-- Toast Success (Hidden by default) -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-full shadow-2xl transition-all opacity-0 translate-y-10 pointer-events-none" id="success-toast">
+<span class="material-symbols-outlined text-primary-fixed-dim">check_circle</span>
+<span class="font-body-md text-body-md">Lịch nhắc đã được lưu thành công!</span>
+</div>
+<script>
+        const form = document.getElementById('vaccine-form');
+        const vaccineName = document.getElementById('vaccine_name');
+        const targetDate = document.getElementById('target_date');
+        const duplicateWarning = document.getElementById('duplicate-warning');
+        const nameError = document.getElementById('name-error');
+        const successToast = document.getElementById('success-toast');
+
+        // Simple Validation & Duplicate Check Mockup
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            let hasError = false;
+
+            if (!vaccineName.value.trim()) {
+                nameError.classList.remove('hidden');
+                vaccineName.classList.add('border-error');
+                hasError = true;
+            } else {
+                nameError.classList.add('hidden');
+                vaccineName.classList.remove('border-error');
+            }
+
+            if (hasError) return;
+
+            // Mock Success
+            showToast();
+        });
+
+        // Trigger warning if specific name typed
+        vaccineName.addEventListener('input', (e) => {
+            if (e.target.value.toLowerCase().includes('6 trong 1')) {
+                duplicateWarning.classList.remove('hidden');
+            } else {
+                duplicateWarning.classList.add('hidden');
+            }
+        });
+
+        function autoFill(name, date) {
+            vaccineName.value = name;
+            targetDate.value = date;
+            vaccineName.focus();
+            // Trigger animation or feedback
+            vaccineName.parentElement.classList.add('scale-105');
+            setTimeout(() => vaccineName.parentElement.classList.remove('scale-105'), 200);
+        }
+
+        function showToast() {
+            successToast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            setTimeout(() => {
+                successToast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // Active State Logic for bottom nav
+        // Already applied in HTML based on "Health" context for vaccination
+    </script>
+</body></html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Yêu cầu tư vấn - CareBridge</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed-variant": "#55433b",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#fff1ec",
+                        "on-primary-container": "#51271b",
+                        "tertiary": "#625d59",
+                        "on-background": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "on-surface": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#a09a95",
+                        "surface-tint": "#845143",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#341006",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#f1d4ca",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-error-container": "#93000a",
+                        "background": "#fff8f6",
+                        "on-secondary-container": "#735e56",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#fadcd3",
+                        "surface": "#fff8f6",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#e9e1db",
+                        "primary-fixed": "#ffdbd1",
+                        "outline": "#84736f",
+                        "surface-container-high": "#ffe2d9",
+                        "inverse-surface": "#3e2c26",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-tertiary-container": "#36322e",
+                        "primary": "#845143",
+                        "inverse-on-surface": "#ffede7",
+                        "secondary": "#6e5a52",
+                        "inverse-primary": "#fab7a4",
+                        "secondary-container": "#f6dacf",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "outline-variant": "#d6c2bd",
+                        "surface-container-highest": "#fadcd3",
+                        "on-secondary-fixed": "#271812",
+                        "primary-container": "#c98c7b",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fff8f6"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "gutter": "16px"
+                    },
+                    fontFamily: {
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"]
+                    },
+                    fontSize: {
+                        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "button": ["16px", { lineHeight: "20px", fontWeight: "600" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Subtle entrance animation for cards */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up {
+            animation: fadeUp 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased">
+<!-- Top Navigation (Desktop Web Portal Style) -->
+<header class="bg-background sticky top-0 z-50 px-safe-margin h-20 flex justify-between items-center shadow-[0px_4px_20px_rgba(90,70,63,0.02)]">
+<!-- Brand -->
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl icon-fill">child_care</span>
+<span class="font-display-lg text-display-lg text-primary tracking-tight">CareBridge</span>
+</div>
+<!-- Desktop Nav Links -->
+<nav class="hidden md:flex items-center gap-8">
+<a class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-button text-button" href="#">
+<span class="material-symbols-outlined">home</span>
+                Trang chủ
+            </a>
+<a class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-button text-button" href="#">
+<span class="material-symbols-outlined">auto_stories</span>
+                Hành trình
+            </a>
+<a class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-button text-button" href="#">
+<span class="material-symbols-outlined">group</span>
+                Cộng đồng
+            </a>
+<a class="flex items-center gap-2 text-primary bg-primary-container/20 px-4 py-2 rounded-full font-button text-button transition-colors" href="#">
+<span class="material-symbols-outlined icon-fill">fact_check</span>
+                Việc cần làm
+            </a>
+<a class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-button text-button" href="#">
+<span class="material-symbols-outlined">person</span>
+                Hồ sơ
+            </a>
+</nav>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="w-12 h-12 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-3 right-3 w-2.5 h-2.5 bg-error rounded-full border-2 border-background"></span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-surface-variant cursor-pointer">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="A professional portrait of a Vietnamese doctor or healthcare expert, smiling warmly in a well-lit, modern clinic environment. Soft, natural lighting. High quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYafIA-_H_bVMW74-gYZy2N5LuoIRlcUFfRhNlFoHJmrVFL2d4RO9XYiltz28nzNJe3N5rFX90OQ_k_WbqnmAJUjqk9ANQfPK391K3El03Vn9q24Lvy8jSlgh8712blHqQ3Dr_tqWN6r6z9xkKzsa9lO0Gn0cSyiPpG3dyFEzz4mBwX5NKoPi1wOT8wvlGinDO68nMqo89PKoYZDIz-ztd8W7u9fOL097MxIEPwhpupeOLPK6kFcX7dl8m2Fh4q6l126YXhnwGOJ8"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full max-w-7xl mx-auto px-safe-margin py-8 flex flex-col gap-8">
+<!-- Page Header & Filters -->
+<div class="flex flex-col gap-6">
+<h1 class="font-display-lg text-display-lg text-on-background">Yêu cầu tư vấn</h1>
+<!-- Tabs -->
+<div class="flex flex-wrap gap-3">
+<button class="px-6 py-3 rounded-full bg-primary text-on-primary font-button text-button shadow-[0px_4px_12px_rgba(201,140,123,0.3)] transition-all active:scale-95">
+                    Mới
+                </button>
+<button class="px-6 py-3 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-button text-button transition-all active:scale-95 flex items-center gap-2">
+                    Sắp hết hạn
+                    <span class="bg-error-container text-on-error-container text-xs px-2 py-0.5 rounded-full font-bold">2</span>
+</button>
+<button class="px-6 py-3 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-button text-button transition-all active:scale-95">
+                    Đã chấp nhận
+                </button>
+<button class="px-6 py-3 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-button text-button transition-all active:scale-95">
+                    Đã từ chối
+                </button>
+</div>
+</div>
+<!-- Cards Grid (Bento Style) -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<!-- Card 1: Standard New Request -->
+<div class="bg-surface-container-lowest rounded-[2rem] p-6 lg:p-8 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-outline-variant/30 flex flex-col gap-6 animate-fade-up" style="animation-delay: 0.1s;">
+<!-- Header -->
+<div class="flex justify-between items-start gap-4">
+<div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-1">Mẹ bầu dấu tên #482</h3>
+<div class="inline-flex items-center gap-1.5 bg-secondary-container/50 text-on-secondary-container px-3 py-1 rounded-full font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px]">verified_user</span>
+                            Đã đồng ý chia sẻ hồ sơ
+                        </div>
+</div>
+<span class="text-xs font-semibold text-primary bg-primary-container/20 px-3 py-1 rounded-full">Vừa xong</span>
+</div>
+<!-- Info Grid -->
+<div class="grid grid-cols-2 gap-4 bg-background rounded-2xl p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">videocam</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Hình thức</p>
+<p class="font-button text-button text-on-surface">Video Call</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Chi phí</p>
+<p class="font-button text-button text-on-surface">500.000 VNĐ</p>
+</div>
+</div>
+<div class="col-span-2 flex items-center gap-3 mt-2 pt-4 border-t border-outline-variant/30">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">calendar_clock</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Thời gian đề xuất</p>
+<p class="font-button text-button text-on-surface">14:00 - 14:30, Thứ Năm 24/10</p>
+</div>
+</div>
+</div>
+<!-- Reason Summary -->
+<div class="flex flex-col gap-2">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Tóm tắt vấn đề</p>
+<p class="font-body-lg text-body-lg text-on-surface line-clamp-2">
+                        Thai 28 tuần, dạo gần đây hay bị gò cứng bụng vào ban đêm, kèm theo đau lưng dưới mỏi mệt. Đã uống canxi đều đặn nhưng không đỡ. Muốn xin tư vấn xem có dấu hiệu sinh non không.
+                    </p>
+</div>
+<!-- Actions -->
+<div class="flex gap-4 mt-auto pt-4">
+<button class="flex-1 h-14 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-button transition-colors active:scale-95">
+                        Từ chối
+                    </button>
+<button class="flex-1 h-14 rounded-full bg-primary hover:opacity-90 text-on-primary font-button text-button shadow-[0px_4px_12px_rgba(201,140,123,0.3)] transition-all active:scale-95">
+                        Chấp nhận
+                    </button>
+</div>
+</div>
+<!-- Card 2: Expiring Soon (Warning highlight) -->
+<div class="bg-surface-container-lowest rounded-[2rem] p-6 lg:p-8 shadow-[0px_8px_24px_rgba(186,26,26,0.08)] border border-error-container relative overflow-hidden flex flex-col gap-6 animate-fade-up" style="animation-delay: 0.2s;">
+<!-- Decorative warning top border -->
+<div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-error/40 to-error"></div>
+<!-- Header -->
+<div class="flex justify-between items-start gap-4">
+<div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-1">Phụ huynh bé #109</h3>
+<div class="inline-flex items-center gap-1.5 bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px]">visibility_off</span>
+                            Hồ sơ ẩn
+                        </div>
+</div>
+<div class="flex items-center gap-1.5 text-error bg-error-container px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-[18px]">timer</span>
+<span class="text-sm font-bold">Hết hạn sau 30p</span>
+</div>
+</div>
+<!-- Info Grid -->
+<div class="grid grid-cols-2 gap-4 bg-background rounded-2xl p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">call</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Hình thức</p>
+<p class="font-button text-button text-on-surface">Gọi thoại</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Chi phí</p>
+<p class="font-button text-button text-on-surface">300.000 VNĐ</p>
+</div>
+</div>
+<div class="col-span-2 flex items-center gap-3 mt-2 pt-4 border-t border-outline-variant/30">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">calendar_clock</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Thời gian đề xuất</p>
+<p class="font-button text-button text-on-surface">09:00 - 09:15, Sáng nay</p>
+</div>
+</div>
+</div>
+<!-- Reason Summary -->
+<div class="flex flex-col gap-2">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Tóm tắt vấn đề</p>
+<p class="font-body-lg text-body-lg text-on-surface line-clamp-2">
+                        Bé 6 tháng tuổi bắt đầu ăn dặm nhưng có dấu hiệu dị ứng nổi mẩn đỏ quanh miệng sau khi ăn bột yến mạch sữa. Cần bác sĩ tư vấn gấp cách xử lý tại nhà.
+                    </p>
+</div>
+<!-- Actions -->
+<div class="flex gap-4 mt-auto pt-4">
+<button class="flex-1 h-14 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-button transition-colors active:scale-95">
+                        Từ chối
+                    </button>
+<button class="flex-1 h-14 rounded-full bg-primary hover:opacity-90 text-on-primary font-button text-button shadow-[0px_4px_12px_rgba(201,140,123,0.3)] transition-all active:scale-95">
+                        Chấp nhận
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

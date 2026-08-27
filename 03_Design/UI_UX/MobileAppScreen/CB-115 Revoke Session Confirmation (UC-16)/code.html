@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xác nhận đăng xuất</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#51271b",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#271812",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-bright": "#fff8f6",
+                        "on-primary-fixed": "#341006",
+                        "background": "#fff8f6",
+                        "surface-variant": "#fadcd3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-secondary-fixed": "#271812",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#36322e",
+                        "tertiary": "#625d59",
+                        "secondary-container": "#f6dacf",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "outline": "#84736f",
+                        "on-background": "#271812",
+                        "surface": "#fff8f6",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "secondary": "#6e5a52",
+                        "primary": "#845143",
+                        "outline-variant": "#d6c2bd",
+                        "on-secondary-container": "#735e56",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#fadcd3",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#845143",
+                        "secondary-fixed": "#f8ddd2",
+                        "surface-dim": "#f1d4ca",
+                        "surface-container-high": "#ffe2d9",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-low": "#fff1ec",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-surface-variant": "#524440",
+                        "primary-container": "#c98c7b",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "inverse-surface": "#3e2c26",
+                        "surface-container": "#ffe9e3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "button": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "label-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen relative overflow-hidden">
+<!-- Mock Background Content (Login Sessions) -->
+<div class="p-safe-margin opacity-30 pointer-events-none transition-opacity duration-300">
+<h1 class="font-headline-lg text-headline-lg text-primary mb-stack-lg">Phiên đăng nhập</h1>
+<div class="bg-surface-container-lowest p-5 rounded-DEFAULT shadow-[0px_4px_20px_rgba(90,70,63,0.06)] mb-stack-md">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="smartphone" data-weight="fill" style="font-variation-settings: 'FILL' 1;">smartphone</span>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface">iPhone 12 - Chrome</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Đang hoạt động</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Backdrop -->
+<div aria-hidden="true" class="fixed inset-0 bg-inverse-surface/40 backdrop-blur-sm z-40 transition-opacity duration-300"></div>
+<!-- Bottom Sheet / Modal -->
+<div class="fixed inset-x-0 bottom-0 z-50 flex justify-center md:items-center md:inset-0 md:p-safe-margin pointer-events-none">
+<div class="bg-surface w-full max-w-md rounded-t-xl md:rounded-DEFAULT shadow-[0px_-8px_24px_rgba(90,70,63,0.12)] md:shadow-[0px_8px_24px_rgba(90,70,63,0.12)] p-safe-margin pointer-events-auto transform transition-transform duration-300 translate-y-0 relative overflow-hidden">
+<!-- Handle for mobile -->
+<div class="w-12 h-1.5 bg-surface-variant rounded-full mx-auto mb-stack-lg md:hidden"></div>
+<div class="flex flex-col items-center text-center">
+<!-- Warning Icon -->
+<div class="w-16 h-16 bg-error-container rounded-full flex items-center justify-center mb-stack-md text-error">
+<span class="material-symbols-outlined text-4xl" data-icon="warning" data-weight="fill" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<!-- Content -->
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-stack-sm">Đăng xuất thiết bị này?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-2">Bạn đang đăng xuất khỏi:</p>
+<p class="font-headline-md text-headline-md text-primary mb-stack-md">iPhone 12 - Chrome</p>
+<div class="bg-surface-container-low rounded-DEFAULT p-4 mb-stack-lg w-full text-left flex gap-3 items-start border border-surface-variant">
+<span class="material-symbols-outlined text-primary shrink-0" data-icon="info">info</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Bạn sẽ cần đăng nhập lại trên thiết bị này nếu muốn tiếp tục sử dụng ứng dụng.
+                    </p>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-3 w-full mt-2">
+<button class="w-full h-[52px] bg-error text-on-error font-button text-button rounded-full flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-sm">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                        Đăng xuất thiết bị
+                    </button>
+<button class="w-full h-[52px] bg-surface-container text-on-surface font-button text-button rounded-full flex items-center justify-center hover:bg-surface-variant active:scale-95 transition-all">
+                        Hủy
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

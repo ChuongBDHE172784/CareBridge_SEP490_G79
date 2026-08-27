@@ -1,0 +1,93 @@
+# Optional CompreFace 1.2.0 stack (works on Windows with Docker Desktop).
+# Memory budget for ~5GB Docker allocation:
+#   compreface-core   ~800 MB (ONNX model resident)
+#   compreface-api    ~600 MB (Spring Boot, -Xmx1500m)
+#   compreface-admin  ~400 MB (Spring Boot)
+#   compreface-fe     ~40 MB  (nginx)
+#   Postgres           ~100 MB
+#   Python/uWSGI base  ~60 MB
+# Start explicitly with: docker compose -f docker-compose.staging.yml
+#   -f docker-compose.compreFace.yml --profile compreface up -d
+# Do not enable this profile until a Face Verification API key
+# has been created in the CompreFace UI.
+services:
+  compreface-postgres-db:
+    profiles: ["compreface"]
+    image: exadel/compreface-postgres-db:1.2.0
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${COMPREFACE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${COMPREFACE_POSTGRES_PASSWORD:?Set COMPREFACE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${COMPREFACE_POSTGRES_DB:-frs}
+    volumes:
+      - compreface-postgres-data:/var/lib/postgresql/data
+
+  compreface-core:
+    profiles: ["compreface"]
+    image: exadel/compreface-core:1.2.0
+    restart: unless-stopped
+    environment:
+      ML_PORT: 3000
+      IMG_LENGTH_LIMIT: ${COMPREFACE_MAX_DETECT_SIZE:-640}
+      UWSGI_PROCESSES: ${COMPREFACE_UWSGI_PROCESSES:-2}
+      UWSGI_THREADS: ${COMPREFACE_UWSGI_THREADS:-1}
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:3000/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 2s
+      retries: 12
+      start_period: 30s
+
+  compreface-api:
+    profiles: ["compreface"]
+    image: exadel/compreface-api:1.2.0
+    restart: unless-stopped
+    depends_on:
+      compreface-postgres-db: {condition: service_started}
+      compreface-core: {condition: service_healthy}
+    environment:
+      POSTGRES_USER: ${COMPREFACE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${COMPREFACE_POSTGRES_PASSWORD:?Set COMPREFACE_POSTGRES_PASSWORD}
+      POSTGRES_URL: jdbc:postgresql://compreface-postgres-db:5432/${COMPREFACE_POSTGRES_DB:-frs}
+      SPRING_PROFILES_ACTIVE: dev
+      API_JAVA_OPTS: ${COMPREFACE_API_JAVA_OPTS:--Xmx1500m}
+      PYTHON_URL: http://compreface-core:3000
+      SAVE_IMAGES_TO_DB: "false"
+      MAX_FILE_SIZE: 5MB
+      MAX_REQUEST_SIZE: 10MB
+      CONNECTION_TIMEOUT: ${COMPREFACE_CONNECTION_TIMEOUT_MS:-10000}
+      READ_TIMEOUT: ${COMPREFACE_READ_TIMEOUT_MS:-60000}
+
+  compreface-admin:
+    profiles: ["compreface"]
+    image: exadel/compreface-admin:1.2.0
+    restart: unless-stopped
+    depends_on:
+      compreface-postgres-db: {condition: service_started}
+      compreface-api: {condition: service_started}
+    environment:
+      POSTGRES_USER: ${COMPREFACE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${COMPREFACE_POSTGRES_PASSWORD:?Set COMPREFACE_POSTGRES_PASSWORD}
+      POSTGRES_URL: jdbc:postgresql://compreface-postgres-db:5432/${COMPREFACE_POSTGRES_DB:-frs}
+      SPRING_PROFILES_ACTIVE: dev
+      ENABLE_EMAIL_SERVER: "false"
+      ADMIN_JAVA_OPTS: ${COMPREFACE_ADMIN_JAVA_OPTS:--Xmx1g}
+      MAX_FILE_SIZE: 5MB
+      MAX_REQUEST_SIZE: 10MB
+
+  compreface-fe:
+    profiles: ["compreface"]
+    image: exadel/compreface-fe:1.2.0
+    restart: unless-stopped
+    depends_on:
+      compreface-api: {condition: service_started}
+      compreface-admin: {condition: service_started}
+    ports:
+      - "${COMPREFACE_PORT:-8000}:80"
+    environment:
+      CLIENT_MAX_BODY_SIZE: 10M
+      PROXY_READ_TIMEOUT: ${COMPREFACE_READ_TIMEOUT_MS:-60000}ms
+      PROXY_CONNECT_TIMEOUT: ${COMPREFACE_CONNECTION_TIMEOUT_MS:-10000}ms
+
+volumes:
+  compreface-postgres-data:

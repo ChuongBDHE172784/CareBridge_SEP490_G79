@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Đăng nhập</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "inverse-surface": "#3e2c26",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#fadcd3",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#ffe2d9",
+                        "secondary-container": "#f6dacf",
+                        "on-tertiary-container": "#36322e",
+                        "secondary": "#6e5a52",
+                        "primary-container": "#c98c7b",
+                        "primary-fixed": "#ffdbd1",
+                        "outline-variant": "#d6c2bd",
+                        "on-background": "#271812",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-tertiary": "#ffffff",
+                        "outline": "#84736f",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f6",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "tertiary-container": "#a09a95",
+                        "primary": "#845143",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-low": "#fff1ec",
+                        "on-primary-container": "#51271b",
+                        "surface-container-highest": "#fadcd3",
+                        "surface-dim": "#f1d4ca",
+                        "surface": "#fff8f6",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#ffede7",
+                        "tertiary-fixed": "#e9e1db",
+                        "on-secondary": "#ffffff",
+                        "background": "#fff8f6",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#341006",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-surface-variant": "#524440",
+                        "on-secondary-container": "#735e56",
+                        "on-surface": "#271812",
+                        "inverse-primary": "#fab7a4",
+                        "on-secondary-fixed": "#271812",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "surface-tint": "#845143",
+                        "surface-container": "#ffe9e3",
+                        "tertiary": "#625d59"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px",
+                        "gutter": "16px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "button": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F6F1EC; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-lg text-on-surface antialiased min-h-screen flex flex-col justify-between max-w-[390px] mx-auto overflow-x-hidden relative">
+<!-- Top App Bar -->
+<header class="flex items-center justify-between px-safe-margin h-[72px] shrink-0 bg-transparent w-full z-10 sticky top-0">
+<button aria-label="Quay lại" class="h-touch-target-min w-touch-target-min flex items-center justify-center -ml-2 text-on-surface hover:opacity-80 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[28px]" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface flex-1 text-center pr-10">Đăng nhập</h1>
+</header>
+<!-- Main Content -->
+<main class="px-safe-margin flex-1 flex flex-col pt-4 pb-8 w-full">
+<!-- Welcome Graphic / Placeholder -->
+<div class="w-full flex justify-center mb-8">
+<div class="w-24 h-24 bg-surface rounded-full shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex items-center justify-center text-primary border border-[#F2EAE4]">
+<span class="material-symbols-outlined text-[48px]" data-icon="volunteer_activism">volunteer_activism</span>
+</div>
+</div>
+<div class="mb-8">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Chào mừng bạn trở lại</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Đăng nhập để tiếp tục hành trình chăm sóc bé yêu.</p>
+</div>
+<!-- Form -->
+<form class="flex flex-col gap-5 w-full">
+<!-- Email/Phone Field -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase ml-1" for="email_phone">Email hoặc Số điện thoại</label>
+<div class="relative w-full h-[56px]">
+<input class="w-full h-full bg-surface border border-[#F2EAE4] rounded-lg px-4 font-body-lg text-body-lg text-on-surface placeholder:text-[#9C857C] focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors shadow-sm" id="email_phone" placeholder="Nhập email hoặc số điện thoại" type="text" value="linh.nguyen@email.com"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase ml-1" for="password">Mật khẩu</label>
+<div class="relative w-full h-[56px]">
+<input class="w-full h-full bg-surface border border-[#F2EAE4] rounded-lg pl-4 pr-12 font-body-lg text-body-lg text-on-surface placeholder:text-[#9C857C] focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors shadow-sm" id="password" placeholder="Nhập mật khẩu" type="password" value="password123"/>
+<button aria-label="Hiện mật khẩu" class="absolute right-0 top-0 h-full w-touch-target-min flex items-center justify-center text-[#9C857C] hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<!-- Forgot Password Link -->
+<div class="flex justify-end w-full">
+<a class="font-label-md text-label-md text-primary hover:opacity-80 transition-opacity" href="#">Quên mật khẩu?</a>
+</div>
+<!-- Submit Button -->
+<button class="w-full h-[52px] bg-[#C98C7B] text-[#FFFFFF] font-button text-button rounded-full mt-4 hover:opacity-90 active:scale-[0.98] transition-all shadow-[0px_4px_12px_rgba(201,140,123,0.3)]" type="button">
+                Đăng nhập
+            </button>
+</form>
+<!-- Role Hint Card -->
+<div class="mt-8 bg-surface rounded-[24px] p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-[#F2EAE4] flex items-start gap-4">
+<div class="bg-secondary-container/30 p-2 rounded-full text-secondary shrink-0">
+<span class="material-symbols-outlined text-[24px]" data-icon="info">info</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                Bạn sẽ được đưa tới không gian phù hợp sau khi đăng nhập.
+            </p>
+</div>
+</main>
+<!-- Bottom Secondary Link -->
+<div class="w-full pb-8 px-safe-margin text-center mt-auto">
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Chưa có tài khoản? 
+            <a class="text-primary font-button hover:opacity-80 transition-opacity ml-1" href="#">Tạo tài khoản</a>
+</p>
+</div>
+</body></html>

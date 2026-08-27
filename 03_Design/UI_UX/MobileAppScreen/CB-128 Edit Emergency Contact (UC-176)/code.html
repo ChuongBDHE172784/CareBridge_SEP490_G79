@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Chỉnh sửa liên hệ khẩn cấp - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-primary": "#fab7a4",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#f6dacf",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#fff8f6",
+                    "on-primary-fixed": "#341006",
+                    "primary-fixed": "#ffdbd1",
+                    "outline": "#84736f",
+                    "on-tertiary-container": "#36322e",
+                    "surface-container-high": "#ffe2d9",
+                    "surface-tint": "#845143",
+                    "error": "#ba1a1a",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "secondary": "#6e5a52",
+                    "outline-variant": "#d6c2bd",
+                    "inverse-surface": "#3e2c26",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-secondary-fixed": "#271812",
+                    "surface-container": "#ffe9e3",
+                    "primary-container": "#c98c7b",
+                    "on-background": "#271812",
+                    "tertiary": "#625d59",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-error-container": "#93000a",
+                    "surface": "#fff8f6",
+                    "tertiary-fixed": "#e9e1db",
+                    "primary": "#845143",
+                    "inverse-on-surface": "#ffede7",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed": "#f8ddd2",
+                    "tertiary-container": "#a09a95",
+                    "surface-variant": "#fadcd3",
+                    "on-surface": "#271812",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-container": "#735e56",
+                    "background": "#fff8f6",
+                    "surface-container-low": "#fff1ec",
+                    "surface-container-highest": "#fadcd3",
+                    "on-surface-variant": "#524440",
+                    "surface-dim": "#f1d4ca"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "safe-margin": "24px",
+                    "stack-sm": "8px",
+                    "gutter": "16px",
+                    "touch-target-min": "48px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Lexend"],
+                    "button": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "headline-md": ["Lexend"]
+            },
+            "fontSize": {
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fff8f6;
+            color: #271812;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+        .active-scale:active {
+            transform: scale(0.97);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md min-h-screen">
+<!-- Top AppBar (Simplified for focused task) -->
+<header class="fixed top-0 left-0 w-full z-50 bg-background flex items-center px-safe-margin h-touch-target-min">
+<button class="w-10 h-10 flex items-center justify-center text-primary active-scale" onclick="window.history.back()">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="ml-4 font-headline-lg-mobile text-headline-lg-mobile text-primary">Liên hệ khẩn cấp</h1>
+</header>
+<main class="pt-[72px] pb-safe-margin px-safe-margin">
+<!-- Illustration/Status Header -->
+<div class="mb-stack-lg text-center">
+<div class="w-20 h-20 bg-primary-fixed rounded-full mx-auto flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-4xl text-on-primary-fixed" style="font-variation-settings: 'FILL' 1;">contact_emergency</span>
+</div>
+<p class="font-body-md text-on-surface-variant max-w-[280px] mx-auto">
+                Thông tin này sẽ được sử dụng trong trường hợp khẩn cấp khi không thể liên lạc với bạn.
+            </p>
+</div>
+<!-- Form Section -->
+<div class="bg-surface-container-lowest rounded-lg p-5 custom-shadow space-y-stack-lg">
+<!-- Name Input -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Họ và tên</label>
+<div class="relative">
+<input class="w-full h-14 bg-surface-container-low border border-outline-variant rounded-xl px-4 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Nhập tên người liên hệ" type="text" value="Nguyễn Văn A"/>
+</div>
+</div>
+<!-- Relationship Dropdown -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Mối quan hệ</label>
+<div class="relative">
+<select class="w-full h-14 bg-surface-container-low border border-outline-variant rounded-xl px-4 text-on-surface appearance-none focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+<option value="father">Cha</option>
+<option value="mother">Mẹ</option>
+<option selected="" value="spouse">Vợ/Chồng</option>
+<option value="relative">Họ hàng</option>
+<option value="friend">Bạn bè</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<!-- Phone Number & Verification -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Số điện thoại</label>
+<div class="flex gap-2">
+<div class="relative flex-grow">
+<input class="w-full h-14 bg-surface-container-low border border-outline-variant rounded-xl px-4 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Nhập số điện thoại" type="tel" value="0901234567"/>
+</div>
+<button class="h-14 px-4 bg-secondary-container text-on-secondary-container font-button text-button rounded-xl active-scale transition-colors hover:bg-opacity-80">
+                        Xác thực
+                    </button>
+</div>
+<p class="text-[11px] text-primary mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span> Số điện thoại đã xác thực
+                </p>
+</div>
+<!-- Email Input -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Email (Không bắt buộc)</label>
+<div class="relative">
+<input class="w-full h-14 bg-surface-container-low border border-outline-variant rounded-xl px-4 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="example@gmail.com" type="email" value="nva@gmail.com"/>
+</div>
+</div>
+<!-- Priority Toggle -->
+<div class="flex items-center justify-between py-2 border-t border-surface-variant pt-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container/20 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">star</span>
+</div>
+<div>
+<p class="font-headline-md text-[16px] text-on-surface">Liên hệ ưu tiên</p>
+<p class="text-[12px] text-on-surface-variant">Hiển thị đầu tiên khi khẩn cấp</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-12 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="mt-stack-lg space-y-3">
+<button class="w-full h-[52px] bg-primary text-white font-button text-button rounded-full shadow-lg active-scale transition-all hover:bg-opacity-90 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">save</span>
+                Lưu thay đổi
+            </button>
+<button class="w-full h-[52px] bg-surface-container-low text-error font-button text-button rounded-full border border-error/10 active-scale transition-all hover:bg-error/5 flex items-center justify-center gap-2" id="deleteBtn">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+                Xóa liên hệ
+            </button>
+</div>
+</main>
+<!-- Simple Delete Modal (Hidden by default) -->
+<div class="fixed inset-0 z-[100] bg-on-background/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-gutter transition-opacity duration-300 opacity-0 pointer-events-none" id="deleteModal">
+<div class="bg-surface rounded-lg w-full max-w-md p-6 translate-y-full transition-transform duration-300">
+<h3 class="font-headline-md text-on-surface mb-2">Xóa liên hệ?</h3>
+<p class="font-body-md text-on-surface-variant mb-6">Bạn có chắc chắn muốn xóa "Nguyễn Văn A" khỏi danh sách liên hệ khẩn cấp không?</p>
+<div class="flex gap-3">
+<button class="flex-1 h-touch-target-min rounded-full font-button bg-surface-container-high text-on-surface" onclick="closeModal()">Hủy</button>
+<button class="flex-1 h-touch-target-min rounded-full font-button bg-error text-white" onclick="confirmDelete()">Xóa</button>
+</div>
+</div>
+</div>
+<script>
+        const deleteBtn = document.getElementById('deleteBtn');
+        const deleteModal = document.getElementById('deleteModal');
+        const modalContent = deleteModal.querySelector('div');
+
+        deleteBtn.addEventListener('click', () => {
+            deleteModal.classList.remove('pointer-events-none', 'opacity-0');
+            deleteModal.classList.add('opacity-100');
+            modalContent.classList.remove('translate-y-full');
+            modalContent.classList.add('translate-y-0');
+        });
+
+        function closeModal() {
+            deleteModal.classList.add('opacity-0');
+            modalContent.classList.add('translate-y-full');
+            setTimeout(() => {
+                deleteModal.classList.add('pointer-events-none');
+                deleteModal.classList.remove('opacity-100');
+                modalContent.classList.remove('translate-y-0');
+            }, 300);
+        }
+
+        function confirmDelete() {
+            // Logic for deletion
+            alert("Liên hệ đã được xóa.");
+            closeModal();
+            window.history.back();
+        }
+
+        // Close modal on background click
+        deleteModal.addEventListener('click', (e) => {
+            if (e.target === deleteModal) closeModal();
+        });
+    </script>
+</body></html>

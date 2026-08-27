@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kết quả buổi tập</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary-container": "#735e56",
+                        "on-background": "#271812",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-container": "#c98c7b",
+                        "inverse-on-surface": "#ffede7",
+                        "background": "#fff8f6",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#51271b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f8ddd2",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-high": "#ffe2d9",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "surface-tint": "#845143",
+                        "secondary": "#6e5a52",
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-surface": "#3e2c26",
+                        "surface-bright": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#845143",
+                        "on-error": "#ffffff",
+                        "surface": "#fff8f6",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "on-surface": "#271812",
+                        "outline": "#84736f",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#a09a95",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ffe9e3",
+                        "surface-variant": "#fadcd3",
+                        "surface-dim": "#f1d4ca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter-mobile": "16px",
+                        "gutter-desktop": "24px",
+                        "container-margin-mobile": "20px",
+                        "sidebar-width": "280px",
+                        "container-margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-sm": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Quicksand', sans-serif; background-color: #fff8f6; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-filled { font-variation-settings: 'FILL' 1; }
+        
+        /* Subtle pulse animation for celebratory elements */
+        @keyframes subtle-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        .animate-subtle-pulse {
+            animation: subtle-pulse 3s ease-in-out infinite;
+        }
+
+        /* Glassmorphism utility */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-safe">
+<!-- Top App Bar -->
+<header class="bg-background dark:bg-background text-primary dark:text-inverse-primary docked full-width top-0 bg-background dark:bg-background flat no shadows flex justify-between items-center px-gutter-mobile h-16 w-full z-50 sticky">
+<button class="p-2 hover:opacity-80 transition-opacity flex items-center justify-center text-primary dark:text-inverse-primary">
+<span class="material-symbols-outlined font-headline-md text-headline-md">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-on-surface">Kết quả</h1>
+<button class="p-2 hover:opacity-80 transition-opacity flex items-center justify-center text-primary dark:text-inverse-primary">
+<span class="material-symbols-outlined font-headline-md text-headline-md">close</span>
+</button>
+</header>
+<main class="px-container-margin-mobile pt-4 pb-24 max-w-[428px] mx-auto">
+<!-- Hero Celebration Card -->
+<section class="glass-card rounded-xl p-6 mb-6 shadow-[0_8px_24px_rgba(90,70,63,0.08)] flex flex-col items-center justify-center text-center animate-subtle-pulse relative overflow-hidden">
+<!-- Decorative background elements -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-fixed rounded-full blur-3xl opacity-50 -mr-10 -mt-10"></div>
+<div class="absolute bottom-0 left-0 w-24 h-24 bg-secondary-container rounded-full blur-2xl opacity-40 -ml-8 -mb-8"></div>
+<div class="w-20 h-20 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center mb-4 shadow-lg z-10">
+<span class="material-symbols-outlined icon-filled text-[40px]">check_circle</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-2 z-10">Tuyệt vời, Mẹ!</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant z-10">Mẹ đã hoàn thành xuất sắc bài tập "Yoga Thư Giãn Buổi Sáng".</p>
+</section>
+<!-- Bento Grid: Key Metrics -->
+<section class="grid grid-cols-2 gap-4 mb-6">
+<!-- Duration -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_4px_16px_rgba(90,70,63,0.06)] border border-surface-variant flex flex-col justify-between">
+<div class="flex items-center text-secondary mb-2">
+<span class="material-symbols-outlined mr-2 text-[20px]">timer</span>
+<span class="font-label-caps text-label-caps">THỜI GIAN</span>
+</div>
+<div class="flex items-baseline">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">25</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">phút</span>
+</div>
+</div>
+<!-- Completion -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_4px_16px_rgba(90,70,63,0.06)] border border-surface-variant flex flex-col justify-between">
+<div class="flex items-center text-secondary mb-2">
+<span class="material-symbols-outlined mr-2 text-[20px]">donut_large</span>
+<span class="font-label-caps text-label-caps">HOÀN THÀNH</span>
+</div>
+<div class="flex items-baseline">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary">100</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">%</span>
+</div>
+</div>
+<!-- Posture Feedback -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_4px_16px_rgba(90,70,63,0.06)] border border-surface-variant flex flex-col justify-between">
+<div class="flex items-center text-secondary mb-2">
+<span class="material-symbols-outlined mr-2 text-[20px]">accessibility_new</span>
+<span class="font-label-caps text-label-caps">CHỈNH TƯ THẾ</span>
+</div>
+<div class="flex items-baseline">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">3</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">lần</span>
+</div>
+</div>
+<!-- Safety Warnings -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_4px_16px_rgba(90,70,63,0.06)] border border-surface-variant flex flex-col justify-between relative overflow-hidden">
+<!-- Warning accent -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-tertiary"></div>
+<div class="flex items-center text-secondary mb-2 pl-2">
+<span class="material-symbols-outlined mr-2 text-[20px]">warning</span>
+<span class="font-label-caps text-label-caps">CẢNH BÁO AN TOÀN</span>
+</div>
+<div class="flex items-baseline pl-2">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">0</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">lần</span>
+</div>
+</div>
+</section>
+<!-- Neutral Note (Early Stop Context - hidden by default, shown for example if needed) -->
+<!-- 
+        <section class="bg-surface-container-low rounded-xl p-4 mb-6 border border-outline-variant flex items-start">
+            <span class="material-symbols-outlined text-secondary mr-3 mt-0.5">info</span>
+            <div>
+                <h3 class="font-body-lg text-body-lg text-on-surface mb-1">Dừng tập sớm</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Mẹ đã kết thúc bài tập ở phút 15. Lắng nghe cơ thể là quan trọng nhất, hãy nghỉ ngơi và tiếp tục khi sẵn sàng nhé.</p>
+            </div>
+        </section>
+        -->
+<!-- Actions -->
+<section class="flex flex-col gap-3 mt-8">
+<button class="w-full h-12 bg-primary text-on-primary rounded-full font-headline-md text-headline-md flex items-center justify-center hover:opacity-90 transition-opacity shadow-md">
+                Luyện tập lại
+            </button>
+<button class="w-full h-12 bg-transparent border-2 border-primary text-primary rounded-full font-headline-md text-headline-md flex items-center justify-center hover:bg-surface-container-low transition-colors">
+                Xem lịch sử
+            </button>
+<button class="w-full h-12 bg-transparent text-secondary rounded-full font-body-lg text-body-lg flex items-center justify-center hover:bg-surface-container transition-colors mt-2">
+                Quay lại danh sách
+            </button>
+</section>
+</main>
+</body></html>

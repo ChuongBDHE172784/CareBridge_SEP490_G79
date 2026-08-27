@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xác thực mã OTP - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#845143",
+                        "surface": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "inverse-surface": "#3e2c26",
+                        "surface-variant": "#fadcd3",
+                        "secondary-container": "#f6dacf",
+                        "tertiary-fixed": "#e9e1db",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#271812",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary": "#6e5a52",
+                        "surface-tint": "#845143",
+                        "on-primary-container": "#51271b",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary-fixed": "#271812",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "tertiary": "#625d59",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-high": "#ffe2d9",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#ffede7",
+                        "on-secondary-container": "#735e56",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#d6c2bd",
+                        "on-primary-fixed": "#341006",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-background": "#271812",
+                        "surface-dim": "#f1d4ca",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#fff1ec",
+                        "surface-bright": "#fff8f6",
+                        "background": "#fff8f6",
+                        "tertiary-container": "#a09a95",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-container": "#c98c7b",
+                        "secondary-fixed": "#f8ddd2",
+                        "outline": "#84736f",
+                        "surface-container": "#ffe9e3",
+                        "primary-fixed": "#ffdbd1",
+                        "inverse-primary": "#fab7a4",
+                        "on-surface-variant": "#524440",
+                        "surface-container-highest": "#fadcd3",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "button": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .otp-input::-webkit-outer-spin-button,
+        .otp-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .otp-input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex flex-col text-on-background">
+<!-- TopNavBar (Suppressed nav links since it's a linear transactional flow) -->
+<header class="w-full top-0 sticky bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.06)] z-50">
+<div class="flex justify-between items-center h-[72px] px-safe max-w-7xl mx-auto">
+<div class="font-headline-lg text-headline-lg font-bold text-primary">CareBridge</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center px-safe py-stack-lg">
+<div class="w-full max-w-md bg-surface-container-lowest rounded-lg p-safe shadow-[0px_4px_20px_rgba(90,70,63,0.06)] relative overflow-hidden">
+<!-- Subtle Decorative Blob -->
+<div class="absolute -top-16 -right-16 w-32 h-32 bg-primary-fixed rounded-full blur-2xl opacity-50 pointer-events-none"></div>
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors duration-200 mb-stack-lg group">
+<span class="material-symbols-outlined text-[20px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+<span class="font-body-md text-body-md">Quay lại</span>
+</button>
+<div class="text-center mb-stack-lg relative z-10">
+<div class="inline-flex items-center justify-center w-16 h-16 bg-surface-container rounded-full mb-stack-md text-primary">
+<span class="material-symbols-outlined text-[32px]">dialpad</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-stack-sm">Xác thực mã OTP</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    Vui lòng nhập mã 6 số được gửi tới số điện thoại<br/>
+<span class="font-button text-button text-on-surface mt-1 block">09x-xxx-8892</span>
+</p>
+</div>
+<!-- Standard State -->
+<form class="flex flex-col gap-stack-md relative z-10">
+<div class="flex justify-between gap-2 mb-2">
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-outline-variant rounded bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" maxlength="1" placeholder="•" type="number" value="1"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-outline-variant rounded bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" maxlength="1" placeholder="•" type="number" value="4"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-outline-variant rounded bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" maxlength="1" placeholder="•" type="number" value="9"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-outline-variant rounded bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" maxlength="1" placeholder="•" type="number"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-outline-variant rounded bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" maxlength="1" placeholder="•" type="number"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-outline-variant rounded bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" maxlength="1" placeholder="•" type="number"/>
+</div>
+<div class="flex items-center justify-between font-body-md text-body-md mb-stack-md">
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+                        02:00
+                    </span>
+<button class="text-primary hover:text-primary-container font-button text-button transition-colors" type="button">Gửi lại mã</button>
+</div>
+<button class="w-full h-[52px] bg-primary-container text-on-primary font-button text-button rounded-full hover:opacity-90 active:opacity-80 transition-opacity flex items-center justify-center gap-2 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" type="button">
+                    Xác nhận
+                    <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</form>
+<hr class="my-stack-lg border-outline-variant opacity-50"/>
+<!-- Error State Example (Visual only) -->
+<div class="relative z-10 opacity-70">
+<p class="font-label-md text-label-md text-on-surface-variant mb-4 uppercase tracking-wider text-center">Trạng thái lỗi (Ví dụ)</p>
+<div class="flex justify-between gap-2 mb-2">
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-error rounded bg-error-container text-error outline-none" disabled="" maxlength="1" type="number" value="0"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-error rounded bg-error-container text-error outline-none" disabled="" maxlength="1" type="number" value="0"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-error rounded bg-error-container text-error outline-none" disabled="" maxlength="1" type="number" value="0"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-error rounded bg-error-container text-error outline-none" disabled="" maxlength="1" type="number" value="0"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-error rounded bg-error-container text-error outline-none" disabled="" maxlength="1" type="number" value="0"/>
+<input class="otp-input w-12 h-14 text-center font-headline-md text-headline-md border border-error rounded bg-error-container text-error outline-none" disabled="" maxlength="1" type="number" value="0"/>
+</div>
+<div class="flex items-center gap-1 text-error font-body-md text-body-md mt-2">
+<span class="material-symbols-outlined text-[16px]">error</span>
+                    Mã OTP không hợp lệ hoặc đã hết hạn.
+                </div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-stack-lg mt-auto bg-surface-container-low">
+<div class="flex flex-col md:flex-row justify-between items-center px-safe max-w-7xl mx-auto gap-gutter">
+<div class="font-headline-md text-headline-md text-primary">CareBridge</div>
+<div class="flex flex-wrap justify-center gap-4">
+<a class="font-label-md text-label-md text-secondary hover:underline transition-all cursor-pointer" href="#">Điều khoản sử dụng</a>
+<a class="font-label-md text-label-md text-secondary hover:underline transition-all cursor-pointer" href="#">Chính sách bảo mật</a>
+<a class="font-label-md text-label-md text-secondary hover:underline transition-all cursor-pointer" href="#">Quy chuẩn đối tác</a>
+<a class="font-label-md text-label-md text-secondary hover:underline transition-all cursor-pointer" href="#">Hỗ trợ</a>
+</div>
+<div class="font-label-md text-label-md text-on-secondary-fixed-variant">© 2024 CareBridge Vietnam. Tất cả quyền được bảo lưu.</div>
+</div>
+</footer>
+<script>
+        // Simple script to auto-focus next input in OTP
+        const inputs = document.querySelectorAll('.otp-input:not([disabled])');
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value.length > 1) {
+                    e.target.value = e.target.value.slice(0, 1);
+                }
+                if (e.target.value.length === 1) {
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && e.target.value === '') {
+                    if (index > 0) {
+                        inputs[index - 1].focus();
+                    }
+                }
+            });
+        });
+    </script>
+</body></html>

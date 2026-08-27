@@ -1,0 +1,10 @@
+               email                | journey_type | status | version | estimated_due_date |     date_source     | date_confidence | transition_count 
+------------------------------------+--------------+--------+---------+--------------------+---------------------+-----------------+------------------
+ mf01.story61.new-c@carebridge.test | PREGNANCY    | ACTIVE |       0 | 2027-01-10         | CLINICIAN_CONFIRMED | CONFIRMED       |                1
+(1 row)
+
+ event_type | from_stage | to_stage  |       source        | confidence | journey_version |                                                                                                                          changes_json                                                                                                                          
+------------+------------+-----------+---------------------+------------+-----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ CREATED    |            | PREGNANCY | CLINICIAN_CONFIRMED | CONFIRMED  |               0 | {"status": {"to": "ACTIVE", "from": null}, "startDate": {"to": "2026-07-18", "from": null}, "journeyType": {"to": "PREGNANCY", "from": null}, "estimatedDueDate": {"to": "2027-01-10", "from": null}, "lastMenstrualDate": {"to": "2026-07-01", "from": null}}
+(1 row)
+

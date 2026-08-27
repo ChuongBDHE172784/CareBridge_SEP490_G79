@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://carebridge.app/contracts/triage/triage_response_v2.schema.json",
+  "title": "CareBridge deployed Triage V2 session response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sessionId",
+    "stateVersion",
+    "target",
+    "intent",
+    "stage",
+    "outcome",
+    "action",
+    "stop",
+    "questions",
+    "scope",
+    "pendingRisks",
+    "citations",
+    "disclaimer",
+    "readiness"
+  ],
+  "properties": {
+    "sessionId": { "type": "string", "format": "uuid" },
+    "stateVersion": { "type": "integer", "minimum": 0 },
+    "target": { "enum": ["MOTHER", "BABY", "CONFLICTED", "UNKNOWN"] },
+    "intent": {
+      "enum": [
+        "SYMPTOM_TRIAGE",
+        "GENERAL_HEALTH_INFORMATION",
+        "SOURCE_LOOKUP",
+        "OUT_OF_SCOPE",
+        "UNKNOWN"
+      ]
+    },
+    "stage": {
+      "enum": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM_MOTHER",
+        "INFANT_0_12M",
+        "TODDLER_12_24M",
+        "CONFLICTED",
+        "UNKNOWN"
+      ]
+    },
+    "outcome": { "enum": ["RED", "YELLOW", "NEEDS_MORE_INFO", "OUT_OF_SCOPE"] },
+    "action": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "stop": { "type": "boolean" },
+    "questions": {
+      "type": "array",
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Z0-9_]{1,128}$" }
+    },
+    "scope": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "pendingRisks": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "type": "string", "maxLength": 128 }
+    },
+    "completionReason": { "type": ["string", "null"], "maxLength": 256 },
+    "rulesetVersion": { "type": ["string", "null"], "maxLength": 64 },
+    "rulesetHash": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "type": "null" }
+      ]
+    },
+    "citations": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "object" }
+    },
+    "disclaimer": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "readiness": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "outcome": { "const": "RED" } }, "required": ["outcome"] },
+      "then": {
+        "properties": {
+          "stop": { "const": true },
+          "questions": { "maxItems": 0 }
+        }
+      }
+    }
+  ]
+}

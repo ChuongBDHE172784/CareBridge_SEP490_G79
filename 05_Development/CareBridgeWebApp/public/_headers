@@ -1,0 +1,26 @@
+# GitLab Pages reads this file from the root of the published site and applies it to
+# matching paths. Before it existed the portal was served with no security headers at
+# all — measured against production on 11/08/2026, carebridgevn.site returned only
+# Cache-Control, Etag and Permissions-Policy, while the API on the same domain already
+# sent HSTS, nosniff and X-Frame-Options from Spring Security. The two halves of the
+# system disagreed, and the half a browser actually renders was the unprotected one.
+#
+# Content-Security-Policy is deliberately Report-Only for now. A wrong policy takes the
+# portal down for every user and Pages has no instant rollback, so it observes first and
+# is promoted to enforcing once the violation reports come back clean.
+
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com; connect-src 'self' https://api.carebridgevn.site https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com; upgrade-insecure-requests
+
+# Vite writes the content hash into every filename under /assets, so a changed file is a
+# changed URL and the old one can never be wrong. Pages was serving these with the same
+# max-age=600 as index.html, which made the browser revalidate the 2.1 MB bundle every
+# ten minutes for nothing.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

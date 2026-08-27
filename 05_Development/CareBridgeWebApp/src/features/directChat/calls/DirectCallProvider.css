@@ -1,0 +1,121 @@
+.direct-call-overlay,
+.direct-call-room {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+}
+
+.direct-call-overlay {
+  display: grid;
+  place-items: start center;
+  padding: 4rem 1rem 1rem;
+  background: rgb(20 14 12 / 55%);
+}
+
+.direct-call-card {
+  width: min(28rem, 100%);
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: #fffaf6;
+  box-shadow: 0 1.5rem 4rem rgb(55 33 25 / 30%);
+  color: #34231d;
+  text-align: center;
+}
+
+.direct-call-card h2 {
+  margin: 0 0 0.5rem;
+}
+
+.direct-call-consent-overlay {
+  z-index: 10002;
+}
+
+.direct-call-consent-card {
+  max-width: 32rem;
+}
+
+.direct-call-consent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.25rem;
+  min-height: 3.25rem;
+  margin-bottom: 0.9rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.direct-call-consent-message {
+  margin: 0.75rem 0 0;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.direct-call-consent-note {
+  margin: 0.75rem 0 0;
+  color: #71564c;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+.direct-call-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.direct-call-actions button {
+  min-width: 7rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  background: #bd7665;
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.direct-call-actions button.secondary {
+  background: #eee1da;
+  color: #553b32;
+}
+
+.direct-call-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.direct-call-error {
+  color: #a82727;
+}
+
+.direct-call-room {
+  background: #111;
+}
+
+.direct-call-room-container {
+  width: 100%;
+  height: 100%;
+}
+
+.direct-call-room-status {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  max-width: calc(100% - 2rem);
+  transform: translateX(-50%);
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  background: rgb(0 0 0 / 70%);
+  color: white;
+  font-size: 0.85rem;
+  text-align: center;
+  pointer-events: none;
+}

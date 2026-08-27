@@ -1,0 +1,125 @@
+package com.carebridge.backend.content.repository;
+
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ContentStage;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemplate, UUID> {
+
+    Optional<ChecklistTemplate> findByTemplateVersionId(UUID templateVersionId);
+
+    List<ChecklistTemplate> findByTemplateLineageId(UUID templateLineageId);
+
+    List<ChecklistTemplate> findAllByTemplateVersionIdIn(Collection<UUID> templateVersionIds);
+
+    @Query("select coalesce(max(t.versionNo), 0) from ChecklistTemplate t " +
+            "where t.id=:lineageId or t.templateLineageId=:lineageId")
+    int findMaxVersionNoForLineage(@Param("lineageId") UUID lineageId);
+
+    @Query(value = "select pg_advisory_xact_lock(hashtextextended(cast(:lineageId as text), 0))",
+            nativeQuery = true)
+    void acquireLineageLock(@Param("lineageId") UUID lineageId);
+
+    /**
+     * Serializes approval/activation decisions that can change the single
+     * PRE_PREGNANCY MOTHER sequence cohort. The transaction-scoped advisory lock
+     * closes the race between reading active candidates and saving the decision.
+     */
+    @Query(value = "select pg_advisory_xact_lock(hashtextextended('CHECKLIST_PRE_PREGNANCY_SEQUENCE_COHORT', 0))",
+            nativeQuery = true)
+    void acquirePreconceptionSequenceCohortLock();
+
+    List<ChecklistTemplate> findByStage(ContentStage stage);
+
+    List<ChecklistTemplate> findByStatusOrderByUpdatedAtDesc(ChecklistTemplateStatus status);
+
+    List<ChecklistTemplate> findByStageAndStatusOrderByUpdatedAtDesc(
+            ContentStage stage, ChecklistTemplateStatus status);
+
+    @Query("select t from ChecklistTemplate t where t.status=:status " +
+            "and t.distributionEnabled=true and t.migrationReviewRequired=false " +
+            "and t.templateType=com.carebridge.backend.content.entity.ChecklistTemplateType.MANDATORY " +
+            "order by t.updatedAt desc")
+    List<ChecklistTemplate> findAllDistributionEnabledByStatus(
+            @Param("status") ChecklistTemplateStatus status);
+
+    @Query("select t from ChecklistTemplate t where t.stage=:stage and t.status=:status " +
+            "and t.distributionEnabled=true and t.migrationReviewRequired=false " +
+            "and t.templateType=com.carebridge.backend.content.entity.ChecklistTemplateType.MANDATORY " +
+            "order by t.updatedAt desc")
+    List<ChecklistTemplate> findAllDistributionEnabledByStageAndStatus(
+            @Param("stage") ContentStage stage,
+            @Param("status") ChecklistTemplateStatus status);
+
+    @Query("select t from ChecklistTemplate t where t.status=:status " +
+            "and t.migrationReviewRequired=false " +
+            "and t.templateType=com.carebridge.backend.content.entity.ChecklistTemplateType.OPTIONAL " +
+            "and t.recipientScope in (" +
+            "com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER, " +
+            "com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH) " +
+            "order by t.updatedAt desc")
+    List<ChecklistTemplate> findAllOptionalByStatus(
+            @Param("status") ChecklistTemplateStatus status);
+
+    @Query("select t from ChecklistTemplate t where t.stage=:stage and t.status=:status " +
+            "and t.migrationReviewRequired=false " +
+            "and t.templateType=com.carebridge.backend.content.entity.ChecklistTemplateType.OPTIONAL " +
+            "and t.recipientScope in (" +
+            "com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER, " +
+            "com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH) " +
+            "order by t.updatedAt desc")
+    List<ChecklistTemplate> findAllOptionalByStageAndStatus(
+            @Param("stage") ContentStage stage,
+            @Param("status") ChecklistTemplateStatus status);
+
+    @Query("select t from ChecklistTemplate t where (:stage is null or t.stage=:stage) " +
+            "and (:status is null or t.status=:status) " +
+            "and (:keyword is null or lower(t.name) like lower(concat('%', cast(:keyword as string), '%')) " +
+            "or lower(t.description) like lower(concat('%', cast(:keyword as string), '%'))) " +
+            "order by t.updatedAt desc nulls last, t.id desc")
+    Page<ChecklistTemplate> findAdminByOptionalStageAndStatus(
+            @Param("stage") ContentStage stage,
+            @Param("status") ChecklistTemplateStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    Page<ChecklistTemplate> findByAssignedExpertIdAndStatus(
+            UUID assignedExpertId, ChecklistTemplateStatus status, Pageable pageable);
+
+    @Query("SELECT t FROM ChecklistTemplate t WHERE " +
+           "t.assignedExpertId = :expertId AND " +
+           "(:status IS NULL OR t.status = :status) AND " +
+           "(:stage IS NULL OR t.stage = :stage) AND " +
+           "(:keyword IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) " +
+           "   OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%'))) " +
+           "ORDER BY t.assignedAt DESC NULLS LAST, t.updatedAt DESC")
+    Page<ChecklistTemplate> findByExpertFilters(
+            @Param("expertId") UUID expertId,
+            @Param("status") ChecklistTemplateStatus status,
+            @Param("stage") ContentStage stage,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    long countByAssignedExpertIdAndStatus(UUID assignedExpertId, ChecklistTemplateStatus status);
+
+    @Query("SELECT t.assignedExpertId, COUNT(t) FROM ChecklistTemplate t " +
+           "WHERE t.status = :status AND t.assignedExpertId IN :expertIds " +
+           "GROUP BY t.assignedExpertId")
+    List<Object[]> countPendingByAssignedExpertIds(
+            @Param("status") ChecklistTemplateStatus status,
+            @Param("expertIds") Collection<UUID> expertIds);
+
+    @Query("SELECT MAX(t.assignedAt) FROM ChecklistTemplate t WHERE t.assignedExpertId = :expertId")
+    java.time.Instant findLatestAssignedAtByExpertId(@Param("expertId") UUID expertId);
+}

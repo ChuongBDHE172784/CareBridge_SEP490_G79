@@ -1,0 +1,5 @@
+               email                | journey_type  | status | version | transitions 
+------------------------------------+---------------+--------+---------+-------------
+ mf01.story61.new-e@carebridge.test | PRE_PREGNANCY | ACTIVE |       0 |           1
+(1 row)
+

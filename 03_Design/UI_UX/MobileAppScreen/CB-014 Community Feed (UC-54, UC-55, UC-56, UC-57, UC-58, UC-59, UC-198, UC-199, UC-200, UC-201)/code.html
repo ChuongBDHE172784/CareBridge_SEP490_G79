@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Cộng đồng - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error-container": "#ffdad6",
+                    "primary": "#845143",
+                    "outline": "#84736f",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#e9e1db",
+                    "on-error-container": "#93000a",
+                    "surface-bright": "#fff8f6",
+                    "tertiary": "#625d59",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed": "#ffdbd1",
+                    "primary-container": "#c98c7b",
+                    "surface-container-highest": "#fadcd3",
+                    "inverse-on-surface": "#ffede7",
+                    "on-primary": "#ffffff",
+                    "surface": "#fff8f6",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-secondary-container": "#735e56",
+                    "error": "#ba1a1a",
+                    "secondary": "#6e5a52",
+                    "on-error": "#ffffff",
+                    "surface-tint": "#845143",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "inverse-primary": "#fab7a4",
+                    "tertiary-container": "#a09a95",
+                    "surface-container": "#ffe9e3",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-surface": "#271812",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "surface-variant": "#fadcd3",
+                    "on-primary-container": "#51271b",
+                    "outline-variant": "#d6c2bd",
+                    "on-tertiary-container": "#36322e",
+                    "inverse-surface": "#3e2c26",
+                    "surface-dim": "#f1d4ca",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "on-background": "#271812",
+                    "background": "#fff8f6",
+                    "secondary-fixed": "#f8ddd2",
+                    "on-surface-variant": "#524440",
+                    "on-secondary-fixed": "#271812",
+                    "surface-container-low": "#fff1ec",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#ffe2d9",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "secondary-container": "#f6dacf",
+                    "on-primary-fixed": "#341006"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "touch-target-min": "48px",
+                    "stack-lg": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "safe-margin": "24px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "headline-lg": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "button": ["Lexend"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { background-color: #F6F1EC; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-surface antialiased bg-[#F6F1EC] pb-[90px]">
+<!-- Header (Search & Actions) -->
+<header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md px-safe-margin py-stack-md flex items-center justify-between shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Cộng đồng</h1>
+<div class="flex gap-2">
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-primary">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-primary">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+</button>
+</div>
+</header>
+<main class="px-safe-margin py-stack-md flex flex-col gap-stack-lg">
+<!-- Topic Chips Horizontal Scroll -->
+<div class="flex overflow-x-auto no-scrollbar gap-stack-sm -mx-safe-margin px-safe-margin pb-2 snap-x">
+<button class="snap-start shrink-0 h-10 px-4 rounded-full bg-primary-container text-on-primary font-button text-button flex items-center shadow-sm">
+                Tất cả
+            </button>
+<button class="snap-start shrink-0 h-10 px-4 rounded-full bg-surface-container text-on-surface-variant font-button text-button flex items-center hover:bg-surface-container-high transition-colors">
+                Dinh dưỡng
+            </button>
+<button class="snap-start shrink-0 h-10 px-4 rounded-full bg-surface-container text-on-surface-variant font-button text-button flex items-center hover:bg-surface-container-high transition-colors">
+                Giấc ngủ
+            </button>
+<button class="snap-start shrink-0 h-10 px-4 rounded-full bg-surface-container text-on-surface-variant font-button text-button flex items-center hover:bg-surface-container-high transition-colors">
+                Phát triển
+            </button>
+<button class="snap-start shrink-0 h-10 px-4 rounded-full bg-surface-container text-on-surface-variant font-button text-button flex items-center hover:bg-surface-container-high transition-colors">
+                Tâm lý
+            </button>
+</div>
+<!-- Feed Content -->
+<div class="flex flex-col gap-stack-md">
+<!-- Post Card 1 (Expert Answered) -->
+<article class="bg-surface rounded-DEFAULT p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A small circular profile picture of a young Vietnamese mother smiling warmly in a bright, soft-lit organic nursery setting. Warm tones, soft focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tloMPb-Zt7Wz_BkGmvZjNmvbo3Ef-k6N2xlZC6AnqMj3tn8Doi39K4fuOmOarV4_0kppNbHksmFzTrkX8PPkiWWETomqiu5SxSmkWf6zk21yGT9WDD7J2BQIeGH4WKpqSCokzfqelADG6X5UOYu4qjY3Ixv54dGQQC59uQM2KKAnrK1trhEhxxWEDBLpCnZWE4J-78v1YcieALztsNcZo-G7ebIMPzYnbt89mAigw39dhlCM8rOdeIZ7dDv5UfqP0ZP7Ody3UtY"/>
+<div>
+<p class="font-button text-button text-on-surface">Mẹ Bún Lứt</p>
+<p class="font-label-md text-label-md text-on-surface-variant">2 giờ trước</p>
+</div>
+</div>
+<button class="text-on-surface-variant p-1">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mt-1">Bé 6 tháng lười ăn dặm, mẹ phải làm sao?</h3>
+<p class="font-body-md text-body-md text-on-surface line-clamp-3">
+                    Chào các mẹ, bé nhà mình được 6 tháng rưỡi rồi, mình bắt đầu cho bé ăn dặm kiểu Nhật nhưng bé có vẻ không hợp tác, hay nhè ra và quấy khóc. Mình đang lo quá, không biết có nên đổi phương pháp hay ép bé một chút không? Xin kinh nghiệm từ các mẹ đi trước ạ.
+                </p>
+<!-- Expert Badge/Snippet -->
+<div class="mt-2 bg-secondary-container/30 rounded-lg p-3 flex gap-2 items-start border border-secondary-container">
+<span class="material-symbols-outlined text-primary" data-icon="verified" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified</span>
+<div>
+<p class="font-button text-button text-on-surface text-sm">Bác sĩ Nhi khoa Trịnh Vy đã trả lời</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm line-clamp-1">"Mẹ đừng quá lo lắng, giai đoạn này bé chủ yếu làm quen với thức ăn mới..."</p>
+</div>
+</div>
+<div class="flex justify-between items-center mt-2 pt-3 border-t border-surface-variant">
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+<span class="font-label-md text-label-md">24</span>
+</button>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-md text-label-md">12</span>
+</button>
+</div>
+<span class="font-label-md text-label-md bg-surface-container px-2 py-1 rounded-md text-on-surface-variant">Dinh dưỡng</span>
+</div>
+</article>
+<!-- Post Card 2 (Standard Community) -->
+<article class="bg-surface rounded-DEFAULT p-[20px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-headline-md">
+                            T
+                        </div>
+<div>
+<p class="font-button text-button text-on-surface">Thu Phương</p>
+<p class="font-label-md text-label-md text-on-surface-variant">5 giờ trước</p>
+</div>
+</div>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mt-1">Review bỉm Merries cho bé da nhạy cảm</h3>
+<p class="font-body-md text-body-md text-on-surface line-clamp-2">
+                    Mình thấy nhiều mẹ hỏi về bỉm cho bé da nhạy cảm nên ngoi lên review chút về dòng Merries nội địa Nhật. Trộm vía bé nhà mình xài rất hợp, không bị hăm đỏ dù đóng qua đêm...
+                </p>
+<div class="w-full h-40 mt-2 rounded-lg bg-surface-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A softly lit close-up of a neatly folded premium baby diaper resting on a clean white organic cotton blanket. Natural sunlight, pastel tones, warm maternal aesthetic, high resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGMupAbJuNKv0CkrvY1LKIjJ3S_EjTUKH48_s9yV8hHirFFmsuYEP-Ge62Q0jMDCnB4U-lq0IoUzHhg40Dqosa6fm02Bu7y1JCAafQqOuZJ3KF5q2Tlr6g6q8erOvNRpKQ44oU6P0wQmXsn452ZovD-6WxmSY0H8EiFNeC0pX52DaGeYiLUEyTMI6e-xkf7yE2GsKiohdRTfe6yoiJ1Y-vbzbRrqsw3n6U3UhGXg6fp8cnIBhI8YwH3VPP70o4ekcE_e3bgUqKNjY"/>
+</div>
+<div class="flex justify-between items-center mt-2 pt-3 border-t border-surface-variant">
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+<span class="font-label-md text-label-md">89</span>
+</button>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-md text-label-md">34</span>
+</button>
+</div>
+<span class="font-label-md text-label-md bg-surface-container px-2 py-1 rounded-md text-on-surface-variant">Review</span>
+</div>
+</article>
+</div>
+</main>
+<!-- FAB: Đặt câu hỏi -->
+<button class="fixed bottom-[100px] right-safe-margin bg-primary-container text-on-primary h-14 px-6 rounded-full shadow-[0px_8px_24px_rgba(90,70,63,0.12)] flex items-center gap-2 hover:bg-primary transition-colors z-40 active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+<span class="font-button text-button">Đặt câu hỏi</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-2 py-1 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group" data-weight="fill" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md mt-1">Việc cần làm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</a>
+</nav>
+<style>
+        /* Hide scrollbar for horizontal scroll areas but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</body></html>

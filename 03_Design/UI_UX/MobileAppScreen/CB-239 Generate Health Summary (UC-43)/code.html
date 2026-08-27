@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Tạo tóm tắt sức khỏe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+            overflow-x: hidden;
+        }
+
+        /* Claymorphism Effects */
+        .clay-card {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 
+                8px 8px 16px rgba(201, 140, 123, 0.12),
+                inset -6px -6px 12px rgba(201, 140, 123, 0.05),
+                inset 6px 6px 12px rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .clay-button-primary {
+            background: #845143;
+            color: #ffffff;
+            border-radius: 9999px;
+            box-shadow: 
+                inset -4px -4px 8px rgba(0, 0, 0, 0.2),
+                inset 4px 4px 8px rgba(255, 255, 255, 0.2),
+                4px 8px 16px rgba(132, 81, 67, 0.25);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .clay-button-primary:active {
+            transform: scale(0.96);
+            box-shadow: 
+                inset 4px 4px 8px rgba(0, 0, 0, 0.2),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.1);
+        }
+
+        .clay-toggle-active {
+            background: #c98c7b;
+            color: white;
+            box-shadow: 
+                inset -2px -2px 6px rgba(0, 0, 0, 0.1),
+                inset 2px 2px 6px rgba(255, 255, 255, 0.3);
+        }
+
+        .clay-toggle-inactive {
+            background: #f3ede8;
+            color: #524440;
+            box-shadow: 
+                inset -2px -2px 4px rgba(255, 255, 255, 0.7),
+                inset 2px 2px 4px rgba(201, 140, 123, 0.1);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .glass-header {
+            backdrop-filter: blur(12px);
+            background: rgba(254, 248, 244, 0.8);
+        }
+
+        /* Custom Checkbox */
+        .custom-checkbox:checked {
+            background-color: #845143;
+            border-color: #845143;
+        }
+
+        /* Animated background blob */
+        .blob {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(201, 140, 123, 0.15) 0%, rgba(254, 248, 244, 0) 70%);
+            border-radius: 50%;
+            z-index: -1;
+            filter: blur(40px);
+            animation: move 20s infinite alternate;
+        }
+
+        @keyframes move {
+            from { transform: translate(-10%, -10%); }
+            to { transform: translate(20%, 20%); }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#845143",
+                      "primary-container": "#c98c7b",
+                      "on-primary": "#ffffff",
+                      "background": "#fef8f4",
+                      "surface": "#fef8f4",
+                      "surface-container": "#f3ede8",
+                      "secondary": "#625d59",
+                      "on-surface-variant": "#524440",
+                      "outline-variant": "#d6c2bd"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-margin-mobile": "16px"
+              }
+            }
+          }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface-variant mb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 glass-header shadow-[0px_4px_20px_rgba(90,70,63,0.08)] flex items-center justify-between px-6 h-16">
+<button class="active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary text-2xl">arrow_back</span>
+</button>
+<h1 class="font-bold text-xl text-primary tracking-tight">Tạo tóm tắt</h1>
+<button class="active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary text-2xl">close</span>
+</button>
+</header>
+<main class="mt-20 px-6 max-w-2xl mx-auto relative">
+<div class="blob" style="top: 10%; left: -5%;"></div>
+<div class="blob" style="bottom: 20%; right: -5%; animation-delay: -5s;"></div>
+<!-- Purpose Selector -->
+<section class="mb-8">
+<h2 class="text-primary font-bold text-lg mb-4 px-2">Khoảng thời gian</h2>
+<div class="grid grid-cols-3 gap-3">
+<button class="time-btn clay-card clay-toggle-active py-4 flex flex-col items-center justify-center transition-all duration-300" onclick="setActive(this, 'time')">
+<span class="font-bold text-sm">24h</span>
+</button>
+<button class="time-btn clay-card clay-toggle-inactive py-4 flex flex-col items-center justify-center transition-all duration-300" onclick="setActive(this, 'time')">
+<span class="font-bold text-sm">7 ngày</span>
+</button>
+<button class="time-btn clay-card clay-toggle-inactive py-4 flex flex-col items-center justify-center transition-all duration-300 text-center" onclick="setActive(this, 'time')">
+<span class="font-bold text-xs leading-tight">Phiên tư vấn</span>
+</button>
+</div>
+</section>
+<!-- Category Toggles -->
+<section class="mb-8">
+<h2 class="text-primary font-bold text-lg mb-4 px-2">Hạng mục bao gồm</h2>
+<div class="grid grid-cols-2 gap-4">
+<label class="flex items-center p-4 clay-card cursor-pointer group hover:bg-surface-accent-light transition-colors">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary">analytics</span>
+</div>
+<span class="flex-grow font-semibold text-sm">Chỉ số</span>
+<input checked="" class="form-checkbox h-5 w-5 rounded-full border-2 border-primary-container text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center p-4 clay-card cursor-pointer group hover:bg-surface-accent-light transition-colors">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary">menu_book</span>
+</div>
+<span class="flex-grow font-semibold text-sm">Nhật ký</span>
+<input checked="" class="form-checkbox h-5 w-5 rounded-full border-2 border-primary-container text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center p-4 clay-card cursor-pointer group hover:bg-surface-accent-light transition-colors">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary">vaccines</span>
+</div>
+<span class="flex-grow font-semibold text-sm">Vaccine</span>
+<input class="form-checkbox h-5 w-5 rounded-full border-2 border-primary-container text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center p-4 clay-card cursor-pointer group hover:bg-surface-accent-light transition-colors">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary">folder_shared</span>
+</div>
+<span class="flex-grow font-semibold text-sm">Hồ sơ</span>
+<input class="form-checkbox h-5 w-5 rounded-full border-2 border-primary-container text-primary focus:ring-primary" type="checkbox"/>
+</label>
+</div>
+</section>
+<!-- Preview Card -->
+<section class="mb-8">
+<h2 class="text-primary font-bold text-lg mb-4 px-2">Xem trước nội dung</h2>
+<div class="clay-card p-6 overflow-hidden relative">
+<div class="absolute top-0 right-0 p-4 opacity-20">
+<span class="material-symbols-outlined text-6xl">medical_services</span>
+</div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-xs font-bold uppercase tracking-widest text-primary/60 mb-1">Báo cáo sức khỏe</p>
+<h3 class="text-xl font-bold text-primary">Nguyễn Văn A</h3>
+</div>
+<div class="bg-primary/5 px-3 py-1 rounded-full text-[10px] font-bold text-primary border border-primary/10">
+                            ID: #CB-2904
+                        </div>
+</div>
+<div class="space-y-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-primary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">favorite</span>
+</div>
+<div class="flex-grow">
+<div class="h-2 w-3/4 bg-primary-container/20 rounded-full mb-2"></div>
+<div class="h-2 w-1/2 bg-primary-container/10 rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-primary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">sleep</span>
+</div>
+<div class="flex-grow">
+<div class="h-2 w-2/3 bg-primary-container/20 rounded-full mb-2"></div>
+<div class="h-2 w-1/3 bg-primary-container/10 rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-dashed border-primary-container/30 flex justify-between items-center">
+<span class="text-[10px] text-on-surface-variant font-medium">Cập nhật: 15:30, Hôm nay</span>
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full border-2 border-white bg-primary-container/20"></div>
+<div class="w-6 h-6 rounded-full border-2 border-white bg-primary-container/40"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Options -->
+<section class="mb-12 space-y-4">
+<div class="flex items-center justify-between p-4 clay-card">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">save</span>
+<span class="font-semibold text-sm">Lưu vào thiết bị</span>
+</div>
+<button class="w-12 h-6 rounded-full bg-primary-container flex items-center p-1 transition-colors duration-300" onclick="toggleSwitch(this)">
+<div class="w-4 h-4 bg-white rounded-full shadow-sm transform translate-x-6 transition-transform duration-300"></div>
+</button>
+</div>
+<div class="flex items-center justify-between p-4 clay-card">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">lock_reset</span>
+<span class="font-semibold text-sm">Không tự động chia sẻ</span>
+</div>
+<button class="w-12 h-6 rounded-full bg-primary-container flex items-center p-1 transition-colors duration-300" onclick="toggleSwitch(this)">
+<div class="w-4 h-4 bg-white rounded-full shadow-sm transform translate-x-6 transition-transform duration-300"></div>
+</button>
+</div>
+</section>
+<!-- Main Action Button -->
+<button class="w-full clay-button-primary py-5 font-bold text-lg mb-10 flex items-center justify-center gap-3 active:scale-95">
+<span>Tạo tóm tắt</span>
+<span class="material-symbols-outlined">auto_awesome</span>
+</button>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full glass-header flex justify-around items-center py-3 px-4 rounded-t-[2.5rem] shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] z-50">
+<a class="flex flex-col items-center justify-center text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold mt-1 uppercase">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+<span class="text-[10px] mt-1 uppercase">Sức khỏe</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary hover:text-primary transition-colors relative" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
+<span class="text-[10px] font-bold mt-1 uppercase">Thông báo</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold mt-1 uppercase">Cá nhân</span>
+</a>
+</nav>
+<script>
+        function setActive(el, group) {
+            const btns = document.querySelectorAll(`.${group}-btn`);
+            btns.forEach(btn => {
+                btn.classList.remove('clay-toggle-active');
+                btn.classList.add('clay-toggle-inactive');
+            });
+            el.classList.add('clay-toggle-active');
+            el.classList.remove('clay-toggle-inactive');
+        }
+
+        function toggleSwitch(el) {
+            const circle = el.querySelector('div');
+            if (circle.classList.contains('translate-x-6')) {
+                circle.classList.remove('translate-x-6');
+                circle.classList.add('translate-x-0');
+                el.classList.remove('bg-primary-container');
+                el.classList.add('bg-gray-300');
+            } else {
+                circle.classList.add('translate-x-6');
+                circle.classList.remove('translate-x-0');
+                el.classList.add('bg-primary-container');
+                el.classList.remove('bg-gray-300');
+            }
+        }
+
+        // Add small hover interaction for cards
+        document.querySelectorAll('.clay-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+            card.style.transition = 'transform 0.3s ease';
+        });
+    </script>
+</body></html>

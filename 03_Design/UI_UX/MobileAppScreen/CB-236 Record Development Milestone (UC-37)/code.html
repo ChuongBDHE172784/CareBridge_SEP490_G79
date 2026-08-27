@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ghi nhận mốc phát triển | CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d6c2bd;
+            border-radius: 10px;
+        }
+        .milestone-chip input:checked + label {
+            background-color: #845143;
+            color: #ffffff;
+            border-color: #845143;
+        }
+        .floating-panel {
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "inverse-on-surface": "#f6f0eb",
+                        "surface-container-high": "#ede7e3",
+                        "on-secondary-fixed": "#1e1b18",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "text-body": "#524F4C",
+                        "surface-main": "#FFFFFF",
+                        "surface-accent-muted": "#F2EAE4",
+                        "surface-tint": "#845143",
+                        "inverse-surface": "#32302d",
+                        "primary-container": "#c98c7b",
+                        "background": "#fef8f4",
+                        "surface-dim": "#dfd9d5",
+                        "text-heading": "#2D2A28",
+                        "on-secondary-container": "#68635f",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f9f2ee",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "surface-bright": "#fef8f4",
+                        "surface-container-highest": "#e7e1dd",
+                        "error": "#ba1a1a",
+                        "on-background": "#1d1b19",
+                        "on-tertiary-container": "#34322f",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "surface-accent-light": "#F6F1EC",
+                        "secondary": "#625d59",
+                        "surface-variant": "#e7e1dd",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "secondary-container": "#e9e1db",
+                        "primary-fixed": "#ffdbd1",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "surface": "#fef8f4",
+                        "secondary-fixed": "#e9e1db",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#e6e2dd",
+                        "tertiary": "#605e5a",
+                        "on-surface": "#1d1b19",
+                        "status-active": "#C98C7B",
+                        "inverse-primary": "#fab7a4",
+                        "outline": "#84736f",
+                        "tertiary-container": "#9e9a96",
+                        "on-primary-container": "#51271b",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#f3ede8",
+                        "primary": "#845143",
+                        "outline-variant": "#d6c2bd",
+                        "on-surface-variant": "#524440",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "panel-gap": "24px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "grid-gutter": "24px",
+                        "container-padding": "32px",
+                        "sidebar-width": "280px"
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-background flex items-center justify-between px-6 h-16 shadow-[0px_4px_20px_rgba(90,70,63,0.08)]">
+<button class="text-primary active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-bold text-[22px] text-primary tracking-tight">CareBridge</h1>
+<button class="text-on-surface-variant active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<main class="pt-20 px-4 md:px-container-padding max-w-4xl mx-auto">
+<!-- Header Section -->
+<div class="mb-8">
+<span class="text-primary font-bold text-sm tracking-widest uppercase">Mẹ ghi nhận</span>
+<h2 class="text-3xl font-bold text-text-heading mt-2">Mốc phát triển mới</h2>
+<p class="text-on-surface-variant mt-2">Lưu giữ những khoảnh khắc tuyệt vời trong hành trình lớn khôn của bé.</p>
+</div>
+<form class="space-y-6">
+<!-- Milestone Selector (Bento Style Grid) -->
+<section class="bg-surface-container-lowest p-6 rounded-lg floating-panel">
+<h3 class="text-lg font-bold text-text-heading mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">child_care</span>
+                    Chọn mốc phát triển
+                </h3>
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+<div class="milestone-chip">
+<input checked="" class="hidden" id="lay" name="milestone" type="radio"/>
+<label class="flex flex-col items-center justify-center p-4 border-2 border-surface-accent-muted rounded-lg cursor-pointer hover:bg-surface-accent-light transition-all active:scale-95" for="lay">
+<span class="material-symbols-outlined mb-2">child_care</span>
+<span class="font-semibold text-sm">Lẫy</span>
+</label>
+</div>
+<div class="milestone-chip">
+<input class="hidden" id="bo" name="milestone" type="radio"/>
+<label class="flex flex-col items-center justify-center p-4 border-2 border-surface-accent-muted rounded-lg cursor-pointer hover:bg-surface-accent-light transition-all active:scale-95" for="bo">
+<span class="material-symbols-outlined mb-2">directions_run</span>
+<span class="font-semibold text-sm">Bò</span>
+</label>
+</div>
+<div class="milestone-chip">
+<input class="hidden" id="di" name="milestone" type="radio"/>
+<label class="flex flex-col items-center justify-center p-4 border-2 border-surface-accent-muted rounded-lg cursor-pointer hover:bg-surface-accent-light transition-all active:scale-95" for="di">
+<span class="material-symbols-outlined mb-2">nordic_walking</span>
+<span class="font-semibold text-sm">Đi</span>
+</label>
+</div>
+<div class="milestone-chip">
+<input class="hidden" id="noi" name="milestone" type="radio"/>
+<label class="flex flex-col items-center justify-center p-4 border-2 border-surface-accent-muted rounded-lg cursor-pointer hover:bg-surface-accent-light transition-all active:scale-95" for="noi">
+<span class="material-symbols-outlined mb-2">forum</span>
+<span class="font-semibold text-sm">Nói</span>
+</label>
+</div>
+<div class="milestone-chip">
+<input class="hidden" id="moc_rang" name="milestone" type="radio"/>
+<label class="flex flex-col items-center justify-center p-4 border-2 border-surface-accent-muted rounded-lg cursor-pointer hover:bg-surface-accent-light transition-all active:scale-95" for="moc_rang">
+<span class="material-symbols-outlined mb-2">mood</span>
+<span class="font-semibold text-sm">Mọc răng</span>
+</label>
+</div>
+<div class="milestone-chip">
+<input class="hidden" id="an_dam" name="milestone" type="radio"/>
+<label class="flex flex-col items-center justify-center p-4 border-2 border-surface-accent-muted rounded-lg cursor-pointer hover:bg-surface-accent-light transition-all active:scale-95" for="an_dam">
+<span class="material-symbols-outlined mb-2">restaurant</span>
+<span class="font-semibold text-sm">Ăn dặm</span>
+</label>
+</div>
+<div class="milestone-chip col-span-2 md:col-span-2">
+<input class="hidden" id="khac" name="milestone" type="radio"/>
+<label class="flex items-center justify-center p-4 border-2 border-surface-accent-muted rounded-lg cursor-pointer hover:bg-surface-accent-light transition-all h-full active:scale-95" for="khac">
+<span class="material-symbols-outlined mr-2">add_circle</span>
+<span class="font-semibold text-sm">Mốc khác...</span>
+</label>
+</div>
+</div>
+</section>
+<!-- Date and Notes -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-surface-container-lowest p-6 rounded-lg floating-panel">
+<label class="block text-lg font-bold text-text-heading mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+                        Ngày xảy ra
+                    </label>
+<input class="w-full bg-surface-accent-light border-2 border-surface-accent-muted rounded-xl p-3 focus:border-primary focus:ring-0 transition-colors" type="date"/>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-lg floating-panel">
+<label class="block text-lg font-bold text-text-heading mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">edit_note</span>
+                        Ghi chú cảm xúc
+                    </label>
+<textarea class="w-full bg-surface-accent-light border-2 border-surface-accent-muted rounded-xl p-3 focus:border-primary focus:ring-0 transition-colors h-24 resize-none" placeholder="Hôm nay bé thế nào?..."></textarea>
+</div>
+</section>
+<!-- Photo Upload -->
+<section class="bg-surface-container-lowest p-6 rounded-lg floating-panel">
+<h3 class="text-lg font-bold text-text-heading mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">image</span>
+                    Hình ảnh kỷ niệm
+                </h3>
+<div class="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+<div class="flex-shrink-0 w-32 h-32 border-2 border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary cursor-pointer transition-all">
+<span class="material-symbols-outlined text-3xl">add_a_photo</span>
+<span class="text-xs font-bold mt-1 uppercase">Thêm ảnh</span>
+</div>
+<div class="flex-shrink-0 w-32 h-32 rounded-lg bg-cover bg-center relative group overflow-hidden" data-alt="A soft-focused high-quality photograph of a sleeping newborn baby on a white linen blanket, illuminated by warm natural morning sunlight. The image has a calm, nurturing, and clean aesthetic following a modern care-tech visual style with soft shadows and minimal distractions. The mood is peaceful and professional." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCXbSpRYCcG-pqPhD5haXIiCk_oxAplvJ7Vs4adti4pnI9LEeMbuvR3Rx2UzyirOmYkCD_YHeps2KZ7Ed6LZlbsYZkGHWtaWPl5TDyqdJY9IaI-O_jaK7VjehMNy5hB1WCBpckH6AiUjLDSNmiGkbBTCnp2h1BhOxUYarBjwhh4vkrMYe_E_Hz8GLYRsTZJ-894JKusO6kedQ83NDA_XgTVRpnvT4u_wQgKY7tolw5U9E1WBkMDlgsjfSPr5DeBR9iuIU-KUUMQXVc')">
+<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+<span class="material-symbols-outlined text-white">delete</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Advisor Suggestion -->
+<div class="bg-primary-fixed/30 border border-primary/20 p-5 rounded-lg flex gap-4 items-start">
+<span class="material-symbols-outlined text-primary text-3xl mt-1">info</span>
+<div>
+<h4 class="font-bold text-primary">Mẹ có lo lắng gì không?</h4>
+<p class="text-sm text-on-primary-container/80 mt-1">Mỗi bé có nhịp độ phát triển riêng. Nếu mẹ cảm thấy lo lắng về tiến độ của con, đừng ngần ngại kết nối ngay với chuyên gia nhi khoa của CareBridge để được tư vấn nhé.</p>
+<button class="mt-3 text-sm font-bold text-primary flex items-center gap-1 hover:underline" type="button">
+                        Kết nối với chuyên gia <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="flex-1 bg-primary text-on-primary py-4 rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform" type="submit">
+                    Lưu mốc phát triển
+                </button>
+<button class="sm:w-1/3 bg-surface-accent-muted text-primary py-4 rounded-full font-bold text-lg active:scale-95 transition-transform" type="button">
+                    Hủy bỏ
+                </button>
+</div>
+</form>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full bg-surface flex justify-around items-center py-3 px-4 z-50 rounded-t-lg shadow-[0px_-4px_20px_rgba(90,70,63,0.08)]">
+<div class="flex flex-col items-center justify-center text-primary font-bold active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-[10px] uppercase mt-1">Trang chủ</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">monitor_heart</span>
+<span class="text-[10px] uppercase mt-1">Sức khỏe</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">notifications</span>
+<span class="text-[10px] uppercase mt-1">Thông báo</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] uppercase mt-1">Cá nhân</span>
+</div>
+</nav>
+<script>
+        // Micro-interactions for chip selection
+        const chips = document.querySelectorAll('.milestone-chip label');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                // Potential for haptic feedback trigger or sound effect
+                console.log('Selected milestone: ' + chip.textContent.trim());
+            });
+        });
+
+        // Form submission prevention for demo
+        document.querySelector('form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Đã lưu mốc phát triển thành công!');
+        });
+    </script>
+</body></html>

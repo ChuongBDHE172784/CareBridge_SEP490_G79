@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Care-Tech Admin - Edit Posture Analysis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#e6e2dd",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "surface-bright": "#fef8f4",
+                        "text-body": "#524F4C",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "primary": "#845143",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "on-primary": "#ffffff",
+                        "outline": "#84736f",
+                        "on-primary-container": "#51271b",
+                        "surface-accent-muted": "#F2EAE4",
+                        "surface-container-high": "#ede7e3",
+                        "surface-container": "#f3ede8",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#d6c2bd",
+                        "error-container": "#ffdad6",
+                        "on-background": "#1d1b19",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface": "#fef8f4",
+                        "primary-fixed": "#ffdbd1",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "inverse-surface": "#32302d",
+                        "surface-container-low": "#f9f2ee",
+                        "on-tertiary-container": "#34322f",
+                        "inverse-primary": "#fab7a4",
+                        "primary-fixed-dim": "#fab7a4",
+                        "primary-container": "#c98c7b",
+                        "surface-main": "#FFFFFF",
+                        "surface-tint": "#845143",
+                        "status-active": "#C98C7B",
+                        "surface-container-highest": "#e7e1dd",
+                        "background": "#fef8f4",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "secondary-container": "#e9e1db",
+                        "secondary": "#625d59",
+                        "on-surface-variant": "#524440",
+                        "surface-variant": "#e7e1dd",
+                        "inverse-on-surface": "#f6f0eb",
+                        "on-surface": "#1d1b19",
+                        "on-secondary": "#ffffff",
+                        "surface-accent-light": "#F6F1EC",
+                        "surface-dim": "#dfd9d5",
+                        "on-secondary-fixed": "#1e1b18",
+                        "text-heading": "#2D2A28",
+                        "secondary-fixed": "#e9e1db",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#9e9a96",
+                        "tertiary": "#605e5a",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "on-secondary-container": "#68635f",
+                        "on-primary-fixed": "#341006"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-gutter": "24px",
+                        "container-padding": "32px",
+                        "stack-sm": "8px",
+                        "sidebar-width": "280px",
+                        "stack-md": "16px",
+                        "panel-gap": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Quicksand"],
+                        "label-md": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "nav-item": ["Quicksand"],
+                        "headline-sm": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .warm-shadow {
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen text-on-background font-body-md text-body-md overflow-x-hidden flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-accent-muted flex flex-col p-4 gap-y-2 z-50">
+<div class="px-4 py-6 mb-4 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+</div>
+<div>
+<h1 class="text-headline-sm font-headline-sm text-primary">Care-Tech Admin</h1>
+<p class="text-label-md font-label-md text-on-surface-variant">Quản trị hệ thống</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Tổng quan
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">group</span>
+                Người dùng
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-status-active text-on-primary rounded-lg transition-colors font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+                Xác thực
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+                Kiểm duyệt
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">handshake</span>
+                Đối tác
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">security</span>
+                An toàn
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">payments</span>
+                Thanh toán
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">history</span>
+                Audit
+            </a>
+</nav>
+<div class="mt-auto border-t border-outline-variant/30 pt-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-fixed-variant hover:bg-surface-accent-light rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Cài đặt
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/20 rounded-lg transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">logout</span>
+                Đăng xuất
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[280px] flex-1 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="sticky top-0 right-0 z-40 bg-surface-main/80 backdrop-blur-md border-b border-surface-accent-muted shadow-sm h-16 px-container-padding flex justify-between items-center w-full">
+<div class="flex items-center gap-4">
+<h2 class="text-headline-sm font-headline-sm text-text-heading">Quản trị Hệ thống</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden md:flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-accent-light border-none rounded-full text-body-md font-body-md focus:ring-2 focus:ring-primary-container outline-none w-64 transition-all" placeholder="Tìm kiếm..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-accent-light">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-accent-light">
+<span class="material-symbols-outlined">help</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-accent-light">
+<span class="material-symbols-outlined">language</span>
+</button>
+</div>
+<div class="flex items-center gap-3 pl-4 border-l border-surface-accent-muted">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-variant">
+<img alt="Ảnh đại diện Admin" class="w-full h-full object-cover" data-alt="A professional close-up portrait of an administrator in a well-lit, modern corporate office. Soft, warm lighting enhances the calm, professional demeanor. High fidelity, corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPqo3MpUPjaO1gXioFjYmE6hRwEA6UxaX_f16HwH8HEfaDO2LdETPFNy5dFgA1C41yL-NIOma7-RpFVZu5nms0nIP5b_t6HjmDZF_UmzvQZ3IFrvPOClFSJpszyVO26LZ_HCR5J_XOmHDeL_gmhYpekSXlhxZwb9CQ_1FDc5RfN0m1ntMMwX2WRIhg0498WCwBiFbLnwmcwhD5kIt__WI0jgBTedulAT8WjJ81rCM87w4OClCK6yigvlpDIGwlNgsxbRzRc1Ntdw8"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-container-padding flex-1">
+<div class="mb-8 flex justify-between items-end">
+<div>
+<div class="flex items-center gap-2 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-sm">arrow_back</span>
+<a class="text-body-md font-body-md hover:text-primary" href="#">Quay lại danh sách Cấu hình</a>
+</div>
+<h1 class="text-display-lg font-display-lg text-text-heading">Chỉnh sửa Cấu hình Phân tích Tư thế</h1>
+<p class="text-body-lg font-body-lg text-text-body mt-2">Cập nhật các thông số cho mô hình AI phân tích tư thế (CB-198).</p>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-panel-gap">
+<!-- Main Configuration Panel -->
+<div class="col-span-12 lg:col-span-8 bg-surface-main rounded-[24px] p-container-padding warm-shadow">
+<h3 class="text-headline-md font-headline-md text-text-heading border-b border-surface-accent-muted pb-4 mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">tune</span>
+                        Thông số Mô hình
+                    </h3>
+<form class="space-y-6">
+<div class="grid grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-body-md font-body-md text-on-surface-variant font-semibold">Bài tập liên kết</label>
+<select class="w-full p-3 border-2 border-surface-accent-muted rounded-xl bg-surface-main text-on-surface focus:border-primary-container focus:ring-0 outline-none transition-colors">
+<option>Yoga Cơ bản - Chuỗi chào mặt trời</option>
+<option>Vật lý trị liệu - Cổ vai gáy</option>
+<option selected="">Tập bụng - Plank cơ bản</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-body-md font-body-md text-on-surface-variant font-semibold">Chế độ phân tích</label>
+<select class="w-full p-3 border-2 border-surface-accent-muted rounded-xl bg-surface-main text-on-surface focus:border-primary-container focus:ring-0 outline-none transition-colors">
+<option>Thời gian thực (Real-time)</option>
+<option selected="">Phân tích Video Tải lên (Batch)</option>
+<option>Hỗn hợp</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-body-md font-body-md text-on-surface-variant font-semibold">Phiên bản mô hình</label>
+<input class="w-full p-3 border-2 border-surface-accent-muted rounded-xl bg-surface-main text-on-surface focus:border-primary-container focus:ring-0 outline-none transition-colors" type="text" value="v2.4.1-stable"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-body-md font-body-md text-on-surface-variant font-semibold">Ngày hiệu lực</label>
+<div class="relative">
+<input class="w-full p-3 border-2 border-surface-accent-muted rounded-xl bg-surface-main text-on-surface focus:border-primary-container focus:ring-0 outline-none transition-colors appearance-none" type="date" value="2023-11-01"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2 pt-2">
+<div class="flex justify-between">
+<label class="text-body-md font-body-md text-on-surface-variant font-semibold">Ngưỡng tin cậy (Confidence Threshold)</label>
+<span class="text-primary font-bold">85%</span>
+</div>
+<input class="w-full h-2 bg-surface-accent-muted rounded-lg appearance-none cursor-pointer accent-primary-container" max="100" min="0" type="range" value="85"/>
+<div class="flex justify-between text-label-md text-on-surface-variant mt-1">
+<span>Lỏng (50%)</span>
+<span>Nghiêm ngặt (95%)</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 pt-4">
+<label class="text-body-md font-body-md text-on-surface-variant font-semibold">Lý do thay đổi</label>
+<textarea class="w-full p-3 border-2 border-surface-accent-muted rounded-xl bg-surface-main text-on-surface focus:border-primary-container focus:ring-0 outline-none transition-colors resize-none" placeholder="Nhập lý do cập nhật cấu hình này..." rows="3"></textarea>
+</div>
+</form>
+</div>
+<!-- Secondary Panel -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-panel-gap">
+<!-- Mapping Config -->
+<div class="bg-surface-main rounded-[24px] p-container-padding warm-shadow flex-1">
+<h3 class="text-headline-sm font-headline-sm text-text-heading border-b border-surface-accent-muted pb-3 mb-5 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">alt_route</span>
+                            Ánh xạ mức độ phản hồi
+                        </h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 bg-surface-accent-light rounded-xl border border-outline-variant/30">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-status-active"></div>
+<span class="font-body-md font-semibold">Tốt</span>
+</div>
+<span class="text-label-md text-on-surface-variant">&gt; 90%</span>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface-accent-light rounded-xl border border-outline-variant/30">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-[#E5B56C]"></div>
+<span class="font-body-md font-semibold">Khá</span>
+</div>
+<span class="text-label-md text-on-surface-variant">75% - 90%</span>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface-accent-light rounded-xl border border-outline-variant/30">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-[#C86666]"></div>
+<span class="font-body-md font-semibold">Cần cải thiện</span>
+</div>
+<span class="text-label-md text-on-surface-variant">&lt; 75%</span>
+</div>
+<button class="w-full mt-2 py-2 border-2 border-dashed border-primary-container text-primary rounded-xl font-body-md font-semibold hover:bg-primary-fixed/20 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span> Thêm mức độ
+                            </button>
+</div>
+</div>
+<!-- Status Config -->
+<div class="bg-surface-main rounded-[24px] p-container-padding warm-shadow">
+<h3 class="text-headline-sm font-headline-sm text-text-heading border-b border-surface-accent-muted pb-3 mb-5 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">toggle_on</span>
+                            Trạng thái
+                        </h3>
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-md font-semibold text-text-heading">Trạng thái hoạt động</p>
+<p class="text-label-md text-on-surface-variant mt-1">Bật/tắt sử dụng cấu hình này</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-14 h-7 bg-surface-accent-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="col-span-12 flex justify-end gap-4 mt-4">
+<button class="px-6 py-3 rounded-full font-body-lg text-primary bg-surface-accent-light hover:bg-surface-variant transition-colors">
+                        Hủy
+                    </button>
+<button class="px-8 py-3 rounded-full font-body-lg text-on-primary bg-primary-container hover:bg-primary shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center gap-2">
+<span class="material-symbols-outlined">save</span>
+                        Cập nhật phiên bản
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cập nhật vai trò và quyền hạn | CareTech Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#f3ede8",
+                        "inverse-surface": "#32302d",
+                        "surface-variant": "#e7e1dd",
+                        "text-heading": "#2D2A28",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "tertiary": "#605e5a",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "on-background": "#1d1b19",
+                        "surface-tint": "#845143",
+                        "on-secondary-container": "#68635f",
+                        "error-container": "#ffdad6",
+                        "background": "#fef8f4",
+                        "surface-container-highest": "#e7e1dd",
+                        "surface-container-low": "#f9f2ee",
+                        "tertiary-fixed": "#e6e2dd",
+                        "secondary": "#625d59",
+                        "on-surface-variant": "#524440",
+                        "primary-fixed": "#ffdbd1",
+                        "outline-variant": "#d6c2bd",
+                        "inverse-primary": "#fab7a4",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface": "#fef8f4",
+                        "secondary-container": "#e9e1db",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "on-surface": "#1d1b19",
+                        "surface-main": "#FFFFFF",
+                        "outline": "#84736f",
+                        "primary": "#845143",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "status-active": "#C98C7B",
+                        "surface-bright": "#fef8f4",
+                        "tertiary-container": "#9e9a96",
+                        "on-primary-container": "#51271b",
+                        "on-primary-fixed": "#341006",
+                        "on-primary": "#ffffff",
+                        "text-body": "#524F4C",
+                        "surface-accent-muted": "#F2EAE4",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "secondary-fixed": "#e9e1db",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#c98c7b",
+                        "on-tertiary-container": "#34322f",
+                        "surface-accent-light": "#F6F1EC",
+                        "inverse-on-surface": "#f6f0eb",
+                        "surface-dim": "#dfd9d5",
+                        "surface-container-high": "#ede7e3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "32px",
+                        "stack-md": "16px",
+                        "panel-gap": "24px",
+                        "sidebar-width": "280px",
+                        "grid-gutter": "24px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "nav-item": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-sm": ["Quicksand"],
+                        "label-md": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #fef8f4;
+            font-family: 'Quicksand', sans-serif;
+            color: #1d1b19;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+        .sidebar-active {
+            background-color: #845143;
+            color: #ffffff;
+        }
+        .custom-checkbox:checked {
+            background-color: #845143;
+            border-color: #845143;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e7e1dd; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d6c2bd; }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #e7e1dd;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #845143; }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+<!-- Side Navigation -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-accent-muted flex flex-col py-6 z-50">
+<div class="px-6 mb-10">
+<h1 class="font-headline-md text-headline-md text-primary font-bold">CareTech Admin</h1>
+<p class="text-label-md text-secondary mt-1">Hệ thống quản lý</p>
+</div>
+<nav class="flex-1 space-y-1 px-4 overflow-y-auto">
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Tổng quan</span>
+</a>
+<a class="bg-primary text-on-primary rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>Người dùng</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span>Chuyên gia</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">handshake</span>
+<span>Đối tác</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">article</span>
+<span>Nội dung</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">security</span>
+<span>An toàn</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Cấu hình</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">history</span>
+<span>Kiểm tra</span>
+</a>
+</nav>
+<div class="mt-auto px-4 pt-6 border-t border-surface-variant/50 space-y-1">
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Hỗ trợ</span>
+</a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined text-error">logout</span>
+<span class="text-error">Đăng xuất</span>
+</a>
+</div>
+</aside>
+<!-- Top App Bar -->
+<header class="fixed top-0 right-0 w-[calc(100%-280px)] h-16 bg-background/80 backdrop-blur-md flex justify-between items-center px-container-padding z-40">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 focus:ring-2 focus:ring-primary/20 text-body-md font-body-md" placeholder="Tìm kiếm nhân viên, vai trò..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-px bg-surface-variant"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="font-nav-item text-[13px] leading-tight font-bold">Admin Portal</p>
+<p class="text-label-md text-secondary">Quản trị viên</p>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+<img class="w-full h-full object-cover" data-alt="A professional studio portrait of a modern corporate administrator, a middle-aged Asian woman with a friendly but professional expression, wearing a smart beige blazer. The background is a clean, softly lit office environment with warm tones and minimalist decor that matches the care-tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFxNJRQ8K03kz5lBO1DwVdqYofbEZtkmlGZ9sgbgHY2Jwl1QrTBan-Um64_bAdrIy4GZqv3AsCz8BVMNgdk4VsEUKX7DqbNgx--quT8bDXKyD8b5ZtrQi_szgfzwKofgHIlKz-kEQvYb4CISu_HlF2Gfe-wVbT5fvuyb6j9NGOqA69zQ_GLgvpYdDjY2BwrNYPc7Wp97aFOUBu4kjLp7MgO8IomJywP_Mb9RdIlh4_h4dtO9J_TTh7w_J04iUm5rhEzEHPHT3Z0iA"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[280px] pt-24 px-container-padding pb-12 min-h-screen">
+<div class="max-w-[1400px] mx-auto">
+<!-- Breadcrumbs & Header -->
+<div class="mb-8 flex justify-between items-end">
+<div>
+<nav class="flex items-center gap-2 text-label-md text-secondary mb-2">
+<a class="hover:text-primary transition-colors" href="#">Người dùng</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Danh sách nhân sự</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface font-semibold">Cập nhật quyền hạn</span>
+</nav>
+<h2 class="font-display-lg text-display-lg text-text-heading">Cập nhật Vai trò &amp; Quyền hạn</h2>
+</div>
+<div class="flex items-center gap-4">
+<a class="flex items-center gap-2 text-primary hover:underline font-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+                        Xem lịch sử thay đổi
+                    </a>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-panel-gap">
+<!-- Profile Summary Card -->
+<div class="col-span-12 lg:col-span-4 space-y-panel-gap">
+<div class="glass-panel p-8 text-center relative overflow-hidden">
+<!-- Abstract Background Decoration -->
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-8 -left-8 w-24 h-24 bg-primary/10 rounded-full blur-2xl"></div>
+<div class="relative z-10">
+<div class="w-32 h-32 rounded-full overflow-hidden mx-auto border-4 border-white shadow-xl mb-6">
+<img class="w-full h-full object-cover" data-alt="A detailed profile photo of Tran Thi Lan, a professional-looking Vietnamese woman with tied-back dark hair, wearing a white blouse and a light brown vest. She has a warm, confident smile. The photo is taken in high-key natural light with a soft-focus background of a modern healthcare facility." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0C2-SE4PeQHKZRbsOmn1gmDETyP_TrpHKBWyylMCgO_PZUwtDULeb3AWPivKBl-DwH956c0nhqE78y17VQ08ufSFHjLDP-uwfAmOxEy14CflCg-FP3VwNwKcgPHs212rscde-k3hxAp5bh8ouvfAx_KepseYOGumH7e5fudppWeIJWjDjzHN8T9MsI4EXBr-mIlKVyRFs3tKJrsWdbD5-0GuSSuo98BO-j-ZDHriUJ0VnC8ALQWdA9-g7bbnE3dwhIcHENdfTLEs"/>
+</div>
+<h3 class="font-headline-md text-headline-md text-text-heading">Trần Thị Lan</h3>
+<p class="text-body-lg font-body-lg text-secondary mb-4">Mã NV: STAFF-2024-089</p>
+<div class="flex flex-wrap justify-center gap-2 mb-6">
+<span class="bg-primary/10 text-primary px-4 py-1 rounded-full text-label-md">Vai trò: Quản lý nội dung</span>
+<span class="bg-[#e7f5ed] text-[#2e7d32] px-4 py-1 rounded-full text-label-md flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-[#2e7d32]"></span> Active
+                                </span>
+</div>
+<div class="grid grid-cols-2 gap-4 text-left border-t border-surface-accent-muted pt-6 mt-6">
+<div>
+<p class="text-label-md text-secondary">Ngày tham gia</p>
+<p class="text-body-md font-bold">12/05/2023</p>
+</div>
+<div>
+<p class="text-label-md text-secondary">Phòng ban</p>
+<p class="text-body-md font-bold">Vận hành</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Access Control Card -->
+<div class="glass-panel p-8">
+<div class="flex items-center justify-between mb-6">
+<h4 class="font-headline-sm text-headline-sm text-text-heading">Kiểm soát truy cập</h4>
+<span class="material-symbols-outlined text-outline">lock</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-error-container/20 rounded-xl mb-6 border border-error/10">
+<div>
+<p class="font-bold text-on-surface">Khóa tài khoản</p>
+<p class="text-label-md text-secondary">Ngăn người dùng đăng nhập</p>
+</div>
+<label class="toggle-switch">
+<input id="lockAccount" type="checkbox"/>
+<span class="slider"></span>
+</label>
+</div>
+<div class="hidden animate-in fade-in slide-in-from-top-2 duration-300" id="lockReasonContainer">
+<label class="block text-label-md font-bold text-secondary mb-2">Lý do khóa tài khoản <span class="text-error">*</span></label>
+<textarea class="w-full bg-white border-2 border-surface-accent-muted rounded-xl p-4 focus:ring-0 focus:border-primary transition-colors text-body-md min-h-[100px]" placeholder="Nhập lý do chi tiết..."></textarea>
+</div>
+</div>
+</div>
+<!-- Permission Matrix -->
+<div class="col-span-12 lg:col-span-8">
+<div class="glass-panel overflow-hidden">
+<div class="p-8 border-b border-surface-accent-muted flex justify-between items-center bg-surface-container-low/30">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-text-heading">Ma trận quyền hạn</h4>
+<p class="text-body-md text-secondary">Tùy chỉnh các hành động chi tiết cho nhân sự</p>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-sm border border-outline"></div>
+<span class="text-label-md text-secondary">Kế thừa</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-sm bg-primary"></div>
+<span class="text-label-md text-secondary">Trực tiếp</span>
+</div>
+</div>
+</div>
+<!-- Table-like Matrix -->
+<div class="p-8 space-y-10">
+<!-- Permission Group -->
+<section>
+<h5 class="font-body-lg font-bold text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">group</span>
+                                    Quản lý người dùng
+                                </h5>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Xem danh sách người dùng</span>
+<div class="flex gap-4">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" title="Kế thừa từ vai trò" type="checkbox"/>
+<input checked="" class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Sửa thông tin cơ bản</span>
+<div class="flex gap-4">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input checked="" class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Xuất dữ liệu người dùng</span>
+<div class="flex gap-4">
+<input class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Xóa/Vô hiệu hóa tài khoản</span>
+<div class="flex gap-4">
+<input class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Permission Group -->
+<section>
+<h5 class="font-body-lg font-bold text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">article</span>
+                                    Quản lý nội dung
+                                </h5>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex items-center justify-between p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+<span class="text-body-md font-semibold">Tạo &amp; Biên tập nội dung</span>
+<div class="flex gap-4">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input checked="" class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+<span class="text-body-md font-semibold">Duyệt &amp; Xuất bản bài viết</span>
+<div class="flex gap-4">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input checked="" class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Quản lý chuyên mục</span>
+<div class="flex gap-4">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Theo dõi báo cáo nội dung</span>
+<div class="flex gap-4">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input checked="" class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Permission Group -->
+<section>
+<h5 class="font-body-lg font-bold text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+                                    Chuyên gia &amp; Đối tác
+                                </h5>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Xác thực hồ sơ chuyên gia</span>
+<div class="flex gap-4">
+<input class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 rounded-xl border border-surface-accent-muted hover:bg-surface-accent-light transition-colors">
+<span class="text-body-md">Quản lý hợp đồng đối tác</span>
+<div class="flex gap-4">
+<input class="rounded border-outline-variant text-primary focus:ring-primary/20 w-5 h-5 cursor-not-allowed opacity-50" disabled="" type="checkbox"/>
+<input class="rounded border-primary text-primary focus:ring-primary/20 w-5 h-5" type="checkbox"/>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Actions -->
+<div class="p-8 bg-surface-accent-light/50 border-t border-surface-accent-muted flex justify-between items-center">
+<p class="text-label-md text-secondary max-w-sm">Nhấn "Lưu thay đổi" để áp dụng các quyền hạn mới cho nhân sự này ngay lập tức.</p>
+<div class="flex gap-4">
+<button class="px-8 py-3 rounded-full border border-outline text-on-surface font-nav-item text-nav-item hover:bg-surface-accent-muted transition-all active:scale-95">
+                                    Hủy bỏ
+                                </button>
+<button class="px-10 py-3 rounded-full bg-primary text-on-primary font-nav-item text-nav-item shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
+                                    Lưu thay đổi
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Toggle logic for Lock Account reason field
+        const lockAccountToggle = document.getElementById('lockAccount');
+        const lockReasonContainer = document.getElementById('lockReasonContainer');
+
+        lockAccountToggle.addEventListener('change', function() {
+            if (this.checked) {
+                lockReasonContainer.classList.remove('hidden');
+                // Force layout reflow
+                lockReasonContainer.offsetHeight;
+            } else {
+                lockReasonContainer.classList.add('hidden');
+            }
+        });
+
+        // Add subtle hover animations to permissions
+        const permissionItems = document.querySelectorAll('section > div > div');
+        permissionItems.forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                item.style.transform = 'translateY(-2px)';
+                item.style.boxShadow = '0 4px 12px rgba(201, 140, 123, 0.08)';
+            });
+            item.addEventListener('mouseleave', () => {
+                item.style.transform = 'translateY(0)';
+                item.style.boxShadow = 'none';
+            });
+        });
+    </script>
+</body></html>

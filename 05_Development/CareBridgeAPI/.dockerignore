@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+target/
+.git/
+.idea/
+*.log
+*.md
+compose.yaml

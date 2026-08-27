@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Phê duyệt Chiến dịch Tài trợ | CareTech Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#f3ede8",
+                        "inverse-surface": "#32302d",
+                        "surface-variant": "#e7e1dd",
+                        "text-heading": "#2D2A28",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "tertiary": "#605e5a",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "on-background": "#1d1b19",
+                        "surface-tint": "#845143",
+                        "on-secondary-container": "#68635f",
+                        "error-container": "#ffdad6",
+                        "background": "#fef8f4",
+                        "surface-container-highest": "#e7e1dd",
+                        "surface-container-low": "#f9f2ee",
+                        "tertiary-fixed": "#e6e2dd",
+                        "secondary": "#625d59",
+                        "on-surface-variant": "#524440",
+                        "primary-fixed": "#ffdbd1",
+                        "outline-variant": "#d6c2bd",
+                        "inverse-primary": "#fab7a4",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface": "#fef8f4",
+                        "secondary-container": "#e9e1db",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "on-surface": "#1d1b19",
+                        "surface-main": "#FFFFFF",
+                        "outline": "#84736f",
+                        "primary": "#845143",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "status-active": "#C98C7B",
+                        "surface-bright": "#fef8f4",
+                        "tertiary-container": "#9e9a96",
+                        "on-primary-container": "#51271b",
+                        "on-primary-fixed": "#341006",
+                        "on-primary": "#ffffff",
+                        "text-body": "#524F4C",
+                        "surface-accent-muted": "#F2EAE4",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "secondary-fixed": "#e9e1db",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#c98c7b",
+                        "on-primary-container": "#51271b",
+                        "surface-accent-light": "#F6F1EC",
+                        "inverse-on-surface": "#f6f0eb",
+                        "surface-dim": "#dfd9d5",
+                        "surface-container-high": "#ede7e3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "32px",
+                        "stack-md": "16px",
+                        "panel-gap": "24px",
+                        "sidebar-width": "280px",
+                        "grid-gutter": "24px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "nav-item": ["Quicksand"],
+                        "display-lg": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-sm": ["Quicksand"],
+                        "label-md": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #F6F1EC;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+        }
+        .phone-frame {
+            width: 320px;
+            height: 640px;
+            border: 12px solid #32302d;
+            border-radius: 3rem;
+            overflow: hidden;
+            position: relative;
+            background: white;
+        }
+        .glass-chip {
+            background: rgba(201, 140, 123, 0.1);
+            color: #845143;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="text-on-background antialiased">
+<!-- Side Navigation Shell -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-accent-muted flex flex-col py-6 z-50">
+<div class="px-6 mb-8">
+<h1 class="font-headline-md text-headline-md text-primary font-bold">CareTech Admin</h1>
+<p class="text-label-md text-secondary uppercase tracking-wider">Hệ thống quản lý</p>
+</div>
+<nav class="flex-1 space-y-1 overflow-y-auto px-2">
+<!-- Navigation Items mapped from JSON -->
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Tổng quan
+            </a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">group</span>
+                Người dùng
+            </a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+                Chuyên gia
+            </a>
+<!-- Active State for Partners/Campaigns -->
+<a class="bg-primary text-on-primary rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">handshake</span>
+                Đối tác
+            </a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">article</span>
+                Nội dung
+            </a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">security</span>
+                An toàn
+            </a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Cấu hình
+            </a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">history</span>
+                Kiểm tra
+            </a>
+</nav>
+<div class="px-2 mt-auto pt-6 border-t border-surface-variant/50">
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">help</span>
+                Hỗ trợ
+            </a>
+<a class="text-secondary hover:bg-surface-accent-light rounded-lg px-4 py-3 flex items-center gap-3 transition-all font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined">logout</span>
+                Đăng xuất
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[280px] min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 right-0 w-[calc(100%-280px)] h-16 bg-background/80 backdrop-blur-md z-40 flex justify-between items-center px-container-padding">
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full w-80 focus:ring-2 focus:ring-primary/20 transition-all font-body-md text-body-md" placeholder="Tìm kiếm chiến dịch..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-surface-variant"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="font-body-md text-body-md font-bold text-on-surface">Admin Manager</p>
+<p class="text-label-md text-secondary">Quản trị viên cấp cao</p>
+</div>
+<img class="w-10 h-10 rounded-full border-2 border-primary/20 object-cover" data-alt="A professional headshot of a female administrator in her late 30s, wearing a crisp white blazer, smiling warmly against a soft-focus office background with warm lighting. The aesthetic is clean, high-end, and aligns with a professional care-tech brand palette of soft browns and creams." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3r2clSoy1q-rufFtsCDoCA9P4oT9cr_VSENvUBHQjnPMAbME30bWROrCjhj1-_K_EOLWxi4NQF-rCpwo9_ZQ4rXnF9X9BqDxWJvDBHq29PpTCAcupabdRFTpEmywZstSSPxRfg3znLaskBlwUizX9Zv3H3TyObF_GQ7FGYXze164UqeRLq3md58Q3vbCv2t5SqTqejowaDDNbwgnyNDL-HYTocS5t7ihYgiKp-qYMhKfBVQa7GpRlpU1k0LCd9nrxZErLIL79n6k"/>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="mt-16 p-container-padding space-y-panel-gap">
+<!-- Breadcrumbs and Actions Header -->
+<div class="flex justify-between items-end">
+<div>
+<nav class="flex items-center gap-2 text-label-md text-secondary mb-2">
+<span>Đối tác</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Chiến dịch</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-bold">Phê duyệt CB-263</span>
+</nav>
+<h2 class="font-display-lg text-display-lg text-text-heading">Phê duyệt Chiến dịch Tài trợ</h2>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-3 rounded-full border-2 border-outline/20 text-on-surface-variant font-nav-item hover:bg-surface-container transition-all active:scale-95">
+                        Từ chối
+                    </button>
+<button class="px-6 py-3 rounded-full border-2 border-primary text-primary font-nav-item hover:bg-primary/5 transition-all active:scale-95">
+                        Yêu cầu chỉnh sửa
+                    </button>
+<button class="px-8 py-3 rounded-full bg-primary text-on-primary font-nav-item shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        Phê duyệt
+                    </button>
+</div>
+</div>
+<!-- Dashboard Layout (Bento Grid Style) -->
+<div class="grid grid-cols-12 gap-panel-gap">
+<!-- Metadata & Info Panel -->
+<div class="col-span-8 space-y-panel-gap">
+<!-- Campaign Summary Card -->
+<section class="bg-surface-main rounded-lg p-8 custom-shadow">
+<div class="flex items-start justify-between mb-8">
+<div class="flex items-center gap-6">
+<div class="w-20 h-20 rounded-2xl bg-surface-accent-light flex items-center justify-center border border-surface-variant">
+<img class="w-12 h-12 object-contain" data-alt="A minimalist and modern medical logo for Medilink Solutions, featuring a stylized heartbeat icon integrated with a link shape. The logo uses a professional color scheme of deep slate and terracotta brown, presented on a clean white background with soft ambient lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4f3C699Vo1su35I2HRtE3nwrLmOYpX0qYsIcw_33boIZw14kH8pNBf_1DDSff1d5eW3-WjbhSzzxS5ubIN0LTYoqrs_usap2QFohAQ9HMEhIhSRvc7H1jIqAVD-vQpdlDxvAOcEXFJpumaa540ULlzyCTaP4AiwD0_TqvxkEG61LnL2XIZg0DLm5BnjEUlA54lVV8CEZBUfWqZ_2T1XSylU9UQoTTOf3NwVsZDJuFtSoFk-HhPd-9H-M5QH1Ar_GZ8rpfKUF4HvY"/>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-text-heading">Medilink Solutions</h3>
+<p class="text-body-md text-secondary">Đối tác chiến lược - Nhóm Y tế &amp; Sức khỏe</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-3 py-1 glass-chip rounded-full text-label-md font-bold uppercase tracking-tight">Cấp cao</span>
+<span class="text-label-md text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">verified</span> Xác thực 2024
+                                        </span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="text-label-md text-secondary uppercase tracking-widest mb-1">Mã chiến dịch</p>
+<p class="font-headline-sm text-headline-sm text-primary font-bold">CB-263</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-8 border-t border-surface-accent-muted pt-8">
+<div>
+<h4 class="text-label-md text-secondary uppercase mb-3">Tên chiến dịch</h4>
+<p class="font-body-lg text-body-lg font-bold text-on-surface">Cẩm nang Dinh dưỡng Thai kỳ - Quý 2</p>
+</div>
+<div>
+<h4 class="text-label-md text-secondary uppercase mb-3">Đối tượng mục tiêu</h4>
+<p class="font-body-lg text-body-lg font-bold text-on-surface">Phụ nữ mang thai (Tuần 13 - 26)</p>
+</div>
+<div>
+<h4 class="text-label-md text-secondary uppercase mb-3">Thời gian triển khai</h4>
+<div class="flex items-center gap-2 font-body-lg text-body-lg font-bold text-on-surface">
+<span class="material-symbols-outlined text-outline">calendar_today</span>
+                                    01/06/2024 - 31/08/2024
+                                </div>
+</div>
+<div>
+<h4 class="text-label-md text-secondary uppercase mb-3">Ngân sách dự kiến</h4>
+<p class="font-body-lg text-body-lg font-bold text-on-surface">150.000.000 VNĐ</p>
+</div>
+</div>
+</section>
+<!-- Compliance Checklist -->
+<section class="bg-surface-main rounded-lg p-8 custom-shadow">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-sm text-headline-sm text-text-heading">Danh mục kiểm duyệt</h3>
+<span class="text-label-md text-secondary">Cần hoàn thành 3/3 mục</span>
+</div>
+<div class="space-y-4">
+<!-- Checklist Item 1 -->
+<label class="flex items-center p-4 border-2 border-surface-accent-muted rounded-xl hover:border-primary/20 transition-all cursor-pointer group">
+<input checked="" class="w-6 h-6 rounded-md border-outline text-primary focus:ring-primary/20 transition-all" type="checkbox"/>
+<div class="ml-4 flex-1">
+<p class="font-body-md text-body-md font-bold text-on-surface">Kiểm tra an toàn nội dung</p>
+<p class="text-label-md text-secondary">Nội dung không chứa thông tin sai lệch hoặc gây hại cho sức khỏe thai phụ.</p>
+</div>
+<span class="material-symbols-outlined text-status-active opacity-0 group-hover:opacity-100 transition-opacity">verified</span>
+</label>
+<!-- Checklist Item 2 -->
+<label class="flex items-center p-4 border-2 border-surface-accent-muted rounded-xl hover:border-primary/20 transition-all cursor-pointer group">
+<input checked="" class="w-6 h-6 rounded-md border-outline text-primary focus:ring-primary/20 transition-all" type="checkbox"/>
+<div class="ml-4 flex-1">
+<p class="font-body-md text-body-md font-bold text-on-surface">Nhãn nhãn tài trợ (Sponsor Label)</p>
+<p class="text-label-md text-secondary">Bắt buộc hiển thị nhãn "Đối tác/Tài trợ" rõ ràng trên mọi hình ảnh quảng bá.</p>
+</div>
+<span class="material-symbols-outlined text-status-active opacity-0 group-hover:opacity-100 transition-opacity">verified</span>
+</label>
+<!-- Checklist Item 3 -->
+<label class="flex items-center p-4 border-2 border-surface-accent-muted rounded-xl hover:border-primary/20 transition-all cursor-pointer group">
+<input class="w-6 h-6 rounded-md border-outline text-primary focus:ring-primary/20 transition-all" type="checkbox"/>
+<div class="ml-4 flex-1">
+<p class="font-body-md text-body-md font-bold text-on-surface">Tuân thủ chính sách quảng cáo</p>
+<p class="text-label-md text-secondary">Phù hợp với tiêu chuẩn cộng đồng và quy định quảng cáo y tế của CareTech.</p>
+</div>
+<span class="material-symbols-outlined text-status-active opacity-0 group-hover:opacity-100 transition-opacity">verified</span>
+</label>
+</div>
+</section>
+<!-- Message / Comment Section -->
+<div class="bg-surface-accent-muted/50 rounded-lg p-6 border border-dashed border-outline-variant">
+<h4 class="font-body-md text-body-md font-bold text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined">chat_bubble</span>
+                            Ghi chú cho đối tác (Nếu có)
+                        </h4>
+<textarea class="w-full bg-surface-main border-2 border-surface-accent-muted rounded-xl p-4 focus:ring-primary/20 focus:border-primary transition-all font-body-md h-32" placeholder="Nhập lý do nếu từ chối hoặc nội dung cần chỉnh sửa..."></textarea>
+</div>
+</div>
+<!-- Preview Panel -->
+<div class="col-span-4 sticky top-24 h-fit">
+<div class="bg-surface-main rounded-lg p-8 custom-shadow flex flex-col items-center">
+<div class="w-full flex items-center justify-between mb-8">
+<h3 class="font-headline-sm text-headline-sm text-text-heading">Xem trước Mobile</h3>
+<button class="p-2 bg-surface-accent-light rounded-full text-primary">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+<!-- Phone Frame -->
+<div class="phone-frame shadow-2xl scale-[0.9] origin-top">
+<!-- Mobile App UI Mockup -->
+<div class="bg-surface h-full flex flex-col hide-scrollbar overflow-y-auto">
+<!-- Status Bar -->
+<div class="h-8 w-full flex justify-between items-center px-6 pt-2 text-[12px] font-bold">
+<span>9:41</span>
+<div class="flex gap-1 items-center">
+<span class="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[14px]">wifi</span>
+<span class="material-symbols-outlined text-[14px]">battery_full</span>
+</div>
+</div>
+<!-- App Header -->
+<div class="px-6 py-4 flex justify-between items-center">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-bold text-primary">CareTech</span>
+<span class="material-symbols-outlined">account_circle</span>
+</div>
+<!-- Campaign Content Preview -->
+<div class="flex-1 px-4 space-y-4 pb-8">
+<div class="rounded-3xl overflow-hidden shadow-md relative">
+<!-- MANDATORY LABEL -->
+<div class="absolute top-4 left-4 z-10 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-widest border border-white/20">
+                                            Đối tác/Tài trợ
+                                        </div>
+<div class="w-full h-48 bg-cover bg-center" data-alt="A high-quality lifestyle photograph of a happy pregnant woman in a sunlit, modern kitchen, holding a fresh green smoothie. She is wearing comfortable, stylish maternity wear in neutral tones. The lighting is soft and golden, conveying health, well-being, and professional quality. The background features clean marble countertops and minimalist decor." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB5viursTYvQ2so-rGUCxe2sixvZd9KgFZFkR1vsqjQpXTcsaaFHyUcsjKKdTrQ8aDquJJUkwf_G68ZEWDmVx1HSa_MtPjqJMj6g4l4qEQBPyz30zOKvlf3aQSrTJ5Imm_cV7yYPdJhIB_QfE0egbANFeWtal0P9LBYQf3CoYrtyPCJSWbFTu9QaSTN-vkTD_6VSrhUO-dVFpOd-wYGg9UdONR_yVkxDmrahgh5xX75F1gTxCQCEovzzF5otbtBPPQ307MdN2ujUxI')"></div>
+<div class="p-5 bg-white">
+<div class="flex items-center gap-2 mb-2">
+<img class="w-6 h-6 rounded-full" data-alt="Small circular logo for Medilink Solutions, professional medical clinic style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHgShl8S1eSmC0fSjmGkkB5qpw7toH3-YhX3ZyNiuBXVw8RrJomHyehARaJk1MtEphOBCwgo9_kr4QEDLfe3_-xuEGkTyu6krKzqCdDAgR0QAN5htqHgH1rgjlMykxjzpdVVbl_LEzCiCmxLlbQZmc_5uYC_kcrbW8ioSW28xhpwJK2RA_YNI7V_94_8uQzLmIxp_D2zK5Vfs-xLnziph98KUvOEwXkDUhtmVTx4JyVSZbEZUKV66xGkIZY88DKwW1MuAq361S6KM"/>
+<span class="text-[12px] font-bold text-secondary">Medilink Solutions</span>
+</div>
+<h4 class="text-[18px] leading-tight font-bold text-on-surface mb-2">Cẩm nang dinh dưỡng cho mẹ bầu từ Medilink</h4>
+<p class="text-[13px] text-on-surface-variant line-clamp-3 mb-4">Khám phá thực đơn khoa học giúp bé phát triển toàn diện và mẹ luôn rạng rỡ trong suốt thai kỳ...</p>
+<button class="w-full py-3 bg-primary text-white rounded-2xl font-bold text-[14px]">Xem chi tiết</button>
+</div>
+</div>
+<!-- Dummy Content -->
+<div class="p-4 bg-surface-container rounded-2xl opacity-40">
+<div class="h-4 bg-outline-variant w-3/4 rounded-full mb-2"></div>
+<div class="h-3 bg-outline-variant w-1/2 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Notch -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#32302d] rounded-b-2xl"></div>
+</div>
+<p class="mt-4 text-center text-label-md text-secondary">
+                            Mô phỏng hiển thị trên iOS 17.4<br/>
+                            Tỉ lệ khung hình 19.5:9
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.96)';
+            });
+            button.addEventListener('mouseup', () => {
+                button.style.transform = 'scale(1)';
+            });
+            button.addEventListener('mouseleave', () => {
+                button.style.transform = 'scale(1)';
+            });
+        });
+
+        // Simple checkbox counter logic
+        const checks = document.querySelectorAll('input[type="checkbox"]');
+        const counterText = document.querySelector('.text-label-md.text-secondary');
+        
+        function updateCounter() {
+            const checkedCount = Array.from(checks).filter(c => c.checked).length;
+            if (counterText && counterText.innerText.includes('Cần hoàn thành')) {
+                counterText.innerText = `Cần hoàn thành ${checkedCount}/${checks.length} mục`;
+            }
+        }
+
+        checks.forEach(check => {
+            check.addEventListener('change', updateCounter);
+        });
+
+        // Initialize counter
+        updateCounter();
+    </script>
+</body></html>

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Yêu cầu hỗ trợ gần đây - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#c98c7b",
+                        "surface-container": "#ffe9e3",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "surface-dim": "#f1d4ca",
+                        "on-secondary-container": "#735e56",
+                        "secondary-container": "#f6dacf",
+                        "secondary": "#6e5a52",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#3e2c26",
+                        "tertiary-container": "#a09a95",
+                        "surface-variant": "#fadcd3",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#fab7a4",
+                        "surface-container-high": "#ffe2d9",
+                        "error": "#ba1a1a",
+                        "surface": "#fff8f6",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#524440",
+                        "surface-container-highest": "#fadcd3",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "primary": "#845143",
+                        "surface-container-low": "#fff1ec",
+                        "inverse-on-surface": "#ffede7",
+                        "primary-fixed": "#ffdbd1",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "background": "#fff8f6",
+                        "on-primary-fixed": "#341006",
+                        "primary-fixed-dim": "#fab7a4",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "tertiary": "#625d59",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#36322e",
+                        "on-primary-container": "#51271b",
+                        "tertiary-fixed": "#e9e1db",
+                        "on-surface": "#271812",
+                        "surface-tint": "#845143",
+                        "outline": "#84736f",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#271812",
+                        "on-background": "#271812",
+                        "surface-bright": "#fff8f6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "gutter": "16px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px",
+                        "safe-margin": "24px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "display-lg": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F6F1EC; }
+        .tab-active { border-bottom: 2px solid #845143; color: #845143; }
+        .tab-inactive { color: #735e56; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-surface antialiased bg-background pb-[88px] w-full max-w-[390px] mx-auto min-h-screen relative shadow-2xl overflow-x-hidden md:hidden">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 bg-background flex justify-between items-center px-safe-margin h-touch-target-min w-full sticky z-40">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-outline-variant">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">Chào buổi sáng,</p>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">CareBridge</h1>
+</div>
+</div>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Map Area (Bento Top) -->
+<section class="px-safe-margin pt-stack-sm pb-stack-md">
+<div class="w-full h-48 rounded-lg overflow-hidden relative shadow-[0px_4px_20px_rgba(90,70,63,0.06)] bg-white">
+<img class="w-full h-full object-cover" data-alt="A stylized, soft-toned top-down map interface showing a suburban neighborhood. The map uses warm earthy tones, light beiges, and soft greens, avoiding stark primary colors. Several small, glowing orange pulse indicators highlight locations on the map, representing nearby support requests. The aesthetic is clean, modern, and aligned with organic minimalism." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBg6oQPFVG1D_hRNRGNkjQCUbsWRZKfSlWUn562RM1vE-UG-GaJi0KCSESL8jG-8-sq_chwew4zEBRvpC1mzPj-shuIjAHo9XkwYaRJx3GFHfBlU0ALwDZTwi51BqwNMoupy2fuHAXLFv_scn7GYRTH0vP7BrrmekGu2nxbbc0jNoncPx-mTM2aRoVGDzzH1qGpXsIzCiZo5g5itfpmxrNi8PfQd_ObHrN8hYzw_3LMkMUCEPEpwsC9cBH9z9lGH4njMUEELTPDW-s"/>
+<!-- Map Overlay UI -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent flex flex-col justify-end p-4 pointer-events-none">
+<div class="flex justify-between items-end">
+<div class="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 pointer-events-auto">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="font-label-md text-label-md text-primary">4 yêu cầu gần bạn</span>
+</div>
+<button class="w-10 h-10 rounded-full bg-white text-primary flex items-center justify-center shadow-md pointer-events-auto active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="my_location">my_location</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Tabs -->
+<div class="px-safe-margin mb-stack-md">
+<div class="flex gap-6 border-b border-surface-variant">
+<button class="pb-2 tab-active font-button text-button flex items-center gap-2">
+                Gần đây <span class="bg-primary-container text-white text-[10px] px-1.5 py-0.5 rounded-full">4</span>
+</button>
+<button class="pb-2 tab-inactive font-button text-button hover:text-primary transition-colors">
+                Mới nhất
+            </button>
+<button class="pb-2 tab-inactive font-button text-button hover:text-primary transition-colors">
+                Gấp
+            </button>
+</div>
+</div>
+<!-- Main Content List (Requests) -->
+<main class="px-safe-margin flex flex-col gap-stack-md pb-stack-lg">
+<!-- Request Card 1 (Urgent) -->
+<article class="bg-white rounded-[24px] p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-4 relative overflow-hidden">
+<!-- Urgent Indicator Stripe -->
+<div class="absolute top-0 left-0 w-1 h-full bg-[#E8A87C]"></div>
+<div class="flex justify-between items-start pl-2">
+<div class="flex items-center gap-3">
+<img class="w-12 h-12 rounded-full object-cover border-2 border-surface-container" data-alt="A small circular avatar photo of a young Vietnamese mother holding a newborn baby. She looks tired but hopeful. Warm natural lighting, soft focus background. Professional, gentle aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyEKX3tjO60qukZYXjA6R6YBVBVsm4zJbcOSj_8eFvcHa2eqhIUhPAwxszrkknoJpmb9Lgx7NfeV8CPmCNmECfLw8QhYj5lywmhM1WWm19PacddiXFTnd424u5kGShDTQiNnaXKkbZ469S7N3sg3Ho764XSvhsCJIIBDDyfvaaLLNQYsCaQUhOcY2SxHAA6sNg6V5po45KJ0E8yb0CLf7Hn5k5Bay2HaYhH5I2hiedkwLVhtcoqpi2rgC_ck6R0nIMoZPJaBdoH2w"/>
+<div>
+<h3 class="font-button text-button text-on-surface">Nguyễn Thu Hà</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+                            Cách đây 1.2km
+                        </p>
+</div>
+</div>
+<div class="bg-[#ffe2d9] text-[#693a2d] px-2 py-1 rounded-md font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="warning">warning</span>
+                    Gấp
+                </div>
+</div>
+<div class="pl-2">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-1">Cần hỗ trợ tắc tia sữa</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Bé nhà mình mới sinh được 5 ngày, mẹ đang bị cương sữa sinh lý rất đau và khó chịu. Cần chuyên gia tới hỗ trợ massage và thông tia gấp trong sáng nay.</p>
+</div>
+<div class="flex flex-wrap gap-2 pl-2">
+<span class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="medical_services">medical_services</span>
+                    Chăm sóc sau sinh
+                </span>
+<span class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule">schedule</span>
+                    Hôm nay, 10:00
+                </span>
+</div>
+<div class="flex gap-3 mt-2 pl-2">
+<button class="flex-1 bg-primary-container text-white h-[52px] rounded-full font-button text-button active:scale-95 transition-transform">
+                    Nhận yêu cầu
+                </button>
+</div>
+</article>
+<!-- Request Card 2 (Standard) -->
+<article class="bg-white rounded-[24px] p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary font-headline-md text-headline-md">
+                        TM
+                    </div>
+<div>
+<h3 class="font-button text-button text-on-surface">Trần Minh</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+                            Cách đây 2.5km
+                        </p>
+</div>
+</div>
+<div class="text-on-surface-variant font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span>
+                    2 giờ trước
+                </div>
+</div>
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-1">Tư vấn dinh dưỡng dặm</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Bé được 6 tháng tuổi chuẩn bị ăn dặm. Cần tư vấn lộ trình ăn dặm chỉ huy (BLW) và cách chuẩn bị thực đơn phù hợp.</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="restaurant_menu">restaurant_menu</span>
+                    Dinh dưỡng
+                </span>
+<span class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="calendar_month">calendar_month</span>
+                    Tuần này
+                </span>
+</div>
+<div class="flex gap-3 mt-2">
+<button class="flex-1 bg-[#F2EAE4] text-[#5A463F] h-[52px] rounded-full font-button text-button active:scale-95 transition-transform hover:bg-surface-variant">
+                    Xem chi tiết
+                </button>
+</div>
+</article>
+<!-- Request Card 3 (Standard) -->
+<article class="bg-white rounded-[24px] p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<img class="w-12 h-12 rounded-full object-cover border-2 border-surface-container" data-alt="A portrait of an older Vietnamese woman, likely a grandmother, looking concerned. Soft natural lighting. Warm earthy tones in her clothing, blending with the organic minimal style of the app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9vNY_Y-IiRpPr6zP70HVj8YNZ-uzsBQomuNUcEB1zNsGW52FUOPd_pZWBnNESbS1kpZjDuJLA0CSvmNk1mSdxeSFx-d-SPiREjp8cIpwGkBEs53EHE2IxKgejtANxZ8XhoXj3aNtrnYz6muZt386AfRsRuUHuzWvXqPXgtl7IqB3KA0PqO5WjcSPTo-ct2phyBJV0P026zWiKLZq_svsAeItdXh7PcRZS9yst1TDwS3-sW405gF7VwGAVkgKe41GbVS3gI6V6vtI"/>
+<div>
+<h3 class="font-button text-button text-on-surface">Lê Thị Hoa</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+                            Cách đây 3.8km
+                        </p>
+</div>
+</div>
+</div>
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-1">Hỗ trợ tắm bé sơ sinh</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Tìm điều dưỡng hoặc y tá có kinh nghiệm hỗ trợ tắm bé sơ sinh tại nhà vào các buổi sáng trong tuần tới.</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="bathtub">bathtub</span>
+                    Vệ sinh
+                </span>
+</div>
+<div class="flex gap-3 mt-2">
+<button class="flex-1 bg-[#F2EAE4] text-[#5A463F] h-[52px] rounded-full font-button text-button active:scale-95 transition-transform hover:bg-surface-variant">
+                    Xem chi tiết
+                </button>
+</div>
+</article>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg pb-safe-margin pt-3">
+<button class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl min-w-[64px]">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Trang chủ</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl min-w-[64px]">
+<span class="material-symbols-outlined mb-1" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md">Hành trình</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl min-w-[64px]">
+<span class="material-symbols-outlined mb-1" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Cộng đồng</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl px-4 py-2 hover:bg-surface-container-low transition-colors active:scale-90 transition-transform duration-150 min-w-[64px]">
+<span class="material-symbols-outlined mb-1" data-icon="fact_check" data-weight="fill" style="font-variation-settings: 'FILL' 1;">fact_check</span>
+<span class="font-label-md text-label-md">Việc cần làm</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors active:scale-90 transition-transform duration-150 p-2 rounded-xl min-w-[64px]">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Hồ sơ</span>
+</button>
+</nav>
+</body></html>

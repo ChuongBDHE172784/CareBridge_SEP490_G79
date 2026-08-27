@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Lịch sử Bài tập - Ứng dụng Mẹ và Bé</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "surface-container-low": "#fff1ec",
+                    "on-secondary-container": "#735e56",
+                    "on-background": "#271812",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "primary-container": "#c98c7b",
+                    "inverse-on-surface": "#ffede7",
+                    "background": "#fff8f6",
+                    "on-primary": "#ffffff",
+                    "on-primary-container": "#51271b",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#f8ddd2",
+                    "primary-fixed": "#ffdbd1",
+                    "surface-container-high": "#ffe2d9",
+                    "primary-fixed-dim": "#fab7a4",
+                    "surface-container-highest": "#fadcd3",
+                    "surface-tint": "#845143",
+                    "secondary": "#6e5a52",
+                    "outline-variant": "#d6c2bd",
+                    "tertiary-fixed": "#e9e1db",
+                    "inverse-surface": "#3e2c26",
+                    "surface-bright": "#fff8f6",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-surface-variant": "#524440",
+                    "tertiary": "#625d59",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "on-tertiary": "#ffffff",
+                    "primary": "#845143",
+                    "on-error": "#ffffff",
+                    "surface": "#fff8f6",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "inverse-primary": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "on-surface": "#271812",
+                    "outline": "#84736f",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-secondary-fixed": "#271812",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#f6dacf",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#a09a95",
+                    "error": "#ba1a1a",
+                    "on-tertiary-container": "#36322e",
+                    "on-secondary": "#ffffff",
+                    "surface-container": "#ffe9e3",
+                    "surface-variant": "#fadcd3",
+                    "surface-dim": "#f1d4ca"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "gutter-mobile": "16px",
+                    "gutter-desktop": "24px",
+                    "container-margin-mobile": "20px",
+                    "sidebar-width": "280px",
+                    "container-margin-desktop": "40px"
+            },
+            "fontFamily": {
+                    "label-caps": ["Quicksand"],
+                    "headline-lg-mobile": ["Quicksand"],
+                    "body-sm": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "headline-lg": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Quicksand', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .soft-shadow { box-shadow: 0 4px 20px rgba(90, 70, 63, 0.08); }
+        .card-active { box-shadow: 0 4px 20px rgba(90, 70, 63, 0.15); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased pb-safe min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-background flex justify-between items-center px-gutter-mobile h-16 w-full z-50 sticky top-0 flat no shadows bg-background transition-opacity duration-150">
+<button aria-label="Quay lại" class="text-on-surface-variant hover:opacity-80 transition-opacity p-2 -ml-2 rounded-full flex items-center justify-center active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary flex-1 text-center truncate px-4">
+            Lịch sử Bài tập
+        </h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col pt-4 px-container-margin-mobile max-w-md mx-auto w-full">
+<!-- Filter Section -->
+<section class="mb-6">
+<div class="flex overflow-x-auto hide-scrollbar gap-3 pb-2 -mx-container-margin-mobile px-container-margin-mobile">
+<button class="flex items-center gap-2 bg-primary text-on-primary font-body-sm text-body-sm px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">calendar_month</span>
+                    Tháng này
+                </button>
+<button class="flex items-center gap-2 bg-surface-container-high text-on-surface-variant font-body-sm text-body-sm px-4 py-2 rounded-full border border-outline-variant whitespace-nowrap active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">self_improvement</span>
+                    Yoga
+                </button>
+<button class="flex items-center gap-2 bg-surface-container-high text-on-surface-variant font-body-sm text-body-sm px-4 py-2 rounded-full border border-outline-variant whitespace-nowrap active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">directions_walk</span>
+                    Đi bộ
+                </button>
+<button class="flex items-center gap-2 bg-surface-container-high text-on-surface-variant font-body-sm text-body-sm px-4 py-2 rounded-full border border-outline-variant whitespace-nowrap active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    Lọc thêm
+                </button>
+</div>
+</section>
+<!-- Summary Stats (Bento-style snippet) -->
+<section class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-surface-container-lowest p-4 rounded-DEFAULT soft-shadow flex flex-col gap-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Tổng thời gian</span>
+<div class="flex items-baseline gap-1 text-primary">
+<span class="font-headline-lg-mobile text-headline-lg-mobile">120</span>
+<span class="font-body-sm text-body-sm">phút</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-DEFAULT soft-shadow flex flex-col gap-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Số bài tập</span>
+<div class="flex items-baseline gap-1 text-primary">
+<span class="font-headline-lg-mobile text-headline-lg-mobile">5</span>
+<span class="font-body-sm text-body-sm">buổi</span>
+</div>
+</div>
+</section>
+<!-- Exercise History List -->
+<section class="flex flex-col gap-4 pb-8">
+<h2 class="font-headline-md text-headline-md text-on-background mb-2">Gần đây</h2>
+<!-- Card 1 (Completed) -->
+<article class="bg-surface-container-lowest p-4 rounded-DEFAULT soft-shadow border border-surface-container-highest flex gap-4 items-start active:scale-[0.98] transition-transform">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[24px]">self_improvement</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg text-on-background font-semibold">Yoga Thư giãn Buổi sáng</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant">20 THG 10</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps">
+                            Tam cá nguyệt 2
+                        </span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm bg-primary/10 text-primary font-label-caps text-label-caps">
+                            30 Phút
+                        </span>
+</div>
+<div class="mt-2 flex items-center gap-1 text-primary font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Hoàn thành
+                    </div>
+</div>
+</article>
+<!-- Card 2 (Partial) -->
+<article class="bg-surface-container-lowest p-4 rounded-DEFAULT soft-shadow border border-surface-container-highest flex gap-4 items-start active:scale-[0.98] transition-transform">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-secondary-container text-[24px]">directions_walk</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg text-on-background font-semibold">Đi bộ nhẹ nhàng</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant">18 THG 10</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps">
+                            Tam cá nguyệt 2
+                        </span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm bg-secondary/10 text-secondary font-label-caps text-label-caps">
+                            15/20 Phút
+                        </span>
+</div>
+<div class="mt-2 flex items-center gap-1 text-secondary font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">timelapse</span>
+                        Chưa hoàn thành
+                    </div>
+</div>
+</article>
+<!-- Card 3 (Completed) -->
+<article class="bg-surface-container-lowest p-4 rounded-DEFAULT soft-shadow border border-surface-container-highest flex gap-4 items-start active:scale-[0.98] transition-transform">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[24px]">fitness_center</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg text-on-background font-semibold">Bài tập Tăng cường cơ sàn chậu</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant">15 THG 10</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps">
+                            Tam cá nguyệt 2
+                        </span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-sm bg-primary/10 text-primary font-label-caps text-label-caps">
+                            10 Phút
+                        </span>
+</div>
+<div class="mt-2 flex items-center gap-1 text-primary font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Hoàn thành
+                    </div>
+</div>
+</article>
+</section>
+</main>
+</body></html>

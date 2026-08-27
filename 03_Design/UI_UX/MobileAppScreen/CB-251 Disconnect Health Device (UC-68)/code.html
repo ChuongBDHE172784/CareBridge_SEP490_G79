@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-container-high": "#ede7e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface-accent-muted": "#F2EAE4",
+                    "surface-tint": "#845143",
+                    "inverse-surface": "#32302d",
+                    "primary-container": "#c98c7b",
+                    "background": "#fef8f4",
+                    "surface-dim": "#dfd9d5",
+                    "text-heading": "#2D2A28",
+                    "on-secondary-container": "#68635f",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f9f2ee",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "surface-bright": "#fef8f4",
+                    "surface-container-highest": "#e7e1dd",
+                    "error": "#ba1a1a",
+                    "on-background": "#1d1b19",
+                    "on-tertiary-container": "#34322f",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-accent-light": "#F6F1EC",
+                    "secondary": "#625d59",
+                    "surface-variant": "#e7e1dd",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#e9e1db",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "surface": "#fef8f4",
+                    "secondary-fixed": "#e9e1db",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-surface": "#1d1b19",
+                    "status-active": "#C98C7B",
+                    "inverse-primary": "#fab7a4",
+                    "outline": "#84736f",
+                    "tertiary-container": "#9e9a96",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f3ede8",
+                    "primary": "#845143",
+                    "outline-variant": "#d6c2bd",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px",
+                    "container-margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+        }
+        .clay-card {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 
+                20px 20px 60px #e5dfdb,
+                -20px -20px 60px #ffffff,
+                inset 4px 4px 8px rgba(255,255,255,0.8),
+                inset -4px -4px 8px rgba(201, 140, 123, 0.05);
+        }
+        .clay-button-red {
+            background: #ba1a1a;
+            box-shadow: 
+                inset 4px 4px 8px rgba(255,255,255,0.3),
+                inset -4px -4px 12px rgba(0,0,0,0.2),
+                0 8px 16px rgba(186, 26, 26, 0.2);
+            transition: all 0.2s ease;
+        }
+        .clay-button-red:active {
+            transform: scale(0.96);
+            box-shadow: 
+                inset 2px 2px 4px rgba(0,0,0,0.3),
+                0 4px 8px rgba(186, 26, 26, 0.1);
+        }
+        .clay-icon-container {
+            background: #fef8f4;
+            box-shadow: 
+                inset 6px 6px 12px #ede7e3,
+                inset -6px -6px 12px #ffffff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-checkbox {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: inset 2px 2px 5px #d1d1d1, inset -2px -2px 5px #ffffff;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .custom-checkbox:checked::after {
+            content: '\e5ca';
+            font-family: 'Material Symbols Outlined';
+            color: #845143;
+            font-size: 20px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col items-center">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-background flex items-center justify-between px-4 h-16 shadow-[0px_4px_20px_rgba(90,70,63,0.08)]">
+<button class="active:scale-95 transition-transform duration-200 hover:opacity-80">
+<span class="material-symbols-outlined text-primary text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">CareBridge</h1>
+<button class="active:scale-95 transition-transform duration-200 hover:opacity-80">
+<span class="material-symbols-outlined text-primary text-2xl">close</span>
+</button>
+</header>
+<main class="w-full max-w-lg mt-20 mb-24 px-4 flex flex-col gap-6">
+<!-- Animated Background Decoration -->
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+<div class="absolute -top-24 -left-24 w-64 h-64 bg-primary-fixed-dim opacity-20 blur-3xl rounded-full"></div>
+<div class="absolute top-1/2 -right-32 w-80 h-80 bg-secondary-fixed opacity-15 blur-3xl rounded-full"></div>
+</div>
+<!-- Section Title -->
+<div class="text-center space-y-2">
+<h2 class="font-display-lg text-display-lg text-text-heading">Ngắt kết nối thiết bị</h2>
+<p class="font-body-md text-body-md text-text-body">Xác nhận để dừng đồng bộ hóa dữ liệu sức khỏe của bạn.</p>
+</div>
+<!-- Claymorphism Content Card -->
+<div class="clay-card p-8 flex flex-col gap-8">
+<!-- Device Summary -->
+<div class="flex items-center gap-6">
+<div class="clay-icon-container w-20 h-20 rounded-2xl flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">health_metrics</span>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="font-headline-md text-headline-md text-text-heading">Apple Health</h3>
+<p class="font-label-md text-label-md text-primary bg-primary-fixed px-3 py-1 rounded-full inline-block w-fit">Đang kết nối</p>
+<p class="font-body-md text-body-md text-secondary mt-1">Đồng bộ cuối: Hôm nay, 08:45</p>
+</div>
+</div>
+<!-- Sync Items Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-4 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl">steps</span>
+<span class="font-body-md text-body-md text-text-heading">Số bước chân</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl">favorite</span>
+<span class="font-body-md text-body-md text-text-heading">Nhịp tim</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl">bedtime</span>
+<span class="font-body-md text-body-md text-text-heading">Giấc ngủ</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl">fitness_center</span>
+<span class="font-body-md text-body-md text-text-heading">Hoạt động</span>
+</div>
+</div>
+<div class="h-px bg-outline-variant opacity-30"></div>
+<!-- Data Policy Explanation -->
+<div class="flex gap-4 p-4 bg-surface-accent-light rounded-2xl border border-surface-container-high">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                    Khi ngắt kết nối, CareBridge sẽ dừng nhận dữ liệu mới từ Apple Health. Tuy nhiên, <strong>tất cả dữ liệu cũ</strong> đã đồng bộ sẽ vẫn được bảo mật và lưu trữ trong hồ sơ sức khỏe của bạn.
+                </p>
+</div>
+<!-- Confirmation Checkbox -->
+<label class="flex items-start gap-4 cursor-pointer group">
+<input class="custom-checkbox mt-1" id="confirmSync" type="checkbox"/>
+<span class="font-body-md text-body-md text-text-body select-none">
+                    Tôi xác nhận muốn ngắt kết nối thiết bị và hiểu rõ các điều khoản về dữ liệu.
+                </span>
+</label>
+<!-- Actions -->
+<div class="flex flex-col gap-4 pt-2">
+<button class="clay-button-red w-full py-4 rounded-full text-white font-headline-sm text-headline-sm opacity-50 cursor-not-allowed" disabled="" id="disconnectBtn">
+                    Ngắt kết nối
+                </button>
+<button class="w-full py-4 rounded-full text-secondary font-headline-sm text-headline-sm hover:bg-surface-container transition-colors">
+                    Hủy bỏ
+                </button>
+</div>
+</div>
+<!-- Illustration / Visual Anchor -->
+<div class="flex justify-center mt-4">
+<div class="relative w-48 h-48">
+<div class="absolute inset-0 bg-primary-fixed-dim rounded-full blur-2xl opacity-30 animate-pulse"></div>
+<img class="w-full h-full object-contain relative z-10" data-alt="A high-quality 3D claymorphism illustration of a stylized digital heart and a broken link icon floating above a soft, rounded cloud. The colors are warm peach, soft brown, and creamy white, matching a professional care-tech aesthetic. The lighting is soft and ambient with gentle shadows, creating a tactile, friendly feel on a minimalist background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBynctsoDjEd2KZjLezem2Mu5GUQw58v7BJyLFbUk6TcnslxaSntyXGVQdpFYrDZgcGniifDNEmrlMX5tppGPL_LsHNNV6EbSV2apyvkR0Qz0gEHNQHxf7-ji5GYI_UIYADSuxHeaU7SIrO3Ad-RnUTOfW7N_1Vy-40iPYqAI-Px6GG7gCQRB-bvYxoTdEDPJc58bw3fEapnkHIYqaDoB_q4qnOspMcUDCVJlGMcLVYzdgu1wyfaaGsdYHMgf6hmcW2iLdIZFc5Ebo"/>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] rounded-t-lg z-50">
+<div class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-colors active:scale-90 p-2 rounded-xl">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps mt-1">Trang chủ</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary font-bold active:scale-90 p-2 rounded-xl">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+<span class="font-label-caps text-label-caps mt-1">Sức khỏe</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-colors active:scale-90 p-2 rounded-xl">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-label-caps text-label-caps mt-1">Thông báo</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-colors active:scale-90 p-2 rounded-xl">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps mt-1">Cá nhân</span>
+</div>
+</nav>
+<script>
+        const checkbox = document.getElementById('confirmSync');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                disconnectBtn.disabled = false;
+                disconnectBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                disconnectBtn.disabled = true;
+                disconnectBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+
+        disconnectBtn.addEventListener('click', () => {
+            if (!disconnectBtn.disabled) {
+                // Micro-interaction
+                disconnectBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span>';
+                setTimeout(() => {
+                    alert('Đã ngắt kết nối thiết bị thành công.');
+                    window.location.reload();
+                }, 1500);
+            }
+        });
+    </script>
+</body></html>

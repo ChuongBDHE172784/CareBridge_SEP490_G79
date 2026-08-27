@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Thanh toán - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#ffdbd1",
+                        "on-secondary-container": "#735e56",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed": "#341006",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#625d59",
+                        "surface-tint": "#845143",
+                        "surface-container-high": "#ffe2d9",
+                        "surface-container": "#ffe9e3",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#fab7a4",
+                        "primary": "#845143",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "background": "#fff8f6",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-background": "#271812",
+                        "surface-dim": "#f1d4ca",
+                        "tertiary-fixed": "#e9e1db",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#fadcd3",
+                        "on-surface-variant": "#524440",
+                        "on-tertiary-container": "#36322e",
+                        "primary-container": "#c98c7b",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-bright": "#fff8f6",
+                        "inverse-on-surface": "#ffede7",
+                        "surface-variant": "#fadcd3",
+                        "surface": "#fff8f6",
+                        "secondary": "#6e5a52",
+                        "on-primary-container": "#51271b",
+                        "tertiary-container": "#a09a95",
+                        "secondary-container": "#f6dacf",
+                        "on-secondary-fixed": "#271812",
+                        "inverse-surface": "#3e2c26",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "surface-container-low": "#fff1ec",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "outline": "#84736f",
+                        "on-surface": "#271812"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sidebar-width": "280px",
+                        "container-margin-mobile": "20px",
+                        "unit": "8px",
+                        "gutter-desktop": "24px",
+                        "gutter-mobile": "16px",
+                        "container-margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Quicksand"],
+                        "label-caps": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-sm": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-lg antialiased pt-16">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)] flex items-center justify-between px-container-margin-mobile h-16 transition-transform duration-200">
+<button aria-label="Go back" class="flex items-center justify-center p-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold tracking-tight">CareBridge</h1>
+<button aria-label="Close" class="flex items-center justify-center p-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="close">close</span>
+</button>
+</header>
+<main class="px-container-margin-mobile pb-24 md:px-container-margin-desktop md:max-w-2xl md:mx-auto">
+<!-- Summary Section -->
+<section class="mt-6 mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4">Thông tin thanh toán</h2>
+<div class="bg-surface-container-lowest rounded-lg p-6 shadow-[0px_4px_20px_rgba(90,70,63,0.08)]">
+<div class="flex justify-between items-center mb-4 pb-4 border-b border-outline-variant">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Mã đặt lịch:</span>
+<span class="font-body-lg text-body-lg font-bold text-on-surface">CB-84920</span>
+</div>
+<div class="flex justify-between items-center mb-4">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Chuyên gia:</span>
+<span class="font-body-lg text-body-lg text-on-surface">BS. Nguyễn Lân Hiếu</span>
+</div>
+<div class="flex justify-between items-center mb-6">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Dịch vụ:</span>
+<span class="font-body-lg text-body-lg text-on-surface text-right max-w-[60%]">Khám sức khỏe tổng quát (30 phút)</span>
+</div>
+<div class="bg-surface-container rounded-lg p-4 flex justify-between items-center">
+<span class="font-body-lg text-body-lg font-bold text-on-surface">Tổng cộng:</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">350.000đ</span>
+</div>
+</div>
+</section>
+<!-- Payment Method Section -->
+<section class="mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4">Phương thức thanh toán</h2>
+<div class="space-y-4">
+<!-- MoMo -->
+<label class="flex items-center p-4 bg-surface-container-lowest rounded-lg border border-outline-variant cursor-pointer hover:border-primary-container transition-colors has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+<input checked="" class="form-radio h-5 w-5 text-primary border-outline focus:ring-primary-container mr-4" name="payment_method" type="radio" value="momo"/>
+<div class="flex-1 flex items-center">
+<div class="w-10 h-10 rounded bg-[#A50064] flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-white" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">Ví MoMo</span>
+</div>
+</label>
+<!-- ZaloPay -->
+<label class="flex items-center p-4 bg-surface-container-lowest rounded-lg border border-outline-variant cursor-pointer hover:border-primary-container transition-colors has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+<input class="form-radio h-5 w-5 text-primary border-outline focus:ring-primary-container mr-4" name="payment_method" type="radio" value="zalopay"/>
+<div class="flex-1 flex items-center">
+<div class="w-10 h-10 rounded bg-[#0088FF] flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-white" data-icon="payments">payments</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">ZaloPay</span>
+</div>
+</label>
+<!-- Credit Card -->
+<label class="flex items-center p-4 bg-surface-container-lowest rounded-lg border border-outline-variant cursor-pointer hover:border-primary-container transition-colors has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+<input class="form-radio h-5 w-5 text-primary border-outline focus:ring-primary-container mr-4" name="payment_method" type="radio" value="credit_card"/>
+<div class="flex-1 flex items-center">
+<div class="w-10 h-10 rounded bg-tertiary-container flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="credit_card">credit_card</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">Thẻ tín dụng / Ghi nợ</span>
+</div>
+</label>
+</div>
+<p class="mt-4 font-body-sm text-body-sm text-on-surface-variant flex items-start">
+<span class="material-symbols-outlined mr-1 text-[16px]" data-icon="info">info</span>
+                Bạn sẽ được chuyển hướng đến cổng thanh toán an toàn để hoàn tất giao dịch.
+            </p>
+</section>
+<!-- Terms and CTA -->
+<section class="mt-auto">
+<label class="flex items-start mb-6 cursor-pointer group">
+<input class="form-checkbox mt-1 h-5 w-5 text-primary rounded border-outline focus:ring-primary-container" required="" type="checkbox"/>
+<span class="ml-3 font-body-sm text-body-sm text-on-surface">
+                    Tôi đồng ý với <a class="text-primary hover:underline font-semibold" href="#">Điều khoản dịch vụ</a> và <a class="text-primary hover:underline font-semibold" href="#">Chính sách hủy lịch</a> của CareBridge.
+                </span>
+</label>
+<button class="w-full bg-primary-container text-on-primary font-headline-md text-headline-md h-14 rounded-full flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md">
+                Thanh toán ngay
+                <span class="material-symbols-outlined ml-2" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</section>
+</main>
+<script>
+        // Simple script to handle radio selection styling is handled by Tailwind 'has-[:checked]' variant
+    </script>
+</body></html>

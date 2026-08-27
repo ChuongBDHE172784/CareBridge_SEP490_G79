@@ -1,0 +1,7 @@
+{
+  "$comment": "Full-result parity fingerprint. Both runtimes evaluate all shared vectors, canonicalise EVERY result field (not just the four mandatory ones) and hash them. Containment assertions could not catch an extra reason code on one side; this can. Regenerate deliberately via DevTools when engine output legitimately changes.",
+  "rulesetVersion": "2.2.0",
+  "vectorCount": 41,
+  "canonicalisation": "sorted-key JSON, separators (',',':'), optional list fields sorted; sha256 of the UTF-8 bytes",
+  "fingerprint": "a506f06774cc1d94992c3fb6841b0829b27992050241f613843da757b0d87639"
+}

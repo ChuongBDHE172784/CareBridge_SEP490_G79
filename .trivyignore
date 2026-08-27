@@ -1,0 +1,2 @@
+# Add a CVE only after review, with a reason and expiry date on the preceding line.
+# Example: CVE-YYYY-NNNN # false positive; reviewed YYYY-MM-DD; expires YYYY-MM-DD

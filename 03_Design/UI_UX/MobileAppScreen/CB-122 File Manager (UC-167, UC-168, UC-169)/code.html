@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>CareBridge - Quản lý hồ sơ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-primary": "#fab7a4",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#f6dacf",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#fff8f6",
+                    "on-primary-fixed": "#341006",
+                    "primary-fixed": "#ffdbd1",
+                    "outline": "#84736f",
+                    "on-tertiary-container": "#36322e",
+                    "surface-container-high": "#ffe2d9",
+                    "surface-tint": "#845143",
+                    "error": "#ba1a1a",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "secondary": "#6e5a52",
+                    "outline-variant": "#d6c2bd",
+                    "inverse-surface": "#3e2c26",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-secondary-fixed": "#271812",
+                    "surface-container": "#ffe9e3",
+                    "primary-container": "#c98c7b",
+                    "on-background": "#271812",
+                    "tertiary": "#625d59",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-error-container": "#93000a",
+                    "surface": "#fff8f6",
+                    "tertiary-fixed": "#e9e1db",
+                    "primary": "#845143",
+                    "inverse-on-surface": "#ffede7",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed": "#f8ddd2",
+                    "tertiary-container": "#a09a95",
+                    "surface-variant": "#fadcd3",
+                    "on-surface": "#271812",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-container": "#735e56",
+                    "background": "#fff8f6",
+                    "surface-container-low": "#fff1ec",
+                    "surface-container-highest": "#fadcd3",
+                    "on-surface-variant": "#524440",
+                    "surface-dim": "#f1d4ca"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "safe-margin": "24px",
+                    "stack-sm": "8px",
+                    "gutter": "16px",
+                    "touch-target-min": "48px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Lexend"],
+                    "button": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "headline-md": ["Lexend"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fff8f6;
+            color: #271812;
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+
+        .fab-shadow {
+            box-shadow: 0px 8px 24px rgba(90, 70, 63, 0.12);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen">
+<!-- Top App Bar -->
+<header class="fixed top-0 left-0 w-full z-40 bg-background flex justify-between items-center px-safe-margin h-touch-target-min">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Tệp của tôi</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">search</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A warm, professional portrait of a Vietnamese mother smiling gently, lit by soft morning window light in a clean, minimalist home environment. The aesthetic is nurturing and light-mode focused, using a palette of soft terracottas and creamy whites to match a maternal healthcare brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcK4IpODoMMl6NO9B-ZZxCPVzrteII6ehO-XXRhKs3AcpZSZla8xDtOznXvABQFEM4bTsnUO9r-0lcFAbZEBOXTV5VoEDS1f0en_t1qQT_vtElneM_ZDvn-VNaO8ve9P67KT0MzIkDB0p0s1xXIg22kSn0RQhjGszpq4XjNp3ORbAY3NUgWe6ABiGQpXyT86tVNPiDCYbzmp2MAZ5IP2cdSjjtERJ4bzuJiQelQUJCRR5a8S0a6tnRH8WLSXOvqYicg0OBOuu4PKM"/>
+</div>
+</div>
+</header>
+<main class="pt-20 pb-24 px-safe-margin">
+<!-- Storage Overview (Bento Style Section) -->
+<section class="grid grid-cols-2 gap-4 mb-stack-lg">
+<div class="col-span-2 p-stack-lg bg-surface-container-low rounded-lg card-shadow flex flex-col gap-2 border border-surface-variant/30">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Dung lượng sử dụng</span>
+<span class="font-label-md text-label-md text-primary font-bold">65%</span>
+</div>
+<div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-[65%] rounded-full"></div>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">3.2 GB trong tổng số 5 GB</p>
+</div>
+</section>
+<!-- Filter Chips -->
+<section class="flex gap-2 overflow-x-auto no-scrollbar pb-stack-md -mx-safe-margin px-safe-margin mb-4">
+<button class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-[20px]">apps</span>
+<span class="font-label-md text-label-md">Tất cả</span>
+</button>
+<button class="flex items-center gap-2 bg-white text-on-surface-variant px-4 py-2 rounded-full card-shadow whitespace-nowrap active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-[20px]">monitor_heart</span>
+<span class="font-label-md text-label-md">Siêu âm</span>
+</button>
+<button class="flex items-center gap-2 bg-white text-on-surface-variant px-4 py-2 rounded-full card-shadow whitespace-nowrap active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-[20px]">description</span>
+<span class="font-label-md text-label-md">Hồ sơ bệnh án</span>
+</button>
+<button class="flex items-center gap-2 bg-white text-on-surface-variant px-4 py-2 rounded-full card-shadow whitespace-nowrap active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-[20px]">image</span>
+<span class="font-label-md text-label-md">Hình ảnh</span>
+</button>
+</section>
+<!-- File List -->
+<section class="flex flex-col gap-4">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Gần đây</h2>
+<!-- File Item 1: Ultrasound -->
+<div class="bg-white p-4 rounded-lg card-shadow flex items-center gap-4 transition-all active:bg-surface-container-low">
+<div class="w-12 h-12 bg-primary-fixed rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<h3 class="font-body-lg text-body-lg text-on-surface truncate">Siêu âm thai 4D - Tuần 24</h3>
+<span class="material-symbols-outlined text-outline text-[16px]">visibility_lock</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-md text-label-md text-on-surface-variant">12/05/2024</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="font-label-md text-label-md text-primary font-medium">Bé</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0">
+<span class="px-2 py-0.5 bg-secondary-fixed text-on-secondary-fixed-variant rounded-full text-[10px] font-bold uppercase tracking-wider">Riêng tư</span>
+<button class="w-8 h-8 flex items-center justify-center text-outline">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- File Item 2: Medical Record -->
+<div class="bg-white p-4 rounded-lg card-shadow flex items-center gap-4 transition-all active:bg-surface-container-low">
+<div class="w-12 h-12 bg-tertiary-fixed rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<h3 class="font-body-lg text-body-lg text-on-surface truncate">Sổ khám thai định kỳ</h3>
+<span class="material-symbols-outlined text-outline text-[16px]">visibility_lock</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-md text-label-md text-on-surface-variant">08/05/2024</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="font-label-md text-label-md text-primary font-medium">Mẹ</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0">
+<span class="px-2 py-0.5 bg-primary-fixed text-on-primary-fixed-variant rounded-full text-[10px] font-bold uppercase tracking-wider">Đã chia sẻ</span>
+<button class="w-8 h-8 flex items-center justify-center text-outline">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- File Item 3: Photo -->
+<div class="bg-white p-4 rounded-lg card-shadow flex items-center gap-4 transition-all active:bg-surface-container-low">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="A close-up, high-quality medical ultrasound image showing the side profile of a developing fetus at 20 weeks. The image is rendered with professional clarity in a monochrome sepia tone, fitting the warm, organic aesthetic of the CareBridge maternal health application. Soft gradients and anatomical precision create a sense of wonder and safety." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMLtxVCIL8RLyheLdOwWSY1s95SlFcTgtpj04uyZzCfyH5eBfzNWnNICqdWxHnOb4UlzOvYQqzAvO5iOBJUHdqjKeAoGYZMWImVxCLBI0dufe4N7g0pnr5bfbIhSmokoUtzpTVRIV9wQBwuw6dmQ8xNfd9m86iidcgYWYKwmrTAvunx0saDH0dFeKybwhnKlWvfPv31Un1wQ6myZlIDGnZwx7fGkRTsSmqq2_Z6AlH8nsjzoYQbAn_8KecLLufWgG_oLMw5dpQ8XM"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<h3 class="font-body-lg text-body-lg text-on-surface truncate">Ảnh kỷ niệm siêu âm</h3>
+<span class="material-symbols-outlined text-outline text-[16px]">visibility_lock</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-md text-label-md text-on-surface-variant">05/05/2024</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="font-label-md text-label-md text-primary font-medium">Bé</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0">
+<span class="px-2 py-0.5 bg-secondary-fixed text-on-secondary-fixed-variant rounded-full text-[10px] font-bold uppercase tracking-wider">Riêng tư</span>
+<button class="w-8 h-8 flex items-center justify-center text-outline">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- File Item 4: Medical Record -->
+<div class="bg-white p-4 rounded-lg card-shadow flex items-center gap-4 transition-all active:bg-surface-container-low">
+<div class="w-12 h-12 bg-tertiary-fixed rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary">lab_research</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<h3 class="font-body-lg text-body-lg text-on-surface truncate">Xét nghiệm NIPT</h3>
+<span class="material-symbols-outlined text-outline text-[16px]">visibility_lock</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-md text-label-md text-on-surface-variant">20/04/2024</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="font-label-md text-label-md text-primary font-medium">Mẹ</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0">
+<span class="px-2 py-0.5 bg-primary-fixed text-on-primary-fixed-variant rounded-full text-[10px] font-bold uppercase tracking-wider">Đã chia sẻ</span>
+<button class="w-8 h-8 flex items-center justify-center text-outline">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB: Tải lên -->
+<button class="fixed bottom-10 right-6 w-14 h-14 bg-primary text-on-primary rounded-full fab-shadow flex items-center justify-center z-50 transition-transform active:scale-90 duration-200">
+<span class="material-symbols-outlined text-[32px]">add</span>
+<!-- Tooltip Label for clarity but visually minimal -->
+<span class="sr-only">Tải lên hồ sơ mới</span>
+</button>
+<script>
+        // Simple micro-interaction for filter chips
+        const chips = document.querySelectorAll('section.overflow-x-auto button');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => {
+                    c.classList.remove('bg-primary', 'text-on-primary');
+                    c.classList.add('bg-white', 'text-on-surface-variant');
+                });
+                chip.classList.add('bg-primary', 'text-on-primary');
+                chip.classList.remove('bg-white', 'text-on-surface-variant');
+            });
+        });
+
+        // Touch target feedback enhancement
+        document.querySelectorAll('.active\\:scale-95').forEach(el => {
+            el.addEventListener('touchstart', () => {
+                el.style.opacity = '0.7';
+            });
+            el.addEventListener('touchend', () => {
+                el.style.opacity = '1';
+            });
+        });
+    </script>
+</body></html>

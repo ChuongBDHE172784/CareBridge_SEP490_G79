@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Quên mật khẩu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "outline": "#84736f",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e9e1db",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f6",
+                        "tertiary": "#625d59",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbd1",
+                        "primary-container": "#c98c7b",
+                        "surface-container-highest": "#fadcd3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-primary": "#ffffff",
+                        "surface": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary-container": "#735e56",
+                        "error": "#ba1a1a",
+                        "secondary": "#6e5a52",
+                        "on-error": "#ffffff",
+                        "surface-tint": "#845143",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "surface-container": "#ffe9e3",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-surface": "#271812",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-variant": "#fadcd3",
+                        "on-primary-container": "#51271b",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-container": "#36322e",
+                        "inverse-surface": "#3e2c26",
+                        "surface-dim": "#f1d4ca",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-background": "#271812",
+                        "background": "#fff8f6",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#ffe2d9",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-fixed": "#341006"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "safe-margin": "24px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "button": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F6F1EC; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-lg text-body-lg text-on-surface antialiased min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Decorative Background Shapes -->
+<div class="absolute top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+<div class="absolute -top-[10%] -left-[10%] w-[50%] aspect-square rounded-full bg-primary-fixed opacity-20 blur-3xl"></div>
+<div class="absolute bottom-[20%] -right-[20%] w-[60%] aspect-square rounded-full bg-secondary-fixed opacity-20 blur-3xl"></div>
+</div>
+<div class="w-full max-w-[390px] min-h-[844px] bg-background relative z-10 flex flex-col shadow-2xl rounded-3xl overflow-hidden border border-surface-container-low">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full docked full-width top-0 bg-background dark:bg-background flat no shadows z-20 pt-8">
+<button aria-label="Back" class="h-touch-target-min w-touch-target-min flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95 duration-200 text-on-surface-variant dark:text-on-surface-variant -ml-4">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim flex-1 text-center pr-12">CareBridge</h1>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col px-safe-margin pt-stack-lg pb-safe-margin overflow-y-auto">
+<div class="mb-stack-lg animate-fade-in-up" style="animation: fadeInUp 0.6s ease-out forwards;">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-stack-sm">Quên mật khẩu</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Vui lòng nhập email hoặc số điện thoại đã đăng ký. Chúng tôi sẽ gửi mã xác nhận để đặt lại mật khẩu.</p>
+</div>
+<form class="flex flex-col gap-stack-lg mt-stack-md flex-1">
+<div class="relative group">
+<label class="sr-only" for="contact-input">Email hoặc Số điện thoại</label>
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline-variant group-focus-within:text-primary transition-colors">contact_mail</span>
+</div>
+<input class="w-full h-[56px] pl-12 pr-4 rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary transition-shadow font-body-lg" id="contact-input" name="contact" placeholder="Email hoặc Số điện thoại" required="" type="text"/>
+</div>
+<div class="flex-1"></div> <!-- Spacer -->
+<button class="w-full h-[52px] bg-primary-container text-on-primary font-button text-button rounded-full flex items-center justify-center hover:bg-surface-tint hover:text-white transition-colors active:scale-95 shadow-[0px_4px_20px_rgba(90,70,63,0.06)]" type="submit">
+                    Gửi mã
+                </button>
+<div class="text-center mt-stack-sm">
+<a class="font-label-md text-label-md text-primary hover:underline" href="#">Quay lại đăng nhập</a>
+</div>
+</form>
+</main>
+</div>
+<style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            opacity: 0;
+        }
+    </style>
+</body></html>

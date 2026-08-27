@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xác nhận rời nhóm - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#fab7a4",
+                        "surface-dim": "#f1d4ca",
+                        "surface-tint": "#845143",
+                        "inverse-surface": "#3e2c26",
+                        "primary-container": "#c98c7b",
+                        "background": "#fff8f6",
+                        "surface": "#fff8f6",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#e9e1db",
+                        "tertiary": "#625d59",
+                        "on-surface": "#271812",
+                        "surface-container-high": "#ffe2d9",
+                        "on-secondary-fixed": "#271812",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "inverse-on-surface": "#ffede7",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "primary-fixed": "#ffdbd1",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-error": "#ffffff",
+                        "secondary": "#6e5a52",
+                        "surface-variant": "#fadcd3",
+                        "on-background": "#271812",
+                        "on-tertiary-container": "#36322e",
+                        "on-surface-variant": "#524440",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#ffe9e3",
+                        "primary": "#845143",
+                        "surface-bright": "#fff8f6",
+                        "surface-container-highest": "#fadcd3",
+                        "outline-variant": "#d6c2bd",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#fff1ec",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-primary-container": "#51271b",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-primary": "#ffffff",
+                        "outline": "#84736f",
+                        "tertiary-container": "#a09a95",
+                        "on-secondary-container": "#735e56"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-margin-desktop": "40px",
+                        "gutter-mobile": "16px",
+                        "container-margin-mobile": "20px",
+                        "gutter-desktop": "24px",
+                        "unit": "8px",
+                        "sidebar-width": "280px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Quicksand"],
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-sm": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#F6F1EC] text-on-surface min-h-screen flex flex-col font-body-lg text-body-lg">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#F6F1EC] flex items-center justify-between px-container-margin-mobile h-16 shadow-[0px_4px_20px_rgba(90,70,63,0.08)]">
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">CareBridge</h1>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-200 invisible">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center pt-24 pb-12 px-container-margin-mobile">
+<!-- Confirmation Card -->
+<div class="bg-surface-container-lowest w-full max-w-md rounded-lg shadow-[0px_4px_20px_rgba(90,70,63,0.15)] overflow-hidden flex flex-col items-center p-6 sm:p-8 animate-[slideUp_0.3s_ease-out]">
+<!-- Warning Icon -->
+<div class="w-16 h-16 rounded-full bg-error-container text-on-error-container flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-4xl" data-icon="warning" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<!-- Header -->
+<h2 class="font-headline-md text-headline-md text-center text-on-surface mb-2">Rời nhóm "Gia đình bé Na"?</h2>
+<p class="text-center text-on-surface-variant mb-6 font-body-sm text-body-sm">
+                Bạn đang chuẩn bị rời khỏi nhóm chăm sóc. Hành động này không thể hoàn tác.
+            </p>
+<!-- Warnings List -->
+<ul class="w-full space-y-4 mb-8">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5" data-icon="no_accounts">no_accounts</span>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface">Mất quyền truy cập</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Bạn sẽ không thể xem hồ sơ sức khỏe, lịch biểu và các công việc chung của gia đình nữa.</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5" data-icon="assignment_late">assignment_late</span>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface">Công việc chưa hoàn thành</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Bạn đang có 2 công việc được giao. Chúng sẽ được chuyển lại cho trưởng nhóm.</p>
+</div>
+</li>
+</ul>
+<!-- Actions -->
+<div class="w-full flex flex-col gap-3 mt-auto">
+<button class="w-full h-12 bg-[#C98C7B] text-on-primary rounded-full font-bold flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-[0px_4px_12px_rgba(201,140,123,0.3)]">
+                    Rời nhóm
+                </button>
+<button class="w-full h-12 bg-transparent border-2 border-[#C98C7B] text-[#C98C7B] rounded-full font-bold flex items-center justify-center hover:bg-surface-container transition-colors active:scale-95">
+                    Quay lại
+                </button>
+</div>
+</div>
+</main>
+<style>
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</body></html>

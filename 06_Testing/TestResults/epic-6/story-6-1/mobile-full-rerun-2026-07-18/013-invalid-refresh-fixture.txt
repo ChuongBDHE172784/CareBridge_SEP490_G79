@@ -1,0 +1,6 @@
+UPDATE 1
+               email                | status  | revoked | has_revoked_at 
+------------------------------------+---------+---------+----------------
+ mf01.story61.new-d@carebridge.test | revoked | t       | t
+(1 row)
+

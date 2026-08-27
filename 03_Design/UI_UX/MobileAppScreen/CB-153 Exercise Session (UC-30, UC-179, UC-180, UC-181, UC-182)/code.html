@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ứng dụng Mẹ và Bé - Phiên tập luyện</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "surface-container-low": "#fff1ec",
+                    "on-secondary-container": "#735e56",
+                    "on-background": "#271812",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "primary-container": "#c98c7b",
+                    "inverse-on-surface": "#ffede7",
+                    "background": "#fff8f6",
+                    "on-primary": "#ffffff",
+                    "on-primary-container": "#51271b",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#f8ddd2",
+                    "primary-fixed": "#ffdbd1",
+                    "surface-container-high": "#ffe2d9",
+                    "primary-fixed-dim": "#fab7a4",
+                    "surface-container-highest": "#fadcd3",
+                    "surface-tint": "#845143",
+                    "secondary": "#6e5a52",
+                    "outline-variant": "#d6c2bd",
+                    "tertiary-fixed": "#e9e1db",
+                    "inverse-surface": "#3e2c26",
+                    "surface-bright": "#fff8f6",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-surface-variant": "#524440",
+                    "tertiary": "#625d59",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "on-tertiary": "#ffffff",
+                    "primary": "#845143",
+                    "on-error": "#ffffff",
+                    "surface": "#fff8f6",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "inverse-primary": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "on-surface": "#271812",
+                    "outline": "#84736f",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-secondary-fixed": "#271812",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#f6dacf",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#a09a95",
+                    "error": "#ba1a1a",
+                    "on-tertiary-container": "#36322e",
+                    "on-secondary": "#ffffff",
+                    "surface-container": "#ffe9e3",
+                    "surface-variant": "#fadcd3",
+                    "surface-dim": "#f1d4ca"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "gutter-mobile": "16px",
+                    "gutter-desktop": "24px",
+                    "container-margin-mobile": "20px",
+                    "sidebar-width": "280px",
+                    "container-margin-desktop": "40px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "Quicksand"
+                    ],
+                    "headline-lg-mobile": [
+                            "Quicksand"
+                    ],
+                    "body-sm": [
+                            "Quicksand"
+                    ],
+                    "headline-md": [
+                            "Quicksand"
+                    ],
+                    "body-lg": [
+                            "Quicksand"
+                    ],
+                    "headline-lg": [
+                            "Quicksand"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        /* Ambient shadow for cards */
+        .ambient-shadow {
+            box-shadow: 0 4px 20px rgba(90, 70, 63, 0.08);
+        }
+        .active-shadow {
+            box-shadow: 0 8px 24px rgba(90, 70, 63, 0.15);
+        }
+        
+        /* Pulse animation for timer */
+        @keyframes subtle-pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pulse-timer {
+            animation: subtle-pulse 2s infinite ease-in-out;
+        }
+
+        /* Progress bar fill transition */
+        .progress-fill {
+            transition: width 1s linear;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen flex flex-col relative overflow-hidden antialiased">
+<!-- Header / TopAppBar -->
+<header class="flex justify-between items-center px-gutter-mobile h-16 w-full z-50 bg-background dark:bg-background docked full-width top-0 text-primary dark:text-inverse-primary font-headline-md text-headline-md flat no shadows">
+<button aria-label="Go back" class="flex items-center justify-center p-2 rounded-full hover:opacity-80 transition-opacity text-on-surface-variant dark:text-on-surface-variant Active: scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-inverse-primary font-bold">Ứng dụng Mẹ và Bé</span>
+<button aria-label="Close session" class="flex items-center justify-center p-2 rounded-full hover:opacity-80 transition-opacity text-on-surface-variant dark:text-on-surface-variant Active: scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col px-container-margin-mobile pt-4 pb-8 space-y-6 relative z-10">
+<!-- Exercise Info & Timer Card -->
+<div class="bg-surface rounded-DEFAULT p-4 ambient-shadow flex flex-col items-center text-center space-y-3">
+<h1 class="font-headline-md text-headline-md text-on-surface">Yoga Bầu - Tư thế Con Mèo</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Thở đều, giữ lưng thẳng và di chuyển chậm rãi.</p>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container pulse-timer py-2">
+                04:15
+            </div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-container-low h-2 rounded-full overflow-hidden mt-2">
+<div class="bg-primary-container h-full rounded-full progress-fill" style="width: 45%;"></div>
+</div>
+<div class="w-full flex justify-between font-label-caps text-label-caps text-on-surface-variant">
+<span>04:15</span>
+<span>10:00</span>
+</div>
+</div>
+<!-- Camera / Posture Feedback Area -->
+<div class="relative flex-1 bg-surface-container-low rounded-lg overflow-hidden ambient-shadow flex flex-col">
+<!-- Placeholder for Camera View -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover opacity-60 mix-blend-multiply" data-alt="A serene indoor living room with soft, warm natural light streaming through a large window. The space is minimal and modern, featuring light wood floors and soft neutral beige walls. A subtle, transparent overlay of a pregnant woman practicing yoga in a cat-cow pose is visible, illustrating a gentle, nurturing aesthetic typical of a premium wellness app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxMY69dSWaCQb8oOy4wqsAj7JR68aFM9BpeNVHPYnA6-rjA4-z8udFi0pQv38PNQSOzVe7Lghgq9CXK_Wp8-0gG_BUT6cmVkbryj_5B7w1B_uD4LPmJpn0k-RMa5DnDDgFF5cRG_CvhNxYE3am6kejynDoOSkCtcCeP-5qvd2MwNFsy8I0uxoyylo28yVRqrXSA2-4nMK5LsYrzK9JLCZ1Uvvdjbst2AaFZMXMpbO1e9WfqZHFrVJGviEam8_rJHicnKjiVfxvTb4"/>
+</div>
+<!-- Overlay Controls & Feedback -->
+<div class="relative z-10 p-4 flex justify-between items-start">
+<div class="bg-surface/80 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center space-x-2 border border-outline-variant/30">
+<span class="material-symbols-outlined text-primary-container text-sm" data-icon="check_circle">check_circle</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Tư thế chuẩn</span>
+</div>
+<button aria-label="Toggle Camera" class="bg-surface/80 backdrop-blur-sm p-2 rounded-full flex items-center justify-center hover:bg-surface transition-colors border border-outline-variant/30 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="flip_camera_ios">flip_camera_ios</span>
+</button>
+</div>
+<!-- AI Posture Skeleton Overlay Placeholder -->
+<div class="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+<!-- Abstract representation of skeleton tracking -->
+<svg class="w-3/4 h-3/4 opacity-40 text-primary-container" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 100 100">
+<circle cx="50" cy="30" r="5"></circle>
+<line x1="50" x2="50" y1="35" y2="60"></line>
+<line x1="50" x2="30" y1="45" y2="40"></line>
+<line x1="50" x2="70" y1="45" y2="40"></line>
+<line x1="50" x2="35" y1="60" y2="85"></line>
+<line x1="50" x2="65" y1="60" y2="85"></line>
+</svg>
+</div>
+<!-- Bottom Safety Label inside Camera view -->
+<div class="relative z-10 mt-auto p-4 flex justify-center">
+<div class="bg-primary-container/10 backdrop-blur-md px-4 py-2 rounded-lg border border-primary-container/20 flex items-center space-x-2 max-w-[80%] text-center">
+<span class="material-symbols-outlined text-primary-container" data-icon="info">info</span>
+<span class="font-body-sm text-body-sm text-on-surface">Đảm bảo khu vực tập luyện an toàn và không có vật cản.</span>
+</div>
+</div>
+</div>
+<!-- Controls Area -->
+<div class="flex justify-center items-center space-x-6 py-2">
+<!-- End/Stop Button -->
+<button aria-label="End Session" class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center ambient-shadow hover:bg-surface-container-high transition-colors text-error">
+<span class="material-symbols-outlined text-[28px]" data-icon="stop">stop</span>
+</button>
+<!-- Play/Pause Button -->
+<button aria-label="Pause/Resume" class="w-20 h-20 rounded-full bg-primary-container text-on-primary flex items-center justify-center active-shadow hover:bg-primary transition-colors transform hover:scale-105 active:scale-95">
+<span class="material-symbols-outlined text-[40px]" data-icon="pause">pause</span>
+</button>
+<!-- Next Exercise -->
+<button aria-label="Next Exercise" class="w-14 h-14 rounded-full bg-surface flex items-center justify-center ambient-shadow hover:bg-surface-container-high transition-colors text-on-surface-variant border border-outline-variant/50">
+<span class="material-symbols-outlined text-[28px]" data-icon="skip_next">skip_next</span>
+</button>
+</div>
+</main>
+</body></html>

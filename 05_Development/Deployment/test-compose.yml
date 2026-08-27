@@ -1,0 +1,16 @@
+services:
+  compreface-core:
+    profiles: ["compreface"]
+    image: exadel/compreface-core:1.2.0
+    restart: unless-stopped
+    environment:
+      ML_PORT: 3000
+      IMG_LENGTH_LIMIT: ${COMPREFACE_MAX_DETECT_SIZE:-640}
+      UWSGI_PROCESSES: ${COMPREFACE_UWSGI_PROCESSES:-2}
+      UWSGI_THREADS: ${COMPREFACE_UWSGI_THREADS:-1}
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:3000/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 2s
+      retries: 12
+      start_period: 30s

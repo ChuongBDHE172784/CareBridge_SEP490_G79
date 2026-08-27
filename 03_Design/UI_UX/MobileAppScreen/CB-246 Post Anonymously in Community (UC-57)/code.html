@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Thiết lập đăng ẩn danh | CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "on-tertiary": "#ffffff",
+                "on-tertiary-fixed-variant": "#484643",
+                "inverse-on-surface": "#f6f0eb",
+                "surface-container-high": "#ede7e3",
+                "on-secondary-fixed": "#1e1b18",
+                "primary-fixed-dim": "#fab7a4",
+                "on-primary-fixed": "#341006",
+                "text-body": "#524F4C",
+                "surface-main": "#FFFFFF",
+                "surface-accent-muted": "#F2EAE4",
+                "surface-tint": "#845143",
+                "inverse-surface": "#32302d",
+                "primary-container": "#c98c7b",
+                "background": "#fef8f4",
+                "surface-dim": "#dfd9d5",
+                "text-heading": "#2D2A28",
+                "on-secondary-container": "#68635f",
+                "on-primary": "#ffffff",
+                "surface-container-low": "#f9f2ee",
+                "tertiary-fixed-dim": "#cac6c1",
+                "surface-bright": "#fef8f4",
+                "surface-container-highest": "#e7e1dd",
+                "error": "#ba1a1a",
+                "on-background": "#1d1b19",
+                "on-tertiary-container": "#34322f",
+                "on-primary-fixed-variant": "#693a2d",
+                "error-container": "#ffdad6",
+                "on-error-container": "#93000a",
+                "surface-accent-light": "#F6F1EC",
+                "secondary": "#625d59",
+                "surface-variant": "#e7e1dd",
+                "secondary-fixed-dim": "#ccc5c0",
+                "secondary-container": "#e9e1db",
+                "primary-fixed": "#ffdbd1",
+                "on-tertiary-fixed": "#1d1b19",
+                "surface": "#fef8f4",
+                "secondary-fixed": "#e9e1db",
+                "on-secondary": "#ffffff",
+                "tertiary-fixed": "#e6e2dd",
+                "tertiary": "#605e5a",
+                "on-surface": "#1d1b19",
+                "status-active": "#C98C7B",
+                "inverse-primary": "#fab7a4",
+                "outline": "#84736f",
+                "tertiary-container": "#9e9a96",
+                "on-primary-container": "#51271b",
+                "on-secondary-fixed-variant": "#4a4642",
+                "surface-container-lowest": "#ffffff",
+                "surface-container": "#f3ede8",
+                "primary": "#845143",
+                "outline-variant": "#d6c2bd",
+                "on-surface-variant": "#524440",
+                "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                "DEFAULT": "1rem",
+                "lg": "2rem",
+                "xl": "3rem",
+                "full": "9999px"
+            },
+            "fontFamily": {
+                "label-md": ["Quicksand"],
+                "headline-sm": ["Quicksand"],
+                "display-lg": ["Quicksand"],
+                "body-lg": ["Quicksand"],
+                "headline-md": ["Quicksand"],
+                "body-md": ["Quicksand"],
+                "nav-item": ["Quicksand"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Quicksand', sans-serif; background-color: #fef8f4; }
+        
+        /* Claymorphism Effects */
+        .clay-card {
+            background: #F6F1EC;
+            border-radius: 2rem;
+            box-shadow: 
+                inset -8px -8px 20px rgba(255, 255, 255, 0.5),
+                inset 8px 8px 20px rgba(201, 140, 123, 0.15),
+                10px 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .clay-inset {
+            background: #F6F1EC;
+            box-shadow: 
+                inset 4px 4px 10px rgba(0, 0, 0, 0.05),
+                inset -4px -4px 10px rgba(255, 255, 255, 0.8);
+        }
+
+        .clay-button-primary {
+            background: #C98C7B;
+            box-shadow: 
+                inset -4px -4px 10px rgba(0, 0, 0, 0.1),
+                inset 4px 4px 10px rgba(255, 255, 255, 0.2),
+                0 4px 15px rgba(201, 140, 123, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .clay-button-primary:active {
+            transform: scale(0.96);
+            box-shadow: inset 4px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-dot {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        input:checked ~ .toggle-bg { background-color: #845143; }
+        input:checked ~ .toggle-dot { transform: translateX(1.5rem); }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .preview-active {
+            border: 3px solid #C98C7B;
+            transform: translateY(-4px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)] flex items-center justify-between px-6 h-16">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary p-2 active:scale-95 transition-transform">arrow_back</button>
+<h1 class="font-bold text-xl text-primary">CareBridge</h1>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant p-2 active:scale-95 transition-transform">close</button>
+</header>
+<main class="pt-24 pb-32 px-4 max-w-4xl mx-auto">
+<!-- Header Section -->
+<section class="mb-10 text-center">
+<h2 class="font-display-lg text-display-lg text-text-heading mb-3">Tùy chọn ẩn danh</h2>
+<p class="font-body-lg text-body-lg text-text-body max-w-xl mx-auto">
+                Chia sẻ câu chuyện hoặc thắc mắc của bạn một cách riêng tư mà không tiết lộ thông tin cá nhân với cộng đồng.
+            </p>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Controls & Explanation Column -->
+<div class="lg:col-span-7 space-y-6">
+<!-- Anonymous Toggle Panel -->
+<div class="clay-card p-8">
+<div class="flex items-center justify-between mb-6">
+<div>
+<h3 class="font-headline-md text-headline-md text-text-heading">Chế độ ẩn danh</h3>
+<p class="text-label-md text-on-surface-variant mt-1">Bật để ẩn thông tin cá nhân của bạn</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" id="anonymous-toggle" onchange="togglePreview()" type="checkbox"/>
+<div class="w-12 h-6 bg-surface-dim rounded-full toggle-bg transition-colors"></div>
+<div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full toggle-dot shadow-sm"></div>
+</label>
+</div>
+<div class="clay-inset p-5 rounded-xl border-l-4 border-primary">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-primary">verified_user</span>
+<div class="space-y-2">
+<h4 class="font-headline-sm text-headline-sm text-primary">Dữ liệu của bạn được bảo vệ</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                                    Khi bật chế độ này, tên và ảnh đại diện của bạn sẽ được thay thế bằng <span class="font-bold">"Thành viên ẩn danh"</span>. Những người dùng khác sẽ không thể xem hồ sơ cá nhân của bạn thông qua bài đăng này.
+                                </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Warning Section -->
+<div class="p-6 bg-error-container/20 border border-error/10 rounded-2xl flex gap-4">
+<span class="material-symbols-outlined text-error fill-[1]">warning</span>
+<div>
+<p class="font-bold text-error text-body-md">Lưu ý quan trọng</p>
+<p class="text-body-md text-on-surface-variant mt-1 leading-relaxed">
+                            Mặc dù bài đăng là ẩn danh đối với cộng đồng, <span class="font-semibold">quản trị viên và người điều phối viên</span> vẫn có thể nhìn thấy danh tính thật của bạn để đảm bảo an toàn và tuân thủ quy tắc cộng đồng.
+                        </p>
+</div>
+</div>
+</div>
+<!-- Preview Column -->
+<div class="lg:col-span-5 sticky top-24">
+<div class="space-y-4">
+<h3 class="font-label-md text-label-md text-secondary px-2 uppercase tracking-widest">Xem trước hiển thị</h3>
+<div class="relative h-[480px]">
+<!-- Public Preview Card -->
+<div class="clay-card p-6 absolute inset-0 transition-all duration-500 z-20" id="public-preview">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white">
+<img class="w-full h-12 object-cover" data-alt="A warm, professional portrait of a smiling person in their 30s, soft natural lighting, blurred cozy home office background, reflecting the friendly and supportive CareBridge brand identity with warm peach and earth tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQsVdGLzH_iWW2x03Ze2Ntgpu1c-NBJHYEHIcVGrJT8EQILYy7Ac605vDtVSbVP40s_s3fYvCIcKy_gVl7q6x8J1yq6THG4XtIdTDdMgEqzL91Z1E9y8r7jXayiOVddmT2shL_GjFaeFwvHmQYL7HGSRgHcKoaMSu6b7GsfMvWg11v7Fxmd1EyNcoM1PnAFOXnRNYlXM-3u235yfRyiTUKBTFLQEGiRtfGQNCKWnSjDvZ8zNxAnW7n_RHVCSjzdP1E5Isqd2s3uJg"/>
+</div>
+<div>
+<p class="font-bold text-text-heading">Nguyễn Minh Anh</p>
+<p class="text-xs text-secondary">Đang chia sẻ công khai</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="h-4 w-3/4 bg-surface-dim rounded-full opacity-30"></div>
+<div class="h-4 w-full bg-surface-dim rounded-full opacity-20"></div>
+<div class="h-4 w-5/6 bg-surface-dim rounded-full opacity-10"></div>
+</div>
+<div class="mt-8 pt-6 border-t border-surface-container-high flex justify-between text-secondary">
+<div class="flex gap-4">
+<span class="material-symbols-outlined">favorite</span>
+<span class="material-symbols-outlined">comment</span>
+</div>
+<span class="material-symbols-outlined">share</span>
+</div>
+</div>
+<!-- Anonymous Preview Card -->
+<div class="clay-card p-6 absolute inset-0 transition-all duration-500 z-10 opacity-0 scale-95 translate-y-4" id="anon-preview">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-12 h-12 rounded-full bg-surface-dim flex items-center justify-center border-2 border-white">
+<span class="material-symbols-outlined text-secondary scale-125">person_off</span>
+</div>
+<div>
+<p class="font-bold text-primary">Thành viên ẩn danh</p>
+<p class="text-xs text-secondary">Danh tính được bảo mật</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="h-4 w-3/4 bg-primary-container/20 rounded-full"></div>
+<div class="h-4 w-full bg-primary-container/10 rounded-full"></div>
+<div class="h-4 w-5/6 bg-primary-container/5 rounded-full"></div>
+</div>
+<div class="mt-8 pt-6 border-t border-surface-container-high flex justify-between text-secondary">
+<div class="flex gap-4">
+<span class="material-symbols-outlined">favorite</span>
+<span class="material-symbols-outlined">comment</span>
+</div>
+<span class="material-symbols-outlined">share</span>
+</div>
+<div class="absolute top-2 right-2">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase">Anonymous View</span>
+</div>
+</div>
+</div>
+<div class="flex justify-center gap-2 mt-4">
+<div class="w-2 h-2 rounded-full bg-primary transition-all" id="dot-public"></div>
+<div class="w-2 h-2 rounded-full bg-surface-dim transition-all" id="dot-anon"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<div class="fixed bottom-0 left-0 w-full p-6 bg-white/80 backdrop-blur-md flex justify-center z-40">
+<button class="clay-button-primary w-full max-w-lg py-4 px-8 rounded-full text-white font-bold text-lg flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all">
+                Xác nhận và soạn câu hỏi
+                <span class="material-symbols-outlined">edit_note</span>
+</button>
+</div>
+</main>
+<!-- Bottom Nav (Hidden on desktop as per rules, using logic for bottom tab visibility) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] z-50 rounded-t-lg hidden">
+<div class="flex flex-col items-center justify-center text-primary font-bold">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] uppercase mt-1">Trang chủ</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary">
+<span class="material-symbols-outlined">monitor_heart</span>
+<span class="text-[10px] uppercase mt-1">Sức khỏe</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary">
+<span class="material-symbols-outlined">notifications</span>
+<span class="text-[10px] uppercase mt-1">Thông báo</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] uppercase mt-1">Cá nhân</span>
+</div>
+</nav>
+<script>
+        function togglePreview() {
+            const isChecked = document.getElementById('anonymous-toggle').checked;
+            const publicCard = document.getElementById('public-preview');
+            const anonCard = document.getElementById('anon-preview');
+            const dotPublic = document.getElementById('dot-public');
+            const dotAnon = document.getElementById('dot-anon');
+
+            if (isChecked) {
+                // Show Anonymous
+                publicCard.style.opacity = '0';
+                publicCard.style.transform = 'scale(0.95) translateY(-20px)';
+                publicCard.style.zIndex = '10';
+
+                anonCard.style.opacity = '1';
+                anonCard.style.transform = 'scale(1) translateY(0)';
+                anonCard.style.zIndex = '20';
+
+                dotPublic.classList.replace('bg-primary', 'bg-surface-dim');
+                dotAnon.classList.replace('bg-surface-dim', 'bg-primary');
+            } else {
+                // Show Public
+                publicCard.style.opacity = '1';
+                publicCard.style.transform = 'scale(1) translateY(0)';
+                publicCard.style.zIndex = '20';
+
+                anonCard.style.opacity = '0';
+                anonCard.style.transform = 'scale(0.95) translateY(20px)';
+                anonCard.style.zIndex = '10';
+
+                dotPublic.classList.replace('bg-surface-dim', 'bg-primary');
+                dotAnon.classList.replace('bg-primary', 'bg-surface-dim');
+            }
+        }
+    </script>
+</body></html>

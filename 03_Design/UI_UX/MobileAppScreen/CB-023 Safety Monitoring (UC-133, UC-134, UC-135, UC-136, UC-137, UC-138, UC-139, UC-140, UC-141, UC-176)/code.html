@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Giám sát an toàn</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "outline": "#84736f",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e9e1db",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f6",
+                        "tertiary": "#625d59",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbd1",
+                        "primary-container": "#c98c7b",
+                        "surface-container-highest": "#fadcd3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-primary": "#ffffff",
+                        "surface": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary-container": "#735e56",
+                        "error": "#ba1a1a",
+                        "secondary": "#6e5a52",
+                        "on-error": "#ffffff",
+                        "surface-tint": "#845143",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "surface-container": "#ffe9e3",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-surface": "#271812",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-variant": "#fadcd3",
+                        "on-primary-container": "#51271b",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-container": "#36322e",
+                        "inverse-surface": "#3e2c26",
+                        "surface-dim": "#f1d4ca",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-background": "#271812",
+                        "background": "#fff8f6",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#ffe2d9",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-fixed": "#341006"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "safe-margin": "24px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "button": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased pb-[90px]">
+<!-- Top App Bar -->
+<header class="bg-background dark:bg-background docked full-width top-0 sticky z-40">
+<div class="flex justify-between items-center px-safe-margin h-touch-target-min w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
+<span class="font-headline-md text-headline-md text-primary">N</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed-dim tracking-tight">CareBridge</h1>
+</div>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<main class="px-safe-margin pt-stack-md flex flex-col gap-stack-lg">
+<!-- Header Section -->
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Giám sát an toàn</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Theo dõi hoạt động và phát hiện sự cố theo thời gian thực.</p>
+</div>
+<!-- Status & Toggle Card -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-container flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="sensors" data-weight="fill">sensors</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Cảm biến IMU</h3>
+<p class="font-body-md text-body-md text-primary font-medium flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                            Đang hoạt động
+                        </p>
+</div>
+</div>
+<!-- Custom Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer h-touch-target-min w-touch-target-min justify-end">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[14px] after:right-[18px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="h-px w-full bg-surface-variant my-1"></div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary" data-icon="personal_injury">personal_injury</span>
+<span class="font-body-md text-body-md text-on-surface">Phát hiện ngã (Fall Detection)</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer h-touch-target-min w-[44px] justify-end">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[14px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<!-- Emergency Support Controls (Bento Style) -->
+<div class="grid grid-cols-2 gap-4">
+<button class="bg-error-container hover:bg-error-container/80 transition-colors rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] active:scale-95 duration-150 h-[120px]">
+<span class="material-symbols-outlined text-on-error-container text-3xl" data-icon="emergency" data-weight="fill">emergency</span>
+<span class="font-button text-button text-on-error-container text-center">Gọi khẩn cấp SOS</span>
+</button>
+<button class="bg-secondary-container hover:bg-secondary-container/80 transition-colors rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] active:scale-95 duration-150 h-[120px]">
+<span class="material-symbols-outlined text-on-secondary-container text-3xl" data-icon="contacts" data-weight="fill">contacts</span>
+<span class="font-button text-button text-on-secondary-container text-center">Liên hệ người thân</span>
+</button>
+</div>
+<!-- Event History -->
+<div>
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface">Lịch sử sự kiện</h3>
+<button class="font-label-md text-label-md text-primary font-medium hover:underline p-2">Xem tất cả</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Warning Event -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start border-l-4 border-l-[#E8A87C]">
+<div class="mt-1">
+<span class="material-symbols-outlined text-[#E8A87C]" data-icon="warning" data-weight="fill">warning</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<h4 class="font-body-lg text-body-lg text-on-surface font-semibold">Phát hiện chuyển động bất thường</h4>
+<span class="font-label-md text-label-md text-on-surface-variant">10:45 AM</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Hệ thống ghi nhận gia tốc tăng đột ngột. Vui lòng kiểm tra tình trạng bé.</p>
+</div>
+</div>
+<!-- Normal Event -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex gap-4 items-start border-l-4 border-l-outline-variant">
+<div class="mt-1">
+<span class="material-symbols-outlined text-outline" data-icon="info">info</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<h4 class="font-body-lg text-body-lg text-on-surface font-semibold">Bắt đầu theo dõi giấc ngủ</h4>
+<span class="font-label-md text-label-md text-on-surface-variant">08:00 PM (Hôm qua)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Chế độ giám sát ban đêm đã được kích hoạt.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Permission Status -->
+<div class="bg-surface-container rounded-xl p-4 flex items-center justify-between shadow-[0px_4px_20px_rgba(90,70,63,0.06)] mb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary" data-icon="verified_user">verified_user</span>
+<div>
+<h4 class="font-body-md text-body-md text-on-surface font-semibold">Quyền truy cập thiết bị</h4>
+<p class="font-label-md text-label-md text-tertiary mt-0.5">Bluetooth, Vị trí đã cấp quyền</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg">
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl h-[56px] w-[64px]">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-2 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 h-[56px] w-[64px]">
+<span class="material-symbols-outlined" data-icon="auto_stories" data-weight="fill">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Hành trình</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl h-[56px] w-[64px]">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl h-[56px] w-[64px]">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md mt-1">Việc cần làm</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 duration-150 p-2 rounded-xl h-[56px] w-[64px]">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</button>
+</nav>
+<script>
+        // Ensure material symbols are correctly rendered
+        document.querySelectorAll('[data-icon]').forEach(el => {
+            el.textContent = el.getAttribute('data-icon');
+            el.classList.add('material-symbols-outlined');
+            if(el.hasAttribute('data-weight') && el.getAttribute('data-weight') === 'fill') {
+                el.style.fontVariationSettings = "'FILL' 1";
+            }
+        });
+    </script>
+</body></html>

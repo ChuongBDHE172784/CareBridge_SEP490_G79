@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carebridge-ai-evaluation"
+version = "0.1.0"
+description = "Non-production regression and safety evaluation for CareBridge AI Triage"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.7,<3",
+  "requests>=2.32,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "bandit>=1.7,<2",
+  "pip-audit>=2.7,<3",
+  "pytest>=8,<9",
+  "ruff>=0.6,<1",
+]
+
+[project.scripts]
+carebridge-eval = "carebridge_evaluation.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]

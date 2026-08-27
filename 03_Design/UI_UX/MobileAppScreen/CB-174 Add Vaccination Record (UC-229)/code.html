@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Thêm lịch tiêm chủng - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "status-active": "#C98C7B",
+                      "outline": "#84736f",
+                      "primary-fixed": "#ffdbd1",
+                      "surface-tint": "#845143",
+                      "inverse-primary": "#fab7a4",
+                      "text-body": "#524F4C",
+                      "tertiary-fixed": "#e6e2dd",
+                      "on-error": "#ffffff",
+                      "text-heading": "#2D2A28",
+                      "tertiary-container": "#9e9a96",
+                      "surface-container-high": "#ede7e3",
+                      "surface": "#fef8f4",
+                      "primary-fixed-dim": "#fab7a4",
+                      "background": "#fef8f4",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed": "#1d1b19",
+                      "error-container": "#ffdad6",
+                      "inverse-on-surface": "#f6f0eb",
+                      "error": "#ba1a1a",
+                      "tertiary": "#605e5a",
+                      "on-secondary-container": "#68635f",
+                      "on-error-container": "#93000a",
+                      "surface-main": "#FFFFFF",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "surface-container-low": "#f9f2ee",
+                      "surface-container": "#f3ede8",
+                      "secondary-fixed-dim": "#ccc5c0",
+                      "on-secondary-fixed-variant": "#4a4642",
+                      "tertiary-fixed-dim": "#cac6c1",
+                      "on-background": "#1d1b19",
+                      "on-primary-container": "#51271b",
+                      "surface-variant": "#e7e1dd",
+                      "inverse-surface": "#32302d",
+                      "on-surface-variant": "#524440",
+                      "on-secondary": "#ffffff",
+                      "surface-container-highest": "#e7e1dd",
+                      "surface-bright": "#fef8f4",
+                      "on-primary-fixed": "#341006",
+                      "primary": "#845143",
+                      "on-tertiary-fixed-variant": "#484643",
+                      "on-secondary-fixed": "#1e1b18",
+                      "surface-accent-light": "#F6F1EC",
+                      "primary-container": "#c98c7b",
+                      "secondary-container": "#e9e1db",
+                      "surface-dim": "#dfd9d5",
+                      "secondary": "#625d59",
+                      "on-surface": "#1d1b19",
+                      "surface-accent-muted": "#F2EAE4",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#d6c2bd",
+                      "on-tertiary-container": "#34322f",
+                      "secondary-fixed": "#e9e1db"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "panel-gap": "24px",
+                      "grid-gutter": "24px",
+                      "container-padding": "32px",
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "sidebar-width": "280px"
+              },
+              "fontFamily": {
+                      "label-md": ["Quicksand"],
+                      "display-lg": ["Quicksand"],
+                      "body-md": ["Quicksand"],
+                      "nav-item": ["Quicksand"],
+                      "headline-sm": ["Quicksand"],
+                      "headline-md": ["Quicksand"],
+                      "body-lg": ["Quicksand"]
+              },
+              "fontSize": {
+                      "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                      "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                      "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                      "nav-item": ["15px", { "lineHeight": "24px", "fontWeight": "600" }],
+                      "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                      "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                      "headline-lg-mobile": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                      "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+              }
+            }
+          }
+        }
+    </script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Quicksand', sans-serif; }
+        
+        /* Custom styling to hide default date picker icon for a cleaner look, relying on the input field click */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            bottom: 0;
+            color: transparent;
+            cursor: pointer;
+            height: auto;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: auto;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface min-h-screen flex flex-col relative text-on-surface">
+<!-- TopAppBar: Transactional state (Back button, no bottom nav) -->
+<header class="fixed top-0 w-full z-50 bg-surface shadow-sm flex items-center justify-between px-4 h-16 transition-all">
+<button class="text-primary hover:opacity-80 active:scale-95 transition-transform p-2 -ml-2 rounded-full flex items-center justify-center" type="button">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">Thêm lịch tiêm</h1>
+<div class="w-10"></div> <!-- Empty spacer to balance flex-between -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 px-4 pt-24 pb-32 flex flex-col gap-6">
+<!-- Floating Form Panel -->
+<form class="bg-surface-main rounded-DEFAULT shadow-[0_4px_20px_rgba(201,140,123,0.08)] p-5 flex flex-col gap-6">
+<!-- Vaccine Name -->
+<div class="flex flex-col gap-2 relative group">
+<label class="font-label-md text-label-md text-text-body" for="vaccine-name">Tên Vaccine <span class="text-error">*</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-tertiary-container group-focus-within:text-primary-container transition-colors">vaccines</span>
+<input class="w-full bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container focus:ring-0 rounded-xl pl-12 pr-4 py-3 font-body-md text-body-md text-text-heading transition-colors outline-none" id="vaccine-name" placeholder="Vd: 6 trong 1 (Hexaxim)" required="" type="text"/>
+</div>
+</div>
+<!-- Dose Number -->
+<div class="flex flex-col gap-2 relative group">
+<label class="font-label-md text-label-md text-text-body" for="dose-number">Mũi tiêm thứ <span class="text-error">*</span></label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container focus:ring-0 rounded-xl px-4 py-3 font-body-md text-body-md text-text-heading transition-colors outline-none cursor-pointer" id="dose-number" required="">
+<option disabled="" selected="" value="">Chọn mũi tiêm</option>
+<option value="1">Mũi 1</option>
+<option value="2">Mũi 2</option>
+<option value="3">Mũi 3</option>
+<option value="4">Mũi 4</option>
+<option value="booster">Mũi nhắc lại</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-tertiary-container pointer-events-none group-focus-within:text-primary-container transition-colors">expand_more</span>
+</div>
+</div>
+<!-- Date -->
+<div class="flex flex-col gap-2 relative group">
+<label class="font-label-md text-label-md text-text-body" for="vaccine-date">Ngày tiêm <span class="text-error">*</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-tertiary-container group-focus-within:text-primary-container transition-colors z-10 pointer-events-none">calendar_month</span>
+<input class="w-full relative bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container focus:ring-0 rounded-xl pl-12 pr-4 py-3 font-body-md text-body-md text-text-heading transition-colors outline-none cursor-pointer" id="vaccine-date" required="" type="date"/>
+</div>
+</div>
+<!-- Facility -->
+<div class="flex flex-col gap-2 relative group">
+<label class="font-label-md text-label-md text-text-body" for="facility">Cơ sở tiêm chủng</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-tertiary-container group-focus-within:text-primary-container transition-colors">local_hospital</span>
+<input class="w-full bg-surface-main border-2 border-surface-accent-muted focus:border-primary-container focus:ring-0 rounded-xl pl-12 pr-4 py-3 font-body-md text-body-md text-text-heading transition-colors outline-none" id="facility" placeholder="Vd: VNVC, Trạm y tế phường..." type="text"/>
+</div>
+</div>
+<!-- Attachment -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-text-body flex justify-between">
+<span>Ảnh sổ tiêm / Giấy chứng nhận</span>
+<span class="text-tertiary font-normal">(Tùy chọn)</span>
+</label>
+<label class="border-2 border-dashed border-surface-accent-muted rounded-xl bg-surface-container-low flex flex-col items-center justify-center p-6 gap-2 cursor-pointer hover:bg-surface-accent-muted transition-colors active:scale-[0.98]">
+<input accept="image/png, image/jpeg" class="hidden" type="file"/>
+<span class="material-symbols-outlined text-primary-container text-[32px]">add_photo_alternate</span>
+<span class="font-body-md text-body-md text-primary font-semibold">Tải ảnh lên</span>
+<span class="font-label-md text-label-md text-tertiary">PNG, JPG tối đa 5MB</span>
+</label>
+</div>
+<div class="h-px w-full bg-surface-accent-muted my-1"></div>
+<!-- Reminder Toggle -->
+<div class="flex items-center justify-between rounded-xl">
+<div class="flex flex-col gap-1 pr-4">
+<span class="font-body-md text-body-md text-text-heading font-semibold">Nhắc lịch mũi tiếp theo</span>
+<span class="font-label-md text-label-md text-tertiary">Hệ thống sẽ gửi thông báo trước 3 ngày</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer shrink-0">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-surface-variant after:border after:rounded-full after:h-[22px] after:w-[22px] after:transition-all peer-checked:bg-status-active"></div>
+</label>
+</div>
+</form>
+</main>
+<!-- Sticky Bottom Action Area -->
+<div class="fixed bottom-0 left-0 w-full bg-surface/90 backdrop-blur-sm px-4 py-4 pb-8 shadow-[0_-8px_30px_rgba(201,140,123,0.1)] z-40 border-t border-surface-accent-muted/50">
+<button class="w-full bg-primary-container text-white font-nav-item text-nav-item py-4 rounded-full shadow-md active:scale-[0.98] transition-transform flex items-center justify-center gap-2 hover:bg-surface-tint" type="button">
+<span class="material-symbols-outlined text-[20px]">save</span>
+            Lưu thông tin
+        </button>
+</div>
+</body></html>

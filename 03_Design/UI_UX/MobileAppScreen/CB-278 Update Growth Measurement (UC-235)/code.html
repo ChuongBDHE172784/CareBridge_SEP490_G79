@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Cập nhật chỉ số tăng trưởng</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#693a2d",
+                    "surface-accent-muted": "#F2EAE4",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "primary-fixed": "#ffdbd1",
+                    "on-surface-variant": "#524440",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "on-primary-fixed": "#341006",
+                    "text-heading": "#2D2A28",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "inverse-surface": "#32302d",
+                    "surface-variant": "#e7e1dd",
+                    "on-surface": "#1d1b19",
+                    "on-error": "#ffffff",
+                    "surface-accent-light": "#F6F1EC",
+                    "surface-container": "#f3ede8",
+                    "background": "#fef8f4",
+                    "tertiary-container": "#9e9a96",
+                    "on-tertiary-container": "#34322f",
+                    "status-active": "#C98C7B",
+                    "surface-container-low": "#f9f2ee",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-primary": "#fab7a4",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "secondary-container": "#e9e1db",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface": "#fef8f4",
+                    "primary-container": "#c98c7b",
+                    "outline-variant": "#d6c2bd",
+                    "surface-container-highest": "#e7e1dd",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-tint": "#845143",
+                    "surface-container-high": "#ede7e3",
+                    "surface-dim": "#dfd9d5",
+                    "secondary": "#625d59",
+                    "on-secondary-container": "#68635f",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#51271b",
+                    "on-background": "#1d1b19",
+                    "outline": "#84736f",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-secondary-fixed": "#1e1b18",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#fef8f4",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#e9e1db",
+                    "primary": "#845143",
+                    "on-tertiary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-md": "16px",
+                    "stack-sm": "8px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"],
+                    "label-md": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #F6F1EC;
+            color: #1d1b19;
+            -webkit-font-smoothing: antialiased;
+        }
+        .clay-card {
+            background: #FFFFFF;
+            border-radius: 2rem;
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .clay-card:hover {
+            box-shadow: 0 8px 30px rgba(201, 140, 123, 0.12);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        /* Custom scrollbar for a softer look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f3ede8; }
+        ::-webkit-scrollbar-thumb { background: #d6c2bd; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c98c7b; }
+
+        .form-input-focus:focus {
+            outline: none;
+            border-color: #C98C7B;
+            box-shadow: 0 0 0 4px rgba(201, 140, 123, 0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen">
+<!-- Top AppBar (Mobile/Desktop Hybrid) -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim shadow-sm h-16 flex items-center justify-between px-6">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform text-primary" onclick="history.back()">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">CareBridge</h1>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img class="w-full h-full object-cover" data-alt="A warm, professional portrait of a pediatric nurse smiling gently, set against a soft bokeh background of a modern nursery. The lighting is warm and natural, reflecting the brand's caring and expert persona in a soft-focus minimalist style with earthen tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRUo_QeBdwXNuVH_gn39vhEUHWVEU_nNf5ymgq26fTSNUze136XtB988eu3dZCIGPiqYg7m4kQpZQ5Qw58Q_5JGgchQgqdXSrM6yvJZLDFN6yxT8XzTYZX6iy8rH3CKHWPGV-PVEuud7TgR9pM-6fsLX-LEcPgLoE0po_HUKMeNXnpkW--Vn35jAgq9-21W4iJXTLrg-5INtDY6cL3cR9klAdA6_k_HU10teDJlbKGt-waqCPaJ-fbjsX-5caC1D3lGEpxh-yK-1Y"/>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-12 px-4 md:px-gutter-desktop max-w-4xl mx-auto">
+<!-- Header Section -->
+<div class="mb-8">
+<h2 class="font-display-lg text-display-lg text-text-heading mb-2">Cập nhật chỉ số tăng trưởng</h2>
+<p class="font-body-lg text-body-lg text-text-body">Theo dõi sự phát triển của bé yêu một cách chi tiết và chính xác.</p>
+</div>
+<form class="space-y-panel-gap" id="growthForm">
+<!-- Baby Selector Card -->
+<section class="clay-card p-container-padding">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">child_care</span> Chọn bé
+                </h3>
+<div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+<label class="relative flex-shrink-0 cursor-pointer group">
+<input checked="" class="peer sr-only" name="baby" type="radio" value="1"/>
+<div class="w-24 h-24 rounded-full border-4 border-transparent peer-checked:border-primary transition-all p-1">
+<img class="w-full h-full rounded-full object-cover group-hover:opacity-90" data-alt="A close-up high-resolution photograph of a sleeping newborn baby wrapped in a soft white organic cotton blanket. The environment is bright and airy with warm morning light filtering through. The aesthetic is clean, minimalist, and peaceful, matching the warm terracotta tones of the UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9QKPXycXStCAj0QiMiFHjn1h-DthLqTJ_ztt2yvaaX-bps7YmGI-sySztFQPqn4v0Hvnrul4KOlm9uVqtDaQqp3chbzbtmUqHzXxZckx0H6Ofxgq7fXEMqvnfJs8SSKyZVDcvdQ3QOXklhM9NiORar7Xewx57x27_pX2C4Pd8B3q9Zk7radnS-9nBMprzzbPORnUE4ZjECOgZZ5zm6stpbOX9REkADttdc2xymR1Sn8kw3oyewGDlJliWKqO2EvqAiLWYNSqIf6I"/>
+</div>
+<span class="block text-center mt-2 font-label-md text-label-md text-text-body peer-checked:text-primary peer-checked:font-bold">Bé Bơ</span>
+</label>
+<label class="relative flex-shrink-0 cursor-pointer group">
+<input class="peer sr-only" name="baby" type="radio" value="2"/>
+<div class="w-24 h-24 rounded-full border-4 border-transparent peer-checked:border-primary transition-all p-1">
+<img class="w-full h-full rounded-full object-cover group-hover:opacity-90" data-alt="A joyful photograph of a 2-year-old toddler with curly hair laughing, outdoors in a soft green garden. The lighting is golden hour, creating a warm and vibrant atmosphere. Professional child photography style with soft focus and high-end color grading in warm earth tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGpw3QAs4ULzitwf5GXTX32O7MvQG7Oq9VtZ2iGVjl_-uFXtu-hYqb1ft2Ui8lhgxIBAwiGILXq7i_q4NJr2707uCqCr1eeLyxSG8CBAyidI9KYiZREONe-hLG9YB4jDy0gl5AioIY7eJ7ltndpymf-Uv4o9e21ysZLzWSKgFMJAHNfvq1q2_kEmLm6X95-3YPgQuYGH8WSyii_oZBTi6Gs8XB-Zrd_Xl5ykL8IqPP3e-mhtMmunA2qxV5WnlWKHxdPjg2c4qjToU"/>
+</div>
+<span class="block text-center mt-2 font-label-md text-label-md text-text-body peer-checked:text-primary peer-checked:font-bold">Bé Kem</span>
+</label>
+<button class="flex-shrink-0 w-24 h-24 rounded-full border-2 border-dashed border-outline-variant flex flex-col items-center justify-center text-outline hover:border-primary hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined">add</span>
+<span class="text-[10px] font-bold mt-1 uppercase">Thêm bé</span>
+</button>
+</div>
+</section>
+<!-- Measurement Fields Card -->
+<section class="clay-card p-container-padding">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Date Input -->
+<div class="col-span-full">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Ngày đo lường</label>
+<div class="relative">
+<input class="w-full bg-surface-accent-light border-2 border-surface-accent-muted rounded-xl px-4 py-3 font-body-lg text-body-lg form-input-focus transition-all text-on-surface" type="date" value="2023-11-20"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline pointer-events-none">calendar_today</span>
+</div>
+</div>
+<!-- Weight -->
+<div>
+<div class="flex justify-between items-center mb-2">
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cân nặng (kg)</label>
+<span class="text-[11px] text-primary font-bold bg-primary-fixed px-2 py-0.5 rounded-full">Lần trước: 8.5 kg</span>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-accent-light border-2 border-surface-accent-muted rounded-xl px-4 py-3 font-headline-sm text-headline-sm form-input-focus transition-all text-on-surface" placeholder="0.0" step="0.1" type="number"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-on-surface-variant">
+<span class="font-bold">kg</span>
+</div>
+</div>
+</div>
+<!-- Height -->
+<div>
+<div class="flex justify-between items-center mb-2">
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Chiều cao (cm)</label>
+<span class="text-[11px] text-primary font-bold bg-primary-fixed px-2 py-0.5 rounded-full">Lần trước: 72 cm</span>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-accent-light border-2 border-surface-accent-muted rounded-xl px-4 py-3 font-headline-sm text-headline-sm form-input-focus transition-all text-on-surface" placeholder="0.0" step="0.1" type="number"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-on-surface-variant">
+<span class="font-bold">cm</span>
+</div>
+</div>
+</div>
+<!-- Head Circumference -->
+<div class="col-span-full">
+<div class="flex justify-between items-center mb-2">
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Vòng đầu (cm)</label>
+<span class="text-[11px] text-primary font-bold bg-primary-fixed px-2 py-0.5 rounded-full">Lần trước: 44 cm</span>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-accent-light border-2 border-surface-accent-muted rounded-xl px-4 py-3 font-headline-sm text-headline-sm form-input-focus transition-all text-on-surface" placeholder="0.0" step="0.1" type="number"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-on-surface-variant">
+<span class="font-bold">cm</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Edit History Card -->
+<section class="clay-card p-container-padding">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined">history</span> Lịch sử thay đổi
+                </h3>
+<div class="space-y-4">
+<div class="flex items-start gap-4 p-4 rounded-2xl bg-surface-container-low border border-surface-accent-muted">
+<div class="p-2 bg-primary-container text-on-primary-container rounded-lg">
+<span class="material-symbols-outlined text-sm">edit</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<p class="font-body-md text-body-md font-bold text-on-surface">Chỉnh sửa bởi Mẹ Bơ</p>
+<span class="text-[11px] text-outline">Hôm nay, 10:30</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Thay đổi cân nặng từ <span class="line-through">8.4kg</span> thành <span class="font-bold text-primary">8.5kg</span></p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-4 rounded-2xl bg-surface-container-low/50 border border-transparent">
+<div class="p-2 bg-secondary-container text-on-secondary-container rounded-lg">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<p class="font-body-md text-body-md font-bold text-on-surface">Tạo mới bởi Mẹ Bơ</p>
+<span class="text-[11px] text-outline">20/11/2023, 08:15</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Đã thêm chỉ số mới cho tháng thứ 8.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- CTAs -->
+<div class="flex flex-col md:flex-row gap-4 pt-4">
+<button class="flex-1 bg-primary text-on-primary font-nav-item py-4 rounded-full shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2" type="submit">
+<span class="material-symbols-outlined">save</span>
+                    Lưu thay đổi
+                </button>
+<button class="flex-1 bg-surface-main text-primary border-2 border-primary/20 font-nav-item py-4 rounded-full hover:bg-surface-accent-light active:scale-[0.98] transition-all" type="button">
+                    Hủy bỏ
+                </button>
+</div>
+<!-- Chart Link (Visible after simulated save or as a helper) -->
+<div class="text-center pt-4">
+<a class="inline-flex items-center gap-2 text-primary font-bold hover:underline group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:mr-2 transition-all">trending_up</span>
+                    Xem biểu đồ tăng trưởng
+                </a>
+</div>
+</form>
+</main>
+<!-- Success Toast (Hidden by default) -->
+<div class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-on-secondary-container text-on-secondary px-8 py-4 rounded-full shadow-2xl flex items-center gap-4 opacity-0 translate-y-10 transition-all duration-500 z-[100] pointer-events-none" id="successToast">
+<span class="material-symbols-outlined text-status-active">check_circle</span>
+<span class="font-bold">Đã cập nhật chỉ số thành công!</span>
+</div>
+<script>
+        // Simple form interaction
+        const form = document.getElementById('growthForm');
+        const toast = document.getElementById('successToast');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Show toast
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            
+            // Interaction feedback
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalContent = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Đang lưu...';
+            submitBtn.disabled = true;
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                submitBtn.innerHTML = originalContent;
+                submitBtn.disabled = false;
+            }, 3000);
+        });
+
+        // Add soft tactile feedback for radio selections
+        const radioLabels = document.querySelectorAll('label.relative.cursor-pointer');
+        radioLabels.forEach(label => {
+            label.addEventListener('click', () => {
+                label.classList.add('scale-95');
+                setTimeout(() => label.classList.remove('scale-95'), 150);
+            });
+        });
+    </script>
+</body></html>

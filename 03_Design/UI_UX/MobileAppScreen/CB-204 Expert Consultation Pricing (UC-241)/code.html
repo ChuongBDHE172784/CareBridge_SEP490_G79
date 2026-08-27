@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Gói Tư Vấn Chuyên Gia</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed": "#ffdbd1",
+                      "on-secondary-container": "#735e56",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed": "#f8ddd2",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed": "#341006",
+                      "on-primary": "#ffffff",
+                      "tertiary": "#625d59",
+                      "surface-tint": "#845143",
+                      "surface-container-high": "#ffe2d9",
+                      "surface-container": "#ffe9e3",
+                      "on-error-container": "#93000a",
+                      "inverse-primary": "#fab7a4",
+                      "primary": "#845143",
+                      "on-tertiary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "background": "#fff8f6",
+                      "outline-variant": "#d6c2bd",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "on-background": "#271812",
+                      "surface-dim": "#f1d4ca",
+                      "tertiary-fixed": "#e9e1db",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#fadcd3",
+                      "on-surface-variant": "#524440",
+                      "on-tertiary-container": "#36322e",
+                      "primary-container": "#c98c7b",
+                      "error": "#ba1a1a",
+                      "primary-fixed-dim": "#fab7a4",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "surface-bright": "#fff8f6",
+                      "inverse-on-surface": "#ffede7",
+                      "surface-variant": "#fadcd3",
+                      "surface": "#fff8f6",
+                      "secondary": "#6e5a52",
+                      "on-primary-container": "#51271b",
+                      "tertiary-container": "#a09a95",
+                      "secondary-container": "#f6dacf",
+                      "on-secondary-fixed": "#271812",
+                      "inverse-surface": "#3e2c26",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "surface-container-low": "#fff1ec",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "outline": "#84736f",
+                      "on-surface": "#271812"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sidebar-width": "280px",
+                      "container-margin-mobile": "20px",
+                      "unit": "8px",
+                      "gutter-desktop": "24px",
+                      "gutter-mobile": "16px",
+                      "container-margin-desktop": "40px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Quicksand"
+                      ],
+                      "label-caps": [
+                              "Quicksand"
+                      ],
+                      "body-lg": [
+                              "Quicksand"
+                      ],
+                      "headline-md": [
+                              "Quicksand"
+                      ],
+                      "headline-lg-mobile": [
+                              "Quicksand"
+                      ],
+                      "body-sm": [
+                              "Quicksand"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #F6F1EC;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .soft-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.08);
+        }
+        .hover-shadow:hover {
+            box-shadow: 0px 8px 24px rgba(90, 70, 63, 0.15);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-lg text-body-lg text-on-surface antialiased min-h-screen pb-8">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)] fixed top-0 w-full z-50 flex items-center justify-between px-container-margin-mobile h-16 w-full md:px-container-margin-desktop md:h-20 transition-all duration-300">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-center text-primary dark:text-inverse-primary hover:opacity-80 transition-opacity active:scale-95 duration-200 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-inverse-primary md:font-headline-lg md:text-headline-lg">CareBridge</h1>
+<button aria-label="Close" class="w-10 h-10 flex items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-200 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-container-margin-mobile md:px-container-margin-desktop md:pt-32 max-w-[800px] mx-auto">
+<!-- Expert Info Header (Context) -->
+<div class="flex items-center gap-4 mb-8">
+<img class="w-16 h-16 rounded-full object-cover soft-shadow" data-alt="A portrait photo of a professional medical expert, warm lighting, approachable smile, wearing a casual but neat uniform, light terracotta accent background. Soft focus, high quality, professional photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRm6aNZSFJFBFLr5ZnlIuzLBa4Z5lvqtmexkEVW5jdLZvzpuVs2-EGbK8kiUPcC3O85252O-rgPSFEfKIE_aFLALQaM43PWcPY1IWkJWzx0CU9jV5BvN2yUFpNCrY7aUNvzYpMj9gKhbKGCh2qWRHYzdIMuLMDeZOfUJGSGH380id0fuo6Wx9o-qv6LAk_JlecHcfD56Ahll5fVDPmcNdRqqrjEOiq3fQg7C_hvnc1nj0n1hFaKxJ_bZUYYgTgU3ElCbbHGjPJ2vc"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Dr. Nguyễn Văn A</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Chuyên gia Tâm lý học</p>
+</div>
+</div>
+<!-- Section Title -->
+<div class="mb-6">
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary">Chọn Gói Tư Vấn</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Vui lòng chọn hình thức và thời lượng phù hợp.</p>
+</div>
+<!-- Pricing Packages Grid (Bento-style list) -->
+<div class="flex flex-col gap-gutter-mobile md:gap-gutter-desktop">
+<!-- Package 1: Chat -->
+<article class="bg-surface-container-lowest rounded-lg p-4 md:p-6 soft-shadow hover-shadow transition-shadow duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-transparent hover:border-primary-container">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container shrink-0">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">chat</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-headline-md text-headline-md text-on-surface">Tư vấn qua Chat</h4>
+<span class="bg-primary-container/10 text-primary-container font-label-caps text-label-caps px-2 py-1 rounded-full">Sẵn sàng</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span> 30 phút
+                        </p>
+</div>
+</div>
+<div class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30">
+<span class="font-headline-md text-headline-md text-primary mb-0 sm:mb-2">200.000đ</span>
+<button class="bg-primary-container text-on-primary font-body-lg text-body-lg h-12 px-6 rounded-full hover:opacity-90 active:scale-95 transition-all duration-200">
+                        Chọn gói
+                    </button>
+</div>
+</article>
+<!-- Package 2: Voice -->
+<article class="bg-surface-container-lowest rounded-lg p-4 md:p-6 soft-shadow hover-shadow transition-shadow duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-transparent hover:border-primary-container">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container shrink-0">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">call</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-headline-md text-headline-md text-on-surface">Tư vấn Cuộc gọi</h4>
+<span class="bg-primary-container/10 text-primary-container font-label-caps text-label-caps px-2 py-1 rounded-full">Sẵn sàng</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span> 45 phút
+                        </p>
+</div>
+</div>
+<div class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30">
+<span class="font-headline-md text-headline-md text-primary mb-0 sm:mb-2">350.000đ</span>
+<button class="bg-primary-container text-on-primary font-body-lg text-body-lg h-12 px-6 rounded-full hover:opacity-90 active:scale-95 transition-all duration-200">
+                        Chọn gói
+                    </button>
+</div>
+</article>
+<!-- Package 3: Video -->
+<article class="bg-surface-container-lowest rounded-lg p-4 md:p-6 soft-shadow hover-shadow transition-shadow duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-transparent hover:border-primary-container">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container shrink-0">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">videocam</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-headline-md text-headline-md text-on-surface">Tư vấn Video</h4>
+<span class="bg-surface-variant text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded-full">Kín lịch hôm nay</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span> 60 phút
+                        </p>
+</div>
+</div>
+<div class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30">
+<span class="font-headline-md text-headline-md text-primary mb-0 sm:mb-2">500.000đ</span>
+<button class="bg-transparent border-2 border-primary-container text-primary-container font-body-lg text-body-lg h-12 px-6 rounded-full hover:bg-surface-container-low active:scale-95 transition-all duration-200">
+                        Đặt trước
+                    </button>
+</div>
+</article>
+</div>
+<!-- Lock Price Notice -->
+<div class="mt-8 p-4 rounded-lg bg-surface-container-low border border-surface-variant flex items-start gap-3">
+<span class="material-symbols-outlined text-primary-container shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">lock</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<strong class="text-on-surface font-semibold">Giá được bảo lưu:</strong> Mức giá bạn thấy sẽ được giữ nguyên và khóa lại ngay khi bạn tiến hành đặt lịch, đảm bảo không có chi phí phát sinh.
+            </p>
+</div>
+</main>
+</body></html>

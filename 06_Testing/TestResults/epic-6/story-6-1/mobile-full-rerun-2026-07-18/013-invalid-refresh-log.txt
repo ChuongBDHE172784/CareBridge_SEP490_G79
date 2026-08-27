@@ -1,0 +1,4 @@
+I/flutter ( 7424): [ApiClient] _tryRefresh: calling POST /auth/refresh
+I/flutter ( 7424): [ApiClient] _tryRefresh: status=401
+I/flutter ( 7424): [ApiClient] _tryRefresh: FAILED ? outcome=_RefreshOutcome.tokenInvalid body={"details":null,"error":"INVALID_REFRESH_TOKEN","message":"No active session found for this token","path":"/api/v1/auth/refresh","status":401,"success":false,"timestamp":"2026-07-18T07:04:15.619900800Z"}
+I/flutter ( 7424): [ApiClient] _handle401: clearing session (real 401 with valid token)

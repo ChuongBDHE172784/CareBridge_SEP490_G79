@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-container-lowest": "#ffffff",
+                "on-primary-fixed-variant": "#693a2d",
+                "on-secondary-fixed-variant": "#4a4642",
+                "surface-container": "#f3ede8",
+                "secondary-fixed-dim": "#ccc5c0",
+                "surface-container-low": "#f9f2ee",
+                "tertiary": "#605e5a",
+                "inverse-on-surface": "#f6f0eb",
+                "error": "#ba1a1a",
+                "on-tertiary-fixed": "#1d1b19",
+                "error-container": "#ffdad6",
+                "surface-main": "#FFFFFF",
+                "on-secondary-container": "#68635f",
+                "on-error-container": "#93000a",
+                "text-heading": "#2D2A28",
+                "tertiary-container": "#9e9a96",
+                "on-tertiary": "#ffffff",
+                "primary-fixed-dim": "#fab7a4",
+                "background": "#fef8f4",
+                "surface-container-high": "#ede7e3",
+                "surface": "#fef8f4",
+                "outline": "#84736f",
+                "status-active": "#C98C7B",
+                "text-body": "#524F4C",
+                "tertiary-fixed": "#e6e2dd",
+                "on-error": "#ffffff",
+                "primary-fixed": "#ffdbd1",
+                "surface-tint": "#845143",
+                "inverse-primary": "#fab7a4",
+                "secondary": "#625d59",
+                "on-surface": "#1d1b19",
+                "surface-accent-muted": "#F2EAE4",
+                "on-primary": "#ffffff",
+                "surface-dim": "#dfd9d5",
+                "secondary-fixed": "#e9e1db",
+                "on-tertiary-container": "#34322f",
+                "outline-variant": "#d6c2bd",
+                "on-tertiary-fixed-variant": "#484643",
+                "on-secondary-fixed": "#1e1b18",
+                "surface-accent-light": "#F6F1EC",
+                "secondary-container": "#e9e1db",
+                "primary-container": "#c98c7b",
+                "on-surface-variant": "#524440",
+                "surface-variant": "#e7e1dd",
+                "inverse-surface": "#32302d",
+                "surface-container-highest": "#e7e1dd",
+                "surface-bright": "#fef8f4",
+                "on-primary-fixed": "#341006",
+                "primary": "#845143",
+                "on-secondary": "#ffffff",
+                "on-background": "#1d1b19",
+                "tertiary-fixed-dim": "#cac6c1",
+                "on-primary-container": "#51271b"
+            },
+            "borderRadius": {
+                "DEFAULT": "1rem",
+                "lg": "2rem",
+                "xl": "3rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "stack-sm": "8px",
+                "sidebar-width": "280px",
+                "stack-md": "16px",
+                "panel-gap": "24px",
+                "grid-gutter": "24px",
+                "container-padding": "32px"
+            },
+            "fontFamily": {
+                "body-lg": ["Quicksand"],
+                "headline-sm": ["Quicksand"],
+                "headline-md": ["Quicksand"],
+                "nav-item": ["Quicksand"],
+                "body-md": ["Quicksand"],
+                "label-md": ["Quicksand"],
+                "display-lg": ["Quicksand"]
+            },
+            "fontSize": {
+                "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+            overflow: hidden;
+        }
+        
+        .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 9999px;
+            background: rgba(201, 140, 123, 0.4);
+            animation: pulse 2s infinite ease-out;
+        }
+        .pulse-ring-delayed {
+            animation-delay: 1s;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .clay-card {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(201, 140, 123, 0.08);
+            border-radius: 2rem;
+        }
+
+        .clay-button {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .clay-button:active {
+            transform: scale(0.95);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #4ade80;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex items-center justify-center min-h-screen">
+<!-- Mobile Device Simulator (iPhone 13 size: 390x844) -->
+<main class="w-[390px] h-[844px] bg-surface relative flex flex-col overflow-hidden shadow-2xl">
+<!-- Header / Top App Bar Section -->
+<header class="w-full flex items-center justify-between px-6 pt-14 pb-4 bg-surface/80 backdrop-blur-md sticky top-0 z-10">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-primary active:scale-95 duration-200">
+<span class="material-symbols-outlined">expand_more</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="font-label-md text-label-md text-primary tracking-widest uppercase mb-0.5">Cuộc gọi thoại</span>
+<div class="flex items-center gap-2">
+<div class="status-dot"></div>
+<span class="font-headline-sm text-headline-sm text-on-surface" id="timer">12:45</span>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-primary active:scale-95 duration-200">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col items-center justify-center px-8 relative">
+<!-- Participant Identity -->
+<div class="text-center mb-10 z-10">
+<h1 class="font-headline-md text-headline-md text-text-heading mb-1">Mẹ Nguyễn Thu Thủy</h1>
+<div class="flex items-center justify-center gap-1.5 py-1 px-3 bg-primary-container/10 rounded-full">
+<span class="material-symbols-outlined text-[16px] text-primary">verified_user</span>
+<span class="text-[12px] font-semibold text-primary">Đã cấp quyền xem Nhật ký</span>
+</div>
+</div>
+<!-- Avatar & Animation -->
+<div class="relative w-56 h-56 mb-12 flex items-center justify-center">
+<div class="pulse-ring"></div>
+<div class="pulse-ring pulse-ring-delayed"></div>
+<div class="w-48 h-48 rounded-full overflow-hidden border-4 border-white shadow-xl relative z-10">
+<img class="w-full h-full object-cover" data-alt="A warm, professional close-up portrait of a friendly middle-aged Vietnamese woman with a kind smile, styled in soft, natural lighting. The background is a clean, minimalist home environment with warm beige and cream tones, matching a claymorphism care-tech aesthetic. High-quality digital photography style with a shallow depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeVYK_1i2K2ACw9UyGS4Jlf9yBPUuFfTBvhswE4c0k-cnHy94p_wkKHGp6GAhvuuVGYLDiXxBD5j-uCYuwlNM67Ouzh8Zz7xPrRD5EB9F_ZgQ3aj8kiolpUyjlSwnj1_WTyyEzM2OA2G-xJp-0AJFYCp554HxVjz-BkNGl7y0zI5iCOhPX02haRNdtys6iuJWqUY05paO1EemOR6kqNu9fxeGe3Spv0v1cwP6hhWGXYLv9a-M_G8PbMkJhYQTp8O7JXSzemcVTrJU"/>
+</div>
+<!-- Connection Status Overlay -->
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-surface shadow-lg px-4 py-1.5 rounded-full z-20 border border-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-green-500" style="font-variation-settings: 'FILL' 1;">wifi</span>
+<span class="text-[12px] font-bold text-on-surface-variant">Đang kết nối</span>
+</div>
+</div>
+<!-- Contextual Chip (View Health Summary) -->
+<button class="clay-button flex items-center gap-2 py-3 px-6 bg-white border border-surface-variant rounded-full text-primary shadow-sm hover:shadow-md transition-all mb-4">
+<span class="material-symbols-outlined text-[20px]">medical_information</span>
+<span class="font-body-md text-body-md">Xem tóm tắt sức khỏe</span>
+</button>
+<!-- Encryption Notice -->
+<div class="flex items-center gap-1.5 opacity-60">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span class="text-[11px] font-medium text-on-surface-variant">Phiên làm việc được mã hóa đầu cuối</span>
+</div>
+</div>
+<!-- Call Controls Section -->
+<div class="w-full bg-white rounded-t-[3rem] px-8 pt-8 pb-12 shadow-[0_-10px_40px_rgba(201,140,123,0.1)]">
+<div class="grid grid-cols-4 gap-4 mb-8">
+<!-- Mute -->
+<div class="flex flex-col items-center gap-2">
+<button class="clay-button w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" id="muteBtn">
+<span class="material-symbols-outlined text-[28px]">mic_off</span>
+</button>
+<span class="text-[12px] font-semibold text-on-surface-variant">Tắt mic</span>
+</div>
+<!-- Speaker -->
+<div class="flex flex-col items-center gap-2">
+<button class="clay-button w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high">
+<span class="material-symbols-outlined text-[28px]">volume_up</span>
+</button>
+<span class="text-[12px] font-semibold text-on-surface-variant">Loa ngoài</span>
+</div>
+<!-- Note / Log -->
+<div class="flex flex-col items-center gap-2">
+<button class="clay-button w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high">
+<span class="material-symbols-outlined text-[28px]">edit_note</span>
+</button>
+<span class="text-[12px] font-semibold text-on-surface-variant">Ghi chú</span>
+</div>
+<!-- Reconnect (Contextual) -->
+<div class="flex flex-col items-center gap-2">
+<button class="clay-button w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high opacity-40">
+<span class="material-symbols-outlined text-[28px]">sync</span>
+</button>
+<span class="text-[12px] font-semibold text-on-surface-variant opacity-40">Kết nối lại</span>
+</div>
+</div>
+<!-- End Call Primary Action -->
+<button class="clay-button w-full h-[64px] bg-error rounded-full flex items-center justify-center gap-3 text-white shadow-lg shadow-error/20 active:bg-error/90">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">call_end</span>
+<span class="font-headline-sm text-headline-sm">Kết thúc</span>
+</button>
+</div>
+<!-- Navigation Suppression: Home Indicator for Mobile -->
+<div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-on-surface/10 rounded-full"></div>
+</main>
+<script>
+        // Simple timer logic
+        let seconds = 765; // 12:45
+        const timerEl = document.getElementById('timer');
+        
+        setInterval(() => {
+            seconds++;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        // Interaction for mute button
+        const muteBtn = document.getElementById('muteBtn');
+        let isMuted = false;
+        muteBtn.addEventListener('click', () => {
+            isMuted = !isMuted;
+            if (isMuted) {
+                muteBtn.classList.replace('bg-surface-container-low', 'bg-error-container');
+                muteBtn.classList.add('text-error');
+                muteBtn.querySelector('span').textContent = 'mic_off';
+            } else {
+                muteBtn.classList.replace('bg-error-container', 'bg-surface-container-low');
+                muteBtn.classList.remove('text-error');
+                muteBtn.querySelector('span').textContent = 'mic';
+            }
+        });
+
+        // Atmospheric micro-interaction: subtle scale on voice pulse
+        const avatar = document.querySelector('.pulse-ring');
+        document.addEventListener('mousemove', (e) => {
+            // Optional: slight parallax or reaction to interaction
+        });
+    </script>
+</body></html>

@@ -1,0 +1,21 @@
+services:
+  ai-evaluator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        ai-service: ../../05_Development/CareBridgeAITriageService
+    image: carebridge-ai-evaluator:local
+    environment:
+      GEMINI_ENABLED: "false"
+      CAREBRIDGE_API_BASE_URL: ${CAREBRIDGE_API_BASE_URL:-}
+      CAREBRIDGE_TEST_JWT: ${CAREBRIDGE_TEST_JWT:-}
+      CAREBRIDGE_TEST_BABY_PROFILE_ID: ${CAREBRIDGE_TEST_BABY_PROFILE_ID:-}
+      CAREBRIDGE_TEST_MOTHER_PROFILE_ID: ${CAREBRIDGE_TEST_MOTHER_PROFILE_ID:-}
+      EVALUATION_REQUEST_TIMEOUT_SECONDS: ${EVALUATION_REQUEST_TIMEOUT_SECONDS:-20}
+      EVALUATION_CASE_BUDGET_SECONDS: ${EVALUATION_CASE_BUDGET_SECONDS:-90}
+      EVALUATION_MAX_RETRIES: ${EVALUATION_MAX_RETRIES:-1}
+    volumes:
+      - ./reports:/reports
+    command: ["run", "--mode", "local", "--output-dir", "/reports/latest"]
+

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chi tiết nhật ký phục hồi</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary-container": "#735e56",
+                        "on-background": "#271812",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "primary-container": "#c98c7b",
+                        "inverse-on-surface": "#ffede7",
+                        "background": "#fff8f6",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#51271b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f8ddd2",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-container-high": "#ffe2d9",
+                        "primary-fixed-dim": "#fab7a4",
+                        "surface-container-highest": "#fadcd3",
+                        "surface-tint": "#845143",
+                        "secondary": "#6e5a52",
+                        "outline-variant": "#d6c2bd",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-surface": "#3e2c26",
+                        "surface-bright": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "on-surface-variant": "#524440",
+                        "tertiary": "#625d59",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#845143",
+                        "on-error": "#ffffff",
+                        "surface": "#fff8f6",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "on-primary-fixed": "#341006",
+                        "on-surface": "#271812",
+                        "outline": "#84736f",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#f6dacf",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#a09a95",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#36322e",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ffe9e3",
+                        "surface-variant": "#fadcd3",
+                        "surface-dim": "#f1d4ca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter-mobile": "16px",
+                        "gutter-desktop": "24px",
+                        "container-margin-mobile": "20px",
+                        "sidebar-width": "280px",
+                        "container-margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-sm": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-lg": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-safe">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-gutter-mobile h-16 w-full z-50 sticky top-0 bg-background">
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:opacity-80 transition-opacity text-primary">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary">Chi tiết phục hồi</h1>
+<div class="flex gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-primary">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-error">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="px-container-margin-mobile py-6 flex flex-col gap-6">
+<!-- Header Info -->
+<div class="text-center flex flex-col items-center gap-2">
+<div class="w-16 h-16 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container mb-2">
+<span class="material-symbols-outlined" style="font-size: 32px; font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background">Cảm giác hôm nay</h2>
+<p class="font-body-lg text-body-lg text-secondary">08:30 Sáng • 12/10/2023</p>
+</div>
+<!-- Details Card -->
+<div class="bg-surface rounded-DEFAULT shadow-[0_4px_20px_rgba(90,70,63,0.08)] p-4 flex flex-col gap-4">
+<div class="flex items-start gap-4 pb-4 border-b border-outline-variant">
+<div class="w-10 h-10 bg-secondary-container rounded-full flex items-center justify-center text-on-secondary-container flex-shrink-0">
+<span class="material-symbols-outlined">mood</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-secondary mb-1">Tâm trạng</h3>
+<p class="font-body-lg text-body-lg text-on-background">Khá tốt, có chút mệt mỏi vào buổi sáng.</p>
+</div>
+</div>
+<div class="flex items-start gap-4 pb-4 border-b border-outline-variant">
+<div class="w-10 h-10 bg-tertiary-container rounded-full flex items-center justify-center text-on-tertiary-container flex-shrink-0">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-secondary mb-1">Ăn uống</h3>
+<p class="font-body-lg text-body-lg text-on-background">Ăn ngon miệng, đã uống đủ 2 lít nước.</p>
+</div>
+</div>
+<div class="flex items-start gap-4 pb-4 border-b border-outline-variant">
+<div class="w-10 h-10 bg-error-container rounded-full flex items-center justify-center text-on-error-container flex-shrink-0">
+<span class="material-symbols-outlined">local_hospital</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-secondary mb-1">Cơn đau/Khó chịu</h3>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-body-sm text-body-sm">Đau lưng nhẹ</span>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-body-sm text-body-sm">Căng tức ngực</span>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 bg-surface-variant rounded-full flex items-center justify-center text-on-surface-variant flex-shrink-0">
+<span class="material-symbols-outlined">notes</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-secondary mb-1">Ghi chú thêm</h3>
+<p class="font-body-lg text-body-lg text-on-background">Bé ngủ ngoan hơn đêm qua nên mẹ được nghỉ ngơi nhiều hơn. Vết mổ đã khô và bớt đau rát.</p>
+</div>
+</div>
+</div>
+<!-- Action Area -->
+<div class="mt-4 flex flex-col gap-4">
+<button class="w-full h-12 bg-surface text-primary border-2 border-primary rounded-full font-headline-md text-headline-md flex items-center justify-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-[0_4px_12px_rgba(90,70,63,0.08)]">
+<span class="material-symbols-outlined">support_agent</span>
+                Cần hỗ trợ y tế?
+            </button>
+<p class="text-center font-body-sm text-body-sm text-secondary">
+                Nếu bạn cảm thấy đau bất thường, hãy liên hệ bác sĩ ngay.
+            </p>
+</div>
+</main>
+</body></html>

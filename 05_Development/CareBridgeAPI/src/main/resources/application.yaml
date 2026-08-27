@@ -1,0 +1,277 @@
+server:
+  forward-headers-strategy: framework
+  servlet:
+    encoding:
+      enabled: true
+      force: true
+      force-response: true
+
+spring:
+  application:
+    name: backend
+
+  datasource:
+    # Runtime deployments must provide an explicit datasource. Local Docker
+    # defaults are isolated in application-local.yaml. Runtime credentials are
+    # published atomically by RuntimeDatasourceEnvironmentPostProcessor.
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      idle-timeout: 30000
+      max-lifetime: 600000
+
+  flyway:
+    enabled: true
+    clean-disabled: true
+    out-of-order: false
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:future"
+    init-sqls:
+      - "DO $$ BEGIN PERFORM set_config('carebridge.checklist_v1_writes_frozen', 'true', false); PERFORM set_config('carebridge.checklist_p1_p2_role', 'MIGRATION', false); END $$;"
+
+  docker:
+    compose:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+    properties:
+      hibernate:
+        format_sql: true
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 16MB
+    encoding:
+      charset: UTF-8
+
+carebridge:
+  cors:
+    allowed-origins: ${CAREBRIDGE_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5000,http://127.0.0.1:5000,http://localhost:3000,http://127.0.0.1:3000}
+  features:
+    checklist-distribution-v2: ${CAREBRIDGE_CHECKLIST_DISTRIBUTION_V2_ENABLED:true}
+  recommendation:
+    # Safe fallback remains available while personalization is disabled.
+    enabled: ${CAREBRIDGE_RECOMMENDATION_ENABLED:false}
+  vaccination:
+    # MF-03 — which catalogue in vaccination_schedules is scanned when a baby is registered.
+    # The table also holds seven pre-existing rows under per-row 'legacy-*' versions; they
+    # are excluded from the active catalogue by version, not deleted.
+    schedule-version: ${CAREBRIDGE_VACCINATION_SCHEDULE_VERSION:vn-2026}
+    reminder:
+      enabled: ${CAREBRIDGE_VACCINATION_REMINDER_ENABLED:true}
+      # One reminder per lead value per dose, deduplicated on (record, leadDays).
+      lead-days: ${CAREBRIDGE_VACCINATION_REMINDER_LEAD_DAYS:7,3,1,0}
+      zone: ${CAREBRIDGE_VACCINATION_REMINDER_ZONE:Asia/Ho_Chi_Minh}
+      cron: ${CAREBRIDGE_VACCINATION_REMINDER_CRON:0 0 7 * * *}
+  exercise-correction:
+    # Disabled by default so RULE_BASED behavior remains available without the optional sidecar.
+    enabled: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:true}
+    base-url: ${EXERCISE_CORRECTION_SERVICE_URL:http://localhost:8002}
+    connect-timeout-ms: ${EXERCISE_CORRECTION_CONNECT_TIMEOUT_MS:500}
+    read-timeout-ms: ${EXERCISE_CORRECTION_READ_TIMEOUT_MS:1200}
+  checklist:
+    repair:
+      enabled: ${CAREBRIDGE_CHECKLIST_REPAIR_ENABLED:true}
+      cron: ${CAREBRIDGE_CHECKLIST_REPAIR_CRON:0 */15 * * * *}
+      zone: ${CAREBRIDGE_CHECKLIST_REPAIR_ZONE:Asia/Ho_Chi_Minh}
+      catch-up-weeks: ${CAREBRIDGE_CHECKLIST_REPAIR_CATCH_UP_WEEKS:12}
+      max-journeys-per-run: ${CAREBRIDGE_CHECKLIST_REPAIR_MAX_JOURNEYS_PER_RUN:100}
+    outbox-processing-delay-ms: ${CAREBRIDGE_CHECKLIST_OUTBOX_PROCESSING_DELAY_MS:2000}
+    e2e:
+      attestation-enabled: ${CAREBRIDGE_CHECKLIST_E2E_ATTESTATION_ENABLED:false}
+      disposable: ${CAREBRIDGE_CHECKLIST_E2E_DISPOSABLE:false}
+      environment-id: ${CAREBRIDGE_CHECKLIST_E2E_ENVIRONMENT_ID:}
+    retention:
+      datasource:
+        enabled: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_ENABLED:false}
+        url: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_URL:}
+        username: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_USERNAME:}
+        password: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_PASSWORD:}
+        runtime-username: ${CAREBRIDGE_DB_USERNAME:}
+        flyway-username: ${CAREBRIDGE_FLYWAY_DB_USERNAME:}
+        application-flyway-enabled: ${SPRING_FLYWAY_ENABLED:true}
+  reference-data:
+    enabled: ${CAREBRIDGE_REFERENCE_DATA_ENABLED:true}
+  dev-seed:
+    enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
+    password: ${CAREBRIDGE_DEV_SEED_PASSWORD:Test@1234}
+  security:
+    jwt:
+      active-key-id: ${JWT_ACTIVE_KEY_ID:}
+      private-key: ${JWT_PRIVATE_KEY:}
+      public-keys: ${JWT_PUBLIC_KEYS:}
+      access-token-expiration-ms: 900000
+      refresh-token-expiration-ms: 604800000
+    otp:
+      expiration-seconds: 300
+      max-attempts: 5
+  auth:
+    federated-enabled: ${AUTH_FEDERATED_ENABLED:true}
+  firebase:
+    project-id: ${FIREBASE_PROJECT_ID:}
+    auth:
+      enabled: ${CAREBRIDGE_FIREBASE_AUTH_ENABLED:false}
+    auth-emulator-enabled: ${CAREBRIDGE_FIREBASE_AUTH_EMULATOR_ENABLED:false}
+    auth-emulator-host: ${FIREBASE_AUTH_EMULATOR_HOST:}
+    # UC-144D Direct Consult Chat & Call — Cloud Firestore signaling (ADR-DCC-004).
+    # Shares the Firebase credentials configured under fcm; enable explicitly because
+    # Firestore signaling is a hard requirement of this feature, unlike FCM.
+    firestore:
+      enabled: ${CAREBRIDGE_FIREBASE_FIRESTORE_ENABLED:false}
+  gemini:
+    enabled: ${GEMINI_ENABLED:false}
+    api-key: ${GEMINI_API_KEY:}
+    timeout-ms: ${GEMINI_TIMEOUT_MS:5000}
+    connect-timeout-ms: ${GEMINI_CONNECT_TIMEOUT_MS:3000}
+    max-context-chunks: 5
+    base-url: https://generativelanguage.googleapis.com/v1beta
+    model: ${GEMINI_MODEL:gemini-flash-lite-latest}
+    moderation:
+      timeout-ms: ${GEMINI_MODERATION_TIMEOUT_MS:15000}
+      max-attempts: ${AI_MODERATION_MAX_ATTEMPTS:4}
+      worker-delay-ms: ${AI_MODERATION_WORKER_DELAY_MS:15000}
+      batch-size: ${AI_MODERATION_BATCH_SIZE:3}
+      review-confidence-threshold: ${AI_MODERATION_REVIEW_THRESHOLD:0.5}
+      stale-processing-minutes: ${AI_MODERATION_STALE_PROCESSING_MINUTES:10}
+  trackasia:
+    api-key: ${TRACKASIA_API_KEY:}
+    maps-base-url: ${TRACKASIA_MAPS_BASE_URL:https://maps.track-asia.com}
+  zego:
+    app-id: ${ZEGO_APP_ID:0}
+    server-secret: ${ZEGO_SERVER_SECRET:}
+    token-ttl-seconds: 3600
+
+  supabase:
+    url: ${SUPABASE_URL}
+    anon-key: ${SUPABASE_ANON_KEY}
+    service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+    storage-bucket: ${SUPABASE_STORAGE_BUCKET:carebridge}
+  mail:
+    from-address: ${MAIL_USERNAME:noreply@carebridge.app}
+    from-name: "CareBridge"
+
+  fcm:
+    enabled: ${CAREBRIDGE_FCM_ENABLED:false}
+    credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+    use-application-default-credentials: ${FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS:false}
+    project-id: ${FIREBASE_PROJECT_ID:}
+    service-account-id: ${FIREBASE_SERVICE_ACCOUNT_ID:}
+  notification:
+    reminder-schedule:
+      # Keep durable worker activation independent from transport readiness.
+      enabled: ${REMINDER_SCHEDULE_NOTIFICATION_ENABLED:true}
+      worker-delay-ms: ${REMINDER_SCHEDULE_WORKER_DELAY_MS:15000}
+      batch-size: ${REMINDER_SCHEDULE_BATCH_SIZE:25}
+      max-attempts: ${REMINDER_SCHEDULE_MAX_ATTEMPTS:4}
+      stale-processing-minutes: ${REMINDER_SCHEDULE_STALE_MINUTES:10}
+      stale-backlog-grace-minutes: ${REMINDER_SCHEDULE_STALE_BACKLOG_GRACE_MINUTES:60}
+      planner-cron: ${REMINDER_SCHEDULE_PLANNER_CRON:0 20 2 * * *}
+    appointment:
+      enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:true}
+      worker-delay-ms: ${APPOINTMENT_NOTIFICATION_WORKER_DELAY_MS:15000}
+      batch-size: ${APPOINTMENT_NOTIFICATION_BATCH_SIZE:25}
+      max-attempts: ${APPOINTMENT_NOTIFICATION_MAX_ATTEMPTS:4}
+      stale-processing-minutes: ${APPOINTMENT_NOTIFICATION_STALE_MINUTES:10}
+      stale-backlog-grace-minutes: ${APPOINTMENT_NOTIFICATION_STALE_BACKLOG_GRACE_MINUTES:60}
+      planner-cron: ${APPOINTMENT_NOTIFICATION_PLANNER_CRON:0 15 2 * * *}
+
+  directchat:
+    call-ring-timeout-seconds: ${DIRECTCHAT_CALL_RING_TIMEOUT_SECONDS:45}
+    firebase-event-retention-hours: ${DIRECTCHAT_FIREBASE_EVENT_RETENTION_HOURS:24}
+
+  storage:
+    provider: ${FILE_STORAGE_PROVIDER:cloudinary}
+    private-provider: ${PRIVATE_FILE_STORAGE_PROVIDER:r2}
+    r2:
+      endpoint: ${R2_ENDPOINT:}
+      access-key: ${R2_ACCESS_KEY_ID:}
+      secret-key: ${R2_SECRET_ACCESS_KEY:}
+      bucket: ${R2_BUCKET:${R2_BUCKET_NAME:carebridge-private}}
+      region: ${R2_REGION:auto}
+
+  compreface:
+    # CompreFace generates its API keys when an application is created in its
+    # admin UI, so they belong to one specific instance and its database. They
+    # cannot be decided in advance here: a fresh CompreFace comes up with an
+    # empty database, and any key written ahead of time points at an application
+    # that does not exist. Bring CompreFace up, create the two services, then
+    # copy the keys it issues into the environment.
+    #
+    # Defaults are off and blank on purpose. Previously these three were
+    # hard-coded literals, which put real keys in the repository and made the
+    # feature default to on against http://localhost:8000 — inside the backend
+    # container that address is the backend itself, so every verification hung
+    # until it timed out.
+    enabled: ${CAREBRIDGE_COMPREFACE_ENABLED:false}
+    base-url: ${CAREBRIDGE_COMPREFACE_BASE_URL:http://localhost:8000}
+    detection-api-key: ${CAREBRIDGE_COMPREFACE_DETECTION_API_KEY:}
+    verification-api-key: ${CAREBRIDGE_COMPREFACE_VERIFICATION_API_KEY:}
+    similarity-threshold: ${CAREBRIDGE_COMPREFACE_SIMILARITY_THRESHOLD:0.75}
+    det-prob-threshold: ${CAREBRIDGE_COMPREFACE_DET_PROB_THRESHOLD:0.7}
+    detection-limit: ${CAREBRIDGE_COMPREFACE_DETECTION_LIMIT:2}
+    connect-timeout-ms: ${CAREBRIDGE_COMPREFACE_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${CAREBRIDGE_COMPREFACE_READ_TIMEOUT_MS:8000}
+
+  triage:
+    engine:
+      enabled: ${CAREBRIDGE_TRIAGE_ENGINE_ENABLED:true}
+      retention-days: ${CAREBRIDGE_TRIAGE_RETENTION_DAYS:30}
+    health-memory:
+      # CB-TRIAGE-THMC-IMP-001 (ADR-THMC-002/003). ttl-days default 30 is Open —
+      # pending Document Owner/DPO confirmation.
+      ttl-days: ${CAREBRIDGE_TRIAGE_HEALTH_MEMORY_TTL_DAYS:30}
+      max-context-entries: ${CAREBRIDGE_TRIAGE_HEALTH_MEMORY_MAX_CONTEXT_ENTRIES:5}
+      max-summary-chars: ${CAREBRIDGE_TRIAGE_HEALTH_MEMORY_MAX_SUMMARY_CHARS:500}
+    follow-up:
+      # CB-TYFU-IMP-001 ADR-TYFU-005 — YELLOW follow-up delay in hours (valid 1..24,
+      # out-of-range falls back to 4 with WARN TYFU-005). Default 4 is Open item O1.
+      delay-hours: ${TRIAGE_FOLLOW_UP_DELAY_HOURS:4}
+    disclaimer:
+      # CB-TRIAGE-CONSENT-IMP-001 (ADR-TDC-003) — canonical AI-triage disclaimer version/text.
+      # Bumping the version forces fleet-wide re-consent (BR-TDC-002); verify against the
+      # deployment checklist (TDS §11.4) before changing. Wording is Open pending product/DPO
+      # sign-off (not a legal text yet).
+      version: ${CAREBRIDGE_TRIAGE_DISCLAIMER_VERSION:AI_TRIAGE_DISCLAIMER_V2}
+      text: ${CAREBRIDGE_TRIAGE_DISCLAIMER_TEXT:Thông tin từ AI chỉ mang tính chất tham khảo, bạn cần tham vấn trực tiếp Bác sĩ/Chuyên gia Y tế khi có triệu chứng bất thường.}
+
+ai:
+  triage-service:
+    url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}
+    request-timeout-ms: ${AI_TRIAGE_REQUEST_TIMEOUT_MS:15000}
+    internal-api-key: ${AI_TRIAGE_INTERNAL_API_KEY:carebridge}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+          show-components: always
+          show-details: never

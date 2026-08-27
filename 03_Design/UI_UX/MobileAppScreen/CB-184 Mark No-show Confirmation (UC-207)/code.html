@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xác nhận vắng mặt</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#ffe2d9",
+                    "primary-fixed-dim": "#fab7a4",
+                    "primary": "#845143",
+                    "error-container": "#ffdad6",
+                    "on-tertiary-container": "#36322e",
+                    "secondary-fixed": "#f8ddd2",
+                    "inverse-primary": "#fab7a4",
+                    "surface-variant": "#fadcd3",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#625d59",
+                    "outline-variant": "#d6c2bd",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#a09a95",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff",
+                    "secondary": "#6e5a52",
+                    "outline": "#84736f",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#f6dacf",
+                    "on-background": "#271812",
+                    "surface-dim": "#f1d4ca",
+                    "surface-container-low": "#fff1ec",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#ffdbd1",
+                    "on-primary-fixed": "#341006",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed": "#e9e1db",
+                    "on-surface": "#271812",
+                    "background": "#fff8f6",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "inverse-surface": "#3e2c26",
+                    "on-secondary-container": "#735e56",
+                    "surface-container-highest": "#fadcd3",
+                    "surface-bright": "#fff8f6",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-container": "#51271b",
+                    "primary-container": "#c98c7b",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "surface-tint": "#845143",
+                    "surface": "#fff8f6",
+                    "inverse-on-surface": "#ffede7",
+                    "surface-container": "#ffe9e3",
+                    "on-secondary-fixed": "#271812",
+                    "tertiary-fixed-dim": "#ccc5c0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-margin-mobile": "20px",
+                    "sidebar-width": "280px",
+                    "container-margin-desktop": "40px",
+                    "gutter-mobile": "16px",
+                    "gutter-desktop": "24px",
+                    "unit": "8px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "Quicksand"
+                    ],
+                    "body-lg": [
+                            "Quicksand"
+                    ],
+                    "headline-md": [
+                            "Quicksand"
+                    ],
+                    "body-sm": [
+                            "Quicksand"
+                    ],
+                    "headline-lg-mobile": [
+                            "Quicksand"
+                    ],
+                    "headline-lg": [
+                            "Quicksand"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen antialiased flex justify-center md:items-center">
+<!-- Mobile Wrapper simulating a device screen or modal overlay -->
+<div class="w-full max-w-[390px] min-h-screen md:min-h-[844px] bg-black/40 flex flex-col justify-end relative shadow-2xl overflow-hidden md:rounded-[40px] md:h-[844px]">
+<!-- Background element to give depth if needed (simulating main app behind modal) -->
+<div class="absolute inset-0 z-0">
+<div class="w-full top-0 sticky bg-background dark:bg-on-background text-primary dark:text-primary-fixed-dim font-headline-md text-headline-md font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim flex justify-between items-center px-container-margin-mobile py-4 z-10">
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">arrow_back</button>
+<h1 class="font-headline-md text-headline-md">Expert Portal</h1>
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">close</button>
+</div>
+<!-- Faux content behind modal -->
+<div class="p-container-margin-mobile opacity-50 filter blur-sm pt-8">
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_-4px_20px_rgba(90,70,63,0.08)] mb-4 h-32"></div>
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_-4px_20px_rgba(90,70,63,0.08)] mb-4 h-64"></div>
+</div>
+</div>
+<!-- The Bottom Sheet / Modal -->
+<div class="bg-surface-container-lowest w-full rounded-t-xl z-20 shadow-[0_-12px_40px_rgba(90,70,63,0.15)] transform transition-transform duration-300 translate-y-0 pb-8 flex flex-col">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center pt-3 pb-1">
+<div class="w-12 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Header -->
+<div class="px-container-margin-mobile py-4 border-b border-surface-variant flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Xác nhận vắng mặt</h2>
+<button class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<div class="px-container-margin-mobile pt-6 flex-1 overflow-y-auto">
+<!-- Summary Card -->
+<div class="bg-surface-container-low rounded-xl p-4 mb-6 border border-surface-variant shadow-[0_4px_12px_rgba(90,70,63,0.05)]">
+<div class="flex items-center gap-3 mb-3 pb-3 border-b border-surface-variant/50">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Bệnh nhân</p>
+<p class="font-body-lg text-body-lg text-on-surface font-semibold">Nguyen Van A</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">schedule</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Thời gian</p>
+<p class="font-body-lg text-body-lg text-on-surface font-semibold">10:00 - 15/10/2023</p>
+</div>
+</div>
+</div>
+<!-- Input Field -->
+<div class="mb-6">
+<label class="block font-body-sm text-body-sm text-on-surface-variant mb-2" for="notes">Ghi chú / Bằng chứng (Tùy chọn)</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl p-3 font-body-lg text-body-lg text-on-surface placeholder:text-tertiary-fixed-dim focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none" id="notes" placeholder="VD: Đã đợi 15 phút nhưng không thấy bệnh nhân tham gia..." rows="3"></textarea>
+</div>
+<!-- Policy Impact Note -->
+<div class="bg-error-container/30 rounded-xl p-4 flex gap-3 items-start border border-error-container">
+<span class="material-symbols-outlined text-error mt-0.5" style="font-variation-settings: 'FILL' 1;">info</span>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold mb-1">Lưu ý về chính sách</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                            Việc đánh dấu vắng mặt sẽ kết thúc phiên tư vấn này. Phí vắng mặt có thể được áp dụng theo chính sách hiện hành của nền tảng.
+                        </p>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="px-container-margin-mobile pt-6 pb-2 flex flex-col gap-3 mt-auto">
+<button class="w-full min-h-[48px] bg-error text-on-error rounded-xl font-body-lg text-body-lg font-semibold shadow-[0_4px_12px_rgba(186,26,26,0.2)] active:scale-[0.98] transition-transform duration-200 flex justify-center items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+                    Xác nhận vắng mặt
+                </button>
+<button class="w-full min-h-[48px] bg-transparent border-2 border-outline-variant text-on-surface-variant rounded-xl font-body-lg text-body-lg font-semibold active:scale-[0.98] transition-transform duration-200 flex justify-center items-center">
+                    Quay lại
+                </button>
+</div>
+</div>
+</div>
+</body></html>

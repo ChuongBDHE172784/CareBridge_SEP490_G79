@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge Expert Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-container": "#c98c7b",
+                      "surface-container": "#ffe9e3",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "surface-dim": "#f1d4ca",
+                      "on-secondary-container": "#735e56",
+                      "secondary-container": "#f6dacf",
+                      "secondary": "#6e5a52",
+                      "secondary-fixed": "#f8ddd2",
+                      "on-error": "#ffffff",
+                      "inverse-surface": "#3e2c26",
+                      "tertiary-container": "#a09a95",
+                      "surface-variant": "#fadcd3",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "inverse-primary": "#fab7a4",
+                      "surface-container-high": "#ffe2d9",
+                      "error": "#ba1a1a",
+                      "surface": "#fff8f6",
+                      "error-container": "#ffdad6",
+                      "on-surface-variant": "#524440",
+                      "surface-container-highest": "#fadcd3",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "outline-variant": "#d6c2bd",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "primary": "#845143",
+                      "surface-container-low": "#fff1ec",
+                      "inverse-on-surface": "#ffede7",
+                      "primary-fixed": "#ffdbd1",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "background": "#fff8f6",
+                      "on-primary-fixed": "#341006",
+                      "primary-fixed-dim": "#fab7a4",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "tertiary": "#625d59",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-container": "#36322e",
+                      "on-primary-container": "#51271b",
+                      "tertiary-fixed": "#e9e1db",
+                      "on-surface": "#271812",
+                      "surface-tint": "#845143",
+                      "outline": "#84736f",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed": "#271812",
+                      "on-background": "#271812",
+                      "surface-bright": "#fff8f6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "48px",
+                      "gutter": "16px",
+                      "stack-md": "16px",
+                      "stack-lg": "24px",
+                      "safe-margin": "24px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Lexend"],
+                      "button": ["Lexend"],
+                      "body-md": ["Lexend"],
+                      "label-md": ["Lexend"],
+                      "headline-md": ["Lexend"],
+                      "headline-lg": ["Lexend"],
+                      "display-lg": ["Lexend"]
+              },
+              "fontSize": {
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Toggle Switch Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #845143;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #c98c7b;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased w-full h-full min-h-screen flex justify-center">
+<!-- Mobile Frame Container (iPhone 13/14 portrait) -->
+<main class="w-full max-w-[390px] h-full min-h-[844px] bg-background relative overflow-hidden flex flex-col shadow-2xl sm:rounded-[3rem] sm:border-[8px] sm:border-surface-variant/50">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background docked full-width top-0 z-10 pt-4 pb-2">
+<!-- Leading Avatar -->
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover shadow-sm" data-alt="A small, circular profile picture of a professional healthcare expert, warm smile, soft natural lighting, high quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0NhZZE-ENdl2GVazSb1xq49eGYYdk3qkbBl6BoJbv1ThHCFchqMTLDim1qp03H1mME-chcJ3JApMUOcmIb2ZiSfKHm-0lgFIn3O3FxtTOlHdpBeJcQN5grpc1FnzQSmZhW6rtyudK8UaGzzZcaelH39qyp9oOgZ0iDQ9NLAlCNstoaUtLbMiplAt9Hlgddtg61ZSMGpD7FZbu0mz0hqT1g8j_C9AtOZKWqz0XCxUcJwMvhiHsLkIMmbASmenEzJSNu-hM5eW8nDg"/>
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary">CareBridge</h1>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-80">BS. Nguyễn Hữu Cảnh</p>
+</div>
+</div>
+<!-- Trailing Online/Offline Toggle -->
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary font-medium">Trực tuyến</span>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0 left-0 checked:border-primary-container" id="toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer transition-colors duration-200" for="toggle"></label>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<div class="flex-1 overflow-y-auto hide-scrollbar px-safe-margin pb-24 pt-4 space-y-6">
+<!-- Today's Consultations (Tư vấn hôm nay) - Highlight Card -->
+<section>
+<div class="flex justify-between items-center mb-3">
+<h2 class="font-headline-md text-headline-md text-on-surface">Tư vấn hôm nay</h2>
+<span class="font-label-md text-label-md text-primary bg-primary-container/20 px-3 py-1 rounded-full">3 Lịch</span>
+</div>
+<!-- Bento Style Card -->
+<div class="bg-white rounded-lg p-5 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] relative overflow-hidden border border-surface-variant/30">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/10 rounded-bl-full -z-0"></div>
+<div class="flex items-start gap-4 relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">video_camera_front</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-body-lg text-body-lg font-medium text-on-surface">Mẹ bé An Nhiên</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Tư vấn dinh dưỡng dặm</p>
+</div>
+<span class="font-label-md text-label-md text-white bg-primary-container px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 14:00
+                                </span>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-primary-container text-white font-button text-button h-touch-target-min rounded-full flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+                                    Vào phòng
+                                </button>
+<button class="w-touch-target-min h-touch-target-min bg-surface-container-high text-primary rounded-full flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Grid Layout for Requests & Q&A -->
+<section class="grid grid-cols-2 gap-4">
+<!-- Yêu cầu mới -->
+<div class="bg-white rounded-lg p-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant/30 flex flex-col items-center text-center hover:bg-surface-container-low transition-colors active:scale-95 cursor-pointer">
+<div class="relative mb-2">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">mark_email_unread</span>
+</div>
+<span class="absolute -top-1 -right-1 bg-error text-white font-label-md text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">5</span>
+</div>
+<h3 class="font-body-md text-body-md font-medium text-on-surface mb-1">Yêu cầu mới</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Cần xác nhận</p>
+</div>
+<!-- Hàng đợi Q&A -->
+<div class="bg-white rounded-lg p-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant/30 flex flex-col items-center text-center hover:bg-surface-container-low transition-colors active:scale-95 cursor-pointer">
+<div class="relative mb-2">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">forum</span>
+</div>
+<span class="absolute -top-1 -right-1 bg-primary-container text-white font-label-md text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">12</span>
+</div>
+<h3 class="font-body-md text-body-md font-medium text-on-surface mb-1">Hàng đợi Q&amp;A</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Chờ trả lời</p>
+</div>
+</section>
+<!-- Yêu cầu hỗ trợ gần đây -->
+<section>
+<div class="flex justify-between items-center mb-3">
+<h2 class="font-headline-md text-headline-md text-on-surface">Yêu cầu hỗ trợ gần đây</h2>
+<button class="font-label-md text-label-md text-primary flex items-center">
+                        Xem tất cả <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+<div class="space-y-3">
+<!-- Item 1 -->
+<div class="bg-white rounded-lg p-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant/20 flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-error-container text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">priority_high</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-md text-body-md font-medium text-on-surface truncate">Bé sốt cao liên tục</h4>
+<p class="font-label-md text-label-md text-on-surface-variant truncate">Mẹ Tín Phát • 15 phút trước</p>
+</div>
+<button class="bg-surface-container-high text-primary font-label-md text-label-md px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-primary-container/20 transition-colors">
+                            Phản hồi
+                        </button>
+</div>
+<!-- Item 2 -->
+<div class="bg-white rounded-lg p-4 shadow-[0px_4px_20px_rgba(90,70,63,0.06)] border border-surface-variant/20 flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined">help_center</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-md text-body-md font-medium text-on-surface truncate">Lịch tiêm nhắc lại</h4>
+<p class="font-label-md text-label-md text-on-surface-variant truncate">Mẹ Bắp • 1 giờ trước</p>
+</div>
+<button class="bg-surface-container-high text-primary font-label-md text-label-md px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-primary-container/20 transition-colors">
+                            Phản hồi
+                        </button>
+</div>
+</div>
+</section>
+</div>
+<!-- Floating Expert Bottom NavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg sm:absolute sm:max-w-[390px]">
+<!-- Active: Trang chủ -->
+<div class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl px-4 py-2 hover:opacity-80 transition-opacity active:scale-95 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</div>
+<!-- Inactive: Yêu cầu -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:bg-surface-container-low transition-colors rounded-xl px-4 py-2 active:scale-95 cursor-pointer">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-label-md text-label-md mt-1">Yêu cầu</span>
+</div>
+<!-- Inactive: Cộng đồng -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:bg-surface-container-low transition-colors rounded-xl px-4 py-2 active:scale-95 cursor-pointer">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</div>
+<!-- Inactive: Tài khoản -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:bg-surface-container-low transition-colors rounded-xl px-4 py-2 active:scale-95 cursor-pointer">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md mt-1">Tài khoản</span>
+</div>
+</nav>
+</main>
+</body></html>

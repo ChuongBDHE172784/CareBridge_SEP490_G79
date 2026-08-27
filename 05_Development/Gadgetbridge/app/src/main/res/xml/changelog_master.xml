@@ -1,0 +1,738 @@
+<?xml version="1.0" encoding="utf-8"?>
+<changelog>
+    <release version="0.83.0" versioncode="235">
+        <change>Add first start onboarding screen</change>
+        <change>Initial support for Bowers and Wilkins P Series</change>
+        <change>Initial support for Casio ECB-S100</change>
+        <change>Initial support for Colmi R09</change>
+        <change>Initial support for Freebuds 5i</change>
+        <change>Initial support for Garmin Fenix 6S Pro / 7X, Forerunner 55 / 235 / 620, Instinct 2</change>
+        <change>Initial support for Huawei Band 2 / 2 Pro / 3 Pro</change>
+        <change>Initial support for Oppo Enco Air / Air2</change>
+        <change>Initial support for Realme Buds T110</change>
+        <change>Initial support for Redmi Buds 5 Pro</change>
+        <change>Initial support for Xiaomi Smart Band 9 Pro</change>
+        <change>Initial support for Marstek B2500</change>
+        <change>Add calories charts and widgets</change>
+        <change>Add more workout icons</change>
+        <change>About screen: Copy build details on tap</change>
+        <change>Amazfit Bip 3 Pro: Fix title and sender on some notifications</change>
+        <change>Bangle.js: Fix calendar sync</change>
+        <change>Bangle.js: Fix call notification in Turkish locale</change>
+        <change>Bangle.js: Support sending activity type from Bangle</change>
+        <change>Casio GBX-100: Fix notification title</change>
+        <change>Charts: Display HR measurement gaps</change>
+        <change>Colmi R0x: Fix occasional crash on disconnection</change>
+        <change>Fix crash in some chart pages</change>
+        <change>Fix heart rate charts average and maximum value</change>
+        <change>Fix imperial unit on steps charts</change>
+        <change>Fix notifications after a notification is received with a time in the future</change>
+        <change>Fossil/Skagen Hybrids: Add SpO2 support</change>
+        <change>Fossil/Skagen Hybrids: Fix erroneous watchface downgrade</change>
+        <change>Garmin: Add intensity minutes, respiratory rate, sleep score</change>
+        <change>Garmin: Display AGPS age</change>
+        <change>Garmin: Fix weather temperature conversion to celsius</change>
+        <change>Garmin: Persist sleep score and metabolic rate</change>
+        <change>Garmin: Send notification pictures</change>
+        <change>Huawei Band 3 pro: Fix notifications</change>
+        <change>Huawei: Add HR zones configuration for non-P2P devices</change>
+        <change>Huawei: Add temperature chart</change>
+        <change>Huawei: Allow more languages to be set on the watch</change>
+        <change>Huawei: Display active calories</change>
+        <change>Huawei: Display high-resolution heart rate</change>
+        <change>Huawei: Fix watchface upload for some watches</change>
+        <change>Huawei: Improve activity parsing</change>
+        <change>Huawei: Music management</change>
+        <change>Huawei: Send weather error if there is no data</change>
+        <change>Huawei: Sync blood pressure if supported</change>
+        <change>Huawei: Sync skin temperature</change>
+        <change>Restore sleep balance on weekly and monthly charts</change>
+        <change>Test device: Add dummy activities</change>
+        <change>Workout page: Add colors to HR zones</change>
+        <change>Xiaomi Smart Band 8 Active: Fix freestyle and walking workout parsing </change>
+        <change>Xiaomi Smart Band 9: Fix outdoor cycling parsing</change>
+        <change>Xiaomi SPPv2: Fix message processing getting stuck after exception</change>
+        <change>Xiaomi-protobuf: Add resting heart rate</change>
+        <change>Xiaomi-protobuf: Fix activity sync stuck on duplicated or invalid files</change>
+        <change>Xiaomi-protobuf: Improve workout parsing</change>
+        <change>Xiaomi-protobuf: Persist RR intervals during sleep</change>
+        <change>Zepp OS: Add sleep respiratory rate chart</change>
+        <change>Zepp OS: Send notification pictures</change>
+    </release>
+    <release version="0.82.1" versioncode="234">
+        <change>Huawei: Improve activity parsing</change>
+        <change>Huawei Watch GT: Fix connection failure</change>
+        <change>Withings: Fix crash on connection</change>
+        <change>Improve Armenian transliterator for mixed-case words</change>
+    </release>
+    <release version="0.82.0" versioncode="233">
+        <change>Initial support for Anker Soundcore Liberty 4 NC</change>
+        <change>Initial support for CMF Buds Pro 2 / Watch Pro 2</change>
+        <change>Initial support for Colmi R02/R03/R06/R10 smart rings</change>
+        <change>Initial support for Garmin Enduro 3, Fenix 5/5 Plus/5X Plus/6/6S Sapphire/7/8, Forerunner 165/255/255S Music/245 Music/265S/955/965, Venu/Venu Sq/Venu Sq 2/Venu 2S, Vivoactive 3, Vivomove Trend, Vivosport</change>
+        <change>Initial support for Huawei Watch 3 / 3 Pro / 4 Pro / D2 / GT 3 SE / GT 5 / GT 5 Pro / GT Cyber / GT Runner</change>
+        <change>Initial support for Honor Watch GS 3 / Watch GS Pro</change>
+        <change>Initial support for IKEA desk controller</change>
+        <change>Initial support for Moondrop Space Travel</change>
+        <change>Initial support for Mijia XMWSDJ04MMC</change>
+        <change>Initial support for Mi Smart Scale 2</change>
+        <change>Initial support for Sony WF-C500 / WF-C700N / WI-C100</change>
+        <change>Initial support for Soundcore Motion 300</change>
+        <change>Initial support for Vivitar HR &amp; BP Monitor Activity Tracker</change>
+        <change>Experimental support for Amazfit T-Rex 3</change>
+        <change>Experimental support for Redmi Watch 5 Active</change>
+        <change>Experimental support for Xiaomi Smart Band 9</change>
+        <change>Experimental support for Xiaomi Watch S3</change>
+        <change>Add all languages supported in weblate</change>
+        <change>Add BLE intent API</change>
+        <change>Add configuration for calendar lookahead</change>
+        <change>Add month and day to date of birth</change>
+        <change>Add more activity types (CMF, Garmin, Huawei, Zepp OS)</change>
+        <change>Allow configuration of notification times</change>
+        <change>Allow syncing birthdays with calendar events</change>
+        <change>Amazfit GTR 2: Enable PAI support</change>
+        <change>AsteroidOS: Fix missing weather day and set-time on connection</change>
+        <change>Bangle.js: Add canned responses</change>
+        <change>Bangle.js: Fix calendar sync setting</change>
+        <change>Bangle.js: Fix distance in activity details</change>
+        <change>Bluetooth Intent API: Add disconnect action</change>
+        <change>Casio GW-B5600: Alarms, find phone, reminders, watch settings</change>
+        <change>Casio: Fix notifications on long messages</change>
+        <change>Change device icons to use theme colors</change>
+        <change>Charts: Add button to pick date</change>
+        <change>Charts: Add charts for HRV, body energy, heart rate, steps, VO2 max, weight</change>
+        <change>Charts: Fix heart rate charts when min is set to 0</change>
+        <change>Charts: Re-design sleep, stress, PAI, workout details</change>
+        <change>Charts: Use HR from workout track file if available</change>
+        <change>CMF Watch Pro 2: Negotiate authentication key</change>
+        <change>CMF Watch Pro: Fix activity transfer</change>
+        <change>Cycling sensor: added live data view</change>
+        <change>Cycling sensor: Improve cycling data display</change>
+        <change>Dashboard: Add new widgets for stress, HRV, body energy</change>
+        <change>Dashboard: Add option to show yesterday's data in Today widget</change>
+        <change>Dashboard: Improve widget gauge resolution</change>
+        <change>Data Management: Add file manager</change>
+        <change>Data Management: Allow browse folders, open and share files</change>
+        <change>Data Management: Allow full backup/restore from a zip file</change>
+        <change>Data Management: Fix import of some preference from a backup</change>
+        <change>Fix activity charts generation for devices that do not report intensity</change>
+        <change>Fix crash when companion pairing</change>
+        <change>Fix discovery of connected devices</change>
+        <change>Fix emoji when some connected device does not support them</change>
+        <change>Fix language not being respected in some situations</change>
+        <change>Fix media controls not working for some apps</change>
+        <change>Fix notification text not being sent for some apps</change>
+        <change>Fix reconnection when device connects back during BLE scan</change>
+        <change>Fossil HR: Fix crash on disconnection</change>
+        <change>Fossil HR: Minor watchface fixes</change>
+        <change>Garmin: Display awake time during sleep</change>
+        <change>Garmin: Display HRV and body energy</change>
+        <change>Garmin: Display resting heart rate</change>
+        <change>Garmin: Fetch SKIP_TEMP files</change>
+        <change>Garmin: Fix agps upload for some URLs</change>
+        <change>Garmin: Fix all-day events</change>
+        <change>Garmin: Fix auto-activity fetch on some devices</change>
+        <change>Garmin: Fix canned replies reset to defaults</change>
+        <change>Garmin: Fix crash on call with privacy mode on</change>
+        <change>Garmin: Fix crash on timezones without DST</change>
+        <change>Garmin: Fix daily weather missing current day</change>
+        <change>Garmin: Fix weather temperature and speed units</change>
+        <change>Garmin: Improve activity, sleep and workout parsing</change>
+        <change>Garmin: Infer sleep time for devices that do not send sleep stages</change>
+        <change>Garmin: Manual HR measurements and live activity</change>
+        <change>Garmin: Map some unknown realtime settings</change>
+        <change>Garmin: Parse workout physiological metrics, strength training workout sets</change>
+        <change>Garmin: Re-parse workout summary when opening details page</change>
+        <change>Garmin: Upload gpx and workout fit files to watch</change>
+        <change>Garmin: Use distance and calories provided by the watch</change>
+        <change>Garmin: View and share gpx files</change>
+        <change>Huami: Fetch workouts during normal sync</change>
+        <change>Huami: Migrate all device settings to sub-screens</change>
+        <change>Huawei Band 9: Improved support</change>
+        <change>Huawei: Add battery polling</change>
+        <change>Huawei: Basic support for the installation of the applications</change>
+        <change>Huawei: Calendar sync support</change>
+        <change>Huawei: Contacts uploading support</change>
+        <change>Huawei: Continuous skin temperature measurement switch</change>
+        <change>Huawei: Enable emoji for HarmonyOS watches</change>
+        <change>Huawei: Fix crash when notification has no text</change>
+        <change>Huawei: Fix initialization issues on some watches</change>
+        <change>Huawei: Fix notifications for Huawei Band 4e</change>
+        <change>Huawei: Fix some reconnection issues</change>
+        <change>Huawei: Fix watchface upload, activity sync, event alarms, weather for some devices</change>
+        <change>Huawei: Fix workout altitude, pace, workout re-parsing</change>
+        <change>Huawei: Improve device initialization</change>
+        <change>Huawei: Improve watchface install support</change>
+        <change>Huawei: Improve weather support</change>
+        <change>Huawei: Initial ephemeris update support</change>
+        <change>Huawei: Map more workout types</change>
+        <change>Huawei: Music upload support</change>
+        <change>Huawei: Provide an activity sample every minute</change>
+        <change>Huawei: Re-parse workout details when opening details</change>
+        <change>Huawei: Send default HR zones</change>
+        <change>Huawei: Workout GPS synchronization</change>
+        <change>Huawei: Simple TruSleep support</change>
+        <change>Huawei: Use distance and calories provided by the watch</change>
+        <change>Improve calendar change detection</change>
+        <change>Mi Band: Migrate global preferences to device-specific</change>
+        <change>Mi Composition Scale: Add alternative bluetooth name</change>
+        <change>Mi Composition Scale: Persist and display weight samples</change>
+        <change>Mijia LYWSD/XMWSDJ: Add comfort level preference</change>
+        <change>Pebble: Migrate global preferences to device-specific</change>
+        <change>Redmi Smart Band Pro: Fix crash on connection and activity sync issues</change>
+        <change>Sony Headphones: Enable read aloud incoming notifications and auto call pickup</change>
+        <change>UI: Add new activity icons</change>
+        <change>UI: Fix changelog on device rotation</change>
+        <change>UI: Fix HR samples displayed on wrong device</change>
+        <change>UI: Fix light navbar buttons on light themes for Android 8+</change>
+        <change>UI: Fix pull-down to refresh for some devices</change>
+        <change>UI: Improvements for large screen resolutions, font sizes, landscape</change>
+        <change>UI: Reduce stutters on device changes / data fetch / scrolling</change>
+        <change>UI: Refactor preferences screen</change>
+        <change>UM25C: Fix some disconnection issues</change>
+        <change>Use default system TTS language</change>
+        <change>Xiaomi Protobuf: Allow re-parse activity from storage</change>
+        <change>Xiaomi Protobuf: Enable watchface upload for all devices</change>
+        <change>Xiaomi Protobuf: Show watchface preview</change>
+        <change>Xiaomi Protobuf: Fix watchface install on some watches</change>
+        <change>Xiaomi Protobuf: Fix deleting first widget screen</change>
+        <change>Xiaomi Protobuf: Fix naps</change>
+        <change>Xiaomi Protobuf: Improve workout parsing for some devices</change>
+        <change>Zepp OS 3: Fix file transfer (notification icons, gpx upload, agps updates)</change>
+        <change>Zepp OS 3.5 / 4: Fix shortcuts, shortcut cards, menu items</change>
+        <change>Zepp OS: Add VO2 Max support</change>
+        <change>Zepp OS: Display resting heart rate</change>
+        <change>Zepp OS: Fix reminder creation in some cases</change>
+        <change>ZeTime: Migrate global preferences to device-specific</change>
+    </release>
+    <release version="0.81.0" versioncode="232">
+        <change>Experimental support for Amazfit Bip 5 Unity</change>
+        <change>Experimental support for Redmi Watch 4</change>
+        <change>Initial support for cycling sensor</change>
+        <change>Initial support for more Garmin watches</change>
+        <change>Initial support for Hama Fit6900</change>
+        <change>Initial support for Huawei Watch Fit 2, Watch Fit 3, Watch 4 Pro</change>
+        <change>Initial support for Soundcore Liberty 3 Pro</change>
+        <change>Introduce new Dashboard view</change>
+        <change>AsteroidOS: Added icons to the notifications</change>
+        <change>Bangle.js: Add Sleep as Android support</change>
+        <change>Bangle.js: Add screenshot support</change>
+        <change>Bangle.js: Add setting to disable notifications</change>
+        <change>Bangle.js: Allow wake phone when opening notification response from watch</change>
+        <change>Bangle.js: Fix activity intensity normalization</change>
+        <change>Bangle.js: Fix message reply</change>
+        <change>Bangle.js: Improve text rendering</change>
+        <change>Fossil/Skagen Hybrids: Update device settings to new structure</change>
+        <change>Galaxy Buds Live: Update device settings to new structure</change>
+        <change>Galaxy Buds 2: Fix recognition of some versions</change>
+        <change>HPlus: Migrate global preferences to device-specific</change>
+        <change>Huami: Fix reminder message encoding</change>
+        <change>Huawei: Add cycling workout type</change>
+        <change>Huawei: Add enable HeartRate and SpO2 force option</change>
+        <change>Huawei: Add huawei account support (pair without resetting watch)</change>
+        <change>Huawei: Add support for workout calories and cycling power</change>
+        <change>Huawei: Add remote camera shutter</change>
+        <change>Huawei: Ask pincode only on first connection</change>
+        <change>Huawei: Enable sleep detection</change>
+        <change>Huawei: File upload and watchface management</change>
+        <change>Huawei: Fix force DND support</change>
+        <change>Huawei: Fix long notification</change>
+        <change>Huawei: Fix TimeZone offset calculation</change>
+        <change>Huawei: Improve connection and reconnection</change>
+        <change>Huawei: Improve music controls</change>
+        <change>Huawei: Improve notification icons</change>
+        <change>Huawei: Improve weather, HR and SpO2 support</change>
+        <change>Huawei: Improve workout parsing</change>
+        <change>Huawei: Rework settings menu with sub-screens</change>
+        <change>Huawei: Send user info to device</change>
+        <change>Huawei: Support sending GPS to band</change>
+        <change>Huawei Watch GT4: Add HR and SpO support</change>
+        <change>Huawei Watch Ultimate: Add HR and SpO support</change>
+        <change>Intent API: Add broadcast on activity sync finish</change>
+        <change>Intent API: Added debug end call</change>
+        <change>Mi Band 6: Add menu items for NFC shortcuts</change>
+        <change>Nothing CMF Watch Pro: Add weather support</change>
+        <change>Nothing Earbuds: Add adjustable delay for auto-pick-up of calls</change>
+        <change>Nothing Earbuds: Add option to auto-reply to incoming phone calls</change>
+        <change>Nothing Earbuds: Add option to read aloud incoming notifications</change>
+        <change>Sony LinkBuds S: Enable some missing features</change>
+        <change>Xiaomi Smart Band 8 Active: Fix discovery</change>
+        <change>Xiaomi: Add swimming workout type</change>
+        <change>Xiaomi: Allow transliteration</change>
+        <change>Xiaomi: Fix barometer</change>
+        <change>Xiaomi: Fix notification for apps in work profile</change>
+        <change>Xiaomi: Fix some crashes</change>
+        <change>Xiaomi: Improve reconnection</change>
+        <change>Xiaomi: Improve sleep and activity parsing</change>
+        <change>Xiaomi: Improve weather support, add multiple locations</change>
+        <change>Xiaomi: Sync calendar event reminders</change>
+        <change>Zepp OS: Add support for Sleep as Android</change>
+        <change>Zepp OS: Sync calendar event reminders</change>
+        <change>Add Armenian and Serbian transliterators</change>
+        <change>Add GENERIC_PHONE and GENERIC_CALENDAR NotificationType handling</change>
+        <change>Add support for scannable-only devices</change>
+        <change>Fix crash when connecting on some phones</change>
+        <change>Fix crash when enabling bluetooth</change>
+        <change>Fix receiving shared gpx files</change>
+        <change>Fix text cutoff on all checkbox preferences</change>
+        <change>Format pace as mm:ss</change>
+        <change>Make battery threshold notifications configurable</change>
+        <change>Prevent some bluetooth events from starting Gadgetbridge</change>
+        <change>Recognize "Delta Chat" as generic chat</change>
+        <change>Remove deprecated general auto-reconnect preference</change>
+        <change>Refactor location service</change>
+        <change>Set navbar color to match theme</change>
+        <change>Simplify pairing of bonded and companion devices</change>
+    </release>
+    <release version="0.80.0" versioncode="231">
+        <change>Initial support for Amazfit Bip 3</change>
+        <change>Initial support for Huawei Band 8</change>
+        <change>Initial support for Huawei Watch GT 4</change>
+        <change>Initial support for Huawei Watch Ultimate</change>
+        <change>Initial support for Sony LinkBuds</change>
+        <change>Initial support for Xiaomi Smart Band 8 Active</change>
+        <change>Bangle.js: Allow saving files on phone from watch</change>
+        <change>Bangle.js: Fix crash when file save is cancelled</change>
+        <change>Bangle.js: Set filename on save file dialogs</change>
+        <change>Bangle.js: Improve communication stability</change>
+        <change>Bangle.js: Sync activity tracks</change>
+        <change>Bangle.js: remove unwanted charaters from calendar events</change>
+        <change>Femometer Vinca II: Add temperature charts</change>
+        <change>Fossil/Skagen Hybrids: Remove activity fetching toasts and add finished signal</change>
+        <change>Fossil/Skagen Hybrids: Use steps instead of calories for activity intensity</change>
+        <change>Fossil/Skagen Hybrids: Mark device busy and show transfer notification while syncing</change>
+        <change>Huami/Zepp OS: Fix activity sync getting stuck sometimes</change>
+        <change>Mi Band 1/2: Fix vibration settings preference screens</change>
+        <change>Huawei: Add cycling workout type </change>
+        <change>Huawei: Add smart wakeup interval</change>
+        <change>Pebble: Fix pairing with LE counterpart</change>
+        <change>Xiaomi Watch S1 Pro: Add temperature charts</change>
+        <change>Xiaomi: Fix sleep sync failing when sleep stages are not found</change>
+        <change>Xiaomi: Improve activity sync</change>
+        <change>Nothing CMF Watch Pro: Fix music playback status</change>
+        <change>Allow for device settings sub-screens</change>
+        <change>Device connection: Add support for scan before BLE connection</change>
+        <change>Misc UI improvements (alarms, chart settings)</change>
+    </release>
+    <release version="0.79.1" versioncode="230">
+        <change>Initial support for Huawei Watch Fit</change>
+        <change>Initial support for Xiaomi Redmi Watch 3</change>
+        <change>Fossil/Skagen Hybrids: Fix crash on multi-byte unicode characters in menu</change>
+        <change>Huawei: Add weather support</change>
+	<change>Bangle.js: Support higher MTU</change>
+        <change>Test Device: Add fake features and data</change>
+        <change>Periodically (around every 2 days) synchronize time on connected devices</change>
+        <change>Set alarm as used and enabled if time has changed</change>
+    </release>
+    <release version="0.79.0" versioncode="229">
+        <change>Initial support for Honor Magic Watch 2</change>
+        <change>Initial support for Mijia MHO-C303</change>
+        <change>Initial support for Nothing CMF Watch Pro</change>
+        <change>Initial support for Sony WI-SP600N</change>
+        <change>Experimental support for Redmi Watch 2</change>
+        <change>Experimental support for Xiaomi Smart Band 8 Pro</change>
+        <change>Experimental support for Xiaomi Watch S1 Pro</change>
+        <change>Experimental support for Xiaomi Watch S1</change>
+        <change>Experimental support for Xiaomi Watch S3</change>
+        <change>Galaxy Buds2 Pro: Fix recognition of some versions</change>
+        <change>Huawei Watch GT 2: Fix pairing</change>
+        <change>Redmi Smart Band Pro: Fix password digits</change>
+        <change>Pebble: Fix app configuration page</change>
+        <change>Pebble 2: Fix pairing issue</change>
+        <change>PineTime: Fix weather forecast on InfiniTime's new simple weather</change>
+        <change>Xiaomi: Fix sleep sometimes extending past the wakeup time</change>
+        <change>Xiaomi: Request battery level and charging state periodically</change>
+        <change>Xiaomi: Fix sleep stage parsing for some devices</change>
+        <change>Zepp OS: Improve device discovery</change>
+        <change>Zepp OS: Fix weather not working on some devices</change>
+        <change>Zepp OS: Prevent crash when installing large firmware updates</change>
+        <change>Fix sport activity summary group order</change>
+        <change>Fix reconnection to devices failing occasionally</change>
+    </release>
+    <release version="0.78.0" versioncode="228">
+        <change>Initial support for Honor Band 3,4,5,6</change>
+        <change>Initial support for Huawei Band 4, 4 Pro, 6, 7, 3e, 4e</change>
+        <change>Initial support for Huawei Talk Band B6</change>
+        <change>Initial support for Huawei Watch GT, GT 2</change>
+        <change>Initial support for Mijia LYWSD03MMC</change>
+        <change>Initial support for Nothing Ear (2)</change>
+        <change>Initial support for Nothing Ear (Stick)</change>
+        <change>Experimental support for Honor Band 7</change>
+        <change>Experimental support for Redmi Watch 2 Lite</change>
+        <change>Experimental support for Redmi Smart Band Pro</change>
+        <change>Casio GBX100: Add support for snooze alarm</change>
+        <change>Fossil/Skagen Hybrids: Update navigationApp to 1.1</change>
+        <change>Huami: Fetch SpO2 on devices that support it</change>
+        <change>Pebble: Attempt to fix app configuration webview</change>
+        <change>PineTime: Add support for InfiniTime's new simple weather</change>
+        <change>PineTime: Fix freeze and reboot when upgrading firmware</change>
+        <change>Pixoo: Enable sending images (non-persistent)</change>
+        <change>Pixoo: Get and send alarms</change>
+        <change>Pixoo: Set custom device name</change>
+        <change>Pixoo: support "clap hands to turn off screen" and "sleep after silence" settings</change>
+        <change>Xiaomi: Improve activity and workout parsing</change>
+        <change>Xiaomi: Improve stability and fix some crashes</change>
+        <change>Xiaomi: Improve weather</change>
+        <change>Xiaomi: Parse sleep stages</change>
+        <change>Add a notifications channel for connection status notifications</change>
+        <change>Improve automatic connection to all or previous devices</change>
+        <change>Fix devices sometimes staying stuck in a "Connecting" state</change>
+        <change>Map some missing Google Maps navigation actions</change>
+    </release>
+    <release version="0.77.0" versioncode="227">
+        <change>Initial support for Amazfit Balance</change>
+        <change>Initial support for Amazfit Active</change>
+        <change>Initial support for ColaCao 2021</change>
+        <change>Initial support for ColaCao 2023</change>
+        <change>Initial support for Femometer Vinca II</change>
+        <change>Initial support for Mijia LYWSD02MMC variant</change>
+        <change>Initial support for Sony Wena 3</change>
+        <change>Experimental support for Divoom Pixoo</change>
+        <change>Experimental support for Sony WF-1000XM5</change>
+        <change>Experimental support for Amazfit Active Edge</change>
+        <change>Experimental support for Mi Band 7 Pro (Xiaomi Smart Band 7 Pro)</change>
+        <change>Experimental support for Mi Band 8 (Xiaomi Smart Band 8)</change>
+        <change>Experimental support for Mi Watch Lite</change>
+        <change>Experimental support for Mi Watch Color Sport</change>
+        <change>Experimental support for Redmi Smart Band 2</change>
+        <change>Experimental support for Redmi Watch 3 Active</change>
+        <change>Experimental support for Xiaomi Watch S1 Active</change>
+        <change>Amazfit Band 7: Add alexa menu entries</change>
+        <change>Amazfit GTR 3 Pro: Fix firmware and watchface upload</change>
+        <change>Amazfit T-Rex: Fix activity summary parsing</change>
+        <change>Amazfit T-Rex Pro: Add activate display on lift sensitivity</change>
+        <change>AsteroidOS: Add more supported watch models</change>
+        <change>AsteroidOS: Fix media info</change>
+        <change>AsteroidOS: Fix notification dismissal</change>
+        <change>Bangle.js: Add loyalty cards integration with Catima</change>
+        <change>Bangle.js: Ensure SMS messages have src field set to "SMS Message"</change>
+        <change>Bangle.js: Fix GPS speed</change>
+        <change>Bangle.js: Improve handling of chinese characters</change>
+        <change>Bangle.js: Lower threshold for low battery warning</change>
+        <change>Bangle.js: Recover from device initialization failure</change>
+        <change>Casio GBX100/GBD-200: Fix first connect</change>
+        <change>Casio GB5600/6900/STB-1000: Fix pairing</change>
+        <change>Casio GDB-200: Fix notification timestamp</change>
+        <change>Casio GDB-200: Fixed notification categories and default category</change>
+        <change>Casio GDB-200: Allow preview of notification message alongside title</change>
+        <change>Casio GDB-200: Fixed find my phone feature</change>
+        <change>Intent API: Add debug action for test new function</change>
+        <change>Fossil/Skagen Hybrids: Add new navigation app</change>
+        <change>Fossil/Skagen Hybrids: Allow configuring call rejection method</change>
+        <change>Fossil/Skagen Hybrids: Fix some preference crashes on the nightly</change>
+        <change>Fossil/Skagen Hybrids: Reduce toasts on release builds</change>
+        <change>Fossil/Skagen Hybrids: Show device specific settings in more logical order</change>
+        <change>Huami: Toggle phone silent mode from band</change>
+        <change>Message privacy: Add mode Hide only body</change>
+        <change>Mijia LYWSD02: Add battery</change>
+        <change>Mijia LYWSD02: Add low battery notification</change>
+        <change>Mijia LYWSD02: Set temperature unit</change>
+        <change>Mijia LYWSD02: Fix battery drain while connected</change>
+        <change>PineTime: Display app name for VoIP app calls</change>
+        <change>PineTime: Honor Sync time setting on connect</change>
+        <change>PineTime: Improve notification handling</change>
+        <change>PineTime: Reduce weather memory usage</change>
+        <change>Withings Steel HR: Fix crash when calibrating hands on the nightly</change>
+        <change>Zepp OS: Add blood oxygen graph</change>
+        <change>Zepp OS: Add workout codes for hiking and outdoor swimming</change>
+        <change>Zepp OS: Allow disabling app notifications per device</change>
+        <change>Zepp OS: Attempt to fix activity fetch operation getting stuck</change>
+        <change>Zepp OS: Display swimming activity data</change>
+        <change>Zepp OS: Fix health settings on older Zepp OS versions</change>
+        <change>Zepp OS: Fix setting of unknown button press apps</change>
+        <change>Zepp OS: Fix sunrise and moon dates being off by local time + UTC offset</change>
+        <change>Zepp OS: Map hiking, outdoor swimming, climbing and table tennis activity types</change>
+        <change>Zepp OS: Toggle phone silent mode from band</change>
+        <change>Add transliteration for Latvian, Hungarian, Common Symbols</change>
+        <change>Allow multiple device actions to be triggered for the same event</change>
+        <change>Allow toggling DND through device actions</change>
+        <change>Autodetect OsmAnd package name and make it configurable</change>
+        <change>Improve ASCII transliterator</change>
+        <change>Make GMaps navigation handler follow the "navigation forwarding" setting</change>
+        <change>Support selecting enabled navigation apps</change>
+        <change>Allow ignore notifications from work profile apps</change>
+        <change>Display alias in low battery notification</change>
+        <change>Fix crash when pairing current device as companion</change>
+        <change>Fix emoji when a transliterator is enabled</change>
+        <change>Fix UV Index and rain probability for some weather apps</change>
+        <change>Improve device discovery stability and fix freezes</change>
+        <change>Improve Telegram and COL Reminder notifications</change>
+        <change>Replace old-style preference switch with Material 3 switch</change>
+    </release>
+    <release version="0.76.1" versioncode="226">
+        <change>Amazfit GTR Mini: Mark as not experimental</change>
+        <change>Bangle.js: Improve file downloads</change>
+        <change>Bangle.js: Fix app interfaces</change>
+        <change>Allow text to be shared to devices</change>
+        <change>Fix connection to some Amazfit devices </change>
+    </release>
+    <release version="0.76.0" versioncode="225">
+        <change>Upgrade UI to Material 3 and add dynamic colors theme</change>
+        <change>Initial support for Amazfit Bip 3 Pro</change>
+        <change>Initial support for Amazfit Cheetah Pro</change>
+        <change>Initial support for Bohemic Smart Bracelet</change>
+        <change>Initial support for Casio GW-B5600</change>
+        <change>Initial support for Garmin Vivomove HR</change>
+        <change>Initial support for Withings Steel HR</change>
+        <change>Experimental support for Amazfit Bip 5</change>
+        <change>Experimental support for Amazfit Falcon</change>
+        <change>Experimental support for Amazfit GTR Mini</change>
+        <change>Experimental support for Amazfit Cheetah (Round/Square)</change>
+        <change>Experimental support for Amazfit T-Rex Ultra</change>
+        <change>Amazfit GTS 2e: Add activate display on lift sensitivity</change>
+        <change>Amazfit GTR 3 / GTS 3: Enable AGPS Updates</change>
+        <change>Amazfit Neo: Enable PAI support</change>
+        <change>Bangle.js: Allow enable/disable of alarms</change>
+        <change>Bangle.js: Fetch activity data</change>
+        <change>Bangle.js: Fix GB integration when watch is not programmable</change>
+        <change>Bangle.js: Put JSON keys in quotes</change>
+        <change>Bangle.js: Reorganize device settings</change>
+        <change>Fossil/Skagen Hybrids: Embed custom menu in watchface, fixes lost menu on reset</change>
+        <change>Fossil/Skagen Hybrids: Fix unused alarms being pushed to the device</change>
+        <change>Fossil/Skagen Hybrids: Strip unicode characters that the watch can't display</change>
+        <change>Fossil/Skagen Hybrids: Sunrise/sunset follows weather location</change>
+        <change>Huami/Zepp OS: Add PAI charts</change>
+        <change>Huami/Zepp OS: Improve music info stability</change>
+        <change>Huami/Zepp OS: Improve reconnection and device initialization</change>
+        <change>Huami: Persist workout raw details even if gpx has no points</change>
+        <change>InfiniTime: Add heart rate measurement support</change>
+        <change>Mi Band 5: Fix activity fetch error toast when stress monitoring is enabled</change>
+        <change>Mi Band 6: Enable PAI and stress support</change>
+        <change>LeFun: Fix heart rate popup when measurement is triggered from phone</change>
+        <change>Sony WH-1000XM3/WF-SP800N: Add volume setting</change>
+        <change>Sony WH-1000XM5: Fix speak-to-chat enable/disable</change>
+        <change>Zepp OS: Add loyalty cards integration with Catima</change>
+        <change>Zepp OS: Enable AGPS updates for all devices</change>
+        <change>Zepp OS: Fix calendar sync on Zepp OS 2, send event location</change>
+        <change>Zepp OS: Fix reminder creation</change>
+        <change>Zepp OS: Fix shortcut cards setting on Zepp OS 2.1</change>
+        <change>Zepp OS: Fix weather, add hourly information</change>
+        <change>Zepp OS: Map barcode types for ITF, PDF_417 and DATA_MATRIX</change>
+        <change>Add preference to display changelog on startup</change>
+        <change>Add Termux RUN_COMMAND permission</change>
+        <change>Allow filtering notifications from work profile apps</change>
+        <change>Fix daylight saving time not being transmitted to the watch</change>
+        <change>Fix media button control for some applications</change>
+        <change>Fix notification filters by title if notification does not contain a body</change>
+        <change>Fix opening screenshots from notification on external apps</change>
+        <change>Fix reconnect delay reset after all devices are initialized</change>
+        <change>Fix some security error crashes when permissions are not granted</change>
+        <change>Fix transliteration of emoji</change>
+        <change>Fix transliteration of non-ASCII accented characters</change>
+        <change>Force gps speed calculation on some phones that do not report it correctly</change>
+        <change>Make application list sorting case-insensitive</change>
+        <change>Introduce native app shortcuts for android > 30</change>
+        <change>Update device settings action bar title depending on current screen</change>
+    </release>
+    <release version="0.75.1" versioncode="224">
+        <change>Fix Weather Notification integration</change>
+    </release>
+    <release version="0.75.0" versioncode="223">
+        <change>Bangle.js: Add message size limitation to Calendar and Messages</change>
+        <change>Bangle.js: Add switch to control if the GPS chip should be used to locate the location</change>
+        <change>Bangle.js: Send more weather data to watch</change>
+        <change>Bangle.js: Allow an activity sample to have a timestamp</change>
+        <change>Bangle.js: Send last received activity timestamp on connect (to allow sync of activity samples)</change>
+        <change>Bangle.js: Allow connecting HW keyboard without closing app loader</change>
+        <change>Bangle.js: Bump flavor target SDK version to 31</change>
+        <change>Bangle.js: Fix convertion of emoji/unicode to bitmap without width/height</change>
+        <change>Bangle.js: Fix location listener not being cleaned up when waiting for reconnect</change>
+        <change>Bangle.js: Fix memory leak from HTTP requests</change>
+        <change>Bangle.js: Fix orientation changes closing app loader</change>
+        <change>Bangle.js: Fix return to applications management activity after having opened another window</change>
+        <change>Bangle.js: Set default value for GPS event interval to 1 second</change>
+        <change>Bangle.js: Support navigation instructions</change>
+        <change>Bangle.js: Escape characters that fall in the Unicode codepoint area (for Espruino ~2v18.20 and later)</change>
+        <change>Bangle.js: HTTP request XPath can now return Arrays</change>
+        <change>Fossil/Skagen Hybrids: Add support for ultraviolet index and rain probability</change>
+        <change>Fossil/Skagen Hybrids: Add UV index and chance of rain widgets</change>
+        <change>Fossil/Skagen Hybrids: Allow launching the calibration activity on any Gadgetbridge variant</change>
+        <change>Fossil/Skagen Hybrids: Increase accuracy of workout distance calculation</change>
+        <change>Fossil/Skagen Hybrids: Fix weather icons day/night status</change>
+        <change>InfiniTime: Fix weather expiry time</change>
+        <change>InfiniTime: Support navigation instructions</change>
+        <change>Mi Band 6: Allow making device discoverable via Bluetooth when connected</change>
+        <change>Mi Band 7: Add preference to display call contact information</change>
+        <change>Zepp OS: Add gpx route file upload</change>
+        <change>Zepp OS: Add screenshot support</change>
+        <change>Zepp OS: Add stress charts</change>
+        <change>Zepp OS: Add watch app logs developer option</change>
+        <change>Zepp OS: Display watchface and app preview on install</change>
+        <change>Zepp OS: Fix update operations on Zepp OS 2.1+</change>
+        <change>Zepp OS: Manage contacts on watch</change>
+        <change>Zepp OS: Start new GPX segments on pause/resume</change>
+        <change>Zepp OS: Support flashing zab files</change>
+        <change>App Manager: Fix cached apps sorting</change>
+        <change>App Manager: Hide drag handle if app reorder is not supported</change>
+        <change>App Manager: Add confirmation before deleting app</change>
+        <change>Add menus to share GPX, raw summary, raw details</change>
+        <change>Debug Activity: Allow pairing current device as companion</change>
+        <change>Fix some null pointer exception crashes</change>
+        <change>Intent API: Add command to set device mac address</change>
+        <change>Intent API: Add dataTypes parameter for activity sync</change>
+        <change>Intent API: Add debug actions for notifications and incoming calls</change>
+        <change>OsmAnd: Add support for navigation instructions</change>
+        <change>Scrape navigation instructions from Google Maps notifications</change>
+        <change>Fix lag when a folder has a lot of devices</change>
+        <change>Fix transliteration returning non-ASCII characters</change>
+        <change>Enable "allow high MTU" setting by default</change>
+        <change>Make some hardcoded english strings translatable</change>
+    </release>
+    <release version="0.74.0" versioncode="222">
+        <change>Initial support for Amazfit GTR 3 Pro</change>
+        <change>Initial support for Sony WH-1000XM5</change>
+        <change>Amazfit Bip U: Remove alarm snooze option</change>
+        <change>Amazfit GTR 4 / GTS 4: Add watch Wi-Fi Hotspot and FTP Server</change>
+        <change>Amazfit GTR 4 / GTS 4: Perform and receive phone calls on watch</change>
+        <change>Amazfit GTS 2 Mini: Add missing alexa menu item</change>
+        <change>Bangle.js: Fix updating timezone in settings.json if the timezone is zero</change>
+        <change>Fossil/Skagen Hybrids: Pair watch to phone, fixes repeating confirmation request</change>
+        <change>Huami: Implement repeated activity fetching</change>
+        <change>Sony WH-1000XM4: Add speak-to-chat</change>
+        <change>Sony Headphones: Add button modes help</change>
+        <change>Zepp OS: Add shortcut cards preference</change>
+        <change>Zepp OS: Add support for morning updates</change>
+        <change>Zepp OS: Add preference to keep screen on during workout</change>
+        <change>Zepp OS: Add preference for camera remote</change>
+        <change>Zepp OS: Fix activate display upon lift wrist smart mode</change>
+        <change>Zepp OS: Fix Cards and MI AI display item and shortcuts</change>
+        <change>Zepp OS: Fix setting of control center</change>
+        <change>Zepp OS: Fix setting of unknown configuration values</change>
+        <change>Zepp OS: Set watchface from phone</change>
+        <change>Add Croatian transliterator</change>
+        <change>Fix restoring app notification/pebble blacklist preferences on import</change>
+        <change>Cache notifications while devices are out of range (opt-in)</change>
+    </release>
+    <release version="0.73.0" versioncode="221">
+        <change>Initial support for Amazfit T-Rex 2</change>
+        <change>Initial support for AsteroidOS watches</change>
+        <change>Initial support for Sony LinkBuds S</change>
+        <change>Initial support for Galaxy Buds2 Pro</change>
+        <change>Initial support for SoFlow S06(just for lock and unlock, needs key)</change>
+        <change>Fossil/Skagen Hybrids: Fix truncation of notifications</change>
+        <change>Fossil/Skagen Hybrids: Fix washed out colors in imported watchfaces</change>
+        <change>Fossil/Skagen Hybrids: Allow launching watch apps from app manager</change>
+        <change>Fossil/Skagen Hybrids: Fix activity parser</change>
+        <change>Fossil/Skagen Hybrids: Add app/watchface downloading from watch to app manager</change>
+        <change>Fossil/Skagen Hybrids: Fix crash on empty or multi-byte unicode alarm texts</change>
+        <change>Fossil/Skagen Hybrids: Implement inactivity warnings</change>
+        <change>Fossil/Skagen Hybrids: Remove obsolete debug message</change>
+        <change>Mi Band 6: Add NFC display item</change>
+        <change>Zepp OS: Fix Alipay and WeChat Pay display item and shortcuts</change>
+        <change>Amazfit GTR 4/GTS 4: Support for AGPS Updates</change>
+        <change>Bangle.js: Stop sending bitmaps for common characters that already have good enough equivalents on the watch</change>
+        <change>Bangle.js: Stop toast warning message appearing when starting the app loader</change>
+        <change>Bangle.js: Increase default realtime HRM/step interval to 10 seconds</change>
+        <change>Bangle.js: Support additional values for GPS event</change>
+        <change>Sony WF-1000XM4: Fix battery updates while connected</change>
+        <change>Sony WF-1000XM4: Fix audio codec</change>
+        <change>Add Georgian Transliteration</change>
+    </release>
+    <release version="0.72.0" versioncode="220">
+        <change>Initial support for Amazfit GTR 4/GTS 4/GTS 4 Mini</change>
+        <change>Initial support for Amazfit Band 7</change>
+        <change>Initial support for Galaxy Buds 2</change>
+        <change>Initial Support for Sony WH-1000XM2/WF-1000XM4</change>
+        <change>Sony headphones: Fix pause when taken off</change>
+        <change>Sony Headphones: Fix setting surround mode</change>
+        <change>Zepp OS: Map strength training, basketball and cricket activity types</change>
+        <change>Zepp OS: Add World Clocks</change>
+        <change>Zepp OS: Fix notification icons larger than 56x56px</change>
+        <change>Zepp OS: Fix notification icons for work profile apps</change>
+        <change>Zepp OS: Fix notification icon for SMS</change>
+        <change>Zepp OS: Fix app and watchface install</change>
+        <change>Zepp OS: Fix NPE when no weather data is available</change>
+        <change>Amazfit GTR 2: Fix activate display upon lift only working when scheduled</change>
+        <change>Bangle.js: Fix calendar sync</change>
+        <change>InfiniTime: Fix weather</change>
+        <change>InfiniTime: Add support for local time service</change>
+        <change>InfiniTime: Add world clock support</change>
+        <change>Skagen Gen 6 Hybrid HR: Add support for 38mm watches</change>
+        <change>Complete rewrite of new device discovery</change>
+        <change>Add Intent API to trigger activity sync and DB export</change>
+        <change>Allow media notifications to bypass app list</change>
+        <change>Debug Activity: Add confirmation dialog before removing device preferences</change>
+    </release>
+    <release version="0.71.3" versioncode="219">
+        <change>Fossil/Skagen Hybrids: Update known watch app versions</change>
+        <change>Skagen Hybrids: Allow firmware installation</change>
+        <change>Fossil Hybrid HR: Request menu config upon app connection</change>
+        <change>Amazfit GTS3: Fix crash when fetching workouts</change>
+        <change>Zepp OS: Fix fetching workouts shorter than 1 minute</change>
+        <change>Zepp OS: Decode workout elevation and altitude</change>
+        <change>Huami: Do not crash when failing to parse activity summary</change>
+        <change>Re-connect after update, especially useful for users of nightly releases</change>
+        <change>Make number of not scrollable sleep sessions lines configurable</change>
+    </release>
+    <release version="0.71.2" versioncode="218">
+        <change>Zepp OS: Display HR zones and Training Effect in Activity Details</change>
+        <change>Remove shortcut feature due to non-free dependencies (#2918)</change>
+    </release>
+    <release version="0.71.1" versioncode="217">
+        <change>Try to exclude non-free stuff from shortcuts library (#2918)</change>
+        <change>SuperCars: fix periodicDataSender, add tricks</change>
+        <change>Zepp OS: Fix crash when user attempts to disable Settings display item</change>
+        <change>Fix crash when opening Gadgetbridge from the notification</change>
+    </release>
+    <release version="0.71.0" versioncode="216">
+        <change>Remove KitKat support, Gadgetbridge now requires Android 5.0</change>
+        <change>Initial support for Amazfit GTR 3</change>
+        <change>Initial support for SuperCars (Shell Racing Cars)</change>
+        <change>Huami: Add preference to overwrite band settings on connection</change>
+        <change>Huami: Fix crash when selecting automatic Always On Display</change>
+        <change>Huami: Set OpenTracks track category and icon</change>
+        <change>Huami: Implement proper find device</change>
+        <change>Huami: Change default find band vibration pattern</change>
+        <change>Flipper Zero: added duration to Intent API</change>
+        <change>Flipper Zero: fixed crash due to unregistered boradcast receiver</change>
+        <change>Flipper Zero: fetch firmware version from flipper</change>
+        <change>Fossil Hybrid HR: Correctly initialize watchface after reset or crash</change>
+        <change>Fossil Hybrid HR: Set OpenTracks track category and icon to workout type selected on watch</change>
+        <change>Fossil Hybrid HR: Allow flick_away as custom event and add move_hands event </change>
+        <change>InfiniTime: Add weather support</change>
+        <change>Amazfit Neo: Fix world clock</change>
+        <change>Amazfit Neo: Fix long caller name display</change>
+        <change>Amazfit Neo: Remove activity tracks (unsupported)</change>
+        <change>Amazfit GTS 3: Fix battery drain due to unanswered weather requests</change>
+        <change>Mi Band 7: Fix Weather</change>
+        <change>Mi Band 6: Add support for workout activity types</change>
+        <change>Mi Band 6: Enable adding workout activity types to the "more" section</change>
+        <change>Amazfit GTR: Enable button actions</change>
+        <change>Zepp OS: Implement activity, sleep and workout fetching</change>
+        <change>Zepp OS: Improve firmware upgrades</change>
+        <change>Bangle.js: Add PATCH HTTP request type, and fix for VolleyError UnsupportedOperationException when supplying custom headers.</change>
+        <change>Bangle.js: Add ability to start services on the Android device via intents.</change>
+        <change>Bangle.js: Flags and multiple categories can now be specified for intents initiated on the watch.</change>
+        <change>Bangle.js: Add ability to wake and unlock the Android device via a special intent.</change>
+        <change>Allow 3rd party apps to set device settings</change>
+        <change>Re-implement C code in Java and remove Android NDK dependency entirely</change>
+        <change>Fix crashes on older Android versions when using some devices</change>
+        <change>Add support for REM sleep</change>
+        <change>App shortcuts support (long press on the launcher icon for directly connecting a device)</change>
+    </release>
+    <release version="0.70.0" versioncode="215">
+	<change>Initial support for Amazfit GTS 3</change>
+        <change>Initial support for Fossil Hybrid Gen6</change>
+        <change>Initial support for Flipper Zero</change>
+        <change>Huami: fix default vibration pattern</change>
+        <change>Huami: Enable vibration patterns for all compatible devices</change>
+        <change>Huami: Improve large firmware zip file handling</change>
+        <change>Bangle.js: Fix null pointer issue if headers not supplied for HTTP request</change>
+        <change>Bangle.js: Support calendar color and name</change>
+        <change>Mi Band 7: Fix crash if reminder, calendar or canned messages contain non-ascii characters</change>
+        <change>Mi Band 7: Fix NPE when acknowledging that icon was sent</change>
+        <change>Mi Band 7: Fix and enable firmware upgrades</change>
+        <change>Mi Band 7: Support for watchapps</change>
+        <change>Amazfit Neo: remove 1 hour heartrate interval (not supported)</change>
+        <change>Fossil Hybrid HR: Fix watchface redraw after powersave and after wrist flick</change>
+        <change>Fossil Hybrid HR: Enable configuring middle long press on FW 3.0 and newer</change>
+        <change>InfiniTime: Fix firmware update</change>
+        <change>Make heart rate measurement intervals configurable per-device</change>
+        <change>Add option to ignore low priority notifications</change>
+        <change>Fix Skype notifications</change>
+        <change>Prefer long notification text by default</change>
+        <change>Prefer big text when scraping gmail notifications</change>
+        <change>Do not remove newline and whitespace characters from notification content</change>
+        <change>Debug: Add companion device list to debug activity</change>
+    </release>
+</changelog>

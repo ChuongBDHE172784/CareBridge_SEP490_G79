@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Chi tiết chủ đề - CareBridge</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#fff8f6",
+                    "surface-tint": "#845143",
+                    "on-surface-variant": "#524440",
+                    "on-secondary": "#ffffff",
+                    "on-primary-container": "#51271b",
+                    "on-background": "#271812",
+                    "surface-bright": "#fff8f6",
+                    "secondary-fixed": "#f8ddd2",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#a09a95",
+                    "secondary": "#6e5a52",
+                    "secondary-fixed-dim": "#dbc1b7",
+                    "on-secondary-fixed": "#271812",
+                    "surface-dim": "#f1d4ca",
+                    "secondary-container": "#f6dacf",
+                    "primary-fixed-dim": "#fab7a4",
+                    "inverse-primary": "#fab7a4",
+                    "surface-container-high": "#ffe2d9",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#fadcd3",
+                    "primary-container": "#c98c7b",
+                    "on-primary-fixed": "#341006",
+                    "inverse-surface": "#3e2c26",
+                    "on-surface": "#271812",
+                    "outline": "#84736f",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-container": "#36322e",
+                    "on-error-container": "#93000a",
+                    "surface": "#fff8f6",
+                    "on-tertiary-fixed": "#1e1b18",
+                    "outline-variant": "#d6c2bd",
+                    "on-secondary-container": "#735e56",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "surface-container": "#ffe9e3",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#4a4642",
+                    "tertiary-fixed-dim": "#ccc5c0",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#fff1ec",
+                    "primary": "#845143",
+                    "inverse-on-surface": "#ffede7",
+                    "tertiary-fixed": "#e9e1db",
+                    "tertiary": "#625d59",
+                    "on-secondary-fixed-variant": "#55433b",
+                    "surface-container-highest": "#fadcd3"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-sm": "8px",
+                    "gutter": "16px",
+                    "safe-margin": "24px",
+                    "stack-lg": "24px",
+                    "touch-target-min": "48px",
+                    "stack-md": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Lexend"],
+                    "label-md": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "headline-lg": ["Lexend"],
+                    "button": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "body-lg": ["Lexend"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "button": ["16px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #F6F1EC;
+            color: #271812;
+            -webkit-font-smoothing: antialiased;
+            max-width: 390px;
+            margin: 0 auto;
+            min-height: 844px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 20px rgba(90, 70, 63, 0.06);
+        }
+        .active-btn-scale:active {
+            transform: scale(0.95);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col">
+<!-- Top App Bar (Shared Component Strategy) -->
+<header class="fixed top-0 w-full max-w-[390px] z-50 bg-background/80 backdrop-blur-md flex justify-between items-center px-safe-margin h-touch-target-min">
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-start text-primary active-btn-scale" onclick="history.back()">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-center text-primary active-btn-scale">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+</button>
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-end text-primary active-btn-scale">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</header>
+<main class="pt-touch-target-min pb-24 overflow-y-auto hide-scrollbar">
+<!-- Header Section: Topic Cover & Info -->
+<section class="px-safe-margin mt-stack-sm">
+<div class="relative w-full aspect-[16/9] rounded-lg overflow-hidden custom-shadow mb-stack-md">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A warm, bright, high-key photograph showing a colorful organic baby meal with pureed carrots and greens on a minimalist white ceramic plate. The lighting is soft and natural, emphasizing a clean, light-mode CareBridge aesthetic with warm earthy tones of apricot and cream. Professional food styling highlights nutrition and care in a modern home kitchen setting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDyDgFL2ynap9iFZC83Rryc_q6BCifelL4ob4NfdPcVx1fxxeIMyVUmaaPgATFrn9K7YNDKGyzD0N81a3hB2Pxv5y5bpPRGfrTClEPweBef6aSvTVuqTB-QNM6lcfWPb0SViL2dSsVGcsLnbjI95C1NorvMAvtJ02KK8laqO-cS3DUKJqkFzYtPkAzydgtGTeA_NxEJZt8KA3A2HHJUJMRtZm7DhYrOnb4xLrLEDyhejK6LO4a2mbOUpyjZ9aC_xn96hyFeV65HIWw')">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+</div>
+<div class="flex justify-between items-end mb-stack-lg">
+<div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Dinh dưỡng cho bé</h1>
+<p class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="groups">groups</span>
+                        12,403 người đang theo dõi
+                    </p>
+</div>
+<button class="bg-primary-container text-on-primary-container font-button text-button px-6 py-2 rounded-full active-btn-scale transition-all duration-200" id="followBtn" onclick="toggleFollow()">
+                    Theo dõi
+                </button>
+</div>
+<div class="bg-surface-container-low p-stack-md rounded-lg mb-stack-lg border border-outline-variant/30">
+<p class="font-body-md text-on-surface-variant italic">
+                    "Nơi chia sẻ kinh nghiệm dinh dưỡng, các công thức ăn dặm lành mạnh và bí quyết giúp bé ăn ngon, chóng lớn từ cộng đồng gia đình CareBridge."
+                </p>
+</div>
+</section>
+<!-- Post Feed Section -->
+<section class="px-safe-margin">
+<div class="flex justify-between items-center mb-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Bài viết mới nhất</h2>
+<button class="font-label-md text-label-md text-primary flex items-center gap-1">
+                    Sắp xếp
+                    <span class="material-symbols-outlined text-[16px]" data-icon="sort">sort</span>
+</button>
+</div>
+<div class="space-y-stack-md">
+<!-- Post Card 1 -->
+<article class="bg-surface-container-lowest p-stack-md rounded-lg custom-shadow border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed font-bold">
+                            MT
+                        </div>
+<div>
+<p class="font-button text-[14px] text-on-surface">Mẹ Tú Anh</p>
+<p class="font-label-md text-[10px] text-on-surface-variant">2 giờ trước</p>
+</div>
+</div>
+<h3 class="font-headline-md text-[16px] text-primary mb-2">Bé 7 tháng tuổi nên bắt đầu ăn dặm BLW như thế nào?</h3>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mb-4">
+                        Mình mới bắt đầu cho bé tập ăn dặm tự chỉ huy nhưng bé hay bị ọe quá, không biết có mẹ nào gặp tình trạng này chưa...
+                    </p>
+<div class="flex justify-between items-center pt-3 border-t border-outline-variant/20">
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-on-surface-variant font-label-md text-[12px] active-btn-scale">
+<span class="material-symbols-outlined text-[18px]" data-icon="thumb_up">thumb_up</span> 24
+                            </button>
+<button class="flex items-center gap-1 text-on-surface-variant font-label-md text-[12px] active-btn-scale">
+<span class="material-symbols-outlined text-[18px]" data-icon="chat_bubble">chat_bubble</span> 12
+                            </button>
+</div>
+<button class="bg-secondary-container text-on-secondary-container font-label-md text-[12px] px-3 py-1.5 rounded-full flex items-center gap-1 active-btn-scale">
+<span class="material-symbols-outlined text-[16px]" data-icon="edit">edit</span>
+                            Chia sẻ kinh nghiệm
+                        </button>
+</div>
+</article>
+<!-- Post Card 2 -->
+<article class="bg-surface-container-lowest p-stack-md rounded-lg custom-shadow border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold">
+                            BN
+                        </div>
+<div>
+<p class="font-button text-[14px] text-on-surface">Bố Nam</p>
+<p class="font-label-md text-[10px] text-on-surface-variant">5 giờ trước</p>
+</div>
+</div>
+<h3 class="font-headline-md text-[16px] text-primary mb-2">Công thức cháo cá hồi bí đỏ siêu ngon cho bé</h3>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mb-4">
+                        Hôm nay mình vừa nấu món này cho bé, thấy bé ăn rất hợp tác. Nguyên liệu đơn giản chỉ cần cá hồi, bí đỏ và một ít...
+                    </p>
+<div class="flex justify-between items-center pt-3 border-t border-outline-variant/20">
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-on-surface-variant font-label-md text-[12px] active-btn-scale">
+<span class="material-symbols-outlined text-[18px]" data-icon="thumb_up">thumb_up</span> 56
+                            </button>
+<button class="flex items-center gap-1 text-on-surface-variant font-label-md text-[12px] active-btn-scale">
+<span class="material-symbols-outlined text-[18px]" data-icon="chat_bubble">chat_bubble</span> 8
+                            </button>
+</div>
+<button class="bg-secondary-container text-on-secondary-container font-label-md text-[12px] px-3 py-1.5 rounded-full flex items-center gap-1 active-btn-scale">
+<span class="material-symbols-outlined text-[16px]" data-icon="edit">edit</span>
+                            Góp ý
+                        </button>
+</div>
+</article>
+<!-- Post Card 3 -->
+<article class="bg-surface-container-lowest p-stack-md rounded-lg custom-shadow border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A smiling Vietnamese grandmother with kind eyes and salt-and-pepper hair in a cozy home environment. High-quality portrait photography with a warm, comforting aesthetic in light mode CareBridge colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYrV6VI0jslbechxdc3WovwRpjiC5WJqLkASalfZXvp1_nmaCDLMWwMqhiaBqKNki6KfVd6E3jdIja4HPXj-rl9aiFY-DkfqPCdC9lW05Zq9VEgzjB9FavcJifonM9rZeYWbp2WPGNFyZWGWPctyjZPb8FY0yM99G1oudwf9HYhjOfItWfCOTHFONAsz34MxFGk8hZ2UmZwfCDKI8wlba4465IE_jd9WseUuHNV79D6axhwbSJCNVYb34mLHcf1oaD2sJ8-QE3vig"/>
+</div>
+<div>
+<p class="font-button text-[14px] text-on-surface">Bà Nội Tin Tin</p>
+<p class="font-label-md text-[10px] text-on-surface-variant">8 giờ trước</p>
+</div>
+</div>
+<h3 class="font-headline-md text-[16px] text-primary mb-2">Làm sao để bé bớt kén ăn rau?</h3>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mb-4">
+                        Kinh nghiệm của tôi là nên xay nhuyễn rau củ rồi trộn vào cơm hoặc làm các loại bánh mặn có màu sắc bắt mắt...
+                    </p>
+<div class="flex justify-between items-center pt-3 border-t border-outline-variant/20">
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-on-surface-variant font-label-md text-[12px] active-btn-scale">
+<span class="material-symbols-outlined text-[18px]" data-icon="thumb_up">thumb_up</span> 102
+                            </button>
+<button class="flex items-center gap-1 text-on-surface-variant font-label-md text-[12px] active-btn-scale">
+<span class="material-symbols-outlined text-[18px]" data-icon="chat_bubble">chat_bubble</span> 45
+                            </button>
+</div>
+<button class="bg-secondary-container text-on-secondary-container font-label-md text-[12px] px-3 py-1.5 rounded-full flex items-center gap-1 active-btn-scale">
+<span class="material-symbols-outlined text-[16px]" data-icon="edit">edit</span>
+                            Thêm ý kiến
+                        </button>
+</div>
+</article>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Shared Component Strategy) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg">
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors px-2 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors px-2 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl px-2 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-md text-label-md">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors px-2 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md">Việc cần làm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-surface-container-low transition-colors px-2 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Hồ sơ</span>
+</a>
+</nav>
+<!-- Floating Action Button -->
+<button class="fixed bottom-24 right-safe-margin w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-[0px_8px_24px_rgba(90,70,63,0.12)] active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined text-[28px]" data-icon="add">add</span>
+</button>
+<script>
+        function toggleFollow() {
+            const btn = document.getElementById('followBtn');
+            const isFollowing = btn.innerText === 'Đang theo dõi';
+            
+            if (isFollowing) {
+                btn.innerText = 'Theo dõi';
+                btn.classList.remove('bg-secondary-container', 'text-on-secondary-container');
+                btn.classList.add('bg-primary-container', 'text-on-primary-container');
+            } else {
+                btn.innerText = 'Đang theo dõi';
+                btn.classList.remove('bg-primary-container', 'text-on-primary-container');
+                btn.classList.add('bg-secondary-container', 'text-on-secondary-container');
+            }
+        }
+    </script>
+</body></html>
