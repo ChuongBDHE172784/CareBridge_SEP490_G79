@@ -59,19 +59,24 @@ class GeminiClient:
             ]
             for model_name in models_to_try:
                 try:
-                    response = self._client.models.embed_content(
-                        model=model_name,
-                        contents=text,
-                        config=types.EmbedContentConfig(
-                            output_dimensionality=GEMINI_SETTINGS.embedding_dimension
-                        ),
-                    )
+                    import asyncio
+
+                    def _call():
+                        return self._client.models.embed_content(
+                            model=model_name,
+                            contents=text,
+                            config=types.EmbedContentConfig(
+                                output_dimensionality=GEMINI_SETTINGS.embedding_dimension
+                            ),
+                        )
+
+                    response = await asyncio.wait_for(asyncio.to_thread(_call), timeout=GEMINI_SETTINGS.timeout_seconds)
                     if hasattr(response, "embeddings") and response.embeddings:
                         return response.embeddings[0].values
                     if hasattr(response, "embedding") and response.embedding:
                         return response.embedding.values
                 except Exception as e:
-                    logger.debug(f"Embedding model {model_name} failed ({e}), trying next fallback...")
+                    logger.debug(f"Embedding model {model_name} notice ({e}), trying next fallback...")
 
         # Fallback deterministic pseudo-embedding for testing without live API key
         return self._mock_embedding(text)
@@ -87,16 +92,21 @@ class GeminiClient:
             ]
             for model_name in models_to_try:
                 try:
+                    import asyncio
                     embeddings = []
                     for i in range(0, len(texts), 16):
                         batch = texts[i : i + 16]
-                        response = self._client.models.embed_content(
-                            model=model_name,
-                            contents=batch,
-                            config=types.EmbedContentConfig(
-                                output_dimensionality=GEMINI_SETTINGS.embedding_dimension
-                            ),
-                        )
+
+                        def _call_batch(b=batch):
+                            return self._client.models.embed_content(
+                                model=model_name,
+                                contents=b,
+                                config=types.EmbedContentConfig(
+                                    output_dimensionality=GEMINI_SETTINGS.embedding_dimension
+                                ),
+                            )
+
+                        response = await asyncio.wait_for(asyncio.to_thread(_call_batch), timeout=GEMINI_SETTINGS.timeout_seconds)
                         if hasattr(response, "embeddings") and response.embeddings:
                             embeddings.extend([e.values for e in response.embeddings])
                         elif hasattr(response, "embedding") and response.embedding:
@@ -104,7 +114,7 @@ class GeminiClient:
                     if len(embeddings) == len(texts):
                         return embeddings
                 except Exception as e:
-                    logger.debug(f"Batch embedding model {model_name} failed ({e}), trying next fallback...")
+                    logger.debug(f"Batch embedding model {model_name} notice ({e}), trying next fallback...")
 
         return [self._mock_embedding(t) for t in texts]
 
@@ -124,14 +134,19 @@ class GeminiClient:
 
             for model_name in models_to_try:
                 try:
-                    response = self._client.models.generate_content(
-                        model=model_name,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                            temperature=temp,
-                        ),
-                    )
+                    import asyncio
+
+                    def _call():
+                        return self._client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(
+                                system_instruction=system_instruction,
+                                temperature=temp,
+                            ),
+                        )
+
+                    response = await asyncio.wait_for(asyncio.to_thread(_call), timeout=GEMINI_SETTINGS.timeout_seconds)
                     if response and response.text:
                         return response.text.strip()
                 except Exception as e:

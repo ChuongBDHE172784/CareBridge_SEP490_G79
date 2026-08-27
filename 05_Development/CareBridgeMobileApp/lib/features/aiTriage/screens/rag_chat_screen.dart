@@ -554,42 +554,27 @@ class _RagChatScreenState extends State<RagChatScreen> {
       } catch (_) {}
     }
 
-    // 2. Fallback to Spring Boot /api/v1/rag/answer if Python service was unreachable
-    if (answerText.isEmpty) {
-      try {
-        final data = await apiPost('/api/v1/rag/answer', {'query': question});
-
-        final resData = (data is Map && data.containsKey('data'))
-            ? data['data']
-            : data;
-
-        if (resData is Map) {
-          answerText = resData['answer']?.toString() ?? '';
-          if (resData['sources'] is List) {
-            for (final s in resData['sources']) {
-              if (s is Map && s['title'] != null) {
-                sourcesList.add(s['title'].toString());
-              }
-            }
-          }
-        } else if (resData is String) {
-          answerText = resData;
-        }
-      } catch (_) {}
-    }
-
+    // 2. If Python RAG service is unreachable, return explicit connection error rather than ungrounded hallucination
     if (!mounted) return;
+
+    final String finalAnswer = answerText.isNotEmpty
+        ? answerText
+        : '⚠️ Không thể kết nối đến Máy chủ Cẩm nang Y tế CareBridge (RAG Service). '
+          'Để đảm bảo an toàn, AI không tự ý đưa ra tư vấn khi chưa kết nối được cơ sở dữ liệu cẩm nang y tế. '
+          'Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ trực tiếp Bác sĩ / Gọi cấp cứu 115 nếu cần hỗ trợ khẩn cấp!';
 
     setState(() {
       _messages.add(
         _Message(
-          text: answerText.isNotEmpty
-              ? answerText
-              : 'Chào bạn, hiện tại hệ thống AI đang kết nối lại với cơ sở dữ liệu y tế. Bạn vui lòng thử lại sau giây lát hoặc liên hệ trực tiếp Bác sĩ/Cơ sở y tế nếu cần hỗ trợ khẩn cấp nhé!',
+          text: finalAnswer,
           isUser: false,
           time: DateTime.now(),
           sources: sourcesList.take(3).toList(),
-          followups: followupsList.take(3).toList(),
+          followups: followupsList.isNotEmpty
+              ? followupsList.take(3).toList()
+              : (isWarning
+                  ? ['Gọi cấp cứu 115 ngay?', 'Bệnh viện phụ sản gần nhất?']
+                  : ['Dấu hiệu cảnh báo nguy hiểm trong thai kỳ?', 'Chế độ dinh dưỡng khoa học theo giai đoạn?']),
           isWarning: isWarning,
         ),
       );

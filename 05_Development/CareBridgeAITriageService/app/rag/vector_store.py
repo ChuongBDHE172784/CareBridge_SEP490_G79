@@ -361,7 +361,20 @@ class PgVectorStore:
                     if chunk.id not in candidates:
                         candidates[chunk.id] = (chunk, 0.0)
 
-            # 4. Compute Hybrid Re-ranking Score
+            # 4. Query Core Medical Keyword Matches
+            if clean_words:
+                kw_filters = [MaternalKnowledgeChunk.content.ilike(f"%{w}%") for w in clean_words[:6]]
+                stmt_kw = select(MaternalKnowledgeChunk).where(or_(*kw_filters)).limit(40)
+                if stage and stage != "ALL":
+                    stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
+                if topic:
+                    stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.topic == topic)
+                res_kw = await s.execute(stmt_kw)
+                for chunk in res_kw.scalars():
+                    if chunk.id not in candidates:
+                        candidates[chunk.id] = (chunk, 0.0)
+
+            # 5. Compute Hybrid Re-ranking Score
             scored = []
             for chunk_id, (chunk, vec_sim) in candidates.items():
                 content_lower = chunk.content.lower()
@@ -373,14 +386,15 @@ class PgVectorStore:
                 title_boost = 0.0
                 for p in key_phrases:
                     if p in title_lower:
-                        title_boost += 0.50
+                        title_boost += 0.40
 
                 content_phrase_boost = 0.0
                 for p in key_phrases:
                     if p in content_lower:
                         content_phrase_boost += 0.25
 
-                hybrid_score = (vec_sim * 0.35) + (kw_ratio * 0.20) + title_boost + content_phrase_boost
+                # Robust normalized hybrid score
+                hybrid_score = (max(vec_sim, 0.0) * 0.45) + (kw_ratio * 0.35) + title_boost + content_phrase_boost
                 scored.append((chunk, hybrid_score))
 
             scored.sort(key=lambda x: x[1], reverse=True)
@@ -401,7 +415,7 @@ class PgVectorStore:
                     "source": chunk.source,
                     "section": chunk.section,
                     "content": chunk.content,
-                    "similarity": h_score,
+                    "similarity": round(h_score, 4),
                 })
                 if len(results) >= top_k:
                     break

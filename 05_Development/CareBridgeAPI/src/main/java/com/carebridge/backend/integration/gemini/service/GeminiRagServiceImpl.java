@@ -55,6 +55,11 @@ public class GeminiRagServiceImpl implements RagService {
             return buildFallbackResponse();
         }
 
+        if (contextItems == null || contextItems.isEmpty()) {
+            log.info("RAG context is empty; returning safe fallback response without calling Gemini LLM.");
+            return buildFallbackResponse();
+        }
+
         String prompt = promptBuilder.buildSafetyConstrainedPrompt(
                 request.getQuery(), contextItems, context.promptStage());
 

@@ -99,7 +99,7 @@ def build_rag_chat_prompt(
 
 HÃY TRẢ LỜI:
 1. Trả lời cặn kẽ, ân cần, gắn kết logic với các câu hỏi trước đó trong đoạn hội thoại (nếu có).
-2. Trích dẫn rõ ràng cẩm nang / nguồn tham khảo (nếu có trong tài liệu trên).
+2. BẮT BUỘC TRÍCH DẪN NGUỒN CẨM NANG: Luôn mở đầu hoặc lồng ghép rõ ràng tên tài liệu/cẩm nang tham khảo được cung cấp ở trên (Ví dụ: "Theo Cẩm nang [Tên tài liệu] của [Nguồn]...") để mẹ/người thân an tâm về cơ sở khoa học chính thống.
 3. Đưa ra lời khuyên chăm sóc tại nhà khoa học (chế độ ăn, nghỉ ngơi, tư thế nằm, hỗ trợ gia đình...).
 4. Nêu rõ các dấu hiệu cảnh báo cần đưa mẹ đi khám Bác sĩ ngay nếu có chuyển biến xấu.
 5. QUY TẮC ĐỊNH DẠNG: Dùng văn bản tự nhiên, không bao giờ dùng ký hiệu công thức toán LaTeX như $\\ge, \\le, ^\\circ C. Hãy dùng ký hiệu phổ thông như >=, <=, ≥, ≤, °C.

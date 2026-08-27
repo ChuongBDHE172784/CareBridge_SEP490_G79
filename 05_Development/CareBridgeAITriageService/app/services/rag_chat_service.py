@@ -81,11 +81,28 @@ class RagChatService:
             if request.survey_profile:
                 survey_profile_summary = self._format_survey_profile(request.survey_profile)
 
-        # 4. Filter relevant chunks (threshold >= 0.35) and Build Grounded Prompt
+        # 4. Filter relevant chunks (threshold >= 0.20)
         valid_chunks = [
             c for c in retrieved_chunks
-            if c.get("similarity") is None or c.get("similarity", 0.0) >= 0.35
+            if c.get("similarity") is not None and c.get("similarity", 0.0) >= 0.20
         ]
+
+        # Strict RAG Grounding Gate: If no relevant knowledge chunks retrieved, BLOCK ungrounded LLM generation
+        if not valid_chunks:
+            logger.warning("No relevant grounded RAG context chunks found in database; blocking ungrounded LLM generation.")
+            fallback_followups = self._generate_fallback_followups(is_emergency=False, is_family=is_family)
+            return RagChatResponse(
+                answer=(
+                    "Hệ thống CareBridge AI Nurse hiện chưa tìm thấy tài liệu cẩm nang y tế chính thống phù hợp với nội dung câu hỏi này trong cơ sở dữ liệu. "
+                    "Để đảm bảo an toàn tuyệt đối, AI không tự ý đưa ra lời khuyên y khoa khi chưa có cẩm nang đối soát từ Bộ Y Tế / WHO. "
+                    "Mẹ/Gia đình vui lòng tham khảo trực tiếp ý kiến Bác sĩ chuyên khoa hoặc đặt lại câu hỏi cụ thể hơn về sức khỏe thai sản nhé!"
+                ),
+                has_critical_warning=False,
+                need_expert_consultation=True,
+                suggested_followups=fallback_followups,
+                sources=[],
+                disclaimer=MEDICAL_DISCLAIMER,
+            )
 
         history_dicts = [
             {"role": msg.role, "content": msg.content}
