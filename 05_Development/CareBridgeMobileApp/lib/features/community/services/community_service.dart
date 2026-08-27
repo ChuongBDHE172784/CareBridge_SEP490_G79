@@ -1,0 +1,213 @@
+import '../../../core/network/api_client.dart';
+import '../models/community_model.dart';
+
+typedef CommunityTopicFetcher =
+    Future<List<CommunityTopic>> Function({String? type});
+
+Future<List<CommunityTopic>> loadQuestionTopics(
+  CommunityTopicFetcher fetchTopics,
+) async {
+  final topics = await fetchTopics(type: 'TOPIC');
+  return topics.where((topic) => topic.type == 'TOPIC').toList(growable: false);
+}
+
+class CommunityService {
+  // Mutable so widget tests can swap in a fake subclass
+  static CommunityService instance = CommunityService();
+  CommunityService();
+
+  // [type] defaults to unset (all taxonomy kinds). Callers request only the
+  // taxonomy rows required by their question or verified-content flows.
+  Future<List<CommunityTopic>> getTopics({
+    String? keyword,
+    String? type,
+  }) async {
+    final params = <String, String>{};
+    if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
+    if (type != null && type.isNotEmpty) params['type'] = type;
+    final query = params.isEmpty
+        ? ''
+        : '?${params.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&')}';
+    final json = await apiGet('/api/v1/community/topics$query');
+    final list = json['data'] as List? ?? [];
+    return list
+        .map((e) => CommunityTopic.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<CommunityTopic>> getQuestionTopics() =>
+      loadQuestionTopics(({String? type}) => getTopics(type: type));
+
+  Future<List<CommunityFeedItem>> getFeed({
+    String? topicId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    final params = <String, String>{'page': '$page', 'size': '$size'};
+    if (topicId != null) params['topicId'] = topicId;
+    final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    final json = await apiGet('/api/v1/community/feed?$query');
+    final content = json['data'] as List? ?? [];
+    return content
+        .map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<CommunityFeedItem>> searchQuestions({
+    String? keyword,
+    String? stage,
+    String? topicId,
+    bool? hasExpertAnswer,
+    int page = 0,
+    int size = 20,
+  }) async {
+    final params = <String, String>{'page': '$page', 'size': '$size'};
+    if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
+    if (stage != null) params['stage'] = stage;
+    if (topicId != null) params['topicId'] = topicId;
+    if (hasExpertAnswer != null) params['hasExpertAnswer'] = '$hasExpertAnswer';
+    final query = params.entries
+        .map(
+          (e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+        )
+        .join('&');
+    final json = await apiGet('/api/v1/community/questions?$query');
+    final content = json['data'] as List? ?? [];
+    return content
+        .map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // UC-199: Get question detail with answers
+  Future<QuestionDetail> getQuestionDetail(String questionId) async {
+    final json = await apiGet('/api/v1/community/questions/$questionId');
+    return QuestionDetail.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  // UC-58: Toggle bookmark on a question
+  Future<BookmarkToggleResult> toggleBookmark(String questionId) async {
+    final json = await apiPost(
+      '/api/v1/community/questions/$questionId/bookmark',
+      {},
+    );
+    return BookmarkToggleResult.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  /// Private server-side bookmark list. Hidden/deleted/unapproved questions are
+  /// filtered by the backend before this client ever receives them.
+  Future<List<CommunityFeedItem>> getBookmarks({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final json = await apiGet(
+      '/api/v1/community/me/bookmarks?page=$page&size=$size',
+    );
+    final content = json['data'] as List? ?? [];
+    return content
+        .map((e) => CommunityFeedItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<MyCommunityQuestion>> getMyQuestions({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final json = await apiGet(
+      '/api/v1/community/questions/mine?page=$page&size=$size',
+    );
+    final content = json['data'] as List? ?? [];
+    return content
+        .map((e) => MyCommunityQuestion.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // Toggle like on a question
+  Future<QuestionLikeToggleResult> toggleQuestionLike(String questionId) async {
+    final json = await apiPost(
+      '/api/v1/community/questions/$questionId/like',
+      {},
+    );
+    return QuestionLikeToggleResult.fromJson(
+      json['data'] as Map<String, dynamic>,
+    );
+  }
+
+  // UC-59: Toggle like on an answer
+  Future<LikeToggleResult> toggleAnswerLike(String answerId) async {
+    final json = await apiPost('/api/v1/community/answers/$answerId/like', {});
+    return LikeToggleResult.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  // UC-55: Edit an existing question
+  Future<void> editQuestion(
+    String questionId, {
+    String? topicId,
+    String? title,
+    String? body,
+    List<String>? imageUrls,
+    String? stage,
+    int? pregnancyWeek,
+    int? babyAgeMonths,
+    bool? isAnonymous,
+    String? urgency,
+  }) async {
+    final request = <String, dynamic>{};
+    if (topicId != null) request['topicId'] = topicId;
+    if (title != null) request['title'] = title;
+    if (body != null) request['body'] = body;
+    if (imageUrls != null) request['imageUrls'] = imageUrls;
+    if (stage != null) request['stage'] = stage;
+    if (pregnancyWeek != null) request['pregnancyWeek'] = pregnancyWeek;
+    if (babyAgeMonths != null) request['babyAgeMonths'] = babyAgeMonths;
+    if (isAnonymous != null) request['isAnonymous'] = isAnonymous;
+    if (urgency != null) request['urgency'] = urgency;
+    await apiPatch('/api/v1/community/questions/$questionId', request);
+  }
+
+  // UC-170: Soft-delete own question
+  Future<void> deleteQuestion(String questionId) async {
+    await apiDelete('/api/v1/community/questions/$questionId');
+  }
+
+  // UC-200: Edit own answer — status resets to PENDING for re-moderation
+  Future<void> editAnswer(
+    String questionId,
+    String answerId, {
+    required String body,
+    required bool isPersonalExperience,
+    List<String>? imageUrls,
+  }) async {
+    await apiPatch(
+      '/api/v1/community/questions/$questionId/answers/$answerId',
+      {
+        'body': body,
+        'isPersonalExperience': isPersonalExperience,
+        'imageUrls': ?imageUrls,
+      },
+    );
+  }
+
+  // UC-201: Soft-delete own answer
+  Future<void> deleteAnswer(String questionId, String answerId) async {
+    await apiDelete(
+      '/api/v1/community/questions/$questionId/answers/$answerId',
+    );
+  }
+
+  // UC-55: Report unsafe community content or users.
+  Future<void> reportTarget({
+    required String targetType,
+    required String targetId,
+    required String category,
+    String? description,
+  }) async {
+    await apiPost('/api/v1/reports', {
+      'targetType': targetType,
+      'targetId': targetId,
+      'category': category,
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+    });
+  }
+}

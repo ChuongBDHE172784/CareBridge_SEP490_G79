@@ -1,0 +1,189 @@
+
+### Identity & Access Control
+ST-01-01 | Verify that a guest can register with an email, password and initial role, and that the system sends a 6-digit OTP, keeps the account disabled until verification, and rejects a duplicate email.
+ST-01-02 | Verify that entering the correct 6-digit OTP activates the account and signs the user in, while a wrong or expired code is rejected and resend stays limited to once per 60 seconds.
+ST-01-06 | Verify that a valid single-use reset token lets the user set a new password, invalidates the old password, and shows an expired-link message when the same link is opened a second time.
+ST-01-07 | Verify that an authenticated user can change their password with the correct current password, that all active sessions are invalidated afterwards, and that a wrong current or weak new password is rejected.
+ST-01-09 | Verify that a user can update their own profile fields and see the change persist after reload, while invalid data and edits to another user's profile are rejected.
+ST-01-10 | Verify that a user can update the community display name and avatar, that the new identity appears on their community content, and that the account email and phone are never exposed to other members.
+ST-01-12 | Verify that a user sees only their own notifications and that marking one or all as read clears the unread badge and remains read after reload.
+ST-01-14 | Verify that a user can deactivate their own account with password confirmation, that a later sign-in with the same credentials is refused, and that sessions on other devices are revoked.
+ST-01-15 | Verify that a user can grant another person scoped access to their own data and that the grantee can reach only the granted scope.
+ST-01-16 | Verify that a user can review their consent grants and revoke one, after which the grantee is immediately denied access to the previously shared data.
+ST-01-18 | Verify that an admin can view the security-event timeline, mark events reviewed and add notes that persist after reload, while a non-admin is denied access.
+ST-01-21 | Verify that repeated submits and retries create no duplicate account, session or record, and that an OTP email or SMS provider outage fails safely with no partial write and recovers on retry.
+ST-01-22 | Verify that when several web requests receive HTTP 401 at the same time the client refreshes the token only once and retries the remaining requests so every page loads without a new sign-in prompt.
+ST-01-23 | Verify that logging out on a mobile device deregisters only the signed-out account's device token, so the device stops receiving that account's notifications but still receives the next account's.
+
+### Mother Care Journey
+ST-02-07 | Verify that a Mother can add a postpartum recovery log entry with date, mood and note, and that the saved entry shows the same values in the list and in the detail view.
+ST-02-08 | Verify that a Mother can edit and delete a postpartum recovery log entry, with the edit reflected in list and detail, the deleted entry removed and other entries unchanged.
+ST-02-09 | Verify that a Mother can tick preparation checklist items and add a custom item, and that the ticked state, the progress count and the custom item persist after leaving and reopening the screen.
+ST-02-10 | Verify that the pregnancy exercise library lists only exercises allowed for the selected trimester and that an exercise detail shows its name, duration and instructions.
+ST-02-11 | Verify that the pre-exercise safety check blocks the session and advises contacting a health professional when a warning sign is reported, and allows the session to start when none is reported.
+ST-02-12 | Verify that a pregnancy exercise session runs its timer and shows posture feedback when camera access is granted, still runs without feedback when access is declined, and saves the completed session to history.
+ST-02-13 | Verify that completed exercise sessions are listed in exercise history with their date and duration and that a session detail shows the exercise performed and the result recorded at the end.
+
+### Baby Care & Vaccination
+ST-03-04 | Verify that the baby care overview shows the latest feeding, the latest sleep and the latest growth measurement, each matching the newest entry of that type.
+ST-03-17 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate baby records or notifications, leave no half-written state and recover once the dependency is restored.
+ST-03-18 | Verify that regenerating the vaccination book concurrently and again after a refresh keeps exactly one record per dose, preserves completed and postponed doses without reset or duplication, and rolls back the transaction on error.
+ST-03-19 | Verify that a feeding, sleep, diaper, growth and milestone entry recorded for the same baby on the same day appear consistently on the overview, the timeline and the daily summary, and that an edit and a delete are reflected identically on all three screens.
+
+### Community & Moderation
+ST-04-05 | Verify that a signed-in user can post an answer to a community question and that the answer appears with author name and time while the question's answer count increases by one.
+ST-04-06 | Verify that a user can edit and delete their own community answer, with the edited text shown, the answer count decreased after deletion and other answers unchanged.
+ST-04-07 | Verify that tapping the helpful reaction on a community answer increases the count and marks the control as selected, and that tapping again restores both to their previous state.
+ST-04-10 | Verify that a user can report another member's community post with a reason, receives a confirmation, and is not offered the report action again for the same post.
+ST-04-12 | Verify that a Moderator can hide a reported post with a reason so it disappears from the public community list and the action, moderator and reason are recorded, and that restoring it makes the post visible again.
+ST-04-13 | Verify that a Moderator can resolve a report by removing the content with a reason, so the item leaves the pending queue as resolved and the content is no longer visible to ordinary users.
+ST-04-17 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate community records or notifications, leave no half-written state and recover once the dependency is restored.
+ST-04-18 | Verify that the AI moderation worker records exactly one assessment per target, content, policy and model version despite duplicate cycles, does not auto-publish on an AI timeout, and lets a moderator's manual decision take precedence.
+ST-04-19 | Verify that rapid like and bookmark toggling settles on the correct final state with a non-negative count and that feed pagination during concurrent posting shows no duplicate or hidden items and converges after a refresh.
+
+### Expert Network
+ST-05-01 | Verify that a non-expert user can submit an expert profile with specialty, workplace and years of experience, that its status shows as pending verification, and that expert-only areas stay unavailable while pending.
+ST-05-02 | Verify that an expert can update their biography and specialty and that the change appears on both the profile and the public expert directory.
+ST-05-03 | Verify that an expert can upload a verification document and replace it with a newer file, so only the newer file is listed and the status returns to pending review.
+ST-05-04 | Verify that an expert can view their verification status with the reviewer's required corrections and any expiry date, and that resubmission is offered only when the status allows it and returns the status to pending review.
+ST-05-05 | Verify that a verified expert can add a weekly availability slot and select the services offered, and that an ordinary user sees that slot as bookable together with the selected services.
+ST-05-06 | Verify that the expert directory lists only verified experts and that filtering by specialty returns only experts carrying that specialty.
+ST-05-07 | Verify that a verified expert's public profile shows the name, specialty, workplace, verified badge and availability while never exposing the documents submitted for verification.
+ST-05-08 | Verify that a verified expert sees questions matching their specialty in the question queue with posting times and that the unanswered filter lists only questions with no answer.
+ST-05-09 | Verify that an answer posted by a verified expert carries the verified expert badge for ordinary users while answers from ordinary users do not.
+ST-05-10 | Verify that an expert who has answered questions can view their contribution points total and earned badges with an activity list explaining what each award was given for.
+ST-05-11 | Verify that a System Admin can review a pending expert verification submission with its attached document and approve it, so the expert becomes verified and appears in the public directory with the badge.
+ST-05-12 | Verify that a System Admin can suspend a verified expert with a reason so the expert leaves the public directory and loses access to expert-only areas, and that reinstating restores the directory listing.
+ST-05-13 | Verify that an expert can view only the public part of another expert's profile, is not offered edit controls, and is refused when opening the edit address directly, leaving the owner's profile unchanged.
+ST-05-14 | Validate that Expert Network data entry rejects empty, malformed, out-of-range and oversized input consistently on client and server with a clear refusal message and no partial record creation, while accepting valid boundary values.
+ST-05-15 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate Expert Network records or notifications, leave no half-written state and recover once the dependency is restored.
+ST-05-16 | Verify that credential uploads accept only valid file types and sizes after a server-side content check, reject spoofed extensions and empty, oversized or corrupted files without leaving orphaned blobs, and keep private files visible only to the owner and the 
+ST-05-17 | Verify that a consultation request repeated with the same idempotency key and payload returns the same result, that a different payload under the same key is rejected as a conflict, and that an accept racing the expiry job leaves exactly one final state with a
+
+### AI Nurse & Risk Triage
+ST-06-02 | Verify that mild answers produce a low-risk result with self-care advice while serious answers produce a higher-risk result advising professional care, and that both cite the sources the advice is based on.
+ST-06-03 | Verify that answers describing an emergency symptom produce a red result instructing the user to seek immediate care and that emergency support opens the nearby facilities and the emergency contacts.
+ST-06-04 | Verify that a Content Admin can add an approved AI knowledge source and deactivate an existing one, so the new source appears in the approved list and the inactive source is no longer cited on triage results.
+ST-06-05 | Verify that a Content Admin can change a red-flag risk threshold and that a symptom check with answers around that threshold reflects the new rule in its triage result.
+ST-06-06 | Verify that a Mother cannot open another Mother's triage result by its direct address, receiving a not-found or not-permitted response with no answers or advice exposed.
+ST-06-07 | Validate that the AI Nurse and Risk Triage intake rejects empty, whitespace, wrong-type, invalid-date, out-of-range and oversized input with a clear refusal message and no partial record, while handling valid boundary values correctly.
+ST-06-08 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate triage records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-06-09 | Verify that accepting the same disclaimer version sequentially and in parallel records exactly one consent without duplicate audit entries, that a new version requires re-acceptance before triage, and that consent is never inherited by another user.
+ST-06-10 | Verify that a triage intake repeated with the same idempotency key and payload returns the same session and result, that a different payload under the same key is rejected as a conflict, and that an AI timeout creates no second session while red-flag escalatio
+
+### Emergency Map
+ST-07-01 | Verify that the Emergency Map opens centred on the current location when location access is granted and explains that nearby results require it when access is declined.
+ST-07-02 | Verify that a nearby search for hospitals lists facilities with their distance from the current location, nearest first, and that changing the radius changes the number of results.
+ST-07-03 | Verify that selecting a nearby facility shows its route and estimated travel time on the map and that the call action opens the dialler with the facility's number.
+ST-07-04 | Verify that a time-limited location share lets a family member see the location and the remaining time while the share is active and hides the location once the duration expires.
+ST-07-05 | Verify that a Mother can create a nearby support request that appears as open with its creation time and that cancelling it marks it cancelled and stops offering it to experts.
+ST-07-06 | Verify that a verified expert with nearby availability enabled sees incoming support requests and can respond so the mother is notified, and that turning availability off removes further requests from the list.
+ST-07-07 | Verify that a Mother cannot open another Mother's saved emergency location by its direct address, receiving a not-found or not-permitted response with no location exposed on the map or in the list.
+ST-07-08 | Validate that Emergency Map input rejects empty, whitespace, wrong-type, invalid-date, out-of-range and oversized values with a clear refusal message and no partial record, while handling valid boundary values correctly.
+ST-07-09 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate Emergency Map records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-07-10 | Verify that the emergency alert retry job does not resend to recipients already delivered, retries only failed recipients until each receives exactly one alert, records the correct delivery status, and never reveals the location outside the care group.
+ST-07-11 | Verify that the emergency map handles denied location permission, approximate location and GPS loss without crashing, explains the permission, allows a safe manual location choice, restores facilities and routes after permission is re-granted, and requires an 
+
+### Health Records
+ST-08-01 | Verify that a Mother can add a health record with title, date, note and photo attachment and that the record appears in the timeline at that date with a viewable attachment.
+ST-08-02 | Verify that editing a health record's title and date updates the record and moves it to the new date position in the timeline.
+ST-08-03 | Verify that a user-entered health record can be archived and then deleted from the archived view, while records entered by a clinic are not offered a delete control.
+ST-08-04 | Verify that the health record timeline orders records by date with the most recent first and that a record detail shows its title, date, note, source label and attachments.
+ST-08-05 | Verify that generating a health summary for a selected date range lists only records inside that range and marks each entry as user-entered or imported.
+ST-08-06 | Verify that sharing a health summary with a family member for a set duration lets that member open it while the share is active and shows a no-longer-available message after the owner revokes it.
+ST-08-07 | Verify that a Mother cannot open another Mother's health record by its direct address, receiving a not-found or not-permitted response with no measurement, note or attachment exposed.
+ST-08-08 | Validate that Health Records input rejects empty, whitespace, wrong-type, invalid-date, out-of-range and oversized values with a clear refusal message and no partial record, while handling valid boundary values correctly.
+ST-08-09 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate health records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-08-10 | Verify that health record attachments accept a valid image and PDF, refuse a renamed executable, an empty file and an oversized file with a message naming the reason, and stay inaccessible to a family member without consent or to an unrelated account.
+ST-08-11 | Verify that archiving a health record twice, sequentially and concurrently, leaves a single archived state with a no-op second call, creates no duplicate audit entries, labels the record correctly in every view and blocks other users from archiving or editing 
+
+### Reminders & Care Plan
+ST-09-05 | Verify that the Today screen lists an appointment reminder, a medicine reminder and a family-assigned care task in time order and that completing one moves it to the completed section and keeps it there after a refresh.
+ST-09-08 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate reminders or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-09-09 | Verify that the reminder scheduler delivers each recurring occurrence exactly once across date boundaries, planner restarts, daylight-saving changes and device time-zone changes, shows the correct local time on the Today screen, and allows safe retry of delive
+ST-09-10 | Verify that a triage result advising follow-up creates exactly one follow-up reminder, that repeating the same symptom check creates no duplicate, and that the completed reminder stays completed.
+
+### Family Sync
+ST-10-04 | Verify that a care group owner can change a member's role and remove a member, so the list shows the new role and the removed member can no longer open the group's data.
+ST-10-05 | Verify that turning off a member's health-records permission is shown in the permission list and causes that member to receive a not-permitted message instead of the records.
+ST-10-06 | Verify that a Mother can create, edit and cancel a family care task, so the assigned member sees the task and the edit and the cancelled task leaves the pending list marked cancelled.
+ST-10-07 | Verify that an assigned family member can move a task to in progress and then to done, and that the owner sees the latest status together with who changed it.
+ST-10-08 | Verify that the shared care calendar shows a family member only the items they are permitted to see and that opening an alert shows its time and content.
+ST-10-11 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate Family Sync records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-10-12 | Verify that revoking a family member's permission takes effect immediately, so new requests are refused, cached sensitive data stops rendering after refresh or resume, the member can no longer create notes or tasks, and previously created data keeps its proven
+ST-10-13 | Verify that simultaneous updates by a mother and a family member lose no valid change, resolve conflicts by a clear rule, and converge the dashboard, Today screen and history to the same state and actor provenance without duplicate items after reconnect and re
+
+### Content & Checklist
+ST-11-01 | Verify that the content library lists only published items for a Mother and that stage filtering and keyword search narrow the list to matching items.
+ST-11-02 | Verify that a content item detail shows its title, body and cited sources and that draft or unpublished versions are not reachable from the library.
+ST-11-10 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate content records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-11-11 | Verify that only an approved content version becomes public, that a scan result for one version is never applied to a newer version, that unpublishing twice is idempotent, and that version history records every actor and time.
+ST-11-12 | Verify that the image cleanup job deletes only expired orphaned uploads while keeping draft images within their grace period and images referenced by published content readable, and that rerunning the job is safe and logged.
+
+### Expense Planner
+ST-12-06 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate expense records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-12-08 | Verify that near-simultaneous expense edits by a mother and a family member lose no update, apply a clear conflict rule, leave the summary matching the last accepted write with correct actor provenance, and block requests made after the member's access is revo
+
+### Connected Device Data
+ST-13-01 | Verify that a Mother can connect a health platform through its authorisation flow so it is listed as connected with the connection time, and that cancelling the authorisation leaves it not connected.
+ST-13-02 | Verify that syncing a connected platform imports observations with their dates, labels each as imported rather than user-entered, and creates no duplicates when the sync is repeated.
+ST-13-03 | Verify that the device data trend chart plots imported values for the selected measure and period and marks observations flagged as low quality.
+ST-13-04 | Verify that disconnecting a platform and deleting its imported data removes those observations from both the list and the chart while leaving user-entered records untouched.
+ST-13-05 | Verify that an account without permission cannot view, change or remove another user's connected device data, receiving a safe not-permitted response while the owner's data stays unchanged and the attempt is audited.
+ST-13-06 | Validate that Connected Device Data input rejects empty, whitespace, wrong-type, invalid-date, out-of-range and oversized values with a clear refusal message and no partial record, while handling valid boundary values correctly.
+ST-13-07 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate device records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-13-08 | Verify that repeated and overlapping imports deduplicate samples by source and timestamp without merging different sources, order and aggregate them correctly, retain device, source and import provenance on every record, and never expose the raw payload.
+ST-13-09 | Verify that revoking consent or disconnecting a platform stops new imports immediately, disables the session credentials, prevents background sync from resuming after a restart, retains historical data under policy and records the revocation point in the audit
+
+### Safety Monitoring
+ST-14-01 | Verify that a Mother can add an emergency contact marked as primary and delete another contact, with both changes reflected in the contact list.
+ST-14-02 | Verify that changing the smart activity monitoring sensitivity and countdown length is saved and that a safety check uses the configured countdown.
+ST-14-03 | Verify that enabling smart activity monitoring with the sensor and notification permissions granted shows monitoring as active and that declining a required permission leaves it off with an explanation of which permission is needed.
+ST-14-04 | Verify that disabling smart activity monitoring shows it as off, keeps it off after reopening the settings, and raises no further safety checks.
+ST-14-05 | Verify that a simulated fall starts the safety countdown at the configured length, that choosing I am OK closes it and records a false alarm, and that letting the countdown run out sends an alert to the emergency contacts.
+ST-14-06 | Verify that safety event history lists events with their date, time and outcome and that reporting an event as a false positive marks it as such in the list.
+ST-14-07 | Verify that an account without permission cannot view, change or remove another user's safety monitoring data, receiving a safe not-permitted response while the owner's data stays unchanged and the attempt is audited.
+ST-14-08 | Validate that Safety Monitoring input rejects empty, whitespace, wrong-type, invalid-date, out-of-range and oversized values with a clear refusal message and no partial record, while handling valid boundary values correctly.
+ST-14-09 | Verify that duplicate submissions, retries after a timeout and a blocked dependency produce no duplicate safety records or notifications, leave no ambiguous state and recover once the dependency is restored.
+ST-14-10 | Verify that a fall countdown cancelled at the same moment the countdown job fires ends in exactly one final state of cancelled or alerted, sends at most one notification, and leaves the interface and the audit history consistent with that outcome.
+ST-14-11 | Verify that the sensor self-test reports monitoring as unavailable rather than active when the motion permission is denied or the sensor is missing, names the fault and its correction, avoids continuous raw sensor upload, and raises no false fall from stale da
+
+### Cross-role Workflows
+ST-15-01 | Verify that a Mother can invite a family member to a care group and grant only task visibility, so the member sees the group and its tasks but is refused health and expense data both in the interface and by direct request.
+ST-15-02 | Verify that revoking a family member's access while they have shared data open blocks new requests immediately, stops cached data from rendering, prevents further writes and preserves the existing history and audit trail.
+ST-15-03 | Verify that a Mother's advice request accepted by an expert opens one shared consultation for both sides with participant-only access, private attachments, a converged call state and no further access once the context is revoked.
+ST-15-04 | Verify that a red-flag triage result escalates to emergency guidance and the map without stating a diagnosis, shares context with an expert only under consent, and blocks the expert once the consent is revoked, with every step audited.
+ST-15-05 | Verify that an expert applicant cannot use restricted functions before approval, receives a rejection reason visible only to the expert and the admin, can resubmit a corrected version, and gains the expert role and workspace once approved, with all decisions a
+ST-15-06 | Verify that content created by a Content Admin becomes visible to a Mother only after admin approval, that an existing assignment keeps its snapshot, and that unpublishing removes the item from discovery and client cache with a complete history.
+ST-15-07 | Verify that a reported community post moves through the moderator queue to an enforcement action and, in serious cases, escalation to a System Admin, with correct visibility and notifications for the reporter and the author and no internal data exposed.
+ST-15-08 | Verify that an uncancelled fall alert reaches each care-group recipient exactly once with a deep link that opens the correct event under permission, that an acknowledgement synchronises to all parties, and that a later false-positive report preserves the event
+ST-15-09 | Verify that a shared baby vaccination task creates a linked reminder, that completion by a family member records the correct actor, that finishing only the reminder does not mark the dose as given, and that both dashboards converge.
+ST-15-10 | Verify that a health record attachment shared under consent is viewable by the grantee only while the consent is active, that the previous link or identifier stops working after revocation, and that grant, view and revoke are all audited.
+ST-15-11 | Verify that suspending or deactivating an account with live web and mobile sessions rejects the existing sessions and refresh attempts, blocks protected routes, stops chat and push delivery, deletes no data outside policy and records a complete audit.
+ST-15-12 | Verify that simultaneous updates from three clients lose no change and create no duplicate, surface conflicts under a stated rule, and converge every client on the same server state after a client reconnects.
+
+### Privacy & Consent
+ST-16-02 | Verify that substituting another user's or a non-existent identifier in a path, query or body cannot read, change or delete a record, that nested resources check their parent's ownership, and that responses do not reveal whether the record exists.
+ST-16-03 | Verify that a narrowly scoped, time-limited consent grants access only within its scope, that revocation or expiry blocks requests already in flight and all later ones, that scope is never implicitly widened, and that state changes record actor, time and versi
+ST-16-05 | Verify that private file upload and download validate content and size, sanitise the file name, prevent active content from executing in the application origin, enforce the private access list, honour revocation, and allow no path traversal or orphaned blob.
+ST-16-06 | Verify that a member's public community identity does not let a stranger infer pregnancy, baby, health, contact or internal identifiers, that a moderator sees only the data required to act, and that administrative access is audited.
+ST-16-07 | Verify that lock-screen notifications carry the minimum payload without sensitive detail, that a deep link still requires authentication and permission, that a previous account's notifications are not accepted after switching, and that sensitive text is not wr
+ST-16-09 | Verify that deactivating an account makes it inaccessible, applies the retention policy to public and private data, keeps only the minimum legally required records, exposes no orphaned personal data, and produces a verifiable result.
+ST-16-12 | Verify that consent for triage, expert sharing and device data is bound to the user, purpose and version, that a second account on the same device must give its own consent, that a new policy version requires re-acceptance, and that revoking one purpose does n
+
+### Resilience & Non-functional
+ST-17-02 | Verify that frontend navigation timings and warm and cold API response times are measured and recorded with percentiles and error rate, with no timeouts or server errors, pending a product-owner service-level objective before a pass can be declared.
+ST-17-03 | Verify that a ramped concurrent-load baseline on staging records throughput, latency percentiles, error rate and resource use without data errors, authentication anomalies or server-error spikes, and that the system recovers after the load.
+ST-17-04 | Verify that paging through a large seeded dataset bounds the page size, never loads the whole set, loses or repeats no record when a row is inserted mid-paging, keeps the interface responsive and does not degrade query cost linearly.
+ST-17-05 | Verify that cross-origin requests from the production site receive the correct allow-origin, method and header responses, that unknown, null and insecure origins are blocked, that no wildcard is combined with credentials, and that the backend still authenticat
+ST-17-07 | Verify that the mobile app handles throttled and lossy networks, going offline mid-action, switching networks and resuming from the background without double submission, corrupted drafts or false success messages, and that retry restores the correct state.
+ST-17-08 | Verify that an AI service timeout, rate limit, error or malformed response leaves the interface responsive, fabricates no diagnosis, still escalates red flags by rule, provides a safe fallback and retry, creates no duplicate session and keeps personal data out
+ST-17-09 | Verify that a map or location dependency failure does not crash the app, states that the map is unavailable, offers an emergency call and manual location entry, draws no fabricated route, and restores normal behaviour on retry.
+ST-17-10 | Verify that an object storage timeout or partial upload leaves no metadata pointing at a missing blob and no long-lived orphan, that retry is safe, that checksum and type are correct on download, and that errors reveal no provider credentials.
+ST-17-11 | Verify that a notification provider outage keeps the domain transaction valid, retries the outbox with backoff so each event delivers exactly one notification, preserves safety-alert priority, and does not let a poison item block the queue.
+ST-17-12 | Verify that a call survives network loss, backgrounding, denied microphone or camera, remote hang-up and ring timeout with both sides converging on the same state, no ghost active call, clear permission errors and no room credentials in the logs.
+ST-17-13 | Verify that an exception raised part-way through a multi-step write leaves no state that violates the contract, that the transaction rolls back or compensates clearly, that retry produces a single outcome, and that database constraints preserve integrity.
+ST-17-14 | Verify that a database migration applied to a restored snapshot runs once without unplanned data change, that the application stays healthy across two container restarts with a clean schema history, and that the documented rollback path is reproducible.
+ST-17-15 | Verify that readiness does not accept traffic before dependencies are available, that the health endpoint reflects dependency state as designed, that an in-flight request is not silently lost during a restart, and that the service recovers without a restart lo
+ST-17-16 | Verify that a single request flowing through web, gateway, API, AI and background jobs can be reconstructed from correlation identifiers, that logs record pseudonymous actor, status and duration without secrets or personal data, and that jobs link back to thei
+ST-17-18 | Verify that the priority smoke flows work on the supported desktop browsers and on a supported Android and iOS device across orientation, enlarged font scale, on-screen keyboard and back navigation, with results recorded per device and version.

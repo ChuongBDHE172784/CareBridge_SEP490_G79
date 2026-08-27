@@ -1,0 +1,13 @@
+[
+  {"name":"breathing_distress","symptoms":["difficulty_breathing"],"expectedRule":"RED_BREATHING_DISTRESS"},
+  {"name":"seizure","symptoms":["seizure"],"expectedRule":"RED_SEIZURE"},
+  {"name":"lethargy","symptoms":["lethargy"],"expectedRule":"RED_LETHARGY"},
+  {"name":"poor_feeding","symptoms":["poor_feeding"],"expectedRule":"RED_POOR_FEEDING"},
+  {"name":"diarrhea_dehydration","symptoms":["diarrhea","mild_dehydration"],"expectedRule":"RED_DIARRHEA_DEHYDRATION"},
+  {"name":"severe_dehydration","symptoms":["severe_dehydration"],"expectedRule":"RED_SEVERE_DEHYDRATION"},
+  {"name":"persistent_vomiting","symptoms":["persistent_vomiting"],"expectedRule":"RED_PERSISTENT_VOMITING"},
+  {"name":"rash_high_fever","childAgeMonths":12,"temperatureC":39.0,"symptoms":["rash","high_fever"],"expectedRule":"RED_RASH_HIGH_FEVER"},
+  {"name":"infant_fever_under_3_months","childAgeMonths":2,"temperatureC":38.0,"symptoms":["fever"],"expectedRule":"RED_INFANT_FEVER_UNDER_3_MONTHS"},
+  {"name":"high_fever","childAgeMonths":12,"temperatureC":39.0,"symptoms":["high_fever"],"expectedRule":"RED_HIGH_FEVER"},
+  {"name":"high_fever_from_text_no_temperature","childAgeMonths":12,"symptoms":["high_fever"],"expectedRule":"RED_HIGH_FEVER"}
+]

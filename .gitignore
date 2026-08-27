@@ -13,8 +13,16 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+# Firebase CLI local artifacts — .firebaserc identifies a specific project, never commit
+# the real one; 05_Development/Firebase/.firebaserc.example is the template to copy from.
+05_Development/Firebase/.firebaserc
+05_Development/Firebase/.firebase/
+firebase-debug.log
+database-debug.log
+!05_Development/CareBridgeWebApp/.env.emulator
 *.local
 *.secret
+carebridge-*.json
 
 # Logs and temporary files
 *.log
@@ -27,9 +35,23 @@ temp/
 
 # Python
 __pycache__/
+
+# Dart/Flutter local app data & cache
+.dart_localappdata/
+.dart-localappdata/
+.dart_tool/
+.dart-tool/
+.flutter_appdata/
+.flutter-appdata/
+.flutter_localappdata/
+.flutter-localappdata/
+.pub-cache/
+.pub_cache/
+.codex_flutter_cache/
 *.py[cod]
 *$py.class
 .pytest_cache/
+05_Development/CareBridgeAITriageService/.pytest-tmp-*/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -52,6 +74,8 @@ pnpm-debug.log*
 
 # Java, Gradle, and mobile builds
 .gradle/
+.m2/
+.m2-local/
 target/
 out/
 *.class
@@ -65,17 +89,52 @@ out/
 .agents/
 .claude/
 .github/agents/
+bmad-output/
 _bmad/
 _bmad-output/
+_bmad-output/implementation-artifacts
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+QODER.md
+.gemini/
+.kiro/
+.qoder/
+.cursorrules
+.windsurfrules
+.opencode.json
+.serena/
+.venv-headroom/
+.codex/
+.omc/
+.omc
+.workbuddy-ai/
+outputs/
+
+# Local Claude skills (untracked - keep local only)
+.claude/skills/ui-skill-system/
+.agent/skills/ui-skill-system/
+.agents/skills/ui-skill-system/
+
+# Note: ui-skill-system is intentionally NOT tracked - keep it local
 
 # Local helper scripts and one-off tools
 scripts/
 tools/
+!05_Development/CareBridgeWebApp/scripts/
+!05_Development/CareBridgeWebApp/scripts/run-federated-emulator-e2e.ps1
+!05_Development/CareBridgeAITriageService/scripts/
+!05_Development/CareBridgeAITriageService/scripts/test_gemini_connection.py
+!06_Testing/CareBridgeAIEvaluation/scripts/
+!06_Testing/CareBridgeAIEvaluation/scripts/*.py
 
 # Generated document artifacts
 ~$*
 *.docx.tmp
 *.pdf.tmp
+docs/IMU/
+docs/Present/
+docs/Report6/
 
 # Machine learning datasets and generated models
 03_MachineLearning/Dataset/*
@@ -92,3 +151,66 @@ tools/
 
 # Keep empty project structure markers
 !.gitkeep
+# Added by code-review-graph
+.code-review-graph/
+.gitnexus/
+.mcp.json
+.github/code-review-graph.instruction.md
+.pytest_cache/
+.venv/
+.vscode/
+!.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/java-compiler-settings.prefs
+.codex_tmp/
+code-review-graph/
+
+# Local workbuddy memory and generated review artifacts
+.workbuddy-ai/memory/2026-07-28.md
+.workbuddy-ai/memory/2026-07-29.md
+.workbuddy-ai/memory/2026-07-30.md
+.workbuddy-ai/memory/2026-07-31.md
+outputs/admin-role-stage-task-flow-audit-2026-07-28.md
+outputs/carebridge-runtime-screen.png
+outputs/exercise-old-baseline-progress-audit-2026-07-28.md
+outputs/maternal-health-metric-release-verification-2026-07-31.md
+outputs/maternal-health-metric-review-2026-07-30.md
+outputs/maternal-health-metric-target-business-flow-2026-07-30.md
+outputs/notification-status-audit-2026-07-29.md
+
+CLAUDE.md
+
+# External cloned repositories
+Exercise-Correction/
+.gitnexus
+
+# System-test screenshots. Kept on the tester's machine on purpose: they are
+# evidence attached to the Report5.3 sheet, not source, and some frames show
+# real account data from production.
+06_Testing/SystemTesting/evidence/
+# Dedicated Edge profile for System Test automation - holds a live Google session
+.browser-profiles/
+.mcp.json.bak
+# Rendered standalone compose files. These are produced from templates on the
+# server and carry live credentials - database password, Zego secret, API keys.
+# They were untracked deliberately in a92f502a4 and a later merge put them back,
+# so they are named here to stop that happening a third time.
+05_Development/Deployment/carebridge-*.standalone.yml
+carebridge-*.standalone.yml
+
+# Tài liệu nguồn cho RAG và các sơ đồ luồng nghiệp vụ soạn tại máy. Chỉ dùng để
+# tra cứu khi làm việc, không thuộc sản phẩm giao. tailieuRAG/ nặng ~3.3 GB nên
+# một lần `git add .` vô ý là đủ làm repo phình ra không gỡ lại được.
+tailieuRAG/
+tailieuRAG.zip
+docs/README-luong-nghiep-vu.md
+docs/expert-consultation-call-flow.md
+docs/expert-onboarding-web-flow.md
+docs/expert-register-web-flow.md
+docs/expert-verification-flow.md
+docs/trackasia-map-flow.md
+
+# Tai lieu RAG (6.2GB) - khong bao gio dua vao git
+tailieuRAG/
+tailieuRAG.zip

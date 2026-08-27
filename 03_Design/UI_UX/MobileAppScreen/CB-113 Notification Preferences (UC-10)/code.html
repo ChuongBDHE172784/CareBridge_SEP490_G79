@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cài đặt thông báo - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#51271b",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#271812",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-bright": "#fff8f6",
+                        "on-primary-fixed": "#341006",
+                        "background": "#fff8f6",
+                        "surface-variant": "#fadcd3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-secondary-fixed": "#271812",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#36322e",
+                        "tertiary": "#625d59",
+                        "secondary-container": "#f6dacf",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "outline": "#84736f",
+                        "on-background": "#271812",
+                        "surface": "#fff8f6",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "secondary": "#6e5a52",
+                        "primary": "#845143",
+                        "outline-variant": "#d6c2bd",
+                        "on-secondary-container": "#735e56",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#fadcd3",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#845143",
+                        "secondary-fixed": "#f8ddd2",
+                        "surface-dim": "#f1d4ca",
+                        "surface-container-high": "#ffe2d9",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "surface-container-low": "#fff1ec",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "on-surface-variant": "#524440",
+                        "primary-container": "#c98c7b",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "tertiary-fixed": "#e9e1db",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "inverse-surface": "#3e2c26",
+                        "surface-container": "#ffe9e3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "safe-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "button": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "label-md": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        
+        /* Custom Toggle Switch Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #C98C7B;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #C98C7B;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+        .toggle-label {
+            width: 44px;
+            height: 24px;
+            background-color: #d6c2bd;
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .toggle-label:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s ease-in-out;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        /* Disabled/Essential Toggle */
+        .toggle-checkbox:disabled + .toggle-label {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background-color: #C98C7B;
+        }
+        .toggle-checkbox:disabled + .toggle-label:after {
+            transform: translateX(100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-stack-lg">
+<!-- Top App Bar (Custom for sub-page with Back button) -->
+<header class="sticky top-0 z-40 bg-background/80 backdrop-blur-md flex justify-between items-center px-safe-margin h-touch-target-min w-full">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Cài đặt thông báo</h1>
+<div class="w-10 h-10"></div> <!-- Spacer for center alignment -->
+</header>
+<main class="px-safe-margin mt-stack-md flex flex-col gap-stack-lg">
+<!-- Kênh nhận thông báo Section -->
+<section>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-stack-sm">Kênh nhận thông báo</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-md">Chọn cách bạn muốn CareBridge liên hệ với bạn.</p>
+<div class="bg-surface shadow-[0px_4px_20px_rgba(90,70,63,0.06)] rounded-lg p-5 flex flex-col gap-4">
+<!-- Push Notification -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+</div>
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Thông báo đẩy (Push)</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Trực tiếp trên thiết bị</p>
+</div>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle_push" name="toggle_push" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant" for="toggle_push"></label>
+</div>
+</div>
+<div class="h-px bg-surface-variant w-full"></div>
+<!-- Email -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</div>
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Email</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Bản tin và báo cáo chi tiết</p>
+</div>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle_email" name="toggle_email" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant" for="toggle_email"></label>
+</div>
+</div>
+<div class="h-px bg-surface-variant w-full"></div>
+<!-- SMS -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="sms">sms</span>
+</div>
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Tin nhắn SMS</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Mã xác thực và cảnh báo khẩn</p>
+</div>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle_sms" name="toggle_sms" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant" for="toggle_sms"></label>
+</div>
+</div>
+</div>
+</section>
+<!-- Loại thông báo Section -->
+<section>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-stack-sm">Loại thông báo</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-md">Quản lý những gì bạn muốn nhận thông báo.</p>
+<div class="bg-surface shadow-[0px_4px_20px_rgba(90,70,63,0.06)] rounded-lg p-5 flex flex-col gap-4">
+<!-- Lịch hẹn -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Lịch hẹn &amp; Nhắc nhở</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Lịch khám, tiêm phòng, lịch uống thuốc</p>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle_appointments" name="toggle_appointments" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant" for="toggle_appointments"></label>
+</div>
+</div>
+<div class="h-px bg-surface-variant w-full"></div>
+<!-- Cộng đồng -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Cộng đồng &amp; Tương tác</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Bình luận, lượt thích, tin nhắn mới</p>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle_community" name="toggle_community" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant" for="toggle_community"></label>
+</div>
+</div>
+<div class="h-px bg-surface-variant w-full"></div>
+<!-- Ưu đãi -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Khuyến mãi &amp; Ưu đãi</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Chương trình đối tác, quà tặng</p>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle_promos" name="toggle_promos" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant" for="toggle_promos"></label>
+</div>
+</div>
+<div class="h-px bg-surface-variant w-full"></div>
+<!-- Hệ thống & An toàn (Essential) -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium flex items-center gap-2">
+                            Hệ thống &amp; An toàn 
+                            <span class="material-symbols-outlined text-primary text-sm" data-icon="shield">shield</span>
+</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Cập nhật quan trọng, bảo mật tài khoản</p>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-not-allowed z-10 opacity-0" disabled="" id="toggle_system" name="toggle_system" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant" for="toggle_system"></label>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>

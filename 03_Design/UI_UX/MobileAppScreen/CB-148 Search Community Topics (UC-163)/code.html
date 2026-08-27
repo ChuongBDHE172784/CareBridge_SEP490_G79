@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Chủ đề Cộng đồng</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-surface": "#3e2c26",
+                      "outline-variant": "#d6c2bd",
+                      "surface-container-low": "#fff1ec",
+                      "primary-fixed": "#ffdbd1",
+                      "surface-tint": "#845143",
+                      "on-tertiary": "#ffffff",
+                      "surface": "#fff8f6",
+                      "secondary-fixed": "#f8ddd2",
+                      "on-background": "#271812",
+                      "surface-bright": "#fff8f6",
+                      "background": "#fff8f6",
+                      "on-primary-container": "#51271b",
+                      "secondary": "#6e5a52",
+                      "error-container": "#ffdad6",
+                      "surface-dim": "#f1d4ca",
+                      "tertiary-fixed": "#e9e1db",
+                      "inverse-primary": "#fab7a4",
+                      "surface-container-highest": "#fadcd3",
+                      "primary-container": "#c98c7b",
+                      "secondary-fixed-dim": "#dbc1b7",
+                      "on-tertiary-fixed-variant": "#4a4642",
+                      "on-secondary-fixed-variant": "#55433b",
+                      "on-tertiary-container": "#36322e",
+                      "on-secondary-fixed": "#271812",
+                      "error": "#ba1a1a",
+                      "on-primary-fixed": "#341006",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed-variant": "#693a2d",
+                      "on-tertiary-fixed": "#1e1b18",
+                      "outline": "#84736f",
+                      "on-surface-variant": "#524440",
+                      "on-secondary-container": "#735e56",
+                      "primary-fixed-dim": "#fab7a4",
+                      "secondary-container": "#f6dacf",
+                      "surface-container-high": "#ffe2d9",
+                      "surface-variant": "#fadcd3",
+                      "on-secondary": "#ffffff",
+                      "tertiary-fixed-dim": "#ccc5c0",
+                      "tertiary": "#625d59",
+                      "tertiary-container": "#a09a95",
+                      "on-error-container": "#93000a",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface": "#271812",
+                      "surface-container": "#ffe9e3",
+                      "inverse-on-surface": "#ffede7",
+                      "on-error": "#ffffff",
+                      "primary": "#845143"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter-mobile": "16px",
+                      "container-margin-mobile": "20px",
+                      "unit": "8px",
+                      "sidebar-width": "280px",
+                      "container-margin-desktop": "40px",
+                      "gutter-desktop": "24px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Quicksand"
+                      ],
+                      "body-sm": [
+                              "Quicksand"
+                      ],
+                      "headline-lg": [
+                              "Quicksand"
+                      ],
+                      "label-caps": [
+                              "Quicksand"
+                      ],
+                      "headline-lg-mobile": [
+                              "Quicksand"
+                      ],
+                      "body-lg": [
+                              "Quicksand"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #F6F1EC;
+        }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased text-on-background min-h-screen flex flex-col md:hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface shadow-sm flex items-center justify-between px-gutter-mobile h-16">
+<button class="p-2 text-primary hover:opacity-80 active:scale-95 transition-transform rounded-full">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Chủ đề Cộng đồng</h1>
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shrink-0">
+<img alt="Expert Profile" class="w-full h-full object-cover" data-alt="A portrait photo of a warm, professional healthcare expert smiling softly. The lighting is bright and inviting, suggesting a reliable and caring medical environment. The color palette incorporates gentle whites and warm earthy tones to match a medical app aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUVAA3FUBK5mZGKvXaVvzU_QKw9QyHPvPz2aXWg5leuWMGMtOMJmHLv8z0Z2P7w9OJTbJeIuer866R90vdoJUee5XylgcLuX1Rp23Bn3fGnr9UvTO8CyMtXf0LAEiZEzsXlbQYJWNLgxAD1GHjhUzk8qO-gwdZV5TP92BEMlAym05DtY6_Behp8CKN_SvBUv-SXc2arTSEoInnq91kiZftzsCYPkzykS-VzUZFk3nZlwx_D2VtLqEXbPN7DIcTTs7nsPY6enSTRjw"/>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 mt-16 mb-[88px] px-container-margin-mobile pt-4 pb-6 flex flex-col gap-4 overflow-y-auto">
+<!-- Search Bar -->
+<div class="relative bg-surface rounded-full shadow-[0_2px_12px_rgba(90,70,63,0.06)] flex items-center px-4 h-12">
+<span class="material-symbols-outlined text-outline-variant mr-2">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 font-body-sm text-body-sm text-on-surface placeholder:text-outline-variant p-0 h-full" placeholder="Tìm kiếm chủ đề..." type="text"/>
+</div>
+<!-- Topic Categories Chips (Optional addition for better UX) -->
+<div class="flex gap-2 overflow-x-auto pb-2 -mx-container-margin-mobile px-container-margin-mobile scrollbar-hide">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary-container text-on-primary-container font-body-sm text-body-sm">Tất cả</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container text-on-surface-variant border border-outline-variant font-body-sm text-body-sm">Nhi khoa</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container text-on-surface-variant border border-outline-variant font-body-sm text-body-sm">Sản khoa</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container text-on-surface-variant border border-outline-variant font-body-sm text-body-sm">Dinh dưỡng</button>
+</div>
+<!-- Topic List -->
+<div class="flex flex-col gap-4 mt-2">
+<!-- Card 1 -->
+<div class="bg-surface rounded-lg p-4 shadow-[0_4px_16px_rgba(90,70,63,0.08)] flex items-center justify-between gap-4">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pregnant_woman</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface mb-1">Chăm sóc mẹ bầu</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">152 câu hỏi • 12 chuyên gia</p>
+</div>
+</div>
+<button class="px-4 py-2 rounded-full border-2 border-primary-container text-primary-container font-body-sm text-body-sm active:bg-surface-container-high transition-colors min-w-[100px]">Theo dõi</button>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface rounded-lg p-4 shadow-[0_4px_16px_rgba(90,70,63,0.08)] flex items-center justify-between gap-4 border border-primary-container/20">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">restaurant_menu</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface mb-1">Dinh dưỡng trẻ em</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">89 câu hỏi • 8 chuyên gia</p>
+</div>
+</div>
+<button class="px-4 py-2 rounded-full bg-primary-container text-on-primary-container font-body-sm text-body-sm active:opacity-90 transition-opacity min-w-[100px] flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[18px]">check</span>
+                    Đã theo dõi
+                </button>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface rounded-lg p-4 shadow-[0_4px_16px_rgba(90,70,63,0.08)] flex items-center justify-between gap-4">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface mb-1">Tâm lý sau sinh</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">45 câu hỏi • 5 chuyên gia</p>
+</div>
+</div>
+<button class="px-4 py-2 rounded-full border-2 border-primary-container text-primary-container font-body-sm text-body-sm active:bg-surface-container-high transition-colors min-w-[100px]">Theo dõi</button>
+</div>
+<!-- Card 4 (Added for padding) -->
+<div class="bg-surface rounded-lg p-4 shadow-[0_4px_16px_rgba(90,70,63,0.08)] flex items-center justify-between gap-4">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">coronavirus</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface mb-1">Bệnh nhiệt đới</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">30 câu hỏi • 3 chuyên gia</p>
+</div>
+</div>
+<button class="px-4 py-2 rounded-full border-2 border-primary-container text-primary-container font-body-sm text-body-sm active:bg-surface-container-high transition-colors min-w-[100px]">Theo dõi</button>
+</div>
+</div>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-lg bg-surface shadow-[0_-4px_20px_rgba(90,70,63,0.08)] flex justify-around items-center px-4 py-2 pb-safe">
+<button class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high transition-all duration-200 ease-in-out rounded-lg w-[72px]">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-caps text-label-caps">Trang chủ</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high transition-all duration-200 ease-in-out rounded-lg w-[72px]">
+<span class="material-symbols-outlined mb-1">assignment</span>
+<span class="font-label-caps text-label-caps">Yêu cầu</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1 transition-all duration-200 ease-in-out w-[80px]">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">forum</span>
+<span class="font-label-caps text-label-caps">Cộng đồng</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary p-2 hover:bg-surface-container-high transition-all duration-200 ease-in-out rounded-lg w-[72px]">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-caps text-label-caps">Tài khoản</span>
+</button>
+</nav>
+<style>
+        /* Safe area padding for newer iPhones */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 16px);
+        }
+        /* Hide scrollbar for category chips but keep functionality */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</body></html>

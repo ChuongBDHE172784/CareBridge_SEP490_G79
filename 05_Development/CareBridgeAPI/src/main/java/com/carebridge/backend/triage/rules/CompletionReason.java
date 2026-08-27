@@ -1,0 +1,11 @@
+package com.carebridge.backend.triage.rules;
+
+public enum CompletionReason {
+    DATA_REQUIRED,
+    MAX_QUESTION_ROUNDS_REACHED,
+    UNRESOLVED_HIGH_RISK_SIGNAL,
+    UNRESOLVED_GLOBAL_SAFETY_SCREEN,
+    SCOPE_CONFLICT,
+    RULESET_COVERAGE_LIMITATION,
+    SYSTEM_FALLBACK
+}

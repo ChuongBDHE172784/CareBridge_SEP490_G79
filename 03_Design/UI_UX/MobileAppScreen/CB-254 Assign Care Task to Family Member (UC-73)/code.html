@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareBridge - Giao việc chăm sóc</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-container-high": "#ede7e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface-accent-muted": "#F2EAE4",
+                    "surface-tint": "#845143",
+                    "inverse-surface": "#32302d",
+                    "primary-container": "#c98c7b",
+                    "background": "#fef8f4",
+                    "surface-dim": "#dfd9d5",
+                    "text-heading": "#2D2A28",
+                    "on-secondary-container": "#68635f",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f9f2ee",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "surface-bright": "#fef8f4",
+                    "surface-container-highest": "#e7e1dd",
+                    "error": "#ba1a1a",
+                    "on-background": "#1d1b19",
+                    "on-tertiary-container": "#34322f",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-accent-light": "#F6F1EC",
+                    "secondary": "#625d59",
+                    "surface-variant": "#e7e1dd",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#e9e1db",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "surface": "#fef8f4",
+                    "secondary-fixed": "#e9e1db",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-surface": "#1d1b19",
+                    "status-active": "#C98C7B",
+                    "inverse-primary": "#fab7a4",
+                    "outline": "#84736f",
+                    "tertiary-container": "#9e9a96",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f3ede8",
+                    "primary": "#845143",
+                    "outline-variant": "#d6c2bd",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px",
+                    "container-margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "label-caps": ["10px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+        }
+
+        /* Claymorphism Effects */
+        .clay-card {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 
+                8px 8px 16px rgba(201, 140, 123, 0.12),
+                inset -6px -6px 12px rgba(201, 140, 123, 0.05),
+                inset 6px 6px 12px rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .clay-input {
+            background: #fdfaf8;
+            border-radius: 1.25rem;
+            box-shadow: 
+                inset 4px 4px 8px rgba(201, 140, 123, 0.08),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.9);
+            border: 2px solid transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .clay-input:focus {
+            border-color: #C98C7B;
+            box-shadow: 
+                0 0 0 4px rgba(201, 140, 123, 0.1),
+                inset 2px 2px 4px rgba(201, 140, 123, 0.05);
+            outline: none;
+        }
+
+        .clay-button-primary {
+            background: #C98C7B;
+            color: white;
+            border-radius: 9999px;
+            box-shadow: 
+                0 10px 20px rgba(201, 140, 123, 0.3),
+                inset -4px -4px 8px rgba(0, 0, 0, 0.1),
+                inset 4px 4px 8px rgba(255, 255, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .clay-button-primary:active {
+            transform: scale(0.96);
+            box-shadow: 0 4px 8px rgba(201, 140, 123, 0.2);
+        }
+
+        .clay-chip {
+            background: #fef8f4;
+            box-shadow: 
+                3px 3px 6px rgba(201, 140, 123, 0.1),
+                inset -2px -2px 4px rgba(255, 255, 255, 0.8);
+        }
+
+        .clay-chip-active {
+            background: #C98C7B;
+            color: white;
+            box-shadow: 
+                inset -2px -2px 4px rgba(0, 0, 0, 0.1),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.2);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background min-h-screen pb-24">
+<!-- Top AppBar (from JSON) -->
+<header class="fixed top-0 w-full z-50 bg-background flex items-center justify-between px-container-margin-mobile h-16 w-full shadow-[0px_4px_20px_rgba(90,70,63,0.08)]">
+<button class="text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">CareBridge</h1>
+<button class="text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<main class="pt-24 px-4 max-w-lg mx-auto">
+<!-- Care Group Context Section -->
+<section class="mb-8">
+<div class="clay-card p-6 flex items-center gap-4 animate-in fade-in slide-in-from-top duration-700">
+<div class="w-16 h-16 rounded-full overflow-hidden clay-chip border-4 border-white">
+<img class="w-full h-full object-cover" data-alt="A warm, soft-focus portrait of an elderly grandmother with a gentle smile, set in a cozy sunlit living room. The photographic style is professional yet intimate, using a warm color palette that aligns with the brand's care-tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKKlzKw-AXIgNWU3tqeiEzRiremeedDQMfK3pFZLe9RwmWmhMS-R9sSKv73VSL5DV8pc5Z3vccZKSzi9yyIESHbVjzQYgAzUF_K5VbRlhn8fqQDtfKyhuE-nEGoG39WrONeZkDH0n9bBl9z4wbhKREH5XlMBxewK1uvhf21hIu91UB-6CFOoHBhYyTqtSqgywpeOfZcSa9n0DAsEyyUCpFeVz_Qs1BsCxCLWJjs2YiqCPchP-J5zJvDwrPtdepXVqKhNO-6pmyHPA"/>
+</div>
+<div>
+<h2 class="font-headline-sm text-text-heading">Bà Nội - Nhóm Chăm Sóc</h2>
+<p class="text-body-md text-text-body flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">group</span>
+                        5 thành viên đang hoạt động
+                    </p>
+</div>
+</div>
+</section>
+<!-- Task Assignment Form -->
+<section class="clay-card p-8 mb-10">
+<div class="mb-8">
+<h3 class="font-headline-md text-text-heading mb-2">Giao việc mới</h3>
+<p class="text-body-md text-text-body">Phân bổ trách nhiệm để mọi người cùng chung tay.</p>
+</div>
+<form class="space-y-6">
+<!-- Task Title -->
+<div class="space-y-2">
+<label class="font-nav-item text-text-heading block ml-1">Tiêu đề công việc</label>
+<input class="w-full clay-input p-4 text-body-lg text-text-heading" placeholder="VD: Mua thuốc bổ cho bà" type="text"/>
+</div>
+<!-- Category -->
+<div class="space-y-3">
+<label class="font-nav-item text-text-heading block ml-1">Danh mục</label>
+<div class="flex flex-wrap gap-2">
+<button class="clay-chip clay-chip-active px-4 py-2 rounded-full text-body-md transition-all" type="button">Sức khỏe</button>
+<button class="clay-chip px-4 py-2 rounded-full text-body-md text-text-body transition-all hover:bg-surface-accent-muted" type="button">Dinh dưỡng</button>
+<button class="clay-chip px-4 py-2 rounded-full text-body-md text-text-body transition-all hover:bg-surface-accent-muted" type="button">Vận động</button>
+<button class="clay-chip px-4 py-2 rounded-full text-body-md text-text-body transition-all hover:bg-surface-accent-muted" type="button">Khác</button>
+</div>
+</div>
+<!-- Assignee Selection -->
+<div class="space-y-3">
+<label class="font-nav-item text-text-heading block ml-1">Người thực hiện</label>
+<div class="grid grid-cols-4 gap-4">
+<div class="flex flex-col items-center gap-2 cursor-pointer group">
+<div class="w-12 h-12 rounded-full border-2 border-primary-container p-0.5 overflow-hidden transition-transform group-hover:scale-110">
+<img class="w-full h-full object-cover rounded-full" data-alt="A modern professional avatar of a young man in a soft beige sweater, looking friendly and capable. The lighting is soft and warm, typical of a professional yet approachable healthcare environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD48QhMYXA2H4uQ7wcQRuslKLJDfIWYyL8-4eTsRnTPodrcSXLLFNNDigYhvdlp6_GtfKGgRYdEl_UNr2P4O-JjoxsJPq9o-uljG7Ugcpu7oqD7j_4S3ZsGkLJoikkNAvUq6taY_FiTEdixy0ltKOE9OYxnzi1fyAV1yZ_WK2yDM2w1UyYmsFd-H5zQAxO1LFw6FXK3sSLSp5nQEM_RMUVhN1rhdPs5l6l12545aGGjnmrqBt2kde3YAMK8xDQNMGal7IFD6_yoEUU"/>
+</div>
+<span class="text-label-md text-text-body">Anh Minh</span>
+</div>
+<div class="flex flex-col items-center gap-2 cursor-pointer group">
+<div class="w-12 h-12 rounded-full clay-chip p-0.5 overflow-hidden transition-transform group-hover:scale-110">
+<img class="w-full h-full object-cover rounded-full" data-alt="A portrait of a young woman with a kind expression, wearing a minimalist white blouse. The background is a clean, warm-toned neutral space. The overall aesthetic is bright, clean, and optimistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAKlpTR0bXogo5dP9I3uHQdSdMjGw9DRwyTIJ0PZzFFfLGggbvrMqtyG5LVzloNSOAshW4q_77_mAkDY-NP0tMeB_J9WUUzhgDDgMCVm_FQGqnXUc8REVi8KcAmhpfWneu5P970apuXhr7MoYpZlelhMppB_0LxI6wh0K81DxmEb585JYGc938SrX3sHVXJoaIPr58Hq-f_0v_epw-X1E3u_NgdHCM0jsQb-Bk-7F7TmVJeqm86D8ezQ8iRPNjpWqdPEq9HSUsA-M"/>
+</div>
+<span class="text-label-md text-text-body">Chị Lan</span>
+</div>
+<div class="flex flex-col items-center gap-2 cursor-pointer group opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all">
+<div class="w-12 h-12 rounded-full clay-chip p-0.5 overflow-hidden transition-transform group-hover:scale-110">
+<img class="w-full h-full object-cover rounded-full" data-alt="A portrait of an energetic young man with a bright smile, captured in high-quality studio lighting. The style is professional and friendly, fitting a modern digital family care application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdErpwjx8jVknAuDCO6YKWolOMd8e2flNLQimBQcZEOvvQbbVt5MPwR0AP7V-XYuVxo1vROk6WPK9sT5ENefrzelCIrAzvqTyQsSArUN3l8E6vehZ9h8Y5tzRh5Rmi4Ujp7d6F8qNE37JoN1-m2QhtJ7EXmpVJ-8BA2NrzZ4pvnMWCfhUw670pccJs5_vPdkdLs1KCwigbuN5ga2DdUOU9w2mJpzweSPxY_I8UewDirsT6U7Ux0b78BNkEbEP6rk5mLOLBTVNafPo"/>
+</div>
+<span class="text-label-md text-text-body">Tùng</span>
+</div>
+<div class="flex flex-col items-center gap-2 cursor-pointer">
+<div class="w-12 h-12 rounded-full clay-chip flex items-center justify-center text-primary-container hover:bg-primary-container hover:text-white transition-colors">
+<span class="material-symbols-outlined">add</span>
+</div>
+<span class="text-label-md text-text-body">Thêm</span>
+</div>
+</div>
+</div>
+<!-- Deadline & Status -->
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-nav-item text-text-heading block ml-1">Hạn chót</label>
+<input class="w-full clay-input p-4 text-body-md text-text-heading" type="date"/>
+</div>
+<div class="space-y-2">
+<label class="font-nav-item text-text-heading block ml-1">Trạng thái</label>
+<div class="w-full clay-input p-4 text-body-md text-primary font-bold bg-white flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                            Chưa bắt đầu
+                        </div>
+</div>
+</div>
+<!-- Message -->
+<div class="space-y-2">
+<label class="font-nav-item text-text-heading block ml-1">Lời nhắn</label>
+<textarea class="w-full clay-input p-4 text-body-md text-text-heading resize-none" placeholder="Ghi chú thêm cho người thực hiện..." rows="3"></textarea>
+</div>
+<!-- Submit Button -->
+<button class="w-full clay-button-primary py-4 font-headline-sm flex items-center justify-center gap-2 mt-4" type="submit">
+<span class="material-symbols-outlined">save</span>
+                    Lưu công việc
+                </button>
+</form>
+</section>
+<!-- Helper Tip Section (Bento style) -->
+<div class="grid grid-cols-1 gap-4">
+<div class="clay-card p-4 bg-surface-container-low flex items-start gap-4">
+<div class="p-3 bg-white rounded-2xl clay-chip">
+<span class="material-symbols-outlined text-primary">lightbulb</span>
+</div>
+<div>
+<h4 class="font-nav-item text-primary">Mẹo chăm sóc</h4>
+<p class="text-body-md text-text-body">Giao việc định kỳ giúp giảm 30% căng thẳng cho người chăm sóc chính.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom NavBar (from JSON) -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-surface rounded-t-lg shadow-lg z-50">
+<a class="flex flex-col items-center justify-center text-secondary font-label-caps transition-transform active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold font-label-caps transition-transform active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+<span class="mt-1">Sức khỏe</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary font-label-caps transition-transform active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="mt-1">Thông báo</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary font-label-caps transition-transform active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="mt-1">Cá nhân</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for form inputs and chips
+        document.querySelectorAll('.clay-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                // Find all siblings in the same container and deactivate them
+                this.parentElement.querySelectorAll('.clay-chip').forEach(s => {
+                    s.classList.remove('clay-chip-active', 'text-white');
+                    s.classList.add('text-text-body');
+                });
+                // Activate the clicked chip
+                this.classList.add('clay-chip-active', 'text-white');
+                this.classList.remove('text-text-body');
+            });
+        });
+
+        // Form submission animation
+        const form = document.querySelector('form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Đang lưu...';
+            btn.classList.add('opacity-80');
+            
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Đã lưu thành công!';
+                btn.classList.replace('clay-button-primary', 'bg-green-500');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.classList.replace('bg-green-500', 'clay-button-primary');
+                    btn.classList.remove('opacity-80');
+                }, 2000);
+            }, 1200);
+        });
+
+        // Add visual feedback for avatar selection
+        document.querySelectorAll('.cursor-pointer.group').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.cursor-pointer.group div').forEach(div => {
+                    div.classList.remove('border-primary-container', 'shadow-md');
+                    div.classList.add('clay-chip');
+                });
+                const avatarContainer = this.querySelector('div');
+                avatarContainer.classList.add('border-primary-container', 'shadow-md');
+                avatarContainer.classList.remove('clay-chip');
+            });
+        });
+    </script>
+</body></html>

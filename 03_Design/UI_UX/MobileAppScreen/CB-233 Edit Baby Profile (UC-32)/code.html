@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chỉnh sửa hồ sơ bé | CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-container-high": "#ede7e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface-accent-muted": "#F2EAE4",
+                    "surface-tint": "#845143",
+                    "inverse-surface": "#32302d",
+                    "primary-container": "#c98c7b",
+                    "background": "#fef8f4",
+                    "surface-dim": "#dfd9d5",
+                    "text-heading": "#2D2A28",
+                    "on-secondary-container": "#68635f",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f9f2ee",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "surface-bright": "#fef8f4",
+                    "surface-container-highest": "#e7e1dd",
+                    "error": "#ba1a1a",
+                    "on-background": "#1d1b19",
+                    "on-tertiary-container": "#34322f",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-accent-light": "#F6F1EC",
+                    "secondary": "#625d59",
+                    "surface-variant": "#e7e1dd",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#e9e1db",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "surface": "#fef8f4",
+                    "secondary-fixed": "#e9e1db",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-surface": "#1d1b19",
+                    "status-active": "#C98C7B",
+                    "inverse-primary": "#fab7a4",
+                    "outline": "#84736f",
+                    "tertiary-container": "#9e9a96",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f3ede8",
+                    "primary": "#845143",
+                    "outline-variant": "#d6c2bd",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px",
+                    "container-margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "label-caps": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "headline-lg-mobile": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+        }
+
+        .clay-card {
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 
+                0 10px 20px rgba(201, 140, 123, 0.08),
+                inset 0 -4px 6px rgba(201, 140, 123, 0.05),
+                inset 0 4px 6px rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .clay-input {
+            background: #ffffff;
+            border: 2px solid #F2EAE4;
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: inset 2px 2px 5px rgba(201, 140, 123, 0.05);
+        }
+
+        .clay-input:focus {
+            border-color: #C98C7B;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(201, 140, 123, 0.1);
+        }
+
+        .clay-button-primary {
+            background: #C98C7B;
+            box-shadow: 
+                0 4px 10px rgba(201, 140, 123, 0.3),
+                inset 0 -3px 0 rgba(0, 0, 0, 0.1),
+                inset 0 3px 0 rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .clay-button-primary:active {
+            transform: scale(0.95);
+        }
+
+        .clay-button-secondary {
+            background: #F2EAE4;
+            color: #845143;
+            box-shadow: 
+                0 4px 6px rgba(201, 140, 123, 0.05),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.05),
+                inset 0 2px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(56%) sepia(19%) saturate(840%) hue-rotate(326deg) brightness(92%) contrast(85%);
+            cursor: pointer;
+        }
+
+        .error-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface mb-24 md:mb-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-background dark:bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)] flex items-center justify-between px-4 h-16">
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">CareBridge</h1>
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary text-2xl">close</span>
+</button>
+</header>
+<main class="pt-24 pb-8 px-4 max-w-2xl mx-auto">
+<div class="clay-card p-8 mb-8">
+<h2 class="font-headline-md text-headline-md text-text-heading mb-6 text-center">Chỉnh sửa hồ sơ bé</h2>
+<form class="space-y-6" id="babyProfileForm">
+<!-- Avatar Section -->
+<div class="flex flex-col items-center mb-8">
+<div class="relative group">
+<div class="w-32 h-32 rounded-full overflow-hidden clay-card p-1 bg-surface-accent-light border-4 border-white">
+<img class="w-full h-full object-cover rounded-full" data-alt="A beautiful, soft-lit professional studio portrait of a smiling infant baby in a cozy white knitted outfit, against a warm pastel peach background, minimalist and high-end aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAalOKYVCuRMfYGqRzSKmMmIyDegfBH5kTNnxIflohhWXDbfDpRpmQcu4-VY16DEmcudmFk86aGGmS4ZlPGQeXm8nfv3AqR8H4boTH9RAsrgd4CAc79Rp-ccY7uvgMcR17D1Gbdz6YqLasAvIE8-NnXcUt3Pmmuq7utRgRUXar9pytnUEroreSUlokKfkoc-BzZeD45or0Az-iHV3eK6jz5CzqbbU6eeXB4X1IepFsOaQFHOwKWsjlpflRqUTpvz9P3U2d5moquSZY"/>
+</div>
+<button class="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform" type="button">
+<span class="material-symbols-outlined text-sm">photo_camera</span>
+</button>
+</div>
+<p class="mt-4 font-label-md text-label-md text-secondary">Ảnh đại diện của bé</p>
+</div>
+<!-- Nickname -->
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-primary ml-4">Biệt danh (Nickname)</label>
+<input class="w-full clay-input px-6 py-4 font-body-md text-body-md text-text-body" id="nickname" placeholder="Nhập tên gọi ở nhà của bé" required="" type="text" value="Bé Bơ"/>
+</div>
+<!-- Active Status Toggle -->
+<div class="clay-card bg-surface-container-low p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">child_care</span>
+<div>
+<p class="font-label-md text-label-md text-primary">Đang hoạt động</p>
+<p class="text-[11px] text-secondary">Đặt làm hồ sơ chính hiện tại</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Date of Birth & Gender -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-primary ml-4">Ngày sinh</label>
+<input class="w-full clay-input px-6 py-4 font-body-md text-body-md text-text-body" id="dob" required="" type="date"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-primary ml-4">Giới tính</label>
+<select class="w-full clay-input px-6 py-4 font-body-md text-body-md text-text-body appearance-none bg-no-repeat bg-[right_1.5rem_center] bg-[length:20px_20px]">
+<option value="male">Bé Trai</option>
+<option selected="" value="female">Bé Gái</option>
+<option value="other">Khác</option>
+</select>
+</div>
+</div>
+<!-- Birth Measurements -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-primary ml-4">Cân nặng lúc sinh (kg)</label>
+<input class="w-full clay-input px-6 py-4 font-body-md text-body-md text-text-body" id="weight" placeholder="VD: 3.2" required="" step="0.1" type="number" value="3.2"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-primary ml-4">Chiều dài lúc sinh (cm)</label>
+<input class="w-full clay-input px-6 py-4 font-body-md text-body-md text-text-body" id="length" placeholder="VD: 50" required="" step="0.1" type="number" value="50.0"/>
+</div>
+</div>
+<!-- Privacy Policy Label -->
+<div class="flex gap-3 p-4 bg-surface-accent-light rounded-lg border border-outline-variant/30">
+<span class="material-symbols-outlined text-primary text-xl flex-shrink-0">verified_user</span>
+<p class="text-[12px] leading-tight text-secondary">
+<span class="font-bold text-primary">Quyền riêng tư:</span> Thông tin của bé được mã hóa đầu cuối. Chúng tôi chỉ sử dụng dữ liệu này để tính toán các biểu đồ tăng trưởng và nhắc lịch tiêm chủng cá nhân hóa cho bạn.
+                    </p>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col md:flex-row gap-4 pt-4">
+<button class="flex-1 clay-button-primary py-4 rounded-full text-white font-nav-item text-nav-item order-1 md:order-2" type="submit">
+                        Lưu hồ sơ
+                    </button>
+<button class="flex-1 clay-button-secondary py-4 rounded-full font-nav-item text-nav-item order-2 md:order-1" type="button">
+                        Hủy bỏ
+                    </button>
+</div>
+</form>
+</div>
+</main>
+<!-- BottomNavBar (Visible on Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center py-3 px-4 bg-surface dark:bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] z-50 rounded-t-lg">
+<a class="flex flex-col items-center justify-center text-secondary" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary" href="#">
+<span class="material-symbols-outlined">monitor_heart</span>
+<span class="font-label-caps text-label-caps mt-1">Sức khỏe</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-label-caps text-label-caps mt-1">Thông báo</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps mt-1">Cá nhân</span>
+</a>
+</nav>
+<!-- Success Toast (Hidden by default) -->
+<div class="fixed top-20 left-1/2 -translate-x-1/2 clay-card px-6 py-3 bg-primary text-white flex items-center gap-3 opacity-0 translate-y-[-20px] transition-all duration-300 pointer-events-none z-[100]" id="toast">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="font-body-md text-body-md">Đã cập nhật hồ sơ thành công!</span>
+</div>
+<script>
+        document.getElementById('babyProfileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dob = document.getElementById('dob').value;
+            const weight = parseFloat(document.getElementById('weight').value);
+            const length = parseFloat(document.getElementById('length').value);
+            let isValid = true;
+
+            // Simple Validation
+            const selectedDate = new Date(dob);
+            const today = new Date();
+            
+            if (selectedDate > today) {
+                document.getElementById('dob').parentElement.classList.add('error-shake');
+                isValid = false;
+                alert('Ngày sinh không thể ở tương lai!');
+            }
+
+            if (weight <= 0 || weight > 10) {
+                document.getElementById('weight').parentElement.classList.add('error-shake');
+                isValid = false;
+                alert('Cân nặng lúc sinh không hợp lệ (0kg - 10kg)');
+            }
+
+            if (length <= 0 || length > 100) {
+                document.getElementById('length').parentElement.classList.add('error-shake');
+                isValid = false;
+                alert('Chiều dài lúc sinh không hợp lệ (0cm - 100cm)');
+            }
+
+            if (isValid) {
+                // Success Simulation
+                const toast = document.getElementById('toast');
+                toast.classList.remove('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+                toast.classList.add('opacity-100', 'translate-y-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+                    toast.classList.remove('opacity-100', 'translate-y-0');
+                }, 3000);
+            }
+
+            // Remove error classes after animation
+            setTimeout(() => {
+                document.querySelectorAll('.error-shake').forEach(el => el.classList.remove('error-shake'));
+            }, 600);
+        });
+
+        // Set max date for DOB to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dob').setAttribute('max', today);
+    </script>
+</body></html>

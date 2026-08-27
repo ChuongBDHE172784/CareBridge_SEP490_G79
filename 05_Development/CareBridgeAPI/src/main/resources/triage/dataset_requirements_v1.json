@@ -1,0 +1,95 @@
+{
+  "$comment": "CANONICAL DATASET REQUIREMENTS — AI Reproductive Health Triage Assistant V2. Single source of truth for Zero-Trust Dataset Calculator in both Java and Python.",
+  "version": "1.0.0",
+  "globalSafety": {
+    "requiredSignalCodes": [
+      "ALTERED_CONSCIOUSNESS",
+      "SEIZURE",
+      "SEVERE_BREATHING_DIFFICULTY",
+      "CYANOSIS",
+      "SELF_HARM_IDEATION",
+      "SELF_HARM_INTENT_OR_PLAN",
+      "HARM_TO_BABY_IDEATION",
+      "CANNOT_ENSURE_OWN_SAFETY"
+    ]
+  },
+  "byStage": {
+    "PRECONCEPTION": {
+      "contextFields": [
+        "stage"
+      ],
+      "greenEligibilityFields": [
+        "stage",
+        "possible_pregnancy"
+      ]
+    },
+    "POSSIBLE_PREGNANCY": {
+      "contextFields": [
+        "stage",
+        "possible_pregnancy"
+      ],
+      "greenEligibilityFields": [
+        "stage",
+        "possible_pregnancy",
+        "last_menstrual_period_or_test"
+      ]
+    },
+    "PREGNANCY": {
+      "contextFields": [
+        "stage",
+        "gestational_week"
+      ],
+      "greenEligibilityFields": [
+        "stage",
+        "gestational_week",
+        "pain_severity",
+        "bleeding_amount"
+      ]
+    },
+    "POSTPARTUM_MOTHER": {
+      "contextFields": [
+        "stage",
+        "postpartum_day"
+      ],
+      "greenEligibilityFields": [
+        "stage",
+        "postpartum_day",
+        "delivery_method",
+        "bleeding_amount"
+      ]
+    },
+    "INFANT_0_12M": {
+      "$comment": "The paediatric stages had no entry at all, so no paediatric field ever counted as missing and the paediatric follow-up questions were never eligible: a baby complaint reached the engine with nothing asked. feeding/hydration/temperature are listed because the ported PED_ rules read exactly those.",
+      "contextFields": [
+        "stage",
+        "baby_age_months",
+        "feeding_status",
+        "hydration_status",
+        "temperature_band"
+      ],
+      "greenEligibilityFields": [
+        "stage",
+        "baby_age_months",
+        "feeding_status",
+        "hydration_status",
+        "temperature_band"
+      ]
+    },
+    "TODDLER_12_24M": {
+      "contextFields": [
+        "stage",
+        "baby_age_months",
+        "feeding_status",
+        "hydration_status",
+        "temperature_band"
+      ],
+      "greenEligibilityFields": [
+        "stage",
+        "baby_age_months",
+        "feeding_status",
+        "hydration_status",
+        "temperature_band"
+      ]
+    }
+  }
+}

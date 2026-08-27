@@ -1,0 +1,84 @@
+source 'https://cdn.cocoapods.org/'
+source 'https://github.com/track-asia/trackasia-flutter-podspecs.git'
+
+platform :ios, '15.5'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    if target.name == 'zego_express_engine'
+      target.shell_script_build_phases.each do |phase|
+        phase.shell_script = phase.shell_script.gsub(
+          'sh ${PODS_TARGET_SRCROOT}/download.sh',
+          'sh "${PODS_TARGET_SRCROOT}/download.sh"'
+        )
+      end
+    end
+    target.build_configurations.each do |config|
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+        'PERMISSION_CAMERA=1',
+        'PERMISSION_MICROPHONE=1',
+      ]
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+      if target.name.start_with?('gRPC') || target.name.start_with?('abseil') || target.name.start_with?('BoringSSL')
+        config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited) '
+        config.build_settings['HEADER_SEARCH_PATHS'] << '"${PODS_ROOT}/abseil" "${PODS_ROOT}/gRPC-Core/include" '
+        config.build_settings['USE_HEADERMAP'] = 'NO'
+      end
+    end
+  end
+
+  # Fix for TrackAsia 2.0.0 framework header bug where MLNMapViewDelegate.h has <MLNTileOperation.h> instead of "MLNTileOperation.h"
+  trackasia_header = File.join(installer.sandbox.root, 'TrackAsia/TrackAsia.xcframework/ios-arm64/TrackAsia.framework/Headers/MLNMapViewDelegate.h')
+  if File.exist?(trackasia_header)
+    content = File.read(trackasia_header)
+    if content.include?('<MLNTileOperation.h>')
+      File.write(trackasia_header, content.gsub('<MLNTileOperation.h>', '"MLNTileOperation.h"'))
+    end
+  end
+  trackasia_sim_header = File.join(installer.sandbox.root, 'TrackAsia/TrackAsia.xcframework/ios-arm64_x86_64-simulator/TrackAsia.framework/Headers/MLNMapViewDelegate.h')
+  if File.exist?(trackasia_sim_header)
+    content = File.read(trackasia_sim_header)
+    if content.include?('<MLNTileOperation.h>')
+      File.write(trackasia_sim_header, content.gsub('<MLNTileOperation.h>', '"MLNTileOperation.h"'))
+    end
+  end
+end
+

@@ -1,0 +1,13 @@
+# Golden (pixel) tests compare against PNGs that are only reproducible on the
+# machine that generated them: text rendering differs enough between setups to
+# blow past the comparator's tolerance even when no widget code changed.
+#
+# Declaring the tag here does two things:
+#   * silences "A tag was used that wasn't specified in dart_test.yaml"
+#   * lets anyone whose machine is not the golden authority run
+#       flutter test --exclude-tags golden
+#     instead of regenerating the PNGs and flipping the failure onto a teammate.
+#
+# Regenerate (flutter test --update-goldens) only from the agreed authority.
+tags:
+  golden:

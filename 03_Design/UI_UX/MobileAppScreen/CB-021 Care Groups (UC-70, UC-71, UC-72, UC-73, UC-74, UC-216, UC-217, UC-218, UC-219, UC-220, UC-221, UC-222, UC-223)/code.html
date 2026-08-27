@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nhóm chăm sóc - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "outline": "#84736f",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e9e1db",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f6",
+                        "tertiary": "#625d59",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbd1",
+                        "primary-container": "#c98c7b",
+                        "surface-container-highest": "#fadcd3",
+                        "inverse-on-surface": "#ffede7",
+                        "on-primary": "#ffffff",
+                        "surface": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary-container": "#735e56",
+                        "error": "#ba1a1a",
+                        "secondary": "#6e5a52",
+                        "on-error": "#ffffff",
+                        "surface-tint": "#845143",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "tertiary-container": "#a09a95",
+                        "surface-container": "#ffe9e3",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "on-surface": "#271812",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-variant": "#fadcd3",
+                        "on-primary-container": "#51271b",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-container": "#36322e",
+                        "inverse-surface": "#3e2c26",
+                        "surface-dim": "#f1d4ca",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-background": "#271812",
+                        "background": "#fff8f6",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "on-secondary-fixed": "#271812",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#ffe2d9",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-fixed": "#341006"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "safe-margin": "24px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "button": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "button": ["16px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen flex flex-col overflow-x-hidden pt-safe-margin pb-[100px]">
+<!-- Header (Based on Shared Components TopAppBar style logic, but customized for secondary screen) -->
+<header class="px-safe-margin py-stack-md flex justify-between items-center sticky top-0 z-40 bg-background/90 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center rounded-full bg-surface-container-high text-on-surface hover:opacity-80 active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-background">Nhóm chăm sóc</h1>
+</div>
+<div class="flex gap-2">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center rounded-full bg-primary-container text-on-primary-container hover:opacity-80 active:scale-95 transition-all shadow-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</header>
+<main class="px-safe-margin flex-1 flex flex-col gap-stack-lg mt-stack-md">
+<!-- Intro Section -->
+<section class="mb-stack-sm">
+<p class="font-body-lg text-body-lg text-on-surface-variant">
+                Quản lý quyền truy cập và phân chia công việc cho những người cùng chăm sóc bé.
+            </p>
+</section>
+<!-- Active Care Group Card (Glassmorphism/Bento style) -->
+<section class="bg-surface-container-lowest rounded-xl p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-md border border-surface-container-highest">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined" data-icon="family_home">family_home</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Gia đình bé Mỡ</h2>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Đang hoạt động</p>
+</div>
+</div>
+<button class="text-tertiary h-[40px] w-[40px] flex items-center justify-center rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="flex items-center justify-between border-t border-surface-container pt-stack-md mt-stack-sm">
+<div class="flex -space-x-3">
+<img alt="Mẹ" class="w-10 h-10 rounded-full border-2 border-surface-container-lowest object-cover z-30" data-alt="A close up portrait of an Asian mother smiling softly in warm, high-key lighting. Minimalist background, nurturing mood. CareBridge aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmgfSPEwlbVafvUFlw1NA2Sgp9DQg7goh3tTAQro_m4n1SX1hi6bTKTAB1wzptLqd55oA-M5yzAbqHnSmGFNEKG8ARFoZeNjuej7BTzB0ymuRVm1VjvCykTzOFTYTsCuXseUzYviHI8YU8pPb2DxdlYF3cNKVNhmPlwx4k29q3do9XNHNrnhfr2JZ8YniO4gkXNP6XhfbB3bI9baTsAm_eTXBJOn80pZgoqomVlmMlTV_w2drI5WwBN64qzljKmIK4gkK4ay63NTM"/>
+<img alt="Bố" class="w-10 h-10 rounded-full border-2 border-surface-container-lowest object-cover z-20" data-alt="A close up portrait of an Asian father looking attentive in warm, soft lighting. Clean white background. CareBridge aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWyni_G3dQIB6-zWRYb3s1ZA_d3ZUYUCfFgF5Bz7BXTU_Mt8kAWtrYRt_j-emqrMNhsAMQ9dMX5f7g4jqtC9k17hbAT7LKL-0dbh9jo14jmATfaqzKA9kMS07sk7KAFxILPhvi9SKnxOAzPV4hMWwjFfuyMvO_OwQ5SB5pSD-7CviELq8jTv8U27sx2mcLdWx6wbXWroFQCzSQvKy4u_gfBwpOoRTN7TaGlQz4iVmd8fqudecsI7wkB96fLg13FOlb8RutGZYptCs"/>
+<img alt="Bà" class="w-10 h-10 rounded-full border-2 border-surface-container-lowest object-cover z-10" data-alt="A close up portrait of an Asian grandmother smiling gently. Soft, warm natural light. CareBridge aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB61SHUtjOwFEAydaEgMWlwxAVP-8wCz39h_vJGPUF3-28QNaPKwHVXIgk6IYVOFvb5dE1knv0WAe53MYeProaVsajF8hkRX17KsaTFDs4xUThsmzVZURP0CLmXzDeiEgQyrI1e08Cs4-Qz3MH3BbTb8v8pn5_dbfG0NaSesr7pwU0g2GoOawstEpEbe6NML0JL8mqX0rqYrsOx4EYdFJrl9mkgeJAu7CWX9Y2YCCxnvat2ZKwo9Ajtl8_IBbevOCcuog-1CVKK9W0"/>
+</div>
+<div class="text-right">
+<p class="font-label-md text-label-md text-on-surface-variant">3 thành viên</p>
+<p class="font-body-md text-body-md text-primary mt-1 font-medium">Quản lý quyền</p>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-lg p-stack-md mt-2 flex gap-3 items-center">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container flex-shrink-0">
+<span class="material-symbols-outlined" data-icon="vaccines">vaccines</span>
+</div>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-secondary">Nhiệm vụ sắp tới</p>
+<p class="font-body-md text-body-md text-on-surface">Tiêm ngừa phế cầu mũi 2</p>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant">Ngày mai</p>
+</div>
+</section>
+<!-- Secondary Group / Invites -->
+<section class="bg-surface-container-lowest rounded-xl p-[24px] shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-md border border-surface-container-highest opacity-70">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Lớp mầm non</h2>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Cô giáo, Mẹ</p>
+</div>
+</div>
+<span class="px-3 py-1 bg-surface-variant text-on-surface-variant font-label-md text-label-md rounded-full">Tạm ngưng</span>
+</div>
+</section>
+<!-- CTA Action Area -->
+<section class="mt-stack-lg flex flex-col gap-4">
+<button class="w-full bg-primary-container text-on-primary-container h-[52px] rounded-full font-button text-button flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-[0px_8px_24px_rgba(90,70,63,0.12)] active:scale-95">
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span>
+                Mời thành viên mới
+            </button>
+<button class="w-full bg-surface-container-high text-on-surface h-[52px] rounded-full font-button text-button flex items-center justify-center gap-2 hover:bg-surface-variant transition-colors active:scale-95 border border-outline-variant">
+                Tạo nhóm mới
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav aria-label="Bottom Navigation" class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface dark:bg-surface-dim shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg hidden md:flex">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-on-surface-variant opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-90 p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md mt-1">Việc cần làm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-container/20 rounded-xl px-2 py-1 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</a>
+</nav>
+<!-- Mobile Bottom Nav -->
+<nav aria-label="Mobile Bottom Navigation" class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-stack-sm bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.06)] rounded-t-lg md:hidden pb-safe-margin">
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Trang chủ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Hành trình</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md mt-1">Cộng đồng</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 p-2" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-label-md text-label-md mt-1">Việc cần làm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl px-4 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md mt-1">Hồ sơ</span>
+</a>
+</nav>
+</body></html>

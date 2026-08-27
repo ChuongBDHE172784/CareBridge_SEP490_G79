@@ -1,0 +1,1535 @@
+// CareBridge logical ERD — 55 entities
+// Source: current live public schema (63 physical tables).
+// DBML requires a column type. The quoted zero-width type keeps types visually blank.
+// 7 relationship tables are represented as direct many-to-many references.
+// Visualization-only artifact: SQL export is intentionally unsupported.
+// Non-key/partial indexes and FK referential actions are intentionally omitted.
+
+Project CareBridge_Logical_ERD {
+  database_type: 'PostgreSQL'
+  Note: '55 logical entities; data types intentionally hidden for conceptual ERD presentation.'
+}
+
+Table care_subjects [headerColor: #6C8EBF] {
+  care_subject_id "​" [pk]
+  person_id "​"
+  owner_user_id "​"
+  mother_journey_id "​"
+  subject_type "​"
+  nickname "​"
+  birth_date "​"
+  sex "​"
+  birth_weight_kg "​"
+  birth_length_cm "​"
+  status "​"
+  created_at "​"
+  updated_at "​"
+
+  indexes {
+    (care_subject_id, owner_user_id, subject_type) [unique]
+  }
+}
+
+Table mother_journeys [headerColor: #6C8EBF] {
+  journey_id "​" [pk]
+  owner_user_id "​"
+  journey_type "​"
+  start_date "​"
+  last_menstrual_date "​"
+  estimated_due_date "​"
+  delivery_date "​"
+  status "​"
+  notes "​"
+  created_at "​"
+  updated_at "​"
+  version "​"
+  date_source "​"
+  date_confidence "​"
+  pregnancy_outcome "​"
+  pregnancy_outcome_date "​"
+  care_subject_id "​" [unique]
+  baseline_revision "​"
+  baseline_schema_version "​"
+  baseline_source "​"
+  baseline_lifecycle_goal "​"
+  baseline_locale "​"
+  baseline_time_zone "​"
+  baseline_preferences "​"
+  baseline_submission_id "​"
+  baseline_recorded_at "​"
+  recommendation_profile_jsonb "​"
+  recommendation_profile_version "​"
+  recommendation_profile_completed_at "​"
+  recommendation_profile_status "​"
+
+  indexes {
+    (journey_id, owner_user_id) [unique]
+  }
+}
+
+Table care_groups [headerColor: #6C8EBF] {
+  care_group_id "​" [pk]
+  owner_user_id "​"
+  journey_id "​"
+  baby_id "​"
+  group_name "​"
+  status "​"
+  created_at "​"
+  updated_at "​"
+  description "​"
+  linked_journey_id "​"
+  linked_baby_profile_id "​"
+  care_subject_id "​"
+  linked_baby_subject_type "​"
+
+  indexes {
+    (care_group_id, owner_user_id) [unique]
+  }
+}
+
+Table care_item_templates [headerColor: #6C8EBF] {
+  template_id "​" [pk]
+  parent_template_id "​"
+  entry_type "​"
+  title "​"
+  description "​"
+  display_order "​"
+  stage "​"
+  is_active "​"
+  version "​"
+  effective_from "​"
+  effective_to "​"
+  configuration_jsonb "​"
+  configuration_hash "​"
+  created_at "​"
+  updated_at "​"
+  created_by "​"
+  difficulty_level "​"
+  duration_minutes "​"
+  instruction_content "​"
+  media_url "​"
+  safety_warning "​"
+  supports_posture_analysis "​"
+  template_status "​"
+  configured_by "​"
+  analysis_mode "​"
+  rule_or_model_version "​"
+  confidence_threshold "​"
+  feedback_level "​"
+  content_status "​"
+  is_required "​"
+  author_user_id "​"
+  revision_reason "​"
+  revision_requested_at "​"
+  revision_requested_by "​"
+  revision_requested_version "​"
+  lock_version "​"
+  template_lineage_id "​"
+  template_version_id "​" [unique]
+  substage_id "​"
+  target_subject "​"
+  migration_review_required "​"
+  distribution_enabled "​"
+  approved_at "​"
+  approved_by "​"
+  migration_reviewed_at "​"
+  migration_reviewed_by "​"
+  due_anchor_type "​"
+  due_offset_start "​"
+  due_offset_end "​"
+  due_offset_unit "​"
+  template_type "​"
+  recipient_scope "​"
+  eligibility_anchor_type "​"
+  eligibility_range_unit "​"
+  eligibility_start_inclusive "​"
+  eligibility_end_inclusive "​"
+
+  indexes {
+    (template_lineage_id, template_version_id) [unique]
+    (parent_template_id, template_id, entry_type) [unique]
+    (template_version_id, template_id) [unique]
+  }
+}
+
+Table care_tasks [headerColor: #6C8EBF] {
+  task_id "​" [pk]
+  task_type "​"
+  owner_user_id "​"
+  care_group_id "​"
+  creator_user_id "​"
+  assignee_user_id "​"
+  care_subject_id "​"
+  title "​"
+  description "​"
+  scheduled_at "​"
+  recurrence_rule "​"
+  snoozed_until "​"
+  completed_at "​"
+  cancelled_at "​"
+  skipped_at "​"
+  status "​"
+  source_reference_type "​"
+  source_reference_id "​"
+  vaccination_record_id "​"
+  created_at "​"
+  updated_at "​"
+  metadata_jsonb "​"
+  journey_id "​"
+  baby_id "​"
+  recurrence_type "​"
+  recurrence_end_date "​"
+  fcm_job_id "​"
+  item_type "​"
+  origin "​"
+  target_subject "​"
+  reminder_occurrence_generation "​"
+}
+
+Table checklist_instances [headerColor: #6C8EBF] {
+  checklist_instance_id "​" [pk]
+  distribution_key "​" [unique]
+  key_version "​"
+  template_lineage_id "​"
+  template_version_id "​"
+  recipient_user_id "​"
+  recipient_role "​"
+  care_group_id "​"
+  care_context_type "​"
+  care_context_id "​"
+  context_owner_user_id "​"
+  origin "​"
+  window_start "​"
+  window_end "​"
+  status "​"
+  lock_version "​"
+  completed_at "​"
+  cancelled_at "​"
+  cancellation_reason_code "​"
+  created_at "​"
+  updated_at "​"
+  journey_context_id "​"
+  baby_context_id "​"
+  baby_context_subject_type "​"
+  historical_at "​"
+  history_reason_code "​"
+
+  indexes {
+    (checklist_instance_id, template_version_id) [unique]
+  }
+}
+
+Table checklist_task_instances [headerColor: #6C8EBF] {
+  checklist_task_instance_id "​" [pk]
+  checklist_instance_id "​"
+  template_version_id "​"
+  template_item_version_id "​"
+  task_key "​" [unique]
+  key_version "​"
+  title_snapshot "​"
+  display_order "​"
+  is_required "​"
+  target_subject "​"
+  due_at "​"
+  status "​"
+  lock_version "​"
+  completed_at "​"
+  skipped_at "​"
+  cancelled_at "​"
+  action_reason_code "​"
+  created_at "​"
+  updated_at "​"
+  category "​"
+}
+
+Table checklist_action_commands [headerColor: #6C8EBF] {
+  checklist_action_command_id "​" [pk]
+  actor_user_id "​"
+  task_kind "​"
+  task_id "​"
+  client_request_id "​"
+  payload_hash "​"
+  action_type "​"
+  result_status "​"
+  result_jsonb "​"
+  applied_at "​"
+  retain_until "​"
+  legal_hold "​"
+  created_at "​"
+  reminder_definition_id "​"
+
+  indexes {
+    (actor_user_id, task_kind, task_id, client_request_id) [unique]
+  }
+}
+
+Table expense_entries [headerColor: #6C8EBF] {
+  expense_entry_id "​" [pk]
+  owner_user_id "​"
+  care_subject_id "​"
+  mother_journey_id "​"
+  category "​"
+  amount "​"
+  currency "​"
+  expense_date "​"
+  note "​"
+  created_at "​"
+  updated_at "​"
+}
+
+Table health_records [headerColor: #82B366] {
+  health_record_id "​" [pk]
+  owner_user_id "​"
+  journey_id "​"
+  baby_id "​"
+  record_type "​"
+  title "​"
+  file_url "​"
+  record_date "​"
+  source_type "​"
+  source_name "​"
+  status "​"
+  created_at "​"
+  updated_at "​"
+  care_subject_id "​"
+  summary_period "​"
+  period_start "​"
+  summary_json "​"
+}
+
+Table health_observations [headerColor: #82B366] {
+  health_observation_id "​" [pk]
+  care_subject_id "​"
+  observation_type "​"
+  value_numeric "​"
+  value_secondary "​"
+  unit "​"
+  observed_at "​"
+  source_record_id "​"
+  quality_label "​"
+  raw_payload_jsonb "​"
+  created_at "​"
+  updated_at "​"
+  legacy_source "​"
+  legacy_id "​"
+  severity "​"
+  source_type "​"
+  subject_type "​"
+  text_value "​"
+  period_start "​"
+  period_end "​"
+  context_jsonb "​"
+  original_unit "​"
+  definition_version "​"
+  observation_shape "​"
+  measurement_group_id "​"
+  deleted_at "​"
+
+  indexes {
+    (legacy_source, legacy_id) [unique]
+  }
+}
+
+Table health_metric_definitions [headerColor: #82B366] {
+  metric_definition_id "​" [pk]
+  metric_code "​"
+  version "​"
+  display_name "​"
+  observation_shape "​"
+  subject_type "​"
+  manual_entry_supported "​"
+  device_import_supported "​"
+  canonical_unit "​"
+  accepted_input_units_jsonb "​"
+  precision_scale "​"
+  required_context_schema_jsonb "​"
+  plausibility_policy_jsonb "​"
+  aggregation_policy_jsonb "​"
+  chart_policy_jsonb "​"
+  quality_policy_jsonb "​"
+  safety_policy_version "​"
+  allowed_journey_stages_jsonb "​"
+  is_active "​"
+  effective_from "​"
+  effective_until "​"
+  created_at "​"
+  updated_at "​"
+
+  indexes {
+    (metric_code, version) [unique]
+  }
+}
+
+Table development_milestones [headerColor: #82B366] {
+  milestone_id "​" [pk]
+  baby_id "​"
+  milestone_type "​"
+  achieved_date "​"
+  note "​"
+  source_type "​"
+  recorded_by "​"
+  created_at "​"
+  updated_at "​"
+  milestone_status "​"
+  record_status "​"
+  care_subject_id "​"
+}
+
+Table vaccination_records [headerColor: #82B366] {
+  vaccination_record_id "​" [pk]
+  baby_id "​"
+  vaccine_name "​"
+  dose_number "​"
+  scheduled_date "​"
+  administered_date "​"
+  status "​"
+  facility_name "​"
+  proof_record_id "​"
+  created_at "​"
+  updated_at "​"
+  postpone_reason "​"
+  care_subject_id "​"
+  vaccination_schedule_id "​"
+}
+
+Table vaccination_schedules [headerColor: #82B366] {
+  vaccination_schedule_id "​" [pk]
+  vaccine_name "​"
+  dose_number "​"
+  offset_days "​"
+  description "​"
+  schedule_version "​"
+  active_from "​"
+  active_to "​"
+  created_at "​"
+
+  indexes {
+    (vaccine_name, dose_number, schedule_version) [unique]
+  }
+}
+
+Table maternal_exercise_sessions [headerColor: #82B366] {
+  exercise_session_id "​" [pk]
+  mother_journey_id "​"
+  owner_user_id "​"
+  exercise_template_id "​"
+  posture_config_id "​"
+  started_at "​"
+  ended_at "​"
+  paused_seconds "​"
+  completion_percent "​"
+  posture_score "​"
+  session_status "​"
+  warning_count "​"
+  summary_jsonb "​"
+  created_at "​"
+  updated_at "​"
+  safety_observation_id "​"
+}
+
+Table users [headerColor: #9673A6] {
+  user_id "​" [pk]
+  avatar_url "​"
+  created_at "​"
+  email "​" [unique]
+  full_name "​"
+  password_hash "​"
+  phone "​"
+  updated_at "​"
+  enabled "​"
+  locked "​"
+  lock_type "​"
+  lock_reason "​"
+  locked_by "​"
+  lock_episode_id "​"
+  role "​"
+  failed_login_count "​"
+  locked_at "​"
+  email_verified "​"
+  phone_verified "​"
+  account_status "​"
+  last_login_at "​"
+  suspended_until "​"
+  must_change_password "​"
+  community_posting_restricted_until "​"
+  person_id "​" [unique]
+  settings_jsonb "​"
+  deactivation_reason "​"
+  deactivated_at "​"
+  deactivated_by "​"
+  display_name "​"
+  date_of_birth "​"
+  phone_number "​"
+  area "​"
+  professional_title "​"
+  workplace "​"
+  experience_years "​"
+  consultation_scope "​"
+  verification_status "​"
+  verified_at "​"
+  verified_by "​"
+  rating_avg "​"
+  specialty "​"
+  facility_id "​"
+  trust_status "​"
+  consultation_fee_vnd "​"
+  bio "​"
+  interest_stage "​"
+  is_visible "​"
+  public_avatar_url "​"
+  region "​"
+  social_identities "​"
+  specialty_ids "​"
+  fall_detection_enabled "​"
+  fall_detection_sensitivity_level "​"
+  emergency_auto_alert "​"
+  emergency_countdown_seconds "​"
+  sensor_permission_granted "​"
+  sensor_permission_recorded_at "​"
+  safety_config_updated_at "​"
+  safety_config_updated_by "​"
+}
+
+Table account_lock_appeals [headerColor: #9673A6] {
+  appeal_id "​" [pk]
+  user_id "​"
+  lock_episode_id "​"
+  reason "​"
+  status "​"
+  submitted_at "​"
+  reviewed_by "​"
+  reviewed_at "​"
+  review_note "​"
+}
+
+Table auth_challenges [headerColor: #9673A6] {
+  challenge_id "​" [pk]
+  user_id "​"
+  challenge_type "​"
+  subject_identifier "​"
+  challenge_hash "​"
+  attempts "​"
+  expires_at "​"
+  used_at "​"
+  status "​"
+  requested_role "​"
+  created_at "​"
+  legacy_source "​"
+  legacy_id "​"
+
+  indexes {
+    (legacy_source, legacy_id) [unique]
+  }
+}
+
+Table auth_sessions [headerColor: #9673A6] {
+  session_id "​" [pk]
+  user_id "​"
+  token_family_id "​"
+  device_identifier "​"
+  device_name "​"
+  refresh_token_hash "​"
+  issued_at "​"
+  expires_at "​"
+  last_used_at "​"
+  rotated_at "​"
+  revoked_at "​"
+  revoke_reason "​"
+  status "​"
+  created_ip_hash "​"
+  user_agent_hash "​"
+  legacy_source "​"
+  legacy_id "​"
+  detected_reuse "​"
+  revocation_metadata_jsonb "​"
+
+  indexes {
+    (legacy_source, legacy_id) [unique]
+  }
+}
+
+Table data_permissions [headerColor: #9673A6] {
+  permission_id "​" [pk]
+  created_at "​"
+  expires_at "​"
+  granted_at "​"
+  grantee_user_id "​"
+  owner_user_id "​"
+  purpose "​"
+  revoked_at "​"
+  scope_reference_id "​"
+  scope_type "​"
+  status "​"
+  updated_at "​"
+  permission_series_id "​"
+  version_number "​"
+  supersedes_permission_id "​"
+  revoked_by "​"
+  policy_version "​"
+  consent_evidence_key "​"
+  legacy_consent_id "​"
+  permission_kind "​"
+  recipient "​"
+  scope_text "​"
+  evidence_key "​"
+  locale "​"
+
+  indexes {
+    (legacy_consent_id, owner_user_id, evidence_key) [unique]
+  }
+}
+
+Table direct_conversations [headerColor: #D6B656] {
+  conversation_id "​" [pk]
+  mother_user_id "​"
+  expert_user_id "​"
+  status "​"
+  created_at "​"
+  last_activity_at "​"
+
+  indexes {
+    (mother_user_id, expert_user_id) [unique]
+  }
+}
+
+Table direct_messages [headerColor: #D6B656] {
+  message_id "​" [pk]
+  conversation_id "​"
+  sender_user_id "​"
+  client_message_id "​"
+  message_type "​"
+  message_body "​"
+  created_at "​"
+  attachment_id "​"
+  recalled_at "​"
+  recalled_by_user_id "​"
+
+  indexes {
+    (conversation_id, sender_user_id, client_message_id) [unique]
+  }
+}
+
+Table conversation_calls [headerColor: #D6B656] {
+  call_id "​" [pk]
+  conversation_id "​"
+  initiated_by_user_id "​"
+  call_type "​"
+  call_status "​"
+  zego_room_id "​"
+  initiated_at "​"
+  answered_at "​"
+  ended_at "​"
+  duration_seconds "​"
+  created_at "​"
+}
+
+Table device_tokens [headerColor: #D6B656] {
+  id "​" [pk]
+  user_id "​"
+  token "​"
+  platform "​"
+  active "​"
+  created_at "​"
+  updated_at "​"
+
+  indexes {
+    (user_id, token) [unique]
+  }
+}
+
+Table notification_records [headerColor: #D6B656] {
+  id "​" [pk]
+  user_id "​"
+  type "​"
+  title "​"
+  body "​"
+  reference_id "​"
+  reference_type "​"
+  status "​"
+  fcm_message_id "​"
+  attempt_count "​"
+  created_at "​"
+  sent_at "​"
+  failed_at "​"
+  is_read "​"
+  read_at "​"
+  metadata "​"
+  processing_started_at "​"
+  channel "​"
+  updated_at "​"
+  claim_token "​"
+  care_group_id "​"
+}
+
+Table notification_jobs [headerColor: #D6B656] {
+  job_id "​" [pk]
+  job_type "​"
+  due_at "​"
+  status "​"
+  attempt_count "​"
+  next_attempt_at "​"
+  locked_by "​"
+  locked_at "​"
+  notification_record_id "​"
+  last_error_code "​"
+  created_at "​"
+  updated_at "​"
+  schedule_id "​"
+  schedule_revision "​"
+  occurrence_date "​"
+  local_time "​"
+  time_zone "​"
+  reminder_id "​"
+  occurrence_id "​"
+  occurrence_generation "​"
+  occurrence_scheduled_at "​"
+  config_revision "​"
+  offset_minutes "​"
+}
+
+Table specialties [headerColor: #D79B00] {
+  specialty_id "​" [pk]
+  code "​" [unique]
+  name "​"
+  description "​"
+  is_active "​"
+  created_at "​"
+}
+
+Table expert_availability [headerColor: #D79B00] {
+  availability_id "​" [pk]
+  start_at "​"
+  end_at "​"
+  channel_type "​"
+  status "​"
+  created_at "​"
+  updated_at "​"
+  professional_profile_id "​"
+  user_id "​"
+}
+
+Table expert_consultation_requests [headerColor: #D79B00] {
+  id "​" [pk]
+  requester_user_id "​"
+  expert_profile_id "​"
+  client_request_id "​"
+  topic "​"
+  description "​"
+  preferred_window_start "​"
+  preferred_window_end "​"
+  status "​"
+  reject_reason "​"
+  direct_conversation_id "​"
+  responded_at "​"
+  responded_by "​"
+  expires_at "​"
+  created_at "​"
+  updated_at "​"
+
+  indexes {
+    (requester_user_id, client_request_id) [unique]
+    (id, requester_user_id, expert_profile_id, client_request_id) [unique]
+  }
+}
+
+Table expert_location_shares [headerColor: #D79B00] {
+  location_share_id "​" [pk]
+  latitude "​"
+  longitude "​"
+  accuracy_meters "​"
+  availability_status "​"
+  shared_at "​"
+  expires_at "​"
+  consent_reference "​"
+  created_at "​"
+  updated_at "​"
+  professional_profile_id "​"
+  user_id "​"
+}
+
+Table consultation_bookings [headerColor: #D79B00] {
+  booking_id "​" [pk]
+  requester_user_id "​"
+  expert_profile_id "​"
+  availability_id "​"
+  expert_price_id "​"
+  price_band_id "​"
+  shared_summary_id "​"
+  topic "​"
+  scheduled_start "​"
+  scheduled_end "​"
+  price_snapshot_amount "​"
+  commission_rate_snapshot "​"
+  cancellation_policy_snapshot "​"
+  price_locked_at "​"
+  status "​"
+  created_at "​"
+  updated_at "​"
+  communication_room_id "​"
+  session_started_at "​"
+  session_ended_at "​"
+  session_status "​"
+  expert_summary "​"
+  technical_log_json "​"
+  session_created_at "​"
+  legacy_session_id "​"
+}
+
+Table consultation_context_shares [headerColor: #D79B00] {
+  context_share_id "​" [pk]
+  consultation_request_id "​" [unique]
+  owner_user_id "​"
+  intake_session_id "​"
+  expert_profile_id "​"
+  consent_grant_id "​" [unique]
+  idempotency_key "​"
+  journey_id "​"
+  origin_dashboard "​"
+  origin_reference_id "​"
+  triage_stage "​"
+  risk_level "​"
+  intake_status "​"
+  risk_summary "​"
+  share_policy_version "​"
+  created_at "​"
+
+  indexes {
+    (owner_user_id, intake_session_id, expert_profile_id) [unique]
+    (owner_user_id, idempotency_key) [unique]
+  }
+}
+
+Table community_topics [headerColor: #B85450] {
+  id "​" [pk]
+  created_at "​"
+  description "​"
+  name "​"
+  updated_at "​"
+  is_hidden "​"
+  icon "​"
+  sort_order "​"
+  created_by "​"
+  type "​"
+  slug "​" [unique]
+  parent_id "​"
+}
+
+Table community_content [headerColor: #B85450] {
+  content_id "​" [pk]
+  topic_id "​"
+  parent_content_id "​"
+  author_user_id "​"
+  content_type "​"
+  title "​"
+  body "​"
+  stage "​"
+  urgency "​"
+  is_anonymous "​"
+  moderation_status "​"
+  created_at "​"
+  updated_at "​"
+  pregnancy_week "​"
+  baby_age_months "​"
+  like_count "​"
+  answer_count "​"
+  is_expert_labeled "​"
+  is_personal_experience "​"
+  image_urls "​"
+  experience_tag "​"
+}
+
+Table content_items [headerColor: #B85450] {
+  content_item_id "​" [pk]
+  author_user_id "​"
+  body "​"
+  content_type "​"
+  created_at "​"
+  published_at "​"
+  source_label "​"
+  status "​"
+  title "​"
+  topic_id "​"
+  updated_at "​"
+  version_no "​"
+  stage "​"
+  revision_reason "​"
+  revision_requested_at "​"
+  revision_requested_by "​"
+  revision_requested_version "​"
+  lock_version "​"
+  summary "​"
+  eligible_from_week "​"
+  eligible_to_week "​"
+  recommendation_priority "​"
+}
+
+Table knowledge_sources [headerColor: #82B366] {
+  knowledge_source_id "​" [pk]
+  domain "​"
+  base_url "​"
+  organization "​"
+  category "​"
+  status "​"
+  discovery_mode "​"
+  applicable_stages "​"
+  added_by "​"
+  reviewed_by "​"
+  reviewed_at "​"
+  notes "​"
+  source_version "​"
+  created_at "​"
+  updated_at "​"
+}
+
+Table knowledge_source_reviews [headerColor: #82B366] {
+  review_id "​" [pk]
+  knowledge_source_id "​"
+  previous_status "​"
+  new_status "​"
+  actor_user_id "​"
+  actor_role "​"
+  notes "​"
+  changed_at "​"
+}
+
+Table ai_moderation_policies [headerColor: #82B366] {
+  policy_id "​" [pk]
+  policy_code "​" [unique]
+  name "​"
+  detection_guidance "​"
+  violation_category "​"
+  report_category "​"
+  severity "​"
+  applicable_target_types "​"
+  confidence_threshold "​"
+  active "​"
+  system_default "​"
+  version "​"
+  created_by "​"
+  updated_by "​"
+  created_at "​"
+  updated_at "​"
+  reference_links "​"
+  reference_files "​"
+}
+
+Table ai_content_scan_jobs [headerColor: #82B366] {
+  job_id "​" [pk]
+  target_type "​"
+  target_id "​"
+  content_hash "​"
+  status "​"
+  attempt_count "​"
+  next_attempt_at "​"
+  locked_by "​"
+  locked_at "​"
+  last_error_code "​"
+  force_rescan "​"
+  created_at "​"
+  updated_at "​"
+  completed_at "​"
+}
+
+Table ai_content_assessments [headerColor: #82B366] {
+  assessment_id "​" [pk]
+  job_id "​"
+  target_type "​"
+  target_id "​"
+  content_hash "​"
+  policy_set_hash "​"
+  provider "​"
+  model "​"
+  status "​"
+  classification "​"
+  overall_severity "​"
+  confidence "​"
+  recommended_action "​"
+  explanation "​"
+  error_code "​"
+  attempt_count "​"
+  latency_ms "​"
+  prompt_tokens "​"
+  output_tokens "​"
+  moderation_case_id "​"
+  created_at "​"
+  completed_at "​"
+  matches_jsonb "​"
+}
+
+Table moderation_cases [headerColor: #82B366] {
+  moderation_case_id "​" [pk]
+  reporter_user_id "​"
+  assigned_moderator_id "​"
+  target_type "​"
+  target_id "​"
+  reason_code "​"
+  description "​"
+  status "​"
+  opened_at "​"
+  resolved_at "​"
+  updated_at "​"
+  report_source "​"
+  reverted_at "​"
+  reverted_by "​"
+  priority "​"
+  claimed_at "​"
+  ai_feedback_decision "​"
+  ai_feedback_reason "​"
+  ai_feedback_by "​"
+  ai_feedback_at "​"
+  ai_feedback_assessment_id "​"
+}
+
+Table health_context_memories [headerColor: #82B366] {
+  memory_id "​" [pk]
+  user_id "​"
+  care_subject_id "​"
+  triage_session_id "​"
+  related_stage "​"
+  summary_text "​"
+  memory_payload_jsonb "​"
+  created_at "​"
+  expires_at "​"
+  deleted_at "​"
+  mother_profile_id "​"
+  baby_profile_id "​"
+}
+
+Table triage_sessions [headerColor: #B85450] {
+  triage_session_id "​" [pk]
+  user_id "​"
+  care_subject_id "​"
+  stage "​"
+  profile_context_id "​"
+  risk_level "​"
+  status "​"
+  emergency "​"
+  disclaimer_version "​"
+  input_jsonb "​"
+  result_jsonb "​"
+  conversation_jsonb "​"
+  schema_version "​"
+  content_hash "​"
+  created_at "​"
+  completed_at "​"
+  updated_at "​"
+  baby_profile_id "​"
+  mother_profile_id "​"
+  client_request_id "​"
+  symptoms "​"
+  raw_ai_response "​"
+  disclaimer_text "​"
+  created_by "​"
+  symptom_list "​"
+  duration_days "​"
+  intensity "​"
+  emergency_flag "​"
+  extracted_at "​"
+  structured_created_by "​"
+  journey_id "​"
+  origin_dashboard "​"
+  origin_reference_id "​"
+  continuation_token "​"
+  continuation_expires_at "​"
+  continuation_acknowledged_at "​"
+
+  indexes {
+    (triage_session_id, user_id) [unique]
+    (triage_session_id, user_id, origin_dashboard, origin_reference_id, stage, risk_level, status) [unique]
+    (triage_session_id, user_id, journey_id, origin_dashboard, origin_reference_id, stage, risk_level, status) [unique]
+  }
+}
+
+Table triage_session_evidence [headerColor: #B85450] {
+  evidence_id "​" [pk]
+  triage_session_id "​"
+  evidence_type "​"
+  claim_code "​"
+  claim_text "​"
+  knowledge_source_id "​"
+  citation_url "​"
+  citation_domain "​"
+  source_version "​"
+  source_snapshot_jsonb "​"
+  content_hash "​"
+  created_at "​"
+
+  indexes {
+    (triage_session_id, evidence_type, content_hash) [unique]
+  }
+}
+
+Table safety_monitoring_sessions [headerColor: #B85450] {
+  monitoring_session_id "​" [pk]
+  user_id "​"
+  status "​"
+  sensitivity_level "​"
+  started_at "​"
+  ended_at "​"
+  created_by "​"
+}
+
+Table safety_events [headerColor: #B85450] {
+  safety_event_id "​" [pk]
+  user_id "​"
+  care_subject_id "​"
+  monitoring_session_id "​"
+  source_event_id "​"
+  detected_at "​"
+  event_type "​"
+  confidence_score "​"
+  peak_acceleration "​"
+  angular_velocity "​"
+  inactivity_seconds "​"
+  response_type "​"
+  response_at "​"
+  false_positive_reason "​"
+  status "​"
+  location_snapshot_jsonb "​"
+  created_at "​"
+  updated_at "​"
+  record_type "​"
+  magnitude "​"
+  user_latitude "​"
+  user_longitude "​"
+  client_detected_at "​"
+  resolved_at "​"
+  notes "​"
+  signal_key "​"
+  countdown_deadline_at "​"
+  response_reason "​"
+  escalation_started_at "​"
+  emergency_session_id "​"
+  created_by_text "​"
+  created_by_user_id "​"
+  alert_generation "​"
+  alert_status "​"
+  alert_claim_token "​"
+  alert_claimed_at "​"
+  alert_lease_expires_at "​"
+  alert_completed_at "​"
+  alert_successful_recipient_count "​"
+  alert_failed_recipient_count "​"
+  alert_updated_at "​"
+  action_type "​"
+  action_status "​"
+  actor_type "​"
+  attempt_number "​"
+  accuracy_meters "​"
+  captured_at "​"
+  care_facility_id "​"
+  consent_status "​"
+  context_id "​"
+  context_type "​"
+  delivered_at "​"
+  delivery_status "​"
+  device_token_id "​"
+  expires_at "​"
+  failure_code "​"
+  fcm_message_id "​"
+  idempotency_key "​" [unique]
+  latitude "​"
+  longitude "​"
+  location_included "​"
+  notification_record_id "​"
+  parent_event_id "​"
+  reason "​"
+  recipient_count "​"
+  recipient_user_id "​"
+  responded_at "​"
+  risk_level "​"
+  triage_handoff_id "​"
+  device_identifier "​"
+  attempt_status "​"
+  started_at "​"
+  completed_at "​"
+  lease_expires_at "​"
+  successful_recipient_count "​"
+  failed_recipient_count "​"
+  summary "​"
+  action_phase "​"
+  fence_token "​"
+  related_action_id "​"
+  owner_user_id "​"
+}
+
+Table reminder_schedules [headerColor: #D6B656] {
+  schedule_id "​" [pk]
+  owner_user_id "​"
+  title "​"
+  time_zone "​"
+  recurrence "​"
+  start_date "​"
+  end_date "​"
+  active "​"
+  revision "​"
+  lock_version "​"
+  created_at "​"
+  updated_at "​"
+  local_times "​"
+}
+
+Table reminder_occurrence_aliases [headerColor: #D6B656] {
+  occurrence_id "​" [pk]
+  reminder_definition_id "​"
+  owner_user_id "​"
+  scheduled_at "​"
+  created_at "​"
+  occurrence_generation "​"
+
+  indexes {
+    (reminder_definition_id, occurrence_generation, scheduled_at) [unique]
+  }
+}
+
+Table appointment_notification_configs [headerColor: #D6B656] {
+  reminder_id "​" [pk]
+  time_zone "​"
+  config_revision "​"
+  created_at "​"
+  updated_at "​"
+  rules_jsonb "​"
+}
+
+Table administrative_areas [headerColor: #9673A6] {
+  administrative_area_id "​" [pk]
+  parent_area_id "​"
+  area_type "​"
+  code "​" [unique]
+  name "​"
+  legacy_code "​"
+  created_at "​"
+  name_en "​"
+}
+
+Table care_facilities [headerColor: #9673A6] {
+  facility_id "​" [pk]
+  name "​"
+  facility_type "​"
+  address "​"
+  latitude "​"
+  longitude "​"
+  phone "​"
+  opening_hours_json "​"
+  source_type "​"
+  verification_status "​"
+  created_at "​"
+  updated_at "​"
+  facility_level "​"
+  ownership_type "​"
+  province_id "​"
+  district_id "​"
+  external_source_id "​"
+  is_active "​"
+  is_searchable "​"
+  administrative_area_id "​"
+}
+
+Table attachments [headerColor: #9673A6] {
+  attachment_id "​" [pk]
+  owner_user_id "​"
+  uploader_role "​"
+  storage_key "​" [unique]
+  original_name "​"
+  mime_type "​"
+  file_size_bytes "​"
+  status "​"
+  checksum "​"
+  created_at "​"
+  updated_at "​"
+  attachment_category "​"
+  credential_type "​"
+  credential_number "​"
+  issuer "​"
+  issued_date "​"
+  expiry_date "​"
+  review_status "​"
+  review_note "​"
+  reviewed_by "​"
+  reviewed_at "​"
+  file_url "​"
+  file_id "​"
+  health_record_id "​"
+}
+
+Table audit_events [headerColor: #9673A6] {
+  audit_event_id "​" [pk]
+  actor_user_id "​"
+  event_category "​"
+  subject_user_id "​"
+  subject_reference_id "​"
+  resource_type "​"
+  resource_id "​"
+  purpose "​"
+  decision "​"
+  ip_hash "​"
+  before_payload_jsonb "​"
+  after_payload_jsonb "​"
+  checksum "​"
+  occurred_at "​"
+  created_at "​"
+  note_text "​"
+  event_origin "​"
+  ip_address "​"
+  user_agent "​"
+  payload "​"
+  correlation_id "​"
+  severity "​"
+  status "​"
+  reviewed_at "​"
+  reviewed_by "​"
+  security_event_id "​"
+  actor_type "​"
+  actor_service "​"
+  reason_code "​"
+  care_context_type "​"
+  care_context_id "​"
+  template_version_id "​"
+  checklist_task_instance_id "​"
+  legal_hold "​"
+}
+
+Table system_configurations [headerColor: #9673A6] {
+  system_configuration_id "​" [pk]
+  api_rate_limit "​"
+  connection_timeout_ms "​"
+  max_upload_size_mb "​"
+  administrator_email "​"
+  email_alerts "​"
+  sms_alerts "​"
+  webhook_alerts "​"
+  ai_moderation_enabled "​"
+  maintenance_mode_enabled "​"
+  updated_by "​"
+  row_version "​"
+  created_at "​"
+  updated_at "​"
+}
+
+TableGroup "Care & Coordination" {
+  care_subjects
+  mother_journeys
+  care_groups
+  care_item_templates
+  care_tasks
+  checklist_instances
+  checklist_task_instances
+  checklist_action_commands
+  expense_entries
+}
+
+TableGroup "Health, Baby & Exercise" {
+  health_records
+  health_observations
+  health_metric_definitions
+  development_milestones
+  vaccination_records
+  vaccination_schedules
+  maternal_exercise_sessions
+}
+
+TableGroup "Identity & Access" {
+  users
+  account_lock_appeals
+  auth_challenges
+  auth_sessions
+  data_permissions
+}
+
+TableGroup "Messaging & Notifications" {
+  direct_conversations
+  direct_messages
+  conversation_calls
+  device_tokens
+  notification_records
+  notification_jobs
+}
+
+TableGroup "Expert & Consultation" {
+  specialties
+  expert_availability
+  expert_consultation_requests
+  expert_location_shares
+  consultation_bookings
+  consultation_context_shares
+}
+
+TableGroup "Community & Content" {
+  community_topics
+  community_content
+  content_items
+}
+
+TableGroup "Knowledge, AI & Moderation" {
+  knowledge_sources
+  knowledge_source_reviews
+  ai_moderation_policies
+  ai_content_scan_jobs
+  ai_content_assessments
+  moderation_cases
+  health_context_memories
+}
+
+TableGroup "Triage & Safety" {
+  triage_sessions
+  triage_session_evidence
+  safety_monitoring_sessions
+  safety_events
+}
+
+TableGroup "Reminders" {
+  reminder_schedules
+  reminder_occurrence_aliases
+  appointment_notification_configs
+}
+
+TableGroup "Platform, Audit & Location" {
+  administrative_areas
+  care_facilities
+  attachments
+  audit_events
+  system_configurations
+}
+
+// Catalog-derived FK relationships between the 56 entities (duplicate endpoints collapsed)
+Ref ref_1_account_lock_appeals_reviewer_fk: account_lock_appeals.reviewed_by > users.user_id
+Ref ref_2_account_lock_appeals_user_fk: account_lock_appeals.user_id > users.user_id
+Ref ref_3_administrative_areas_parent_area_id_fkey: administrative_areas.parent_area_id > administrative_areas.administrative_area_id
+Ref ref_4_ai_content_assessments_job_id_fkey: ai_content_assessments.job_id > ai_content_scan_jobs.job_id
+Ref ref_5_ai_content_assessments_moderation_case_id_fkey: ai_content_assessments.moderation_case_id > moderation_cases.moderation_case_id
+Ref ref_6_ai_moderation_policies_created_by_fkey: ai_moderation_policies.created_by > users.user_id
+Ref ref_7_ai_moderation_policies_updated_by_fkey: ai_moderation_policies.updated_by > users.user_id
+Ref ref_8_appointment_notification_configs_reminder_fk: appointment_notification_configs.reminder_id > care_tasks.task_id
+Ref ref_9_attachments_health_record_id_fkey: attachments.health_record_id > health_records.health_record_id
+Ref ref_10_attachments_owner_user_id_fkey: attachments.owner_user_id > users.user_id
+Ref ref_11_attachments_reviewed_by_fkey: attachments.reviewed_by > users.user_id
+Ref ref_12_audit_events_actor_user_id_fkey: audit_events.actor_user_id > users.user_id
+Ref ref_13_audit_events_reviewed_by_fkey: audit_events.reviewed_by > users.user_id
+Ref ref_14_audit_events_security_event_fk: audit_events.security_event_id > audit_events.audit_event_id
+Ref ref_15_audit_events_subject_user_id_fkey: audit_events.subject_user_id > users.user_id
+Ref ref_16_auth_challenges_user_id_fkey: auth_challenges.user_id > users.user_id
+Ref ref_17_auth_sessions_user_id_fkey: auth_sessions.user_id > users.user_id
+Ref ref_18_care_groups_baby_id_fkey: care_groups.baby_id > care_subjects.care_subject_id
+Ref ref_19_care_groups_journey_id_fkey: care_groups.journey_id > mother_journeys.journey_id
+Ref ref_20_care_groups_linked_baby_owner_fk: care_groups.(linked_baby_profile_id, owner_user_id, linked_baby_subject_type) > care_subjects.(care_subject_id, owner_user_id, subject_type)
+Ref ref_21_care_groups_linked_journey_owner_fk: care_groups.(linked_journey_id, owner_user_id) > mother_journeys.(journey_id, owner_user_id)
+Ref ref_22_care_groups_owner_user_id_fkey: care_groups.owner_user_id > users.user_id
+Ref ref_23_care_item_templates_parent_template_id_fkey: care_item_templates.parent_template_id > care_item_templates.template_id
+Ref ref_24_care_subjects_journey_fk: care_subjects.mother_journey_id > mother_journeys.journey_id
+Ref ref_25_care_subjects_owner_user_id_fkey: care_subjects.owner_user_id > users.user_id
+Ref ref_26_care_subjects_person_id_fkey: care_subjects.person_id > users.user_id
+Ref ref_27_care_tasks_assignee_user_id_fkey: care_tasks.assignee_user_id > users.user_id
+Ref ref_28_care_tasks_care_group_id_fkey: care_tasks.care_group_id > care_groups.care_group_id
+Ref ref_29_care_tasks_care_subject_id_fkey: care_tasks.care_subject_id > care_subjects.care_subject_id
+Ref ref_30_care_tasks_creator_user_id_fkey: care_tasks.creator_user_id > users.user_id
+Ref ref_31_care_tasks_owner_user_id_fkey: care_tasks.owner_user_id > users.user_id
+Ref ref_32_care_tasks_vaccination_record_id_fkey: care_tasks.vaccination_record_id > vaccination_records.vaccination_record_id
+Ref ref_33_checklist_action_commands_actor_fk: checklist_action_commands.actor_user_id > users.user_id
+Ref ref_34_checklist_action_commands_reminder_definition_fk: checklist_action_commands.reminder_definition_id > care_tasks.task_id
+Ref ref_35_checklist_instances_baby_owner_fk: checklist_instances.(baby_context_id, context_owner_user_id, baby_context_subject_type) > care_subjects.(care_subject_id, owner_user_id, subject_type)
+Ref ref_36_checklist_instances_journey_owner_fk: checklist_instances.(journey_context_id, context_owner_user_id) > mother_journeys.(journey_id, owner_user_id)
+Ref ref_37_checklist_instances_lineage_version_fk: checklist_instances.(template_lineage_id, template_version_id) > care_item_templates.(template_lineage_id, template_version_id)
+Ref ref_38_checklist_instances_recipient_fk: checklist_instances.recipient_user_id > users.user_id
+Ref ref_39_checklist_task_instances_parent_fk: checklist_task_instances.checklist_instance_id > checklist_instances.checklist_instance_id
+Ref ref_40_checklist_task_instances_parent_version_fk: checklist_task_instances.(checklist_instance_id, template_version_id) > checklist_instances.(checklist_instance_id, template_version_id)
+Ref ref_41_checklist_task_instances_template_item_fk: checklist_task_instances.template_item_version_id > care_item_templates.template_id
+Ref ref_42_checklist_task_instances_template_version_fk: checklist_task_instances.template_version_id > care_item_templates.template_version_id
+Ref ref_43_community_content_author_user_id_fkey: community_content.author_user_id > users.user_id
+Ref ref_44_community_content_parent_content_id_fkey: community_content.parent_content_id > community_content.content_id
+Ref ref_45_community_content_topic_id_fkey: community_content.topic_id > community_topics.id
+Ref ref_46_fk_community_topics_parent: community_topics.parent_id > community_topics.id
+Ref ref_47_consultation_bookings_availability_id_fkey: consultation_bookings.availability_id > expert_availability.availability_id
+Ref ref_48_consultation_bookings_expert_profile_id_fkey: consultation_bookings.expert_profile_id > users.user_id
+Ref ref_49_consultation_bookings_requester_user_id_fkey: consultation_bookings.requester_user_id > users.user_id
+Ref ref_50_fk_context_consent_integrity: consultation_context_shares.(consent_grant_id, owner_user_id, idempotency_key) > data_permissions.(legacy_consent_id, owner_user_id, evidence_key)
+Ref ref_51_fk_context_expert: consultation_context_shares.expert_profile_id > users.user_id
+Ref ref_52_fk_context_intake_snapshot: consultation_context_shares.(intake_session_id, owner_user_id, journey_id, origin_dashboard, origin_reference_id, triage_stage, risk_level, intake_status) > triage_sessions.(triage_session_id, user_id, journey_id, origin_dashboard, origin_reference_id, stage, risk_level, status)
+Ref ref_53_fk_context_intake_snapshot_core: consultation_context_shares.(intake_session_id, owner_user_id, origin_dashboard, origin_reference_id, triage_stage, risk_level, intake_status) > triage_sessions.(triage_session_id, user_id, origin_dashboard, origin_reference_id, stage, risk_level, status)
+Ref ref_54_fk_context_journey_owner: consultation_context_shares.(journey_id, owner_user_id) > mother_journeys.(journey_id, owner_user_id)
+Ref ref_55_fk_context_request_integrity: consultation_context_shares.(consultation_request_id, owner_user_id, expert_profile_id, idempotency_key) > expert_consultation_requests.(id, requester_user_id, expert_profile_id, client_request_id)
+Ref ref_56_conversation_calls_conversation_id_fkey: conversation_calls.conversation_id > direct_conversations.conversation_id
+Ref ref_57_conversation_calls_initiated_by_user_id_fkey: conversation_calls.initiated_by_user_id > users.user_id
+Ref ref_58_data_permissions_supersedes_fk: data_permissions.supersedes_permission_id > data_permissions.permission_id
+Ref ref_59_development_milestones_baby_id_fkey: development_milestones.baby_id > care_subjects.care_subject_id
+Ref ref_60_development_milestones_recorded_by_fkey: development_milestones.recorded_by > users.user_id
+Ref ref_61_development_milestones_subject_fk: development_milestones.care_subject_id > care_subjects.care_subject_id
+Ref ref_62_device_tokens_user_fkey: device_tokens.user_id > users.user_id
+Ref ref_63_direct_conversations_expert_user_id_fkey: direct_conversations.expert_user_id > users.user_id
+Ref ref_64_direct_conversations_mother_user_id_fkey: direct_conversations.mother_user_id > users.user_id
+Ref ref_65_direct_messages_attachment_id_fkey: direct_messages.attachment_id > attachments.attachment_id
+Ref ref_66_direct_messages_conversation_id_fkey: direct_messages.conversation_id > direct_conversations.conversation_id
+Ref ref_67_direct_messages_sender_user_id_fkey: direct_messages.sender_user_id > users.user_id
+Ref ref_68_expense_entries_care_subject_id_fkey: expense_entries.care_subject_id > care_subjects.care_subject_id
+Ref ref_69_expense_entries_mother_journey_id_fkey: expense_entries.mother_journey_id > mother_journeys.journey_id
+Ref ref_70_expense_entries_owner_user_id_fkey: expense_entries.owner_user_id > users.user_id
+Ref ref_71_expert_consultation_requests_direct_conversation_id_fkey: expert_consultation_requests.direct_conversation_id > direct_conversations.conversation_id
+Ref ref_72_expert_consultation_requests_expert_profile_id_fkey: expert_consultation_requests.expert_profile_id > users.user_id
+Ref ref_73_expert_consultation_requests_requester_user_id_fkey: expert_consultation_requests.requester_user_id > users.user_id
+Ref ref_74_expert_consultation_requests_responded_by_fkey: expert_consultation_requests.responded_by > users.user_id
+Ref ref_75_health_context_memories_care_subject_id_fkey: health_context_memories.care_subject_id > care_subjects.care_subject_id
+Ref ref_76_health_context_memories_triage_session_id_fkey: health_context_memories.triage_session_id > triage_sessions.triage_session_id
+Ref ref_77_health_context_memories_user_id_fkey: health_context_memories.user_id > users.user_id
+Ref ref_78_health_observations_care_subject_id_fkey: health_observations.care_subject_id > care_subjects.care_subject_id
+Ref ref_79_health_observations_session_fk: health_observations.source_record_id > maternal_exercise_sessions.exercise_session_id
+Ref ref_80_health_records_baby_id_fkey: health_records.baby_id > care_subjects.care_subject_id
+Ref ref_81_health_records_journey_id_fkey: health_records.journey_id > mother_journeys.journey_id
+Ref ref_82_health_records_owner_user_id_fkey: health_records.owner_user_id > users.user_id
+Ref ref_83_knowledge_source_reviews_actor_user_id_fkey: knowledge_source_reviews.actor_user_id > users.user_id
+Ref ref_84_knowledge_source_reviews_knowledge_source_id_fkey: knowledge_source_reviews.knowledge_source_id > knowledge_sources.knowledge_source_id
+Ref ref_85_knowledge_sources_added_by_fkey: knowledge_sources.added_by > users.user_id
+Ref ref_86_knowledge_sources_reviewed_by_fkey: knowledge_sources.reviewed_by > users.user_id
+Ref ref_87_maternal_exercise_sessions_mother_journey_id_fkey: maternal_exercise_sessions.mother_journey_id > mother_journeys.journey_id
+Ref ref_88_maternal_exercise_sessions_owner_user_id_fkey: maternal_exercise_sessions.owner_user_id > users.user_id
+Ref ref_89_maternal_exercise_sessions_posture_config_fk: maternal_exercise_sessions.posture_config_id > care_item_templates.template_id
+Ref ref_90_maternal_exercise_sessions_safety_fk: maternal_exercise_sessions.safety_observation_id > health_observations.health_observation_id
+Ref ref_91_maternal_exercise_sessions_template_fk: maternal_exercise_sessions.exercise_template_id > care_item_templates.template_id
+Ref ref_92_moderation_cases_ai_feedback_assessment_id_fkey: moderation_cases.ai_feedback_assessment_id > ai_content_assessments.assessment_id
+Ref ref_93_moderation_cases_ai_feedback_by_fkey: moderation_cases.ai_feedback_by > users.user_id
+Ref ref_94_moderation_cases_assigned_moderator_id_fkey: moderation_cases.assigned_moderator_id > users.user_id
+Ref ref_95_moderation_cases_reporter_user_id_fkey: moderation_cases.reporter_user_id > users.user_id
+Ref ref_96_mother_journeys_owner_user_id_fkey: mother_journeys.owner_user_id > users.user_id
+Ref ref_97_mother_journeys_subject_fk: mother_journeys.care_subject_id > care_subjects.care_subject_id
+Ref ref_98_notification_jobs_record_fk: notification_jobs.notification_record_id > notification_records.id
+Ref ref_99_notification_jobs_reminder_fk: notification_jobs.reminder_id > care_tasks.task_id
+Ref ref_100_notification_jobs_schedule_fk: notification_jobs.schedule_id > reminder_schedules.schedule_id
+Ref ref_101_fk_notification_records_care_group: notification_records.care_group_id > care_groups.care_group_id
+Ref ref_102_fk_notification_records_user: notification_records.user_id > users.user_id
+Ref ref_105_reminder_schedules_owner_fk: reminder_schedules.owner_user_id > users.user_id
+Ref ref_106_safety_events_care_facility_id_fkey: safety_events.care_facility_id > care_facilities.facility_id
+Ref ref_107_safety_events_care_subject_id_fkey: safety_events.care_subject_id > care_subjects.care_subject_id
+Ref ref_108_safety_events_created_by_user_fk: safety_events.created_by_user_id > users.user_id
+Ref ref_109_safety_events_device_token_fk: safety_events.device_token_id > device_tokens.id
+Ref ref_110_safety_events_emergency_session_fk: safety_events.emergency_session_id > safety_events.safety_event_id
+Ref ref_111_safety_events_monitoring_session_id_fkey: safety_events.monitoring_session_id > safety_monitoring_sessions.monitoring_session_id
+Ref ref_112_safety_events_notification_record_id_fkey: safety_events.notification_record_id > notification_records.id
+Ref ref_113_safety_events_owner_fk: safety_events.owner_user_id > users.user_id
+Ref ref_114_safety_events_parent_event_id_fkey: safety_events.parent_event_id > safety_events.safety_event_id
+Ref ref_115_safety_events_recipient_user_id_fkey: safety_events.recipient_user_id > users.user_id
+Ref ref_116_safety_events_user_id_fkey: safety_events.user_id > users.user_id
+Ref ref_117_safety_monitoring_sessions_created_by_fkey: safety_monitoring_sessions.created_by > users.user_id
+Ref ref_118_safety_monitoring_sessions_user_id_fkey: safety_monitoring_sessions.user_id > users.user_id
+Ref ref_119_system_configurations_updated_by_fkey: system_configurations.updated_by > users.user_id
+Ref ref_120_triage_session_evidence_source_fk: triage_session_evidence.knowledge_source_id > knowledge_sources.knowledge_source_id
+Ref ref_121_triage_session_evidence_triage_session_id_fkey: triage_session_evidence.triage_session_id > triage_sessions.triage_session_id
+Ref ref_122_fk_triage_journey_owner: triage_sessions.(journey_id, user_id) > mother_journeys.(journey_id, owner_user_id)
+Ref ref_123_triage_sessions_care_subject_id_fkey: triage_sessions.care_subject_id > care_subjects.care_subject_id
+Ref ref_124_triage_sessions_user_id_fkey: triage_sessions.user_id > users.user_id
+Ref ref_125_users_deactivated_by_fk: users.deactivated_by > users.user_id
+Ref ref_126_users_facility_id_fkey: users.facility_id > care_facilities.facility_id
+Ref ref_127_users_locked_by_fk: users.locked_by > users.user_id
+Ref ref_128_users_safety_updated_by_fk: users.safety_config_updated_by > users.user_id
+Ref ref_129_users_verified_by_fkey: users.verified_by > users.user_id
+Ref ref_130_vaccination_records_baby_id_fkey: vaccination_records.baby_id > care_subjects.care_subject_id
+Ref ref_131_vaccination_records_proof_record_id_fkey: vaccination_records.proof_record_id > health_records.health_record_id
+Ref ref_132_vaccination_records_schedule_fk: vaccination_records.vaccination_schedule_id > vaccination_schedules.vaccination_schedule_id
+Ref ref_133_vaccination_records_subject_fk: vaccination_records.care_subject_id > care_subjects.care_subject_id
+
+// Conceptual many-to-many relationships replacing the 7 relationship tables
+Ref ref_134_care_group_members: users.user_id <> care_groups.care_group_id
+Ref ref_135_community_interactions_content: users.user_id <> community_content.content_id
+Ref ref_136_community_interactions_topic: users.user_id <> community_topics.id
+Ref ref_137_consultation_context_citations: consultation_context_shares.context_share_id <> knowledge_sources.knowledge_source_id
+Ref ref_138_content_item_sources: content_items.content_item_id <> knowledge_sources.knowledge_source_id
+Ref ref_139_content_item_topics: content_items.content_item_id <> community_topics.id
+Ref ref_140_direct_conversation_read_cursors: users.user_id <> direct_conversations.conversation_id
+Ref ref_141_professional_specialties: users.user_id <> specialties.specialty_id

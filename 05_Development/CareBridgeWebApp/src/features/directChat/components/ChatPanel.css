@@ -1,0 +1,35 @@
+/* Custom scrollbar for ChatPanel messages area */
+.chat-panel-messages::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-panel-messages::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+}
+.chat-panel-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.chat-inline-image {
+  display: block;
+  width: min(320px, 58vw);
+  max-height: 280px;
+  object-fit: cover;
+}
+
+.chat-attachment-action {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  cursor: pointer;
+}
+
+.chat-attachment-action:hover {
+  background: rgba(0, 0, 0, 0.82);
+}

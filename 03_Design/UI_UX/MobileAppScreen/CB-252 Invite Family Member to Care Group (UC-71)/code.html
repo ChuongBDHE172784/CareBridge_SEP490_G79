@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mời thành viên gia đình | CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#484643",
+                    "inverse-on-surface": "#f6f0eb",
+                    "surface-container-high": "#ede7e3",
+                    "on-secondary-fixed": "#1e1b18",
+                    "primary-fixed-dim": "#fab7a4",
+                    "on-primary-fixed": "#341006",
+                    "text-body": "#524F4C",
+                    "surface-main": "#FFFFFF",
+                    "surface-accent-muted": "#F2EAE4",
+                    "surface-tint": "#845143",
+                    "inverse-surface": "#32302d",
+                    "primary-container": "#c98c7b",
+                    "background": "#fef8f4",
+                    "surface-dim": "#dfd9d5",
+                    "text-heading": "#2D2A28",
+                    "on-secondary-container": "#68635f",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f9f2ee",
+                    "tertiary-fixed-dim": "#cac6c1",
+                    "surface-bright": "#fef8f4",
+                    "surface-container-highest": "#e7e1dd",
+                    "error": "#ba1a1a",
+                    "on-background": "#1d1b19",
+                    "on-tertiary-container": "#34322f",
+                    "on-primary-fixed-variant": "#693a2d",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "surface-accent-light": "#F6F1EC",
+                    "secondary": "#625d59",
+                    "surface-variant": "#e7e1dd",
+                    "secondary-fixed-dim": "#ccc5c0",
+                    "secondary-container": "#e9e1db",
+                    "primary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#1d1b19",
+                    "surface": "#fef8f4",
+                    "secondary-fixed": "#e9e1db",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e6e2dd",
+                    "tertiary": "#605e5a",
+                    "on-surface": "#1d1b19",
+                    "status-active": "#C98C7B",
+                    "inverse-primary": "#fab7a4",
+                    "outline": "#84736f",
+                    "tertiary-container": "#9e9a96",
+                    "on-primary-container": "#51271b",
+                    "on-secondary-fixed-variant": "#4a4642",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#f3ede8",
+                    "primary": "#845143",
+                    "outline-variant": "#d6c2bd",
+                    "on-surface-variant": "#524440",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "panel-gap": "24px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "grid-gutter": "24px",
+                    "container-padding": "32px",
+                    "sidebar-width": "280px",
+                    "container-margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "label-md": ["Quicksand"],
+                    "headline-sm": ["Quicksand"],
+                    "display-lg": ["Quicksand"],
+                    "body-lg": ["Quicksand"],
+                    "headline-md": ["Quicksand"],
+                    "body-md": ["Quicksand"],
+                    "nav-item": ["Quicksand"],
+                    "headline-lg-mobile": ["Quicksand"],
+                    "label-caps": ["Quicksand"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+            color: #1d1b19;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tab-active {
+            border-bottom: 3px solid #845143;
+            color: #845143;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-background dark:bg-background shadow-[0px_4px_20px_rgba(90,70,63,0.08)] flex items-center justify-between px-container-margin-mobile h-16">
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-primary active:scale-95 transition-transform">arrow_back</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Mời thành viên</h1>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant active:scale-95 transition-transform">close</button>
+</header>
+<main class="mt-20 px-4 max-w-2xl mx-auto">
+<!-- Hero Illustration Area -->
+<div class="relative w-full h-48 rounded-lg overflow-hidden mb-8 shadow-sm">
+<div class="w-full h-full bg-cover bg-center" data-alt="A warm and inviting illustration of a multi-generational family gathering in a bright, modern living room. The style is minimalist with tactile softness, featuring a warm palette of terracottas, creams, and soft browns. The scene conveys empathy, care, and professional connection through clean geometric shapes and soft-focus lighting. The overall mood is peaceful, safe, and technologically forward yet deeply human-centric." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDztZuFRTGUaTxe5qWFmw444l1KpgMhIg1yKDqBTrw9yIxKc3JRWiIRfctOXZILaYAqB144SVaj26a6zjnIcWwudbZVitTj4k0jJh9vFMmgseNGH33NFpwhnidmiyqzt6BXL3E3-H21HKSr6Cd5TlkOA_udao8o-6RkEpejSHemVsRjaA9zY-84YK0YAtH3MxGKhnN1Uq3RfMsfZcduH7mCEImm87PLKAsJ2Q51yIdapX6Y2yRZWXrJqixZSpmc86M35fUKVohstQA')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+</div>
+<!-- Introduction -->
+<div class="mb-8 text-center">
+<h2 class="font-headline-md text-headline-md text-text-heading mb-2">Xây dựng vòng kết nối</h2>
+<p class="font-body-md text-text-body">Mời người thân tham gia để cùng theo dõi và chăm sóc sức khỏe cho gia đình một cách trọn vẹn nhất.</p>
+</div>
+<!-- Methods Tabs -->
+<div class="bg-surface-container-lowest rounded-lg p-1 mb-8 shadow-sm flex">
+<button class="flex-1 py-3 text-center font-nav-item text-nav-item transition-all rounded-md text-primary bg-surface-accent-light shadow-sm" id="tab-phone" onclick="switchTab('phone')">Số điện thoại</button>
+<button class="flex-1 py-3 text-center font-nav-item text-nav-item transition-all rounded-md text-secondary" id="tab-link" onclick="switchTab('link')">Link mời</button>
+<button class="flex-1 py-3 text-center font-nav-item text-nav-item transition-all rounded-md text-secondary" id="tab-qr" onclick="switchTab('qr')">Mã QR</button>
+</div>
+<!-- Form Sections -->
+<div class="space-y-6" id="content-phone">
+<!-- Recipient Input -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">SỐ ĐIỆN THOẠI NGƯỜI NHẬN</label>
+<div class="relative">
+<input class="w-full h-14 bg-surface-container-lowest border-2 border-surface-accent-muted rounded-lg px-4 font-body-lg focus:border-primary-container focus:ring-0 transition-colors outline-none" placeholder="090 123 4567" type="tel"/>
+<span class="hidden absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-green-500" id="validation-status">check_circle</span>
+</div>
+<p class="text-[12px] text-on-surface-variant italic ml-1">Hệ thống sẽ kiểm tra xem số này đã có tài khoản CareBridge chưa.</p>
+</div>
+<!-- Message Area -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">TIN NHẮN MỜI (TÙY CHỌN)</label>
+<textarea class="w-full bg-surface-container-lowest border-2 border-surface-accent-muted rounded-lg p-4 font-body-md focus:border-primary-container focus:ring-0 transition-colors outline-none resize-none" placeholder="Chào bạn, mình mời bạn cùng tham gia nhóm chăm sóc sức khỏe gia đình trên CareBridge nhé!" rows="3"></textarea>
+</div>
+<!-- Expiry & Data Permissions Info -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-4 rounded-lg">
+<span class="material-symbols-outlined text-primary mb-1">timer</span>
+<h4 class="font-label-md text-label-md text-on-surface-variant">THỜI HẠN LỜI MỜI</h4>
+<p class="font-body-md text-text-heading">7 ngày</p>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg">
+<span class="material-symbols-outlined text-primary mb-1">security</span>
+<h4 class="font-label-md text-label-md text-on-surface-variant">QUYỀN DỮ LIỆU</h4>
+<p class="font-body-md text-text-heading">Cài đặt sau</p>
+</div>
+</div>
+</div>
+<div class="hidden space-y-6" id="content-link">
+<div class="bg-surface-container-low border-2 border-dashed border-outline-variant p-6 rounded-lg text-center">
+<p class="font-body-md text-text-body mb-4">Gửi link này cho bất kỳ ai bạn muốn mời. Link chỉ có hiệu lực 24h.</p>
+<div class="flex items-center gap-2 bg-surface-container-lowest p-2 rounded-lg border border-surface-accent-muted">
+<code class="flex-1 truncate font-mono text-sm text-primary">carebridge.app/invite/family/xcv893</code>
+<button class="bg-primary text-white px-4 py-2 rounded-md font-label-md hover:bg-on-primary-container transition-colors">SAO CHÉP</button>
+</div>
+</div>
+</div>
+<div class="hidden space-y-6 text-center" id="content-qr">
+<div class="bg-white p-6 rounded-lg shadow-sm inline-block mx-auto">
+<div class="w-48 h-48 bg-cover bg-center mb-4" data-alt="A clean, minimalist QR code graphic centered on a white background. The QR code is styled with the CareBridge primary terracotta color for the dots and squares. In the center of the QR code is a tiny, soft-heart icon representing care. The surrounding space is clean with soft ambient shadows, echoing the modern care-tech aesthetic of the brand." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAvcFxK7YIgINpigGoy-T-B144fa-KzJhlqP8pPkjxhx5sw6SeY4FhrMQtgXho_rvTXcm01T4xS02HzKrRPyAqNRzoMBw6WmHg0v7yh_dbuzNbYISlyoNblTcVWQgHn7lOAdmKklB9SFDKpIFyRtssHgr74ihKVhOFcwcsxn6OHLM4RyerXriFQ1WI8kir4xD3jZv-x-Vgxb8FPGtMzTliNu2iYuhWltX7T82glv1NYgyINo_sze4dVwdW_EWa-5XdUM3lOJTTuv7U')"></div>
+<p class="font-label-md text-label-md text-on-surface-variant">QUÉT ĐỂ THAM GIA</p>
+</div>
+<p class="font-body-md text-text-body px-8">Người thân chỉ cần mở ứng dụng CareBridge và quét mã này để được thêm vào nhóm ngay lập tức.</p>
+</div>
+<!-- Note Section -->
+<div class="mt-8 flex gap-3 p-4 bg-surface-accent-light rounded-lg border border-surface-accent-muted">
+<span class="material-symbols-outlined text-primary shrink-0">info</span>
+<p class="text-sm leading-relaxed text-on-surface-variant">
+<strong>Ghi chú bảo mật:</strong> Quyền xem hồ sơ sức khỏe và lịch sử tiêm chủng sẽ được bạn cấu hình cụ thể cho từng thành viên sau khi họ chấp nhận lời mời.
+            </p>
+</div>
+<!-- Submit Button -->
+<div class="mt-10">
+<button class="w-full h-14 bg-primary text-white rounded-full font-headline-sm shadow-lg hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2">
+<span>Gửi lời mời</span>
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full bg-surface dark:bg-surface shadow-[0px_-4px_20px_rgba(90,70,63,0.08)] flex justify-around items-center py-3 px-4 z-50 rounded-t-lg">
+<div class="flex flex-col items-center justify-center text-secondary font-label-caps text-label-caps">
+<span class="material-symbols-outlined mb-1">home</span>
+            Trang chủ
+        </div>
+<div class="flex flex-col items-center justify-center text-secondary font-label-caps text-label-caps">
+<span class="material-symbols-outlined mb-1">monitor_heart</span>
+            Sức khỏe
+        </div>
+<div class="flex flex-col items-center justify-center text-secondary font-label-caps text-label-caps">
+<span class="material-symbols-outlined mb-1">notifications</span>
+            Thông báo
+        </div>
+<div class="flex flex-col items-center justify-center text-primary font-bold font-label-caps text-label-caps">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">person</span>
+            Cá nhân
+        </div>
+</nav>
+<script>
+        function switchTab(type) {
+            // Content
+            document.getElementById('content-phone').classList.add('hidden');
+            document.getElementById('content-link').classList.add('hidden');
+            document.getElementById('content-qr').classList.add('hidden');
+            document.getElementById(`content-${type}`).classList.remove('hidden');
+
+            // Tabs UI
+            const tabs = ['phone', 'link', 'qr'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === type) {
+                    btn.classList.add('text-primary', 'bg-surface-accent-light', 'shadow-sm');
+                    btn.classList.remove('text-secondary');
+                } else {
+                    btn.classList.remove('text-primary', 'bg-surface-accent-light', 'shadow-sm');
+                    btn.classList.add('text-secondary');
+                }
+            });
+        }
+
+        // Mock validation logic
+        const phoneInput = document.querySelector('input[type="tel"]');
+        const validationIcon = document.getElementById('validation-status');
+
+        phoneInput.addEventListener('input', (e) => {
+            if (e.target.value.length >= 10) {
+                validationIcon.classList.remove('hidden');
+                phoneInput.classList.add('border-green-500');
+                phoneInput.classList.remove('border-surface-accent-muted');
+            } else {
+                validationIcon.classList.add('hidden');
+                phoneInput.classList.remove('border-green-500');
+                phoneInput.classList.add('border-surface-accent-muted');
+            }
+        });
+    </script>
+</body></html>

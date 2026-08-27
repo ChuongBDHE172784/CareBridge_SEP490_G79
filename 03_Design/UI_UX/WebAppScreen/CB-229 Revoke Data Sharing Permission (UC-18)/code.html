@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Thu hồi quyền chia sẻ dữ liệu - CareTech Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fef8f4;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(242, 234, 228, 0.5);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#f3ede8",
+                        "on-secondary-container": "#68635f",
+                        "on-secondary-fixed": "#1e1b18",
+                        "surface-dim": "#dfd9d5",
+                        "secondary": "#625d59",
+                        "primary-fixed": "#ffdbd1",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#f6f0eb",
+                        "text-body": "#524F4C",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#51271b",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#845143",
+                        "surface-bright": "#fef8f4",
+                        "surface-variant": "#e7e1dd",
+                        "primary": "#845143",
+                        "surface-container-highest": "#e7e1dd",
+                        "surface-container-high": "#ede7e3",
+                        "background": "#fef8f4",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#9e9a96",
+                        "secondary-fixed-dim": "#ccc5c0",
+                        "surface": "#fef8f4",
+                        "tertiary-fixed": "#e6e2dd",
+                        "primary-container": "#c98c7b",
+                        "surface-accent-light": "#F6F1EC",
+                        "secondary-container": "#e9e1db",
+                        "on-background": "#1d1b19",
+                        "on-surface-variant": "#524440",
+                        "surface-container-low": "#f9f2ee",
+                        "on-tertiary-fixed-variant": "#484643",
+                        "on-primary-fixed": "#341006",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#e9e1db",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "on-secondary-fixed-variant": "#4a4642",
+                        "text-heading": "#2D2A28",
+                        "surface-accent-muted": "#F2EAE4",
+                        "outline": "#84736f",
+                        "on-tertiary-fixed": "#1d1b19",
+                        "on-tertiary-container": "#34322f",
+                        "on-surface": "#1d1b19",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#fab7a4",
+                        "primary-fixed-dim": "#fab7a4",
+                        "tertiary-fixed-dim": "#cac6c1",
+                        "tertiary": "#605e5a",
+                        "inverse-surface": "#32302d",
+                        "error": "#ba1a1a",
+                        "surface-main": "#FFFFFF",
+                        "outline-variant": "#d6c2bd",
+                        "status-active": "#C98C7B"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-gutter": "24px",
+                        "panel-gap": "24px",
+                        "container-padding": "32px",
+                        "sidebar-width": "280px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-sm": ["Quicksand"],
+                        "nav-item": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "label-md": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "nav-item": ["15px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-text-body overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 right-0 w-[calc(100%-280px)] h-16 bg-surface-main flex justify-between items-center px-container-padding shadow-[0_4px_20px_rgba(201,140,123,0.08)] z-30">
+<div class="flex items-center gap-4">
+<span class="text-label-md font-label-md text-secondary tracking-widest">SCREEN ID: CB-229</span>
+<div class="h-4 w-px bg-surface-variant"></div>
+<h1 class="font-headline-sm text-headline-sm text-text-heading">Quản lý quyền truy cập</h1>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-accent-light rounded-full border border-outline-variant/30">
+<span class="material-symbols-outlined text-primary text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md font-body-md w-48" placeholder="Tìm kiếm..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-accent-muted hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-secondary">help</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-accent-muted hover:bg-surface-variant transition-colors relative">
+<span class="material-symbols-outlined text-secondary">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<div class="h-8 w-px bg-surface-variant"></div>
+<img class="w-10 h-10 rounded-full border-2 border-primary-container object-cover" data-alt="A professional portrait of a female healthcare administrator in her late 30s, smiling warmly at the camera. She is in a bright, modern clinic environment with soft, warm lighting. The aesthetic is clean and professional, emphasizing the care-focused nature of the CareTech platform with soft textures and a serene atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNDeGu7knJcXK4cvCjBB9hWUmULpseWaG9y90jRWDxf-2lNLDUkweae0oQH4kZQ0OI23VAQiu40T834T7AkZjgjas1lQc5OKtmQVfc7a3ji-8cPShnElC4T7LzeBIO-pLUROHJFMjciFRb4tsx3Q1KIj6fCBc-Hs5A0zaUNtbgiRnti4pKX6hZeQ4-_fjIRtXwUuCH_pvAGUF3Ujhts-gyfmE8SwJpX0ftMVD7le8JHl4myzDqdz0fG0rO4JNALSLUEVhsRPyCyCg"/>
+</div>
+</div>
+</header>
+<!-- Side Navigation Bar -->
+<aside class="fixed left-0 top-0 h-full w-sidebar-width bg-surface-accent-light flex flex-col py-6 z-40">
+<div class="px-6 mb-10">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined">health_metrics</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-primary leading-none">CareTech</h2>
+<p class="text-[11px] font-semibold text-secondary uppercase tracking-tighter">Hệ thống quản lý</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-2 px-2">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-nav-item text-nav-item">Tổng quan</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-nav-item text-nav-item">Người dùng</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-lg mx-2 active:scale-[0.98] transition-transform shadow-sm" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-nav-item text-nav-item">Xác minh</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">edit</span>
+<span class="font-nav-item text-nav-item">Kiểm tra</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-nav-item text-nav-item">Thanh toán</span>
+</a>
+</nav>
+<div class="mt-auto px-2 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container rounded-lg mx-2 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-nav-item text-nav-item">Cài đặt</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/20 rounded-lg mx-2 transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-nav-item text-nav-item">Đăng xuất</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area with Blur Overlay for Modal -->
+<main class="ml-sidebar-width pt-16 h-screen overflow-y-auto bg-background relative">
+<div class="p-container-padding">
+<!-- Background Content (Simulating the permissions list) -->
+<div class="mb-8">
+<h3 class="font-headline-md text-headline-md text-text-heading mb-2">Quyền chia sẻ dữ liệu hiện tại</h3>
+<p class="text-body-md text-secondary">Danh sách các đối tác và dịch vụ đang có quyền truy cập vào dữ liệu người dùng.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-panel-gap opacity-30 pointer-events-none select-none">
+<!-- Skeleton/Placeholder Cards -->
+<div class="bg-surface-main p-8 rounded-[24px] shadow-[0_4px_20px_rgba(201,140,123,0.08)] h-48 border border-surface-variant"></div>
+<div class="bg-surface-main p-8 rounded-[24px] shadow-[0_4px_20px_rgba(201,140,123,0.08)] h-48 border border-surface-variant"></div>
+<div class="bg-surface-main p-8 rounded-[24px] shadow-[0_4px_20px_rgba(201,140,123,0.08)] h-48 border border-surface-variant"></div>
+</div>
+</div>
+<!-- Revoke Permission Dialog Overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-background/20 backdrop-blur-sm transition-opacity duration-300" id="modal-overlay">
+<!-- Modal Card -->
+<div class="w-full max-w-2xl bg-surface-main rounded-[2rem] shadow-[0_24px_48px_rgba(84,81,76,0.15)] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+<!-- Modal Header -->
+<div class="px-8 pt-8 pb-4 flex justify-between items-start">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-[28px]">gpp_maybe</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-text-heading">Thu hồi quyền chia sẻ</h2>
+<p class="text-body-md text-secondary">Xác nhận việc ngừng cung cấp dữ liệu cho đối tác</p>
+</div>
+</div>
+<button class="text-secondary hover:text-text-heading transition-colors" onclick="closeModal()">
+<span class="material-symbols-outlined text-[24px]">close</span>
+</button>
+</div>
+<!-- Modal Body -->
+<div class="px-8 py-4 space-y-6 flex-1 overflow-y-auto">
+<!-- Recipient Card -->
+<div class="p-6 rounded-2xl bg-surface-accent-light border border-surface-variant/50 flex items-center gap-5">
+<div class="w-16 h-16 rounded-full bg-white border-2 border-surface-variant overflow-hidden flex items-center justify-center">
+<img class="w-12 h-12 object-contain" data-alt="A professional logo for 'MediLink Solutions', a sleek and modern medical technology company. The logo uses blue and silver tones on a white background, featuring a stylized DNA helix combined with a digital link symbol. The image is clean, sharp, and corporate, fitting perfectly within a high-end admin portal interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZ2rVdMmAsgGsU0FMvkqv7V28Gm8LIhXdG3aQFUMDIQCX2Gj2jtEon24o77oW0zQFv1qDtlGHKPKHcSy4iiMnyQ7pfXAMn419BeZFv9NxJAd1ITFmke2kHie0YHq5Cxlk0LH2GX3hBfhr2AVf_vunCsXYSl3fKeQ4VqkBRh-lXPINfCfFzXJLQA7zfnym7sSDQwKv1aZpmogMaehYuiOU14sV_jOFw_gWt7UWM5Fjr8rW_CxiVlQ4yn95-KRYdT2-fCRtFQ_Y6JWw"/>
+</div>
+<div>
+<p class="text-label-md font-label-md text-primary uppercase tracking-wider">Đối tác nhận dữ liệu</p>
+<h4 class="font-headline-sm text-headline-sm text-text-heading">MediLink Solutions Co.</h4>
+<p class="text-body-md text-secondary">Mã định danh: ML-9928-VN</p>
+</div>
+</div>
+<!-- Details Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div class="p-5 rounded-2xl border-2 border-surface-accent-muted bg-surface-container-lowest">
+<p class="text-label-md font-label-md text-secondary mb-2 uppercase">Mục đích sử dụng</p>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-sm mt-1">analytics</span>
+<p class="text-body-md text-text-heading font-medium">Phân tích chẩn đoán hình ảnh từ xa và tối ưu hóa điều trị.</p>
+</div>
+</div>
+<div class="p-5 rounded-2xl border-2 border-surface-accent-muted bg-surface-container-lowest">
+<p class="text-label-md font-label-md text-secondary mb-2 uppercase">Phạm vi chia sẻ</p>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-sm mt-1">medical_services</span>
+<p class="text-body-md text-text-heading font-medium">Hồ sơ bệnh án, Kết quả xét nghiệm máu, Hình ảnh X-Quang.</p>
+</div>
+</div>
+</div>
+<!-- Impact Note -->
+<div class="p-6 rounded-2xl bg-error-container/30 border border-error/20">
+<h5 class="flex items-center gap-2 text-error font-semibold mb-2">
+<span class="material-symbols-outlined text-sm">info</span>
+                            Lưu ý về tác động
+                        </h5>
+<p class="text-body-md text-on-error-container leading-relaxed">
+                            Việc thu hồi quyền này sẽ ngay lập tức ngắt kết nối dữ liệu. Các dịch vụ phân tích tự động từ MediLink có thể bị gián đoạn, ảnh hưởng đến tiến độ hội chẩn của bệnh nhân liên quan. Thao tác này không thể hoàn tác một cách tự động.
+                        </p>
+</div>
+<!-- Confirmation Checkbox -->
+<label class="flex items-start gap-3 cursor-pointer group mt-4">
+<div class="relative flex items-center mt-1">
+<input class="peer h-5 w-5 rounded border-2 border-outline-variant text-primary focus:ring-primary/20 transition-all cursor-pointer" id="confirm-revoke" type="checkbox"/>
+</div>
+<span class="text-body-md text-text-heading select-none group-hover:text-primary transition-colors">
+                            Tôi đã hiểu các tác động và xác nhận muốn thu hồi quyền truy cập dữ liệu của đơn vị này.
+                        </span>
+</label>
+</div>
+<!-- Modal Footer -->
+<div class="px-8 py-6 bg-surface-accent-light flex justify-end gap-4">
+<button class="px-8 py-3 rounded-full border-2 border-surface-variant font-nav-item text-secondary hover:bg-white hover:text-text-heading transition-all" onclick="closeModal()">
+                        Hủy bỏ
+                    </button>
+<button class="px-8 py-3 rounded-full bg-error text-white font-nav-item shadow-lg shadow-error/20 opacity-50 cursor-not-allowed active:scale-[0.98] transition-all flex items-center gap-2" disabled="" id="revoke-btn" onclick="handleRevoke()">
+<span class="material-symbols-outlined text-[18px]">lock_reset</span>
+                        Thu hồi quyền
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Modal logic
+        const checkbox = document.getElementById('confirm-revoke');
+        const revokeBtn = document.getElementById('revoke-btn');
+        const modalOverlay = document.getElementById('modal-overlay');
+
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                revokeBtn.disabled = false;
+                revokeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                revokeBtn.classList.add('hover:bg-error/90');
+            } else {
+                revokeBtn.disabled = true;
+                revokeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                revokeBtn.classList.remove('hover:bg-error/90');
+            }
+        });
+
+        function closeModal() {
+            modalOverlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                alert('Hành động đã bị hủy.');
+            }, 300);
+        }
+
+        function handleRevoke() {
+            if (!checkbox.checked) return;
+            
+            revokeBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Đang xử lý...
+            `;
+            revokeBtn.disabled = true;
+
+            // Simulate API call
+            setTimeout(() => {
+                modalOverlay.innerHTML = `
+                    <div class="w-full max-w-md bg-surface-main rounded-[2rem] p-10 text-center animate-in zoom-in duration-500 shadow-2xl">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-6">
+                            <span class="material-symbols-outlined text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        </div>
+                        <h3 class="font-headline-md text-headline-md text-text-heading mb-2">Đã thu hồi thành công</h3>
+                        <p class="text-body-md text-secondary mb-8">Quyền truy cập của MediLink Solutions đã được chấm dứt. Hệ thống đã gửi thông báo đến các bên liên quan.</p>
+                        <button onclick="location.reload()" class="w-full py-4 rounded-full bg-primary text-white font-headline-sm hover:bg-primary/90 transition-all">
+                            Quay lại danh sách
+                        </button>
+                    </div>
+                `;
+            }, 1500);
+        }
+    </script>
+</body></html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Shared Data - CareBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface": "#fff8f6",
+                        "primary-fixed-dim": "#fab7a4",
+                        "on-secondary-container": "#735e56",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#ffede7",
+                        "surface-container-highest": "#fadcd3",
+                        "on-error": "#ffffff",
+                        "secondary": "#6e5a52",
+                        "on-tertiary-fixed": "#1e1b18",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e9e1db",
+                        "error-container": "#ffdad6",
+                        "primary": "#845143",
+                        "outline": "#84736f",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbd1",
+                        "primary-container": "#c98c7b",
+                        "tertiary": "#625d59",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f6",
+                        "on-secondary-fixed": "#271812",
+                        "secondary-fixed": "#f8ddd2",
+                        "on-surface-variant": "#524440",
+                        "inverse-surface": "#3e2c26",
+                        "surface-dim": "#f1d4ca",
+                        "secondary-fixed-dim": "#dbc1b7",
+                        "on-background": "#271812",
+                        "background": "#fff8f6",
+                        "on-tertiary-fixed-variant": "#4a4642",
+                        "secondary-container": "#f6dacf",
+                        "on-primary-fixed": "#341006",
+                        "surface-container-high": "#ffe2d9",
+                        "surface-container-low": "#fff1ec",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#271812",
+                        "surface-container": "#ffe9e3",
+                        "on-secondary-fixed-variant": "#55433b",
+                        "tertiary-container": "#a09a95",
+                        "surface-tint": "#845143",
+                        "on-primary-fixed-variant": "#693a2d",
+                        "inverse-primary": "#fab7a4",
+                        "outline-variant": "#d6c2bd",
+                        "on-tertiary-container": "#36322e",
+                        "tertiary-fixed-dim": "#ccc5c0",
+                        "surface-variant": "#fadcd3",
+                        "on-primary-container": "#51271b"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "safe-margin": "24px"
+                    },
+                    fontFamily: {
+                        "display-lg": ["Lexend"],
+                        "button": ["Lexend"],
+                        "headline-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "label-md": ["Lexend"],
+                        "headline-md": ["Lexend"]
+                    },
+                    fontSize: {
+                        "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "button": ["16px", { lineHeight: "20px", fontWeight: "600" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen antialiased flex flex-col pb-safe-margin">
+<!-- TopAppBar (Adapted for sub-page with back action) -->
+<header class="flex justify-between items-center px-safe-margin h-touch-target-min w-full bg-background sticky top-0 z-10">
+<button aria-label="Quay lại" class="w-touch-target-min h-touch-target-min flex items-center justify-start text-primary active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back_ios">arrow_back_ios</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary truncate flex-1 text-center">Chia sẻ</h1>
+<div class="w-touch-target-min h-touch-target-min flex items-center justify-end text-primary">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</div>
+</header>
+<main class="flex-1 px-safe-margin flex flex-col gap-stack-lg mt-stack-sm">
+<!-- Permission Banner -->
+<div class="bg-secondary-fixed text-on-secondary-fixed rounded-2xl p-stack-md flex items-start gap-stack-md shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="security" data-weight="fill">security</span>
+</div>
+<div class="flex flex-col gap-1">
+<h2 class="font-button text-button">Dữ liệu của Bé Mỡ</h2>
+<p class="font-body-md text-body-md opacity-80">Được chia sẻ bởi Mẹ Linh. Bạn chỉ có quyền xem các danh mục được cấp phép.</p>
+</div>
+</div>
+<!-- Filter Action -->
+<div class="flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-on-background">Tổng quan</h3>
+<button class="h-touch-target-min px-4 bg-surface rounded-full flex items-center gap-2 border border-outline-variant text-on-surface hover:bg-surface-container-low transition-colors shadow-[0px_4px_20px_rgba(90,70,63,0.06)]">
+<span class="material-symbols-outlined text-primary" data-icon="calendar_month">calendar_month</span>
+<span class="font-button text-button">Tháng 10, 2023</span>
+<span class="material-symbols-outlined text-outline" data-icon="arrow_drop_down">arrow_drop_down</span>
+</button>
+</div>
+<!-- Bento Grid Categories -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg">
+<!-- Card 1: Biểu đồ tăng trưởng -->
+<div class="bg-surface rounded-2xl p-stack-lg shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-md relative overflow-hidden">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-fixed-variant" data-icon="trending_up">trending_up</span>
+</div>
+<h4 class="font-button text-button text-on-surface">Biểu đồ tăng trưởng</h4>
+</div>
+<!-- Source Label -->
+<div class="bg-surface-container-high px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="face_3">face_3</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Mẹ Linh nhập</span>
+</div>
+</div>
+<div class="flex gap-4 items-end h-32 mt-2">
+<div class="flex-1 bg-secondary-fixed rounded-t-lg h-[40%] relative group cursor-pointer hover:bg-secondary-fixed-dim transition-colors"></div>
+<div class="flex-1 bg-primary-container rounded-t-lg h-[70%] relative group cursor-pointer hover:opacity-90 transition-opacity">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface font-label-md text-label-md px-2 py-1 rounded shadow-lg">7.2kg</div>
+</div>
+<div class="flex-1 bg-secondary-fixed rounded-t-lg h-[85%] relative group cursor-pointer hover:bg-secondary-fixed-dim transition-colors"></div>
+<div class="flex-1 bg-secondary-fixed rounded-t-lg h-[95%] relative group cursor-pointer hover:bg-secondary-fixed-dim transition-colors"></div>
+</div>
+<div class="flex justify-between font-label-md text-label-md text-outline px-2">
+<span>Tuần 1</span>
+<span>Tuần 2</span>
+<span>Tuần 3</span>
+<span>Tuần 4</span>
+</div>
+</div>
+<!-- Card 2: Lịch sử tiêm chủng -->
+<div class="bg-surface rounded-2xl p-stack-lg shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-md">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-fixed" data-icon="vaccines">vaccines</span>
+</div>
+<h4 class="font-button text-button text-on-surface">Lịch sử tiêm chủng</h4>
+</div>
+</div>
+<div class="flex flex-col gap-3 mt-2">
+<div class="flex items-start justify-between border-b border-surface-container-high pb-3">
+<div class="flex flex-col gap-1">
+<span class="font-button text-button text-on-surface">Mũi 6 trong 1 (Hexaxim)</span>
+<span class="font-body-md text-body-md text-outline">Ngày tiêm: 15/10/2023</span>
+</div>
+<div class="bg-primary-fixed text-primary-fixed-variant font-label-md text-label-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle">check_circle</span>
+                            Hoàn thành
+                        </div>
+</div>
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<span class="font-button text-button text-on-surface">Phế cầu khuẩn (Synflorix)</span>
+<span class="font-body-md text-body-md text-outline">Dự kiến: 20/11/2023</span>
+</div>
+<div class="bg-surface-container-highest text-on-surface-variant font-label-md text-label-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="schedule">schedule</span>
+                            Sắp tới
+                        </div>
+</div>
+</div>
+</div>
+<!-- Card 3: Nhật ký giấc ngủ -->
+<div class="bg-surface rounded-2xl p-stack-lg shadow-[0px_4px_20px_rgba(90,70,63,0.06)] flex flex-col gap-stack-md md:col-span-2">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="bedtime">bedtime</span>
+</div>
+<h4 class="font-button text-button text-on-surface">Nhật ký giấc ngủ hôm nay</h4>
+</div>
+<div class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="edit_note">edit_note</span>
+<span class="font-label-md text-label-md">Bạn nhập</span>
+</div>
+</div>
+<div class="flex items-center gap-4 mt-2 bg-background p-4 rounded-xl border border-surface-container-highest">
+<div class="flex-1 flex flex-col items-center border-r border-surface-container-high last:border-0">
+<span class="material-symbols-outlined text-primary mb-1" data-icon="wb_sunny">wb_sunny</span>
+<span class="font-label-md text-label-md text-outline">Ngủ ngày</span>
+<span class="font-headline-md text-headline-md text-on-surface">3h 20m</span>
+</div>
+<div class="flex-1 flex flex-col items-center border-r border-surface-container-high last:border-0">
+<span class="material-symbols-outlined text-tertiary mb-1" data-icon="nights_stay">nights_stay</span>
+<span class="font-label-md text-label-md text-outline">Ngủ đêm</span>
+<span class="font-headline-md text-headline-md text-on-surface">8h 45m</span>
+</div>
+<div class="flex-1 flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary mb-1" data-icon="timelapse">timelapse</span>
+<span class="font-label-md text-label-md text-outline">Tổng cộng</span>
+<span class="font-headline-md text-headline-md text-primary">12h 05m</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
