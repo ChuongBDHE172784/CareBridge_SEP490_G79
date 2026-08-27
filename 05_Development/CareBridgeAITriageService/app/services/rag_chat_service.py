@@ -34,16 +34,8 @@ class RagChatService:
         session: AsyncSession | None = None,
     ) -> RagChatResponse:
         """Process user message, retrieve relevant medical chunks, and generate grounded answer via Gemini Flash."""
-        # 1. Build Context-Aware Vector Search Query for Multi-turn Conversation
-        search_query = request.message
-        if request.conversation_history:
-            recent_user_turns = [
-                msg.content
-                for msg in request.conversation_history[-2:]
-                if msg.role.lower() in ("user", "human")
-            ]
-            if recent_user_turns:
-                search_query = f"{recent_user_turns[-1]} {request.message}"
+        # 1. Semantic Search across Maternal Knowledge pgvector
+        search_query = request.message.strip()
 
         # 2. Semantic Search across Maternal Knowledge pgvector
         stage_filter = request.stage.value if request.stage else "PREGNANCY"
@@ -142,45 +134,57 @@ class RagChatService:
         elif not dynamic_followups:
             dynamic_followups = self._generate_fallback_followups(has_critical_warning, is_family=is_family)
 
+        # Check if the AI answered with an out-of-scope refusal
+        is_refusal = any(
+            phrase in answer_text.lower()
+            for phrase in [
+                "ngoài phạm vi",
+                "không giải đáp các chủ đề ngoài",
+                "chuyên biệt về chăm sóc sức khỏe",
+                "chưa tìm thấy tài liệu cẩm nang y tế chính thống",
+            ]
+        )
+
         # 7. Format Source Citations (Relevance Filter + Smart Deduplication)
         citations: List[SourceCitation] = []
-        seen_keys = set()
-        seen_titles_with_specific_sections = set()
+        if not is_refusal:
+            seen_keys = set()
+            seen_titles_with_specific_sections = set()
 
-        # First pass: identify titles that already have specific detailed sub-sections
-        for doc in valid_chunks:
-            title = doc.get("title", "Cẩm nang").strip()
-            section = doc.get("section")
-            if section and section.strip() and section.strip().lower() != title.lower():
-                seen_titles_with_specific_sections.add(title.lower())
+            # First pass: identify titles that already have specific detailed sub-sections
+            for doc in valid_chunks:
+                title = doc.get("title", "Cẩm nang").strip()
+                section = doc.get("section")
+                if section and section.strip() and section.strip().lower() != title.lower():
+                    seen_titles_with_specific_sections.add(title.lower())
 
-        for doc in valid_chunks:
-            title = doc.get("title", "Cẩm nang").strip()
-            section = doc.get("section")
-            if section:
-                section = section.strip()
+            for doc in valid_chunks:
+                title = doc.get("title", "Cẩm nang").strip()
+                section = doc.get("section")
+                if section:
+                    section = section.strip()
 
-            # If section is identical to title, avoid repeating "(Title)"
-            if section and section.lower() == title.lower():
-                # If we already cite specific sections of this document, skip the generic root title chunk
-                if title.lower() in seen_titles_with_specific_sections:
+                # If section is identical to title, avoid repeating "(Title)"
+                if section and section.lower() == title.lower():
+                    # If we already cite specific sections of this document, skip the generic root title chunk
+                    if title.lower() in seen_titles_with_specific_sections:
+                        continue
+                    section = None
+
+                key = f"{title.lower()}_{section.lower() if section else ''}"
+                if key in seen_keys:
                     continue
-                section = None
+                seen_keys.add(key)
 
-            key = f"{title.lower()}_{section.lower() if section else ''}"
-            if key in seen_keys:
-                continue
-            seen_keys.add(key)
-
-            citations.append(
-                SourceCitation(
-                    title=title,
-                    source=doc.get("source", "Bộ Y Tế"),
-                    section=section,
-                    snippet=self._clean_latex_and_math_artifacts(doc.get("content", "")[:250]) + "...",
-                    similarity_score=doc.get("similarity"),
+                citations.append(
+                    SourceCitation(
+                        title=title,
+                        source=doc.get("source", "Bộ Y Tế"),
+                        section=section,
+                        snippet=self._clean_latex_and_math_artifacts(doc.get("content", "")[:250]) + "...",
+                        similarity_score=doc.get("similarity"),
+                    )
                 )
-            )
 
         # Check if objective health metrics logged warrant expert consult (Clinical Safety Guardrail)
         has_abnormal_metrics = self._check_abnormal_metrics_guardrail(request.recent_metrics)

@@ -289,30 +289,44 @@ class PgVectorStore:
         from sqlalchemy import or_
 
         query_vector = await self.embedder.embed_query(query)
-        stopwords = {
+        general_stopwords = {
             "là", "và", "của", "cho", "các", "những", "được", "có", "trong",
             "để", "khi", "ở", "gì", "thế", "nào", "ạ", "nhé", "với", "từ",
             "ra", "vào", "thì", "cần", "nên", "hãy", "bị", "do", "về",
-            "cách", "theo", "dõi", "tại", "nhà", "cho", "làm", "sao",
+            "cách", "theo", "dõi", "tại", "nhà", "làm", "sao", "bao", "nhiêu",
+            "rất", "nhiều", "ít", "hết", "cũng", "đều", "đã", "đang", "sẽ",
+            "phải", "mà", "này", "đó", "kia", "lên", "xuống", "lại", "qua",
+            "sau", "trước", "giữa", "xin", "giúp", "biết", "thấy", "ai", "đâu",
+            "mỗi", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín", "mười",
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "tỉ", "triệu", "nghìn", "k", "ngàn",
         }
+        
+        # Domain filler words that occur in almost every maternal doc
+        domain_fillers = {"mẹ", "bầu", "thai", "tuần", "tháng", "em", "bé", "con", "mình", "người", "nhà", "hỏi", "chào"}
+
         clean_words = [
             w for w in re.sub(r"[^\w\s]", " ", query.lower()).split()
-            if w not in stopwords and (len(w) > 1 or w.isdigit())
+            if w not in general_stopwords and (len(w) > 1 or w.isdigit())
         ]
+        
+        # Specific clinical symptoms / terms (excluding generic filler words)
+        clinical_words = [w for w in clean_words if w not in domain_fillers]
 
         # Extract 2-gram and 3-gram meaningful phrases dynamically from any query
         raw_words = re.sub(r"[^\w\s]", " ", query.lower()).split()
         phrases_3 = []
         for i in range(len(raw_words) - 2):
-            p = f"{raw_words[i]} {raw_words[i+1]} {raw_words[i+2]}"
-            if len(p) >= 8 and (raw_words[i] not in stopwords or raw_words[i+1] not in stopwords):
+            w1, w2, w3 = raw_words[i], raw_words[i+1], raw_words[i+2]
+            p = f"{w1} {w2} {w3}"
+            if len(p) >= 7 and any(w in clinical_words for w in (w1, w2, w3)):
                 phrases_3.append(p)
 
         phrases_2 = []
         for i in range(len(raw_words) - 1):
             w1, w2 = raw_words[i], raw_words[i+1]
-            if w1 not in stopwords and w2 not in stopwords and len(f"{w1} {w2}") >= 5:
-                phrases_2.append(f"{w1} {w2}")
+            p = f"{w1} {w2}"
+            if len(p) >= 4 and any(w in clinical_words for w in (w1, w2)):
+                phrases_2.append(p)
 
         key_phrases = phrases_3 + phrases_2
 
@@ -337,7 +351,7 @@ class PgVectorStore:
 
             # 2. Query Exact Title Matches (highest priority)
             if phrases_2:
-                title_filters = [MaternalKnowledgeChunk.title.ilike(f"%{p}%") for p in phrases_2]
+                title_filters = [MaternalKnowledgeChunk.title.ilike(f"%{p}%") for p in phrases_2[:6]]
                 stmt_title = select(MaternalKnowledgeChunk).where(or_(*title_filters)).limit(30)
                 if stage and stage != "ALL":
                     stmt_title = stmt_title.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
@@ -350,7 +364,7 @@ class PgVectorStore:
 
             # 3. Query 3-gram Content Matches
             if phrases_3:
-                p3_filters = [MaternalKnowledgeChunk.content.ilike(f"%{p}%") for p in phrases_3]
+                p3_filters = [MaternalKnowledgeChunk.content.ilike(f"%{p}%") for p in phrases_3[:6]]
                 stmt_p3 = select(MaternalKnowledgeChunk).where(or_(*p3_filters)).limit(40)
                 if stage and stage != "ALL":
                     stmt_p3 = stmt_p3.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
@@ -361,9 +375,10 @@ class PgVectorStore:
                     if chunk.id not in candidates:
                         candidates[chunk.id] = (chunk, 0.0)
 
-            # 4. Query Core Medical Keyword Matches
-            if clean_words:
-                kw_filters = [MaternalKnowledgeChunk.content.ilike(f"%{w}%") for w in clean_words[:6]]
+            # 4. Query Core Clinical Keyword Matches (Prioritize clinical terms over filler)
+            search_keywords = clinical_words or clean_words
+            if search_keywords:
+                kw_filters = [MaternalKnowledgeChunk.content.ilike(f"%{w}%") for w in search_keywords[:6]]
                 stmt_kw = select(MaternalKnowledgeChunk).where(or_(*kw_filters)).limit(40)
                 if stage and stage != "ALL":
                     stmt_kw = stmt_kw.where(MaternalKnowledgeChunk.stage.in_([stage, "ALL"]))
@@ -375,13 +390,14 @@ class PgVectorStore:
                         candidates[chunk.id] = (chunk, 0.0)
 
             # 5. Compute Hybrid Re-ranking Score
+            target_words = clinical_words or clean_words
             scored = []
             for chunk_id, (chunk, vec_sim) in candidates.items():
                 content_lower = chunk.content.lower()
                 title_lower = chunk.title.lower()
                 
-                kw_hits = sum(1 for w in clean_words if w in content_lower or w in title_lower)
-                kw_ratio = kw_hits / max(len(clean_words), 1)
+                kw_hits = sum(1 for w in target_words if w in content_lower or w in title_lower)
+                kw_ratio = kw_hits / max(len(target_words), 1)
 
                 title_boost = 0.0
                 for p in key_phrases:
@@ -391,10 +407,20 @@ class PgVectorStore:
                 content_phrase_boost = 0.0
                 for p in key_phrases:
                     if p in content_lower:
-                        content_phrase_boost += 0.25
+                        content_phrase_boost += 0.30
 
-                # Robust normalized hybrid score
-                hybrid_score = (max(vec_sim, 0.0) * 0.45) + (kw_ratio * 0.35) + title_boost + content_phrase_boost
+                has_kw_match = kw_hits >= 1
+                has_phrase = title_boost > 0.0 or content_phrase_boost > 0.0
+
+                # Strict grounding gate: if completely unrelated keywords/phrases and low vector similarity -> 0.0
+                if not has_kw_match and not has_phrase:
+                    if vec_sim < 0.58:
+                        hybrid_score = 0.0
+                    else:
+                        hybrid_score = vec_sim * 0.40
+                else:
+                    hybrid_score = (max(vec_sim, 0.0) * 0.40) + (kw_ratio * 0.35) + title_boost + content_phrase_boost
+                
                 scored.append((chunk, hybrid_score))
 
             scored.sort(key=lambda x: x[1], reverse=True)
