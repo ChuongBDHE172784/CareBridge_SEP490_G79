@@ -8,6 +8,7 @@ interface ConsultationRequest {
   topic: string;
   status: string;
   createdAt: string;
+  directConversationId?: string | null;
 }
 
 const STATUS_TABS: { key: string; label: string; status?: string }[] = [
@@ -78,7 +79,12 @@ export default function ExpertConsultationRequestsPage() {
   const handleAction = async (id: string, action: 'accept' | 'reject') => {
     try {
       if (action === 'accept') {
-        await apiClient.patch(`/api/v1/consultation-requests/${id}/accept`);
+        const { data } = await apiClient.patch(`/api/v1/consultation-requests/${id}/accept`);
+        const convId = data?.data?.directConversationId;
+        if (convId) {
+          navigate(`/expert/direct-chats/${convId}`);
+          return;
+        }
       } else {
         await apiClient.post(`/api/v1/consultation-requests/${id}/reject`, {
           reason: 'Chuyên gia bận lịch công tác',
@@ -88,6 +94,24 @@ export default function ExpertConsultationRequestsPage() {
     } catch {
       alert('Thao tác thất bại. Vui lòng thử lại.');
     }
+  };
+
+  const handleGoToChat = async (req: ConsultationRequest) => {
+    if (req.directConversationId) {
+      navigate(`/expert/direct-chats/${req.directConversationId}`);
+      return;
+    }
+    try {
+      const { data } = await apiClient.get(`/api/v1/consultation-requests/${req.id}`);
+      const convId = data?.data?.directConversationId;
+      if (convId) {
+        navigate(`/expert/direct-chats/${convId}`);
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    navigate('/expert/direct-chats');
   };
 
   const filteredRequests = useMemo(() => {
@@ -226,7 +250,7 @@ export default function ExpertConsultationRequestsPage() {
                           </div>
                         ) : req.status === 'ACCEPTED' ? (
                           <button
-                            onClick={() => navigate('/expert/direct-chats')}
+                            onClick={() => handleGoToChat(req)}
                             className="py-1.5 px-3.5 rounded-lg border border-outline-variant bg-surface-container-low text-primary text-xs font-semibold hover:bg-surface-bright cursor-pointer flex items-center gap-1.5 justify-end"
                           >
                             <span className="material-symbols-outlined text-base">chat</span>

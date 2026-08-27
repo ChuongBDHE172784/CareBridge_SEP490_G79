@@ -4,6 +4,7 @@ import './ChatPanel.css';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { conversationSignalHub } from '../../../shared/integrations/firebaseRealtime/conversationSignalHub';
 import * as directChatApi from '../services/directChatApi';
+import type { DirectConversation } from '../models/directConversation';
 import { mergeTimelineItems, optimisticMessage, type TimelineItem } from '../models/timelineItem';
 import { useDirectCall } from '../calls/directCallContext';
 import LocationMessageBubble from './LocationMessageBubble';
@@ -188,6 +189,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const navigate = useNavigate();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { initiate } = useDirectCall();
+  const [conversation, setConversation] = useState<DirectConversation | null>(null);
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -272,6 +274,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
           directChatApi.getTimeline(conversationId),
         ]);
         if (cancelled) return;
+        setConversation(conversation);
         setItems(page.items);
         nextCursorRef.current = page.nextCursor;
         previousCursorRef.current = page.previousCursor;
@@ -463,6 +466,13 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     );
   }
 
+  const isMotherCounterpart =
+    conversation?.counterpartRole === 'MOTHER' ||
+    (!conversation?.counterpartRole && currentUserId === conversation?.expertUserId);
+  const displayName =
+    conversation?.counterpartDisplayName || (isMotherCounterpart ? 'Mẹ bầu CareBridge' : 'Chuyên gia tư vấn');
+  const initial = (displayName || (isMotherCounterpart ? 'M' : 'E'))[0]?.toUpperCase() || 'M';
+
   return (
     <div className="flex flex-col space-y-5">
       {/* Top Header Bar */}
@@ -476,14 +486,18 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
             <span className="material-symbols-outlined text-xl">arrow_back</span>
           </button>
           
-          <div className="w-11 h-11 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
-            M
+          <div className="w-11 h-11 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-base shrink-0 shadow-sm overflow-hidden">
+            {conversation?.counterpartAvatarUrl ? (
+              <img src={conversation.counterpartAvatarUrl} alt={displayName} className="w-full h-full object-cover" />
+            ) : (
+              initial
+            )}
           </div>
 
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold text-on-surface m-0 leading-tight">
-                Tư vấn Mẹ bầu CareBridge
+                {displayName}
               </h1>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>

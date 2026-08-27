@@ -400,7 +400,8 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                     counterpart == null ? null : counterpart.getName(),
                     request.getTopic(),
                     request.getStatus().name(),
-                    request.getCreatedAt());
+                    request.getCreatedAt(),
+                    request.getDirectConversationId());
         });
     }
 

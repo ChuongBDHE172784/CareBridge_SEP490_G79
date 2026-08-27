@@ -202,7 +202,7 @@ public class DirectConversationServiceImpl implements IDirectConversationService
         DirectConversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(DirectChatException::conversationNotFound);
         policy.assertIsParticipant(currentUserId, conversation);
-        return toResponse(conversation, isExpertAvailable(conversation.getExpertUserId()));
+        return toResponse(conversation, isExpertAvailable(conversation.getExpertUserId()), currentUserId);
     }
 
     @Override
@@ -239,14 +239,42 @@ public class DirectConversationServiceImpl implements IDirectConversationService
     }
 
     private DirectConversationResponse toResponse(DirectConversation conversation, boolean expertAvailable) {
-        return new DirectConversationResponse(
-                conversation.getId(),
-                conversation.getMotherUserId(),
-                conversation.getExpertUserId(),
-                conversation.getStatus(),
-                conversation.getCreatedAt(),
-                conversation.getLastActivityAt(),
-                expertAvailable);
+        return toResponse(conversation, expertAvailable, null);
+    }
+
+    private DirectConversationResponse toResponse(
+            DirectConversation conversation,
+            boolean expertAvailable,
+            UUID currentUserId) {
+        String counterpartDisplayName = null;
+        String counterpartAvatarUrl = null;
+        String counterpartRole = null;
+
+        if (currentUserId != null) {
+            boolean viewerIsMother = currentUserId.equals(conversation.getMotherUserId());
+            boolean viewerIsExpert = currentUserId.equals(conversation.getExpertUserId());
+            UUID counterpartUserId = viewerIsMother || !viewerIsExpert
+                    ? conversation.getExpertUserId() : conversation.getMotherUserId();
+            counterpartRole = viewerIsMother || !viewerIsExpert ? "EXPERT" : "MOTHER";
+            User counterpartUser = userRepository.findById(counterpartUserId).orElse(null);
+            if (counterpartUser != null) {
+                counterpartDisplayName = counterpartUser.getName();
+                counterpartAvatarUrl = counterpartUser.getAvatarUrl();
+            }
+        }
+
+        return DirectConversationResponse.builder()
+                .conversationId(conversation.getId())
+                .motherUserId(conversation.getMotherUserId())
+                .expertUserId(conversation.getExpertUserId())
+                .status(conversation.getStatus())
+                .createdAt(conversation.getCreatedAt())
+                .lastActivityAt(conversation.getLastActivityAt())
+                .expertAvailable(expertAvailable)
+                .counterpartDisplayName(counterpartDisplayName)
+                .counterpartAvatarUrl(counterpartAvatarUrl)
+                .counterpartRole(counterpartRole)
+                .build();
     }
 
     private boolean isExpertAvailable(UUID expertUserId) {
