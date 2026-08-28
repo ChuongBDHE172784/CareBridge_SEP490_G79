@@ -66,5 +66,28 @@ paths = [
   # not API keys or secrets.
   '''05_Development/Database/backup/.*''',
   '''05_Development/Database/.*backup.*''',
+
+  # Vendored upstream Gadgetbridge (GPL, ~6.9k files). None of it is ours and none
+  # of it carries a CareBridge credential; every hit here is the generic-api-key
+  # rule firing on Android preference plumbing, mostly android:key="..." attributes
+  # in res/xml settings screens plus two device-protocol constants. Checked by hand:
+  # 32 of the 34 findings that turned this gate red came from this tree alone.
+  # trivy_fs still scans it with no path exclusions.
+  '''05_Development/Gadgetbridge/.*''',
+]
+
+# The internal-key header in these curl examples is the literal string the code
+# already publishes as its development default -- application.yaml falls back to it
+# and the Python service accepts it -- so the documentation is not disclosing
+# anything the repository does not already state twice. The deployed stack refuses
+# to start without a real AI_TRIAGE_INTERNAL_API_KEY from .env.server, which is
+# gitignored, so this value never reaches production.
+[[rules]]
+id = "curl-auth-header"
+[rules.allowlist]
+description = "Local-development curl examples using the documented default internal key"
+paths = [
+  '''05_Development/CareBridgeAITriageService/README\.md$''',
+  '''docs/AI/01_THIET_KE_KIEN_TRUC_AI_RAG_VA_BAO_VE_DO_AN\.md$''',
 ]
 
