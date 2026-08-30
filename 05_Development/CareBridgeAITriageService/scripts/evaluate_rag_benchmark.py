@@ -47,6 +47,7 @@ logger = logging.getLogger("rag_benchmark")
 class TestCaseResult:
     test_id: str
     category: str
+    source_file: str
     question: str
     ground_truth: str
     expected_danger: bool
@@ -232,9 +233,12 @@ async def run_benchmark(
             ground_truth=ground_truth,
         )
 
+        source_file = tc.get("source_file", "")
+
         res = TestCaseResult(
             test_id=tc_id,
             category=category,
+            source_file=source_file,
             question=question,
             ground_truth=ground_truth,
             expected_danger=expected_danger,
@@ -351,18 +355,19 @@ def generate_markdown_report(summary: BenchmarkSummary, path: Path) -> None:
         "",
         "## 3. CHI TIẾT KẾT QUẢ TỪNG KỊCH BẢN KIỂM THỬ (SAMPLE AUDIT TRAIL)",
         "",
-        "| ID | Chuyên mục | Câu hỏi người dùng | Faith | Relev | Prec | Cấp cứu (SOS) | Nguồn trích dẫn (Citations) |",
-        "| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- |",
+        "| ID | Chuyên mục | File cẩm nang gốc (Ground-Truth Source) | Câu hỏi người dùng | Faith | Relev | Prec | Cấp cứu (SOS) | Nguồn trích dẫn (Citations) |",
+        "| :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- |",
     ])
 
     for r in summary.test_results:
-        q_short = r.question[:45] + "..." if len(r.question) > 45 else r.question
+        q_short = r.question[:40] + "..." if len(r.question) > 40 else r.question
         danger_icon = "🚨 Đúng" if r.danger_match and r.expected_danger else ("✅ An toàn" if r.danger_match else "❌ Sai")
         sources_str = ", ".join(r.retrieved_sources[:2]) if r.retrieved_sources else "None"
         if len(r.retrieved_sources) > 2:
             sources_str += f" (+{len(r.retrieved_sources)-2})"
+        src_file = f"`{r.source_file}`" if r.source_file else "*(N/A)*"
         lines.append(
-            f"| `{r.test_id}` | {r.category} | {q_short} | {r.faithfulness_score:.2f} | "
+            f"| `{r.test_id}` | {r.category} | {src_file} | {q_short} | {r.faithfulness_score:.2f} | "
             f"{r.relevancy_score:.2f} | {r.context_precision_score:.2f} | {danger_icon} | {sources_str} |"
         )
 
