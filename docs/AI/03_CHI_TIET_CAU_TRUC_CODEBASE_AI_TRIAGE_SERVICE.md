@@ -47,14 +47,20 @@
 │   ├── config.py                       # Quản lý cấu hình tập trung từ biến môi trường (.env)
 │   └── main.py                         # Application Entrypoint, CORS, Lifespan & Spring Boot Bridge
 ├── data/
-│   └── raw_documents/                  # Nơi lưu trữ các file cẩm nang y tế gốc
+│   ├── golden_evaluation_dataset.json  # Bộ dữ liệu kiểm thử vàng chuẩn RAGAS (16 kịch bản lâm sàng mẫu)
+│   └── raw_documents/                  # Nơi lưu trữ các file cẩm nang y tế gốc (80+ tài liệu Bộ Y Tế, WHO)
+│       ├── 01_byt_huong_dan_chan_doan_dieu_tri_san_phu_khoa_qd315_2015.md
 │       ├── 01_dau_hieu_nguy_hiem_khi_mang_thai.md
 │       ├── 02_cham_soc_dinh_duong_tiem_chung_thai_ky.md
 │       ├── 03_theo_doi_chi_so_sinh_hieu_cu_dong_thai.md
-│       └── 04_cham_soc_sau_sinh_va_be_so_sinh.md
+│       └── ... (hơn 80 cẩm nang chuyên sâu Bộ Y Tế / WHO)
+├── reports/                            # Báo cáo đo lường chất lượng định lượng RAGAS
+│   ├── rag_evaluation_report.json      # Báo cáo JSON chi tiết điểm số từng ca kiểm thử
+│   └── RAG_BENCHMARK_REPORT.md         # Báo cáo tổng hợp số liệu phục vụ Báo cáo & Slide Hội đồng
 ├── scripts/                            # Các công cụ dòng lệnh (CLI Tools)
 │   ├── init_pgvector_db.py             # Script khởi tạo extension vector, bảng và HNSW index
-│   └── ingest_documents.py             # Script CLI nạp tri thức từ thư mục vào pgvector
+│   ├── ingest_documents.py             # Script CLI nạp tri thức từ thư mục vào pgvector
+│   └── evaluate_rag_benchmark.py       # Bộ kiểm thử tự động chuẩn RAGAS (Faithfulness, Relevancy, Precision)
 ├── tests/                              # Bộ kiểm thử tự động (Unit & Integration Tests)
 │   ├── conftest.py                     # Cấu hình môi trường test Pytest
 │   ├── test_api_endpoints.py           # Test toàn bộ REST API endpoints
@@ -177,6 +183,27 @@
   - Cấu hình Middleware CORS.
   - Vòng đời `lifespan`: Tự động nạp trước các file cẩm nang trong `data/raw_documents/` khi server khởi động.
   - **Spring Boot Bridge (`POST /internal/triage/turn`):** Cung cấp endpoint tương thích ngược cho backend Java `CareBridgeAPI`.
+
+---
+
+### 2.8. Bộ Công cụ Đo lường & Đánh giá Định lượng RAGAS (Evaluation & Benchmarking)
+* **`data/golden_evaluation_dataset.json`:**
+  - *Chức năng:* Bộ dữ liệu kiểm thử vàng (Golden Dataset) gồm 16 kịch bản lâm sàng thực tế được biên soạn kỹ lưỡng theo hướng dẫn Bộ Y Tế & WHO:
+    - 4 ca Dấu hiệu Cảnh báo Cấp cứu (Ra máu âm đạo, Đau đầu nhìn mờ/Tiền sản giật, Giảm thai máy, Sốt cao hậu sản).
+    - 4 ca Dinh dưỡng & Bổ sung Vi chất (Sắt, Axit Folic, Canxi, Thực đơn tiểu đường thai kỳ).
+    - 3 ca Lịch khám thai định kỳ & Tiêm chủng (Lịch 8 mốc ANC, Vắc-xin uốn ván VAT, Double Test/NIPT).
+    - 3 ca Chăm sóc Hậu sản & Sơ sinh (Chu kỳ sản dịch, Cương tức sữa sinh lý, Phân biệt vàng da).
+    - 2 ca Gia đình đồng hành & An toàn dùng thuốc thai kỳ.
+  - *Cấu trúc mỗi ca:* `id`, `category`, `question`, `stage`, `gestational_age_weeks`, `user_role`, `expected_danger_flag`, `ground_truth`, `expected_topics`.
+* **`scripts/evaluate_rag_benchmark.py`:**
+  - *Chức năng:* Công cụ dòng lệnh (CLI Tool) tự động chạy toàn bộ pipeline RAG và chấm điểm định lượng theo tiêu chuẩn **RAGAS (Retrieval-Augmented Generation Assessment)** sử dụng kỹ thuật *LLM-as-a-Judge*:
+    - **Faithfulness (0.0 - 1.0):** Xác thực tỷ lệ khẳng định y khoa có nguồn gốc từ tài liệu đối soát (chống ảo giác tuyệt đối).
+    - **Answer Relevancy (0.0 - 1.0):** Đánh giá mức độ trả lời trúng đích, ân cần, không lan man.
+    - **Context Precision (0.0 - 1.0):** Đánh giá chất lượng các đoạn cẩm nang do `pgvector + HNSW` truy xuất.
+    - **Clinical Safety Compliance (100%):** Kiểm định độ an toàn cấp cứu (tự động bật cảnh báo đỏ và gợi ý 115/bệnh viện).
+* **`reports/`:**
+  - `rag_evaluation_report.json`: Lưu trữ chi tiết toàn bộ log, latency, điểm số và lý do chấm điểm (rationale) của từng ca kiểm thử.
+  - `RAG_BENCHMARK_REPORT.md`: Báo cáo tổng hợp số liệu định lượng, bảng dashboard và phân tích chuyên khoa, sẵn sàng đưa vào Luận văn Tốt nghiệp và Slide bảo vệ Hội đồng.
 
 ---
 

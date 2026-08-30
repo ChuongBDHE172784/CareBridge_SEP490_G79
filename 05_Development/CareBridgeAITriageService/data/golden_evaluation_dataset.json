@@ -1,0 +1,178 @@
+[
+  {
+    "id": "TC-DANGER-01",
+    "category": "Dấu hiệu Cảnh báo Cấp cứu",
+    "question": "Em đang mang thai 30 tuần, hôm nay thấy ra máu tươi ở âm đạo kèm đau bụng thì có nguy hiểm không và phải làm gì ngay?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 30,
+    "user_role": "MOTHER",
+    "expected_danger_flag": true,
+    "expected_topics": ["Nhau tiền đạo", "Nhau bong non", "Cấp cứu 115", "Đến bệnh viện ngay"],
+    "ground_truth": "Ra máu âm đạo kèm đau bụng ở tam cá nguyệt 3 là dấu hiệu nguy hiểm cấp cứu (nghi ngờ nhau tiền đạo hoặc nhau bong non). Mẹ bầu cần ngừng mọi hoạt động, nằm nghỉ và đến ngay cơ sở y tế có khoa sản gần nhất hoặc gọi cấp cứu 115, không được tự ý dùng thuốc."
+  },
+  {
+    "id": "TC-DANGER-02",
+    "category": "Dấu hiệu Cảnh báo Cấp cứu",
+    "question": "Em mang thai 32 tuần, hai hôm nay bị đau đầu nhức nhối, nhìn hoa mắt và thấy chân phù to hơn hẳn thì có sao không?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 32,
+    "user_role": "MOTHER",
+    "expected_danger_flag": true,
+    "expected_topics": ["Tiền sản giật", "Tăng huyết áp thai kỳ", "Đo huyết áp", "Khám cấp cứu"],
+    "ground_truth": "Đau đầu dữ dội, rối loạn thị giác (hoa mắt, nhìn mờ) và phù nhanh là dấu hiệu cảnh báo kinh điển của Tiền sản giật nặng. Mẹ cần đo huyết áp ngay và đến bệnh viện phụ sản kiểm tra khẩn cấp để phòng ngừa co giật sản giật."
+  },
+  {
+    "id": "TC-DANGER-03",
+    "category": "Dấu hiệu Cảnh báo Cấp cứu",
+    "question": "Thai 34 tuần bình thường máy rất nhiều nhưng từ sáng đến giờ hơn 6 tiếng em không thấy bé đạp lần nào, dù đã ăn no và uống nước ngọt?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 34,
+    "user_role": "MOTHER",
+    "expected_danger_flag": true,
+    "expected_topics": ["Cử động thai", "Đếm thai máy", "Suy thai", "Monitoring tim thai"],
+    "ground_truth": "Không cảm nhận được cử động thai trong nhiều giờ liên tục sau khi kích thích là dấu hiệu cảnh báo suy thai hoặc thiếu oxy thai nhi. Mẹ cần đến bệnh viện ngay để được đo tim thai (Non-Stress Test/CTG) và siêu âm Doppler."
+  },
+  {
+    "id": "TC-DANGER-04",
+    "category": "Dấu hiệu Cảnh báo Cấp cứu",
+    "question": "Tôi sinh thường được 5 ngày, hôm nay bị sốt 38.8 độ C, bụng dưới đau tăng dần và sản dịch có mùi hôi khó chịu?",
+    "stage": "POSTPARTUM",
+    "gestational_age_weeks": null,
+    "user_role": "MOTHER",
+    "expected_danger_flag": true,
+    "expected_topics": ["Nhiễm khuẩn hậu sản", "Viêm niêm mạc tử cung", "Bế sản dịch", "Khám phụ sản ngay"],
+    "ground_truth": "Sốt cao trên 38.5 độ C kèm sản dịch hôi và đau bụng dưới là triệu chứng của nhiễm trùng hậu sản (viêm nội mạc tử cung hoặc sót nhau). Đây là tình trạng nguy hiểm cần khám bác sĩ ngay để điều trị kháng sinh kịp thời."
+  },
+  {
+    "id": "TC-NUTRI-01",
+    "category": "Dinh dưỡng & Vi chất",
+    "question": "Mang thai 3 tháng đầu nên bổ sung sắt và axit folic như thế nào theo đúng khuyến cáo của Bộ Y Tế?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 8,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Axit folic 400 mcg", "Sắt 30-60 mg", "Dị tật ống thần kinh", "Uống cùng vitamin C"],
+    "ground_truth": "Theo khuyến cáo của Bộ Y Tế và WHO, phụ nữ mang thai cần bổ sung hàng ngày 30-60mg sắt nguyên tố kết hợp 400mcg axit folic để phòng ngừa thiếu máu và dị tật ống thần kinh ở thai nhi. Nên uống cách xa bữa ăn nhiều canxi và uống cùng nước cam để tăng hấp thu."
+  },
+  {
+    "id": "TC-NUTRI-02",
+    "category": "Dinh dưỡng & Vi chất",
+    "question": "Từ tuần bao nhiêu của thai kỳ thì mẹ bầu cần bổ sung Canxi và nên uống vào thời điểm nào trong ngày?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 20,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Canxi từ tuần 16-20", "Uống buổi sáng", "Cách xa viên sắt 2 tiếng", "1000-1500mg"],
+    "ground_truth": "Canxi thường được chỉ định tăng cường từ tam cá nguyệt thứ 2 (khoảng từ tuần 16 - 20) với nhu cầu 1000 - 1500mg/ngày. Nên uống canxi vào buổi sáng sau ăn, uống nhiều nước và tuyệt đối không uống cùng lúc với viên sắt (cách nhau tối thiểu 2 giờ) để tránh cản trở hấp thu."
+  },
+  {
+    "id": "TC-NUTRI-03",
+    "category": "Dinh dưỡng & Vi chất",
+    "question": "Em vừa có kết quả nghiệm pháp dung nạp đường huyết bị tiểu đường thai kỳ nhẹ, chế độ ăn cần kiêng khem những gì?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 26,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Hạn chế tinh bột đơn", "Chia nhỏ bữa ăn", "Tăng cường rau xanh", "Theo dõi đường huyết"],
+    "ground_truth": "Khi mắc đái tháo đường thai kỳ, mẹ cần chia nhỏ khẩu phần thành 5-6 bữa/ngày, hạn chế đường hấp thu nhanh (bánh kẹo, nước ngọt, trái cây quá ngọt), thay thế bằng tinh bột phức (gạo lứt, yến mạch), tăng cường chất xơ và đạm nạc, kết hợp đo đường huyết mao mạch định kỳ."
+  },
+  {
+    "id": "TC-NUTRI-04",
+    "category": "Dinh dưỡng & Vi chất",
+    "question": "Em mang thai 7 tuần nghén nhiều, buồn nôn liên tục cả ngày thì có cách nào giảm bớt không?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 7,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Chia nhỏ bữa ăn", "Gừng ấm", "Tránh mùi nồng", "Bổ sung đủ nước"],
+    "ground_truth": "Để giảm nghén trong 3 tháng đầu, mẹ nên chia nhỏ bữa ăn (ăn bánh quy khô hoặc lát bánh mì trước khi rời giường), uống nước trà gừng ấm, tránh các món nhiều dầu mỡ cay nồng. Nếu nôn liên tục không giữ được thức ăn dẫn đến mất nước sụt cân, cần đến bệnh viện khám để được bù điện giải."
+  },
+  {
+    "id": "TC-ANC-01",
+    "category": "Lịch Khám thai & Tiêm chủng",
+    "question": "Trong suốt thai kỳ người mẹ cần đi khám thai tối thiểu bao nhiêu lần theo khuyến cáo cập nhật của WHO?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 12,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Tối thiểu 8 lần tiếp xúc ANC", "WHO 2016", "3 mốc siêu âm quan trọng"],
+    "ground_truth": "Mô hình chăm sóc trước sinh (ANC) của WHO khuyến nghị tối thiểu 8 lần tiếp xúc chăm sóc trong thai kỳ (lần 1 trước 12 tuần, các lần tiếp theo ở tuần 20, 26, 30, 34, 36, 38 và 40) nhằm phát hiện sớm các nguy cơ và cải thiện trải nghiệm mang thai tích cực."
+  },
+  {
+    "id": "TC-ANC-02",
+    "category": "Lịch Khám thai & Tiêm chủng",
+    "question": "Mang thai lần đầu (con so) thì tiêm phòng uốn ván (VAT) vào tuần thai thứ mấy và tiêm mấy mũi?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 22,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Uốn ván 2 mũi", "Mũi 1 từ tuần 20-22", "Mũi 2 cách mũi 1 ít nhất 1 tháng", "Trước sinh 1 tháng"],
+    "ground_truth": "Phụ nữ mang thai con so cần tiêm đủ 2 mũi vắc xin uốn ván (VAT). Mũi 1 thường tiêm từ tuần 20 trở đi. Mũi 2 tiêm sau mũi 1 ít nhất 30 ngày và phải hoàn thành trước ngày dự sinh ít nhất 1 tháng để đảm bảo truyền kháng thể bảo vệ bé."
+  },
+  {
+    "id": "TC-ANC-03",
+    "category": "Lịch Khám thai & Tiêm chủng",
+    "question": "Thời điểm vàng để siêu âm đo độ mờ da gáy và làm xét nghiệm sàng lọc Double Test là tuần thứ bao nhiêu?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 11,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["11 tuần đến 13 tuần 6 ngày", "Đo độ mờ da gáy", "Double Test", "Hội chứng Down"],
+    "ground_truth": "Thời điểm vàng để đo khoảng sáng sau gáy (độ mờ da gáy) và xét nghiệm Double Test là từ 11 tuần 0 ngày đến 13 tuần 6 ngày (chiều dài đầu mông CRL từ 45mm đến 84mm). Ngoài khoảng thời gian này kết quả sẽ không còn giá trị sàng lọc chính xác."
+  },
+  {
+    "id": "TC-POST-01",
+    "category": "Chăm sóc Hậu sản & Sơ sinh",
+    "question": "Sản dịch sau sinh mổ bình thường sẽ ra trong bao lâu và có những giai đoạn đổi màu như thế nào?",
+    "stage": "POSTPARTUM",
+    "gestational_age_weeks": null,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Kéo dài 2-6 tuần", "Sản dịch đỏ (Rubra)", "Sản dịch hồng/nâu (Serosa)", "Sản dịch trắng (Alba)"],
+    "ground_truth": "Sản dịch sau sinh thường kéo dài từ 2 đến 6 tuần: 3-4 ngày đầu đỏ tươi, sau đó chuyển sang màu hồng nâu nhạt trong 1-2 tuần tiếp theo, và cuối cùng chuyển sang dịch nhầy màu vàng nhạt hoặc trắng trước khi hết hẳn. Sản dịch bình thường có mùi tanh nồng nhẹ, không hôi thối."
+  },
+  {
+    "id": "TC-POST-02",
+    "category": "Chăm sóc Hậu sản & Sơ sinh",
+    "question": "Tôi mới sinh bé được 3 ngày, hai bầu ngực căng cứng, nhức buốt và sữa chưa ra nhiều, tôi nên xử lý thế nào?",
+    "stage": "POSTPARTUM",
+    "gestational_age_weeks": null,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Cương tức tuyến sữa", "Chườm ấm trước bú", "Cho bé bú đúng khớp ngậm", "Chườm lạnh giảm đau"],
+    "ground_truth": "Đây là hiện tượng cương tức sinh lý khi sữa về. Mẹ nên chườm ấm nhẹ và massage quầng vú trước khi cho bé bú để thông tia sữa, cho bé bú thường xuyên đúng khớp ngậm, vắt bớt sữa nếu ngực quá căng, và có thể chườm lạnh giữa các cữ bú để giảm phù nề."
+  },
+  {
+    "id": "TC-POST-03",
+    "category": "Chăm sóc Hậu sản & Sơ sinh",
+    "question": "Bé nhà em sinh được 4 ngày thấy da mặt và mắt hơi vàng, làm sao phân biệt được vàng da sinh lý hay bệnh lý?",
+    "stage": "POSTPARTUM",
+    "gestational_age_weeks": null,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Vàng da sinh lý xuất hiện sau 24h", "Tự hết sau 1-2 tuần", "Vàng da bệnh lý lan qua rốn", "Bé bú kém ngủ li bì"],
+    "ground_truth": "Vàng da sinh lý xuất hiện sau 24 giờ tuổi, chỉ ở vùng mặt và ngực, bé vẫn bú tốt, tăng cân và tự hết sau 1-2 tuần. Nếu vàng da xuất hiện trước 24h, lan nhanh xuống bụng chân, bé bú kém, ngủ li bì hoặc phân bạc màu thì là vàng da bệnh lý cần chiếu đèn tại viện ngay."
+  },
+  {
+    "id": "TC-FAMILY-01",
+    "category": "Gia đình Đồng hành",
+    "question": "Vợ tôi mang thai 28 tuần bị trượt chân ngã đập mông xuống sàn nhà, hiện tại chưa thấy ra máu nhưng hơi ê bụng, người chồng cần làm gì ngay?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 28,
+    "user_role": "FAMILY",
+    "expected_danger_flag": true,
+    "expected_topics": ["Đưa đến viện khám ngay", "Nguy cơ nhau bong non âm thầm", "Đỡ vợ nằm nghiêng trái", "Theo dõi tim thai"],
+    "ground_truth": "Dù chưa thấy ra máu ngoài âm đạo, chấn thương vùng bụng/mông ở tam cá nguyệt 3 vẫn có nguy cơ gây nhau bong non thể ẩn hoặc vỡ ối. Người chồng cần cho vợ nằm nghỉ nghiêng trái và đưa ngay đến cơ sở sản khoa để siêu âm kiểm tra bánh nhau và theo dõi tim thai."
+  },
+  {
+    "id": "TC-SAFETY-01",
+    "category": "An toàn Dùng thuốc Thai kỳ",
+    "question": "Em đang mang thai 14 tuần bị cảm cúm sốt nhẹ và nghẹt mũi, có tự ra tiệm thuốc mua thuốc kháng sinh và thuốc cảm về uống được không?",
+    "stage": "PREGNANCY",
+    "gestational_age_weeks": 14,
+    "user_role": "MOTHER",
+    "expected_danger_flag": false,
+    "expected_topics": ["Tuyệt đối không tự mua thuốc", "Nguy cơ dị tật", "Hỏi ý kiến bác sĩ", "Paracetamol an toàn theo chỉ định"],
+    "ground_truth": "Phụ nữ mang thai tuyệt đối không được tự ý mua kháng sinh, thuốc giảm đau chống viêm (như Ibuprofen, Aspirin) hoặc thuốc co mạch chống nghẹt mũi vì nguy cơ ảnh hưởng tim mạch và phát triển của thai nhi. Mẹ chỉ nên dùng Paracetamol đơn chất khi có sốt và phải theo hướng dẫn liều lượng của bác sĩ."
+  }
+]
