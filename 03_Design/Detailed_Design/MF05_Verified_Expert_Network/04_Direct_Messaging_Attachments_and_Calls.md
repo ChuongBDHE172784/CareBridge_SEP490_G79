@@ -383,20 +383,20 @@ The lifecycle below belongs to **ConversationCall.callStatus, enclosed by the ac
 hide empty description
 [*] --> NoConversation
 
-NoConversation --> ConversationOpen : consultationRequestAccepted() [expert verificationStatus == APPROVED] / findOrCreateConversation()
-ConversationOpen --> ConversationOpen : sendMessage() or attachFile() [caller is a conversation participant] / persistMessage()
+NoConversation --> ConversationOpen : consultationRequestAccepted()\n[expert verificationStatus == APPROVED]\n/ findOrCreateConversation()
+ConversationOpen --> ConversationOpen : sendMessage() or attachFile()\n[caller is a conversation participant]\n/ persistMessage()
 
 state ConversationOpen {
   [*] --> NoCall
-  NoCall --> Initiated : startCall() [no live call on this conversation] / persistCall(INITIATED)
-  Initiated --> Ringing : calleeNotified() / setCallStatus(RINGING)
-  Ringing --> Answered : answerCall() / setCallStatus(ANSWERED)
-  Ringing --> Declined : declineCall() / setCallStatus(DECLINED)
-  Ringing --> Missed : ringTimeoutElapses() / setCallStatus(MISSED)
-  Initiated --> Cancelled : cancelCall() [status is INITIATED or RINGING] / setCallStatus(CANCELLED)
-  Ringing --> Cancelled : cancelCall() [status is INITIATED or RINGING] / setCallStatus(CANCELLED)
-  Answered --> Ended : endCall() [status == ANSWERED] / setCallStatus(ENDED)
-  Initiated --> Failed : providerError() / setCallStatus(FAILED)
+  NoCall --> Initiated : startCall()\n[no live call on this conversation]\n/ persistCall(INITIATED)
+  Initiated --> Ringing : calleeNotified()\n/ setCallStatus(RINGING)
+  Ringing --> Answered : answerCall()\n/ setCallStatus(ANSWERED)
+  Ringing --> Declined : declineCall()\n/ setCallStatus(DECLINED)
+  Ringing --> Missed : ringTimeoutElapses()\n/ setCallStatus(MISSED)
+  Initiated --> Cancelled : cancelCall()\n[status is INITIATED or RINGING]\n/ setCallStatus(CANCELLED)
+  Ringing --> Cancelled : cancelCall()\n[status is INITIATED or RINGING]\n/ setCallStatus(CANCELLED)
+  Answered --> Ended : endCall()\n[status == ANSWERED]\n/ setCallStatus(ENDED)
+  Initiated --> Failed : providerError()\n/ setCallStatus(FAILED)
 }
 
 Initiated : CallStatus = INITIATED

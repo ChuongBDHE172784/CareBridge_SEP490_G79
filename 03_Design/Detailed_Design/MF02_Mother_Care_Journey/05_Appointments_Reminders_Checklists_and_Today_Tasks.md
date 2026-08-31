@@ -401,25 +401,25 @@ The lifecycle below belongs to **Reminder.status, with the AppointmentNotificati
 hide empty description
 [*] --> Pending
 
-Pending --> Snoozed : snoozeReminder() / setSnoozedUntil()
-Snoozed --> Pending : snoozeWindowElapses() / restoreDueAt()
-Pending --> Completed : completeReminder() / setStatus(COMPLETED)
-Snoozed --> Completed : completeReminder() / setStatus(COMPLETED)
-Pending --> Skipped : skipReminder() / setStatus(SKIPPED)
-Snoozed --> Skipped : skipReminder() / setStatus(SKIPPED)
-Pending --> Cancelled : cancelReminder() / setStatus(CANCELLED)
-Snoozed --> Cancelled : cancelReminder() / setStatus(CANCELLED)
-Cancelled --> Pending : enableReminder() [status == CANCELLED] / clearSnoozeAndBumpOccurrenceGeneration()
+Pending --> Snoozed : snoozeReminder()\n/ setSnoozedUntil()
+Snoozed --> Pending : snoozeWindowElapses()\n/ restoreDueAt()
+Pending --> Completed : completeReminder()\n/ setStatus(COMPLETED)
+Snoozed --> Completed : completeReminder()\n/ setStatus(COMPLETED)
+Pending --> Skipped : skipReminder()\n/ setStatus(SKIPPED)
+Snoozed --> Skipped : skipReminder()\n/ setStatus(SKIPPED)
+Pending --> Cancelled : cancelReminder()\n/ setStatus(CANCELLED)
+Snoozed --> Cancelled : cancelReminder()\n/ setStatus(CANCELLED)
+Cancelled --> Pending : enableReminder()\n[status == CANCELLED]\n/ clearSnoozeAndBumpOccurrenceGeneration()
 
 state Pending {
   [*] --> JobPending
-  JobPending --> JobProcessing : claimNotificationJob() [status == PENDING] / setJobStatus(PROCESSING)
-  JobProcessing --> JobSent : dispatchNotification() [delivery accepted] / setJobStatus(SENT)
-  JobProcessing --> JobFailed : dispatchNotification() [retry budget exhausted] / setJobStatus(FAILED)
-  JobProcessing --> JobPending : dispatchNotification() [retry budget remains] / setJobStatus(PENDING)
-  JobProcessing --> JobSuppressed : evaluateJob() [stale backlog, appointment inactive, or push disabled] / setJobStatus(SUPPRESSED)
-  JobPending --> JobCancelled : cancelReminder() / setJobStatus(CANCELLED)
-  JobProcessing --> JobCancelled : cancelReminder() / setJobStatus(CANCELLED)
+  JobPending --> JobProcessing : claimNotificationJob()\n[status == PENDING]\n/ setJobStatus(PROCESSING)
+  JobProcessing --> JobSent : dispatchNotification()\n[delivery accepted]\n/ setJobStatus(SENT)
+  JobProcessing --> JobFailed : dispatchNotification()\n[retry budget exhausted]\n/ setJobStatus(FAILED)
+  JobProcessing --> JobPending : dispatchNotification()\n[retry budget remains]\n/ setJobStatus(PENDING)
+  JobProcessing --> JobSuppressed : evaluateJob()\n[stale backlog, appointment inactive, or push disabled]\n/ setJobStatus(SUPPRESSED)
+  JobPending --> JobCancelled : cancelReminder()\n/ setJobStatus(CANCELLED)
+  JobProcessing --> JobCancelled : cancelReminder()\n/ setJobStatus(CANCELLED)
 }
 
 Pending : ReminderStatus = PENDING

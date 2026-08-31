@@ -224,17 +224,17 @@ The lifecycle below belongs to **EmergencySession.status, with the family alert 
 hide empty description
 [*] --> NoSession
 
-NoSession --> Active : startEmergency() [no active session for this user] / persistSession(ACTIVE)
-Active --> Resolved : resolveEmergency() [caller owns the session] / setStatus(RESOLVED)
-Active --> Cancelled : cancelEmergency() [caller owns the session] / setStatus(CANCELLED)
+NoSession --> Active : startEmergency()\n[no active session for this user]\n/ persistSession(ACTIVE)
+Active --> Resolved : resolveEmergency()\n[caller owns the session]\n/ setStatus(RESOLVED)
+Active --> Cancelled : cancelEmergency()\n[caller owns the session]\n/ setStatus(CANCELLED)
 
 state Active {
   [*] --> AlertPending
-  AlertPending --> AlertDelivered : notifyFamilyMembers() [active care group resolves recipients] / dispatchEmergencyAlert()
-  AlertPending --> NoRecipient : notifyFamilyMembers() [no active care group member found] / recordUndeliverableAlert()
-  AlertDelivered --> Acknowledged : familyMemberResponds() / recordAcknowledgement()
-  AlertDelivered --> AlertDelivered : shareLocation() [location consent granted] / persistBoundedLocationPoint()
-  Acknowledged --> Acknowledged : shareLocation() [location consent granted] / persistBoundedLocationPoint()
+  AlertPending --> AlertDelivered : notifyFamilyMembers()\n[active care group resolves recipients]\n/ dispatchEmergencyAlert()
+  AlertPending --> NoRecipient : notifyFamilyMembers()\n[no active care group member found]\n/ recordUndeliverableAlert()
+  AlertDelivered --> Acknowledged : familyMemberResponds()\n/ recordAcknowledgement()
+  AlertDelivered --> AlertDelivered : shareLocation()\n[location consent granted]\n/ persistBoundedLocationPoint()
+  Acknowledged --> Acknowledged : shareLocation()\n[location consent granted]\n/ persistBoundedLocationPoint()
 }
 
 Active : EmergencyStatus = ACTIVE

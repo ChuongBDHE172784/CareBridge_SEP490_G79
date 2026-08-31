@@ -663,21 +663,20 @@ The lifecycle below belongs to **User.accountStatus, with the signed-in session 
 hide empty description
 [*] --> PendingActivation
 
-PendingActivation --> PendingActivation : requestOtp() / issueOtpVerification()
-PendingActivation --> Active : verifyOtp() [codeHash matches && expiresAt not passed] / setAccountStatus(ACTIVE)
+PendingActivation --> PendingActivation : requestOtp()\n/ issueOtpVerification()
+PendingActivation --> Active : verifyOtp()\n[codeHash matches && expiresAt not passed]\n/ setAccountStatus(ACTIVE)
 
-Active --> TemporarilyLocked : authenticate() [failed-attempt threshold reached] / applyAccountLock(TEMPORARY)
-TemporarilyLocked --> Active : lockWindowElapses() / clearAccountLock()
-Active --> AdminLocked : adminLockAccount() / applyAccountLock(ADMIN)
+Active --> TemporarilyLocked : authenticate()\n[failed-attempt threshold reached]\n/ applyAccountLock(TEMPORARY)
+TemporarilyLocked --> Active : lockWindowElapses()\n/ clearAccountLock()
+Active --> AdminLocked : adminLockAccount()\n/ applyAccountLock(ADMIN)
 
 state Active {
   [*] --> SignedOut
-  SignedOut --> SignedIn : authenticate() [credentials valid && account not locked] / issueAccessAndRefreshTokens()
-  SignedIn --> SignedOut : logout() / revokeCurrentSession()
-  SignedIn --> SignedOut : revokeSession() [session belongs to caller] / revokeRefreshSession()
-  SignedIn --> SignedIn : changePassword() [current password verified] / rotateCredential()
-  SignedIn --> SignedIn : linkGoogleIdentity() / attachFederatedIdentity()
-  SignedOut --> SignedOut : recoverForgottenPassword() [reset proof valid] / resetCredential()
+  SignedOut --> SignedIn : authenticate()\n[credentials valid && account not locked]\n/ issueAccessAndRefreshTokens()
+  SignedIn --> SignedOut : logout()\n/ revokeCurrentSession()
+  SignedIn --> SignedOut : revokeSession()\n[session belongs to caller]\n/ revokeRefreshSession()
+  SignedIn --> SignedIn : changePassword()\n[current password verified]\n/ rotateCredential()\n\nlinkGoogleIdentity()\n/ attachFederatedIdentity()
+  SignedOut --> SignedOut : recoverForgottenPassword()\n[reset proof valid]\n/ resetCredential()
 }
 
 PendingActivation : accountStatus = PENDING_ACTIVATION

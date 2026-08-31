@@ -205,13 +205,12 @@ The lifecycle below belongs to **Exercise.status, with posture configuration bou
 hide empty description
 [*] --> Draft
 
-Draft --> Published : publishExercise() [status != PUBLISHED] / setStatus(PUBLISHED)
-Published --> Archived : archiveExercise() [status != ARCHIVED] / setStatus(ARCHIVED)
-Draft --> Archived : archiveExercise() [status != ARCHIVED] / setStatus(ARCHIVED)
-Archived --> Published : republishExercise() / setStatus(PUBLISHED)
-Draft --> Draft : editExerciseDefinition() / persistCatalogueFields()
-Published --> Published : configurePostureModel() [status == PUBLISHED] / persistPostureConfiguration()
-Published --> Published : listPublishedExercises() [status == PUBLISHED] / returnCatalogueEntry()
+Draft --> Published : publishExercise()\n[status != PUBLISHED]\n/ setStatus(PUBLISHED)
+Published --> Archived : archiveExercise()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
+Draft --> Archived : archiveExercise()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
+Archived --> Published : republishExercise()\n/ setStatus(PUBLISHED)
+Draft --> Draft : editExerciseDefinition()\n/ persistCatalogueFields()
+Published --> Published : configurePostureModel()\n[status == PUBLISHED]\n/ persistPostureConfiguration()\n\nlistPublishedExercises()\n[status == PUBLISHED]\n/ returnCatalogueEntry()
 
 Draft : ExerciseStatus = DRAFT
 Published : ExerciseStatus = PUBLISHED

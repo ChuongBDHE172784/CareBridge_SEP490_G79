@@ -31,7 +31,7 @@ The code is authoritative for routes, handlers, delegation, authorization, and p
 | `UC-AD-08` | Author and Version Articles and FAQs | `GET /api/v1/admin/content/{id}` | `AdminContentController.getContent()` | `AdminContentService.getStaffContent()` → `ContentRepository.findById()` | hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminContentController.java` |
 | `UC-AD-08` | Author and Version Articles and FAQs | `PUT /api/v1/admin/content/{id}` | `AdminContentController.updateContent()` | `AdminContentService.updateContent()` → `ContentRepository.findById()` | hasRole('CONTENT_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminContentController.java` |
 | `UC-AD-08` | Author and Version Articles and FAQs | `GET /api/v1/admin/content/{id}/versions` | `AdminContentController.getVersionHistory()` | `AdminContentService.getVersionHistory()` → `ContentRepository.existsById()` | hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminContentController.java` |
-| `UC-AD-14` | Approve or Reject Submitted Content | `POST /api/v1/admin/content/{id}/decision` | `ContentApprovalController.decide()` | `ContentApprovalService.decide()` → `ContentRepository.findById()` | hasRole('SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ContentApprovalController.java` |
+| `UC-AD-14` | Approve or Reject Submitted Content | `POST /api/v1/admin/content/{id}/decision` | `ContentApprovalController.decide()` | `ContentApprovalService.decide()` → `ContentRepository.findById()` | hasAnyRole('SYSTEM_ADMIN', 'EXPERT') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ContentApprovalController.java` |
 | `UC-AD-15` | Unpublish or Archive Content | `POST /api/v1/admin/content/{id}/archive` | `AdminContentController.hideContent()` | `AdminContentService.hideContent()` → `ContentRepository.findById()` | hasRole('CONTENT_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminContentController.java` |
 | `UC-AD-15` | Unpublish or Archive Content | `POST /api/v1/admin/content/{id}/unpublish` | `ContentUnpublishController.unpublish()` | `ContentUnpublishService.unpublish()` → `ContentRepository.findById()` | hasRole('CONTENT_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ContentUnpublishController.java` |
 
@@ -55,6 +55,7 @@ class "AdminContentController" as ControllerAdminContentController <<Controller>
 }
 class "ContentApprovalController" as ControllerContentApprovalController <<Controller>> {
   - contentApprovalService: ContentApprovalService
+  - expertContentApprovalService: ExpertContentApprovalService
   + decide(id: UUID, request: ContentDecisionRequest, principal: Principal): ResponseEntity<ApiResponse<ContentDecisionResponse>>
 }
 interface "AdminContentService" as ServiceContractAdminContentService <<Service>> {
@@ -68,6 +69,8 @@ class "AdminContentServiceImpl" as ServiceAdminContentServiceImpl <<Service>> {
   - auditService: AuditService
   - auditLogRepository: AuditLogRepository
   - objectMapper: ObjectMapper
+  - contentWorkloadDispatcherService: ContentWorkloadDispatcherService
+  - contentReviewNotificationService: ContentReviewNotificationService
   + getStaffContents(status: ContentStatus, type: ContentType, stage: ContentStage, keyword: String, pageable: Pageable): Page<StaffContentDetailResponse>
   + hideContent(id: UUID, request: HideContentRequest, principal: Principal): HideContentResponse
 }
@@ -263,14 +266,14 @@ The lifecycle below belongs to **ContentItem.status**. Its states are the persis
 hide empty description
 [*] --> Draft
 
-Draft --> PendingReview : submitForReview() [status is DRAFT or PENDING_REVIEW] / setStatus(PENDING_REVIEW)
-PendingReview --> Draft : withdrawSubmission() [status is DRAFT or PENDING_REVIEW] / setStatus(DRAFT)
-PendingReview --> Approved : reviewContent() [decision == APPROVE && status == PENDING_REVIEW] / publishContent()
-PendingReview --> Draft : reviewContent() [decision == REJECT && status == PENDING_REVIEW] / returnToAuthorWithFeedback()
-Approved --> Archived : unpublishContent() [status == APPROVED] / setStatus(ARCHIVED)
-Draft --> Archived : archiveContent() [status != ARCHIVED] / setStatus(ARCHIVED)
-PendingReview --> Archived : archiveContent() [status != ARCHIVED] / setStatus(ARCHIVED)
-Draft --> Draft : editContent() [status is DRAFT or PENDING_REVIEW] / persistNewVersion()
+Draft --> PendingReview : submitForReview()\n[status is DRAFT or PENDING_REVIEW]\n/ setStatus(PENDING_REVIEW)
+PendingReview --> Draft : withdrawSubmission()\n[status is DRAFT or PENDING_REVIEW]\n/ setStatus(DRAFT)
+PendingReview --> Approved : reviewContent()\n[decision == APPROVE && status == PENDING_REVIEW]\n/ publishContent()
+PendingReview --> Draft : reviewContent()\n[decision == REJECT && status == PENDING_REVIEW]\n/ returnToAuthorWithFeedback()
+Approved --> Archived : unpublishContent()\n[status == APPROVED]\n/ setStatus(ARCHIVED)
+Draft --> Archived : archiveContent()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
+PendingReview --> Archived : archiveContent()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
+Draft --> Draft : editContent()\n[status is DRAFT or PENDING_REVIEW]\n/ persistNewVersion()
 
 Draft : ContentStatus = DRAFT
 PendingReview : ContentStatus = PENDING_REVIEW

@@ -440,19 +440,18 @@ The lifecycle below belongs to **The member-owned User.accountStatus and Account
 hide empty description
 [*] --> Active
 
-Active --> Deactivated : deactivateOwnAccount() / setAccountStatus(DEACTIVATED)
-Active --> Locked : accountLockApplied() / persistAccountLock()
-Locked --> AppealSubmitted : submitAccountLockAppeal() [no PENDING appeal exists] / createAppeal(PENDING)
-AppealSubmitted --> Active : reviewAppeal() [decision == APPROVE] / clearAccountLock()
-AppealSubmitted --> Locked : reviewAppeal() [decision == REJECT] / setAppealStatus(REJECTED)
-AppealSubmitted --> Locked : cancelAppeal() [caller owns the appeal] / setAppealStatus(CANCELLED)
+Active --> Deactivated : deactivateOwnAccount()\n/ setAccountStatus(DEACTIVATED)
+Active --> Locked : accountLockApplied()\n/ persistAccountLock()
+Locked --> AppealSubmitted : submitAccountLockAppeal()\n[no PENDING appeal exists]\n/ createAppeal(PENDING)
+AppealSubmitted --> Active : reviewAppeal()\n[decision == APPROVE]\n/ clearAccountLock()
+AppealSubmitted --> Locked : reviewAppeal()\n[decision == REJECT]\n/ setAppealStatus(REJECTED)
+AppealSubmitted --> Locked : cancelAppeal()\n[caller owns the appeal]\n/ setAppealStatus(CANCELLED)
 
 state Active {
   [*] --> ConsentNotGranted
-  ConsentNotGranted --> ConsentGranted : grantConsent(dataType, purpose) / setGrantedAt()
-  ConsentGranted --> ConsentNotGranted : revokeConsent(consentId) [grant owned by caller] / setRevokedAt()
-  ConsentGranted --> ConsentGranted : updateProfile() / persistProfileFields()
-  ConsentGranted --> ConsentGranted : acknowledgeNotification() / markNotificationRead()
+  ConsentNotGranted --> ConsentGranted : grantConsent(dataType, purpose)\n/ setGrantedAt()
+  ConsentGranted --> ConsentNotGranted : revokeConsent(consentId)\n[grant owned by caller]\n/ setRevokedAt()
+  ConsentGranted --> ConsentGranted : updateProfile()\n/ persistProfileFields()\n\nacknowledgeNotification()\n/ markNotificationRead()
 }
 
 Active : accountStatus = ACTIVE

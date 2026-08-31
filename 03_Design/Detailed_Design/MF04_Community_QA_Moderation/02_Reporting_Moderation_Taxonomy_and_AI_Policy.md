@@ -554,18 +554,18 @@ The lifecycle below belongs to **Report.status, with the AiScanJob lifecycle tha
 hide empty description
 [*] --> Pending
 
-Pending --> InReview : claimReport() [no other moderator holds the claim] / setAssignedModerator()
-InReview --> Pending : releaseReport() / clearAssignedModerator()
-InReview --> Resolved : resolveReport() [outcome is an enforcing action] / applyModerationAction()
-InReview --> Dismissed : resolveReport() [outcome == DISMISS] / setStatus(DISMISSED)
+Pending --> InReview : claimReport()\n[no other moderator holds the claim]\n/ setAssignedModerator()
+InReview --> Pending : releaseReport()\n/ clearAssignedModerator()
+InReview --> Resolved : resolveReport()\n[outcome is an enforcing action]\n/ applyModerationAction()
+InReview --> Dismissed : resolveReport()\n[outcome == DISMISS]\n/ setStatus(DISMISSED)
 
 state Pending {
   [*] --> ScanQueued
-  ScanQueued --> ScanProcessing : claimScanJob() [status == QUEUED] / setStatus(PROCESSING)
-  ScanProcessing --> ScanCompleted : recordAssessment() / setStatus(COMPLETED)
-  ScanProcessing --> ScanFailed : recordAssessment() [model call failed] / setStatus(FAILED)
-  ScanProcessing --> ScanSkipped : recordAssessment() [target gone or no active policy] / setStatus(SKIPPED)
-  ScanFailed --> ScanQueued : requeueScanJob() [retry budget remains] / setStatus(QUEUED)
+  ScanQueued --> ScanProcessing : claimScanJob()\n[status == QUEUED]\n/ setStatus(PROCESSING)
+  ScanProcessing --> ScanCompleted : recordAssessment()\n/ setStatus(COMPLETED)
+  ScanProcessing --> ScanFailed : recordAssessment()\n[model call failed]\n/ setStatus(FAILED)
+  ScanProcessing --> ScanSkipped : recordAssessment()\n[target gone or no active policy]\n/ setStatus(SKIPPED)
+  ScanFailed --> ScanQueued : requeueScanJob()\n[retry budget remains]\n/ setStatus(QUEUED)
 }
 
 Pending : ReportStatus = PENDING

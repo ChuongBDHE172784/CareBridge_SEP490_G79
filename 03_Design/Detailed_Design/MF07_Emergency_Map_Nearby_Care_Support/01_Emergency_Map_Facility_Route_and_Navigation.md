@@ -129,10 +129,10 @@ The lifecycle below belongs to **EmergencyMapHandoff.status, with the consumer-v
 hide empty description
 [*] --> NoHandoff
 
-NoHandoff --> HandoffOpen : selectFacilityForNavigation() [facility is discoverable] / persistHandoff(OPEN)
-HandoffOpen --> HandoffAccepted : externalMapAppLaunched() / setStatus(ACCEPTED)
-HandoffOpen --> NoHandoff : startNewHandoff() / supersedePreviousHandoff()
-HandoffAccepted --> NoHandoff : startNewHandoff() / supersedePreviousHandoff()
+NoHandoff --> HandoffOpen : selectFacilityForNavigation()\n[facility is discoverable]\n/ persistHandoff(OPEN)
+HandoffOpen --> HandoffAccepted : externalMapAppLaunched()\n/ setStatus(ACCEPTED)
+HandoffOpen --> NoHandoff : startNewHandoff()\n/ supersedePreviousHandoff()
+HandoffAccepted --> NoHandoff : startNewHandoff()\n/ supersedePreviousHandoff()
 
 HandoffOpen : HandoffStatus = OPEN
 HandoffAccepted : HandoffStatus = ACCEPTED

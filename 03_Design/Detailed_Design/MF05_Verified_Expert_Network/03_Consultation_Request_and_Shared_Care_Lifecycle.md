@@ -238,12 +238,12 @@ The lifecycle below belongs to **ConsultationRequest.status**. Its states are th
 hide empty description
 [*] --> Pending
 
-Pending --> Accepted : accept() [caller is the assigned expert && expert still eligible] / openDirectConversation()
-Pending --> Rejected : reject() [caller is the assigned expert] / storeRejectReason()
-Pending --> Cancelled : cancel() [caller is the requester] / stampRespondedAt()
-Pending --> Expired : expireOverdueRequests() [expiresAt < now] / publishRequestExpired()
+Pending --> Accepted : accept()\n[caller is the assigned expert && expert still eligible]\n/ openDirectConversation()
+Pending --> Rejected : reject()\n[caller is the assigned expert]\n/ storeRejectReason()
+Pending --> Cancelled : cancel()\n[caller is the requester]\n/ stampRespondedAt()
+Pending --> Expired : expireOverdueRequests()\n[expiresAt < now]\n/ publishRequestExpired()
 
-Accepted --> Accepted : readSharedMaternalCare() [consent scope still valid] / composeSharedCareView()
+Accepted --> Accepted : readSharedMaternalCare()\n[consent scope still valid]\n/ composeSharedCareView()
 
 Pending : ConsultationRequestStatus = PENDING
 Accepted : ConsultationRequestStatus = ACCEPTED

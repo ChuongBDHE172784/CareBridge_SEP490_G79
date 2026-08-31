@@ -280,13 +280,13 @@ The lifecycle below belongs to **The knowledge-base document as it moves through
 hide empty description
 [*] --> NotIngested
 
-NotIngested --> Ingested : ingestRawText() or uploadDocumentFile() [internal API key verified] / chunkEmbedAndStoreVectors()
-NotIngested --> Ingested : syncRawDocumentsDirectory() / ingestEachDirectoryDocument()
-Ingested --> Ingested : reingestSameTitle() / replaceStoredChunks()
-Ingested --> Retrievable : similaritySearchMatches() / returnChunksToRagAnswer()
-Retrievable --> Ingested : searchReturnsNoMatch() / leaveCorpusUnchanged()
-Ingested --> NotIngested : deleteDocumentByTitle() / removeStoredChunks()
-Retrievable --> NotIngested : clearAllKnowledge() / purgeEntireCorpus()
+NotIngested --> Ingested : ingestRawText() or uploadDocumentFile()\n[internal API key verified]\n/ chunkEmbedAndStoreVectors()
+NotIngested --> Ingested : syncRawDocumentsDirectory()\n/ ingestEachDirectoryDocument()
+Ingested --> Ingested : reingestSameTitle()\n/ replaceStoredChunks()
+Ingested --> Retrievable : similaritySearchMatches()\n/ returnChunksToRagAnswer()
+Retrievable --> Ingested : searchReturnsNoMatch()\n/ leaveCorpusUnchanged()
+Ingested --> NotIngested : deleteDocumentByTitle()\n/ removeStoredChunks()
+Retrievable --> NotIngested : clearAllKnowledge()\n/ purgeEntireCorpus()
 
 Ingested : chunks embedded and stored in pgvector
 Retrievable : chunk returned by similarity search

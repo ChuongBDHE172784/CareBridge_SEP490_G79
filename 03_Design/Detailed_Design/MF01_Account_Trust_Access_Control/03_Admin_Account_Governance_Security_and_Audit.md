@@ -460,18 +460,18 @@ The lifecycle below belongs to **The administered User account, with the Account
 hide empty description
 [*] --> Active
 
-Active --> Disabled : disableUser() [caller has SYSTEM_ADMIN] / setAccountStatus(DISABLED)
-Disabled --> AwaitingActivation : enableUser() / setAccountStatus(PENDING_ACTIVATION)
-AwaitingActivation --> Active : verifyOtp() / setAccountStatus(ACTIVE)
-Active --> Locked : lockAccount() / persistAccountLock(ADMIN)
-Locked --> Active : reviewAppeal() [decision == APPROVE] / clearAccountLock()
+Active --> Disabled : disableUser()\n[caller has SYSTEM_ADMIN]\n/ setAccountStatus(DISABLED)
+Disabled --> AwaitingActivation : enableUser()\n/ setAccountStatus(PENDING_ACTIVATION)
+AwaitingActivation --> Active : verifyOtp()\n/ setAccountStatus(ACTIVE)
+Active --> Locked : lockAccount()\n/ persistAccountLock(ADMIN)
+Locked --> Active : reviewAppeal()\n[decision == APPROVE]\n/ clearAccountLock()
 
 state Locked {
   [*] --> NoAppeal
-  NoAppeal --> AppealPending : submitAppeal() / createAppeal(PENDING)
-  AppealPending --> AppealRejected : reviewAppeal() [decision == REJECT] / setStatus(REJECTED)
-  AppealPending --> NoAppeal : cancelAppeal() [caller owns the appeal] / setStatus(CANCELLED)
-  AppealRejected --> AppealPending : submitAppeal() / createAppeal(PENDING)
+  NoAppeal --> AppealPending : submitAppeal()\n/ createAppeal(PENDING)
+  AppealPending --> AppealRejected : reviewAppeal()\n[decision == REJECT]\n/ setStatus(REJECTED)
+  AppealPending --> NoAppeal : cancelAppeal()\n[caller owns the appeal]\n/ setStatus(CANCELLED)
+  AppealRejected --> AppealPending : submitAppeal()\n/ createAppeal(PENDING)
 }
 
 Active : accountStatus = ACTIVE

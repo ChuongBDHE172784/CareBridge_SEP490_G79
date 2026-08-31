@@ -120,20 +120,20 @@ The lifecycle below belongs to **SafetyMonitoringConfig + ImuMonitoringSession (
 hide empty description
 [*] --> Unconfigured
 
-Unconfigured --> DetectionDisabled : configure() [fallDetectionEnabled == false] / saveSafetyMonitoringConfig()
-Unconfigured --> DetectionEnabled : configure() [fallDetectionEnabled == true] / saveSafetyMonitoringConfig()
-DetectionDisabled --> DetectionEnabled : configure() [fallDetectionEnabled == true] / publishSafetyConfigChanged()
-DetectionEnabled --> DetectionDisabled : configure() [fallDetectionEnabled == false] / publishSafetyConfigChanged()
+Unconfigured --> DetectionDisabled : configure()\n[fallDetectionEnabled == false]\n/ saveSafetyMonitoringConfig()
+Unconfigured --> DetectionEnabled : configure()\n[fallDetectionEnabled == true]\n/ saveSafetyMonitoringConfig()
+DetectionDisabled --> DetectionEnabled : configure()\n[fallDetectionEnabled == true]\n/ publishSafetyConfigChanged()
+DetectionEnabled --> DetectionDisabled : configure()\n[fallDetectionEnabled == false]\n/ publishSafetyConfigChanged()
 
-DetectionEnabled --> Monitoring : enable() [sensorConsentGranted && sensorPermissionGranted] / openImuMonitoringSession()
-Monitoring --> DetectionEnabled : disable() / stopImuMonitoringSession()
+DetectionEnabled --> Monitoring : enable()\n[sensorConsentGranted && sensorPermissionGranted]\n/ openImuMonitoringSession()
+Monitoring --> DetectionEnabled : disable()\n/ stopImuMonitoringSession()
 
 state Monitoring {
   [*] --> SelfTestIdle
-  SelfTestIdle --> SelfTestOpen : createSensorSelfTest() [signalKey not duplicated] / armCountdownDeadline()
-  SelfTestOpen --> SelfTestOpen : createSensorSelfTest() [signalKey duplicated] / returnExistingSelfTestEvent()
-  SelfTestOpen --> SelfTestTimedOut : completeSensorSelfTest() [status == TEST_OPEN] / recordSelfTestResponse()
-  SelfTestTimedOut --> SelfTestOpen : createSensorSelfTest() / armCountdownDeadline()
+  SelfTestIdle --> SelfTestOpen : createSensorSelfTest()\n[signalKey not duplicated]\n/ armCountdownDeadline()
+  SelfTestOpen --> SelfTestOpen : createSensorSelfTest()\n[signalKey duplicated]\n/ returnExistingSelfTestEvent()
+  SelfTestOpen --> SelfTestTimedOut : completeSensorSelfTest()\n[status == TEST_OPEN]\n/ recordSelfTestResponse()
+  SelfTestTimedOut --> SelfTestOpen : createSensorSelfTest()\n/ armCountdownDeadline()
 }
 
 DetectionDisabled : fallDetectionEnabled = false

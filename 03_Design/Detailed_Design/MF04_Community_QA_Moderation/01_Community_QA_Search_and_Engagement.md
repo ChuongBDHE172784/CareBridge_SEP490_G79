@@ -367,16 +367,16 @@ The lifecycle below belongs to **CommunityQuestion.status (CommunityAnswer.statu
 hide empty description
 [*] --> AiPending
 
-AiPending --> Approved : applyAiOutcome() [classification is safe] / setStatus(APPROVED)
-AiPending --> PendingHumanReview : applyAiOutcome() [classification is not safe] / setStatus(PENDING)
-PendingHumanReview --> Approved : moderatorApproves() / setStatus(APPROVED)
-Approved --> Hidden : moderatorHides() / setStatus(HIDDEN)
-PendingHumanReview --> Hidden : moderatorHides() / setStatus(HIDDEN)
-Hidden --> PendingHumanReview : revertModeration() / setStatus(PENDING)
-Approved --> Locked : moderatorLocks() / setStatus(LOCKED)
-Approved --> Approved : postAnswer() or voteOrBookmark() [status == APPROVED] / persistEngagement()
-Approved --> Deleted : authorDeletes() [caller owns the question] / setStatus(DELETED)
-PendingHumanReview --> Deleted : authorDeletes() [caller owns the question] / setStatus(DELETED)
+AiPending --> Approved : applyAiOutcome()\n[classification is safe]\n/ setStatus(APPROVED)
+AiPending --> PendingHumanReview : applyAiOutcome()\n[classification is not safe]\n/ setStatus(PENDING)
+PendingHumanReview --> Approved : moderatorApproves()\n/ setStatus(APPROVED)
+Approved --> Hidden : moderatorHides()\n/ setStatus(HIDDEN)
+PendingHumanReview --> Hidden : moderatorHides()\n/ setStatus(HIDDEN)
+Hidden --> PendingHumanReview : revertModeration()\n/ setStatus(PENDING)
+Approved --> Locked : moderatorLocks()\n/ setStatus(LOCKED)
+Approved --> Approved : postAnswer() or voteOrBookmark()\n[status == APPROVED]\n/ persistEngagement()
+Approved --> Deleted : authorDeletes()\n[caller owns the question]\n/ setStatus(DELETED)
+PendingHumanReview --> Deleted : authorDeletes()\n[caller owns the question]\n/ setStatus(DELETED)
 
 AiPending : QuestionStatus = AI_PENDING
 PendingHumanReview : QuestionStatus = PENDING

@@ -159,15 +159,15 @@ The lifecycle below belongs to **HealthRecord.status, with the purpose-bound Fil
 hide empty description
 [*] --> NoRecord
 
-NoRecord --> ActiveRecord : createHealthRecord() [caller owns the subject] / persistRecord(ACTIVE)
-ActiveRecord --> ActiveRecord : updateHealthRecord() [status != ARCHIVED] / persistRevision()
-ActiveRecord --> ArchivedRecord : archiveHealthRecord() [status != ARCHIVED] / setStatus(ARCHIVED)
+NoRecord --> ActiveRecord : createHealthRecord()\n[caller owns the subject]\n/ persistRecord(ACTIVE)
+ActiveRecord --> ActiveRecord : updateHealthRecord()\n[status != ARCHIVED]\n/ persistRevision()
+ActiveRecord --> ArchivedRecord : archiveHealthRecord()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
 
 state ActiveRecord {
   [*] --> NoAttachment
-  NoAttachment --> AttachmentActive : uploadAttachment() [purpose allowed for record type] / persistFile(ACTIVE)
-  AttachmentActive --> AttachmentActive : readAttachment() [FileAccessPolicy grants purpose-bound access] / streamFile()
-  AttachmentActive --> AttachmentDeleted : deleteAttachment() [caller owns the file] / setFileStatus(DELETED)
+  NoAttachment --> AttachmentActive : uploadAttachment()\n[purpose allowed for record type]\n/ persistFile(ACTIVE)
+  AttachmentActive --> AttachmentActive : readAttachment()\n[FileAccessPolicy grants purpose-bound access]\n/ streamFile()
+  AttachmentActive --> AttachmentDeleted : deleteAttachment()\n[caller owns the file]\n/ setFileStatus(DELETED)
 }
 
 ActiveRecord : HealthRecordStatus = ACTIVE

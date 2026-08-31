@@ -242,15 +242,15 @@ The lifecycle below belongs to **SafetyEvent.status for a detected impact (the S
 hide empty description
 [*] --> NoEvent
 
-NoEvent --> Open : processImuData() [fall analysis confirms a suspected impact] / persistEvent(OPEN) and armCountdown()
-Open --> ConfirmedSafe : confirmSafetyCheck() [event has no response yet] / recordResponse(I_AM_OK)
-Open --> FalsePositive : reportFalsePositive() [event has no response yet] / recordResponse(FALSE_POSITIVE)
-Open --> EscalationRequested : sendEmergencyAlert() [event has no response yet] / recordResponse(NEED_HELP)
-Open --> TimedOut : processExpiredCountdowns() [deadline passed && emergencyAutoAlert == false] / recordSystemTimeout()
-Open --> EscalationRequested : processExpiredCountdowns() [deadline passed && emergencyAutoAlert == true] / autoEscalate()
-EscalationRequested --> EmergencyAlertSent : familyAlertDispatched() [status == ESCALATION_REQUESTED] / setStatus(EMERGENCY_ALERT_SENT)
-ConfirmedSafe --> ConfirmedSafe : submitFeedback() / recordFalsePositiveFeedback()
-FalsePositive --> FalsePositive : submitFeedback() / recordFalsePositiveFeedback()
+NoEvent --> Open : processImuData()\n[fall analysis confirms a suspected impact]\n/ persistEvent(OPEN) and armCountdown()
+Open --> ConfirmedSafe : confirmSafetyCheck()\n[event has no response yet]\n/ recordResponse(I_AM_OK)
+Open --> FalsePositive : reportFalsePositive()\n[event has no response yet]\n/ recordResponse(FALSE_POSITIVE)
+Open --> EscalationRequested : sendEmergencyAlert()\n[event has no response yet]\n/ recordResponse(NEED_HELP)
+Open --> TimedOut : processExpiredCountdowns()\n[deadline passed && emergencyAutoAlert == false]\n/ recordSystemTimeout()
+Open --> EscalationRequested : processExpiredCountdowns()\n[deadline passed && emergencyAutoAlert == true]\n/ autoEscalate()
+EscalationRequested --> EmergencyAlertSent : familyAlertDispatched()\n[status == ESCALATION_REQUESTED]\n/ setStatus(EMERGENCY_ALERT_SENT)
+ConfirmedSafe --> ConfirmedSafe : submitFeedback()\n/ recordFalsePositiveFeedback()
+FalsePositive --> FalsePositive : submitFeedback()\n/ recordFalsePositiveFeedback()
 
 Open : SafetyEventStatus = OPEN
 ConfirmedSafe : SafetyEventStatus = CONFIRMED_SAFE

@@ -31,10 +31,10 @@ The code is authoritative for routes, handlers, delegation, authorization, and p
 | `UC-AD-10` | Author Checklist Templates | `POST /api/v1/admin/checklist-templates/{id}/clone` | `AdminChecklistTemplateController.cloneVersion()` | `AdminChecklistTemplateService.cloneVersion()` → `ChecklistTemplateRepository.findById()` | hasRole('CONTENT_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminChecklistTemplateController.java` |
 | `UC-AD-10` | Author Checklist Templates | `GET /api/v1/admin/checklist-templates/{id}/versions` | `AdminChecklistTemplateController.getVersionHistory()` | `AdminChecklistTemplateService.getVersionHistory()` → `ChecklistTemplateRepository.existsById()` | hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminChecklistTemplateController.java` |
 | `UC-AD-10` | Author Checklist Templates | `POST /api/v1/admin/checklist-templates/{lineageId}/versions/{versionId}/clone` | `AdminChecklistTemplateController.cloneVersionInLineage()` | — | hasRole('CONTENT_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/AdminChecklistTemplateController.java` |
-| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{id}/decision` | `ChecklistTemplateApprovalController.decide()` | `ChecklistTemplateApprovalService.decide()` → `ChecklistTemplateRepository.findById()` | hasRole('SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
-| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{lineageId}/versions/{versionId}/activate` | `ChecklistTemplateApprovalController.activateImportedVersion()` | `ChecklistTemplateApprovalService.activateImportedInLineage()` → `ChecklistTemplateRepository.findById()` | hasRole('SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
-| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{lineageId}/versions/{versionId}/approve` | `ChecklistTemplateApprovalController.approveVersion()` | `ChecklistTemplateApprovalService.decideInLineage()` → `ChecklistTemplateRepository.findById()` | hasRole('SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
-| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{lineageId}/versions/{versionId}/review` | `ChecklistTemplateApprovalController.reviewImportedVersion()` | `ChecklistTemplateApprovalService.reviewImportedInLineage()` → `ChecklistTemplateRepository.findById()` | hasRole('SYSTEM_ADMIN') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
+| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{id}/decision` | `ChecklistTemplateApprovalController.decide()` | `ChecklistTemplateApprovalService.decide()` → `ChecklistTemplateRepository.findById()` | hasAnyRole('SYSTEM_ADMIN', 'EXPERT') | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
+| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{lineageId}/versions/{versionId}/activate` | `ChecklistTemplateApprovalController.activateImportedVersion()` | `ChecklistTemplateApprovalService.activateImportedInLineage()` → `ChecklistTemplateRepository.findById()` | No @PreAuthorize on handler/class; effective access comes from the security chain | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
+| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{lineageId}/versions/{versionId}/approve` | `ChecklistTemplateApprovalController.approveVersion()` | `ChecklistTemplateApprovalService.decideInLineage()` → `ChecklistTemplateRepository.findById()` | No @PreAuthorize on handler/class; effective access comes from the security chain | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
+| `UC-AD-11` | Review, Approve, and Activate Checklist Versions | `POST /api/v1/admin/checklist-templates/{lineageId}/versions/{versionId}/review` | `ChecklistTemplateApprovalController.reviewImportedVersion()` | `ChecklistTemplateApprovalService.reviewImportedInLineage()` → `ChecklistTemplateRepository.findById()` | No @PreAuthorize on handler/class; effective access comes from the security chain | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/content/controller/ChecklistTemplateApprovalController.java` |
 
 ## 3. Class Diagram
 
@@ -66,6 +66,7 @@ class "AdminChecklistTemplateServiceImpl" as ServiceAdminChecklistTemplateServic
   - auditService: AuditService
   - auditLogRepository: AuditLogRepository
   - objectMapper: ObjectMapper
+  - contentWorkloadDispatcherService: ContentWorkloadDispatcherService
   + list(status: ChecklistTemplateStatus, stage: ContentStage, keyword: String, pageable: Pageable): Page<AdminChecklistTemplateDetailResponse>
 }
 ServiceContractAdminChecklistTemplateService <|.. ServiceAdminChecklistTemplateServiceImpl : implements
@@ -213,16 +214,16 @@ The lifecycle below belongs to **ChecklistTemplate.status**. Its states are the 
 hide empty description
 [*] --> Draft
 
-Draft --> PendingReview : submitVersionForReview() [status is DRAFT or PENDING_REVIEW] / setStatus(PENDING_REVIEW)
-PendingReview --> Draft : withdrawVersion() [status is DRAFT or PENDING_REVIEW] / setStatus(DRAFT)
-PendingReview --> Approved : approveVersion() / setStatus(APPROVED)
-PendingReview --> Rejected : rejectVersion() / setStatus(REJECTED)
-Rejected --> Draft : reviseVersion() / setStatus(DRAFT)
-Approved --> Archived : archiveTemplate() [status != ARCHIVED] / setStatus(ARCHIVED)
-Draft --> Archived : archiveTemplate() [status != ARCHIVED] / setStatus(ARCHIVED)
-Rejected --> Archived : archiveTemplate() [status != ARCHIVED] / setStatus(ARCHIVED)
-Approved --> Approved : distributeToRuntime() [status == APPROVED] / materializePersonalChecklist()
-Draft --> Draft : editVersion() [status is DRAFT or PENDING_REVIEW] / persistTemplateVersion()
+Draft --> PendingReview : submitVersionForReview()\n[status is DRAFT or PENDING_REVIEW]\n/ setStatus(PENDING_REVIEW)
+PendingReview --> Draft : withdrawVersion()\n[status is DRAFT or PENDING_REVIEW]\n/ setStatus(DRAFT)
+PendingReview --> Approved : approveVersion()\n/ setStatus(APPROVED)
+PendingReview --> Rejected : rejectVersion()\n/ setStatus(REJECTED)
+Rejected --> Draft : reviseVersion()\n/ setStatus(DRAFT)
+Approved --> Archived : archiveTemplate()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
+Draft --> Archived : archiveTemplate()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
+Rejected --> Archived : archiveTemplate()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
+Approved --> Approved : distributeToRuntime()\n[status == APPROVED]\n/ materializePersonalChecklist()
+Draft --> Draft : editVersion()\n[status is DRAFT or PENDING_REVIEW]\n/ persistTemplateVersion()
 
 Draft : ChecklistTemplateStatus = DRAFT
 PendingReview : ChecklistTemplateStatus = PENDING_REVIEW

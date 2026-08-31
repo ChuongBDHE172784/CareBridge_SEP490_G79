@@ -221,15 +221,15 @@ The lifecycle below belongs to **ExpertAvailabilitySlot.status, enclosed by the 
 hide empty description
 [*] --> NotPublishable
 
-NotPublishable --> Publishable : expertVerificationApproved() [verificationStatus == APPROVED] / unlockAvailabilityManagement()
-Publishable --> NotPublishable : expertVerificationWithdrawn() / rejectFurtherSlotWrites()
+NotPublishable --> Publishable : expertVerificationApproved()\n[verificationStatus == APPROVED]\n/ unlockAvailabilityManagement()
+Publishable --> NotPublishable : expertVerificationWithdrawn()\n/ rejectFurtherSlotWrites()
 
 state Publishable {
   [*] --> NoSlot
-  NoSlot --> Available : publishSlot() / persistSlot(AVAILABLE)
-  Available --> Unavailable : withdrawSlot() / setStatus(UNAVAILABLE)
-  Unavailable --> Available : republishSlot() / setStatus(AVAILABLE)
-  Available --> Available : listEligibleExperts() [status == AVAILABLE] / includeExpertInDirectory()
+  NoSlot --> Available : publishSlot()\n/ persistSlot(AVAILABLE)
+  Available --> Unavailable : withdrawSlot()\n/ setStatus(UNAVAILABLE)
+  Unavailable --> Available : republishSlot()\n/ setStatus(AVAILABLE)
+  Available --> Available : listEligibleExperts()\n[status == AVAILABLE]\n/ includeExpertInDirectory()
 }
 
 NotPublishable : verificationStatus != APPROVED

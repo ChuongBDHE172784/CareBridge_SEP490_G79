@@ -291,15 +291,14 @@ The lifecycle below belongs to **BabyDailyLog.status, with the owning baby profi
 hide empty description
 [*] --> NoBabyProfile
 
-NoBabyProfile --> BabyProfileOwned : createBabyProfile() / persistBabyProfile()
-BabyProfileOwned --> NoBabyProfile : deleteBabyProfile() [caller owns the baby] / removeBabyProfile()
+NoBabyProfile --> BabyProfileOwned : createBabyProfile()\n/ persistBabyProfile()
+BabyProfileOwned --> NoBabyProfile : deleteBabyProfile()\n[caller owns the baby]\n/ removeBabyProfile()
 
 state BabyProfileOwned {
   [*] --> NoLogToday
-  NoLogToday --> LogActive : createDailyLog() [BabyAccessPolicy grants write access] / persistLog(ACTIVE)
-  LogActive --> LogActive : updateDailyLog() [caller owns or shares the baby] / persistRevisedLog()
-  LogActive --> LogDeleted : deleteDailyLog() [caller owns the log] / setStatus(DELETED)
-  LogActive --> LogActive : readDailyLogSummary() [status == ACTIVE] / composeSummary()
+  NoLogToday --> LogActive : createDailyLog()\n[BabyAccessPolicy grants write access]\n/ persistLog(ACTIVE)
+  LogActive --> LogActive : updateDailyLog()\n[caller owns or shares the baby]\n/ persistRevisedLog()\n\nreadDailyLogSummary()\n[status == ACTIVE]\n/ composeSummary()
+  LogActive --> LogDeleted : deleteDailyLog()\n[caller owns the log]\n/ setStatus(DELETED)
 }
 
 LogActive : BabyDailyLogStatus = ACTIVE
