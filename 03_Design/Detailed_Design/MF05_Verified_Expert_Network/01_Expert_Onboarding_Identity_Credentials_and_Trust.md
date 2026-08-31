@@ -74,6 +74,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_01ExpertOnboardingIdentityCredentialsandTrust
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "ExpertContractScreen" as UIExpertContractScreen <<UI>>

@@ -35,6 +35,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_01VerifiedContentBrowseandConsumption
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "ViewContentScreen" as UIViewContentScreen <<UI>>

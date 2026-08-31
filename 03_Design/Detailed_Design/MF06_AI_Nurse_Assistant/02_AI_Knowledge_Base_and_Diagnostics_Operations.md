@@ -42,6 +42,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_AIKnowledgeBaseandDiagnosticsOperations
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "AI Operations Client" as UI1 <<UI>>

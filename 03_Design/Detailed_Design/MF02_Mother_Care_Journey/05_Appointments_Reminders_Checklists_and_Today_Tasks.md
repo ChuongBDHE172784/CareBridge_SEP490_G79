@@ -73,6 +73,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_05AppointmentsRemindersChecklistsandTodayTasks
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "AllRemindersScreen" as UIAllRemindersScreen <<UI>>

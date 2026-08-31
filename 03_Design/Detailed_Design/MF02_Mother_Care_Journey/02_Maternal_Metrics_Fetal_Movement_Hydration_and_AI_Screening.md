@@ -47,6 +47,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_02MaternalMetricsFetalMovementHydrationandAIScreening
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "AddMaternalHealthMetricScreen" as UIAddMaternalHealthMetricScreen <<UI>>
