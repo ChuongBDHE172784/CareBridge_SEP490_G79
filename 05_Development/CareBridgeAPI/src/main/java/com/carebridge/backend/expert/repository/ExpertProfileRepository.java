@@ -118,7 +118,13 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
                         SELECT 1 FROM expert_availability ea2
                         WHERE ea2.user_id = u.user_id
                           AND ea2.status = 'AVAILABLE'
-                          AND ea2.start_at > CURRENT_TIMESTAMP) THEN 0 ELSE 1 END,
+                          AND ea2.start_at > CURRENT_TIMESTAMP
+                          AND NOT EXISTS (
+                              SELECT 1 FROM expert_consultation_requests r2
+                              WHERE r2.expert_profile_id = ea2.user_id
+                                AND r2.status IN ('PENDING', 'ACCEPTED')
+                                AND r2.preferred_window_start = ea2.start_at
+                                AND r2.preferred_window_end = ea2.end_at)) THEN 0 ELSE 1 END,
                CASE WHEN u.expert_type = 'CONTRACTED' THEN 0 ELSE 1 END,
                u.rating_avg DESC NULLS LAST, u.user_id ASC
       """,

@@ -132,11 +132,11 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
         if (!profile.isEligibleForConsultation()) {
             throw new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found");
         }
-        return availabilityRepository
-                .findByExpertProfileIdAndEndAtAfterOrderByStartAtAsc(expertProfileId, clock.instant())
+        // Only hours a mother can actually take: open, still ahead, and not already
+        // claimed by someone else's pending request. Offering a claimed hour just moves
+        // the disappointment from the list to the confirm button.
+        return availabilityRepository.findBookableSlotsForExpert(expertProfileId)
                 .stream()
-                .filter(slot -> slot.getStatus() == com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE
-                        && slot.getStartAt().isAfter(clock.instant()))
                 .map(availabilityMapper::toResponse)
                 .toList();
     }
