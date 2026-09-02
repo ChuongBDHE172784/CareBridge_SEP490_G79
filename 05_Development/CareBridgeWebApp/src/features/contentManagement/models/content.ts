@@ -106,6 +106,8 @@ export interface ExpertApprovalQueueItem {
   versionNo?: number;
   itemCount?: number;
   summary?: string;
+  /** Toàn văn bài viết. Checklist không có — nó được duyệt theo danh sách mục. */
+  body?: string;
   sourceLabel?: string;
   assignedAt?: string | null;
   updatedAt?: string | null;
