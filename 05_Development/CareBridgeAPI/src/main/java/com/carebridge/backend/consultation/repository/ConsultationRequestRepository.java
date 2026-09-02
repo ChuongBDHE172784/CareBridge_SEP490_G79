@@ -23,6 +23,18 @@ public interface ConsultationRequestRepository extends JpaRepository<Consultatio
 
     Page<ConsultationRequest> findByRequesterUserId(UUID requesterUserId, Pageable pageable);
 
+    /** The mother's live request, if she has one — PENDING or already accepted. */
+    Optional<ConsultationRequest> findFirstByRequesterUserIdAndStatusIn(
+            UUID requesterUserId, java.util.Collection<ConsultationRequestStatus> statuses);
+
+    /**
+     * Has anyone already taken this hour from this expert? The slot row stays
+     * AVAILABLE until the expert acts on the request, so the claim lives here.
+     */
+    boolean existsByExpertProfileIdAndPreferredWindowStartAndStatusIn(
+            UUID expertProfileId, Instant preferredWindowStart,
+            java.util.Collection<ConsultationRequestStatus> statuses);
+
     Page<ConsultationRequest> findByExpertProfileIdAndStatus(
             UUID expertProfileId, ConsultationRequestStatus status, Pageable pageable);
 

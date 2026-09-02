@@ -51,6 +51,18 @@ public class ConsultationRequestException extends RuntimeException {
                 "CONREQ-009", "clientRequestId already used with different payload", HttpStatus.CONFLICT);
     }
 
+    /**
+     * A mother may hold one live request at a time. Booking a second expert while the
+     * first is still open would have her waiting on two clinicians for the same
+     * question, so the app asks her to cancel the first one instead.
+     */
+    public static ConsultationRequestException activeRequestAlreadyOpen() {
+        return new ConsultationRequestException(
+                "CONREQ-011",
+                "You already have an open consultation request; cancel it before booking another",
+                HttpStatus.CONFLICT);
+    }
+
     public static ConsultationRequestException availabilityNoLongerAvailable() {
         return new ConsultationRequestException(
                 "CONREQ-010",

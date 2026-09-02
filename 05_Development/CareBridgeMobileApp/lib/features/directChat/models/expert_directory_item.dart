@@ -13,6 +13,10 @@ class ExpertDirectoryItem {
   /// COMMUNITY | PENDING_CONTRACT | CONTRACTED | null. Nguồn sự thật cho huy hiệu.
   final String? expertType;
 
+  /// Còn ít nhất một ca trống sắp tới. Người đã kín lịch vẫn nằm trong danh sách —
+  /// mẹ vẫn đặt được — nhưng hiện nhãn "đang bận" và bị xếp xuống dưới.
+  final bool hasOpenSlot;
+
   const ExpertDirectoryItem({
     required this.expertProfileId,
     this.displayName,
@@ -25,6 +29,7 @@ class ExpertDirectoryItem {
     this.verificationStatus,
     this.isConsultationEligible,
     this.expertType,
+    this.hasOpenSlot = false,
   });
 
   /// Fail-closed: chỉ CONTRACTED mới là Chuyên gia Hệ thống. PENDING_CONTRACT (đã duyệt
@@ -48,6 +53,7 @@ class ExpertDirectoryItem {
       avatarUrl: json['avatarUrl'] as String?,
       verificationStatus: json['verificationStatus'] as String?,
       expertType: json['expertType'] as String?,
+      hasOpenSlot: json['hasOpenSlot'] == true,
       isConsultationEligible: consultationEligible is bool
           ? consultationEligible
           : null,

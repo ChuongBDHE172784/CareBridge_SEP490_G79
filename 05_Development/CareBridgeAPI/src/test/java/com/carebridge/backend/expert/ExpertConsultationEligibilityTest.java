@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,6 +42,7 @@ class ExpertConsultationEligibilityTest {
     @Mock private SpecialtyRepository specialtyRepository;
     @Mock private CareFacilityRepository careFacilityRepository;
     @Mock private ProfessionalSpecialtyRepository professionalSpecialtyRepository;
+    @Mock private ExpertAvailabilityRepository expertAvailabilityRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
     @Mock private AuditService auditService;
@@ -73,7 +75,7 @@ class ExpertConsultationEligibilityTest {
         ExpertProfileServiceImpl service =
                 new ExpertProfileServiceImpl(repository, userRepository, mapper,
                         identityRepository, credentialRepository, auditService,
-                        specialtyRepository, careFacilityRepository, professionalSpecialtyRepository);
+                        specialtyRepository, careFacilityRepository, professionalSpecialtyRepository, expertAvailabilityRepository);
 
         assertThatThrownBy(() -> service.getPublicProfile(suspended.getExpertProfileId()))
                 .isInstanceOfSatisfying(ExpertException.class,
@@ -104,7 +106,7 @@ class ExpertConsultationEligibilityTest {
         ExpertProfileServiceImpl service =
                 new ExpertProfileServiceImpl(repository, userRepository, mapper,
                         identityRepository, credentialRepository, auditService,
-                        specialtyRepository, careFacilityRepository, professionalSpecialtyRepository);
+                        specialtyRepository, careFacilityRepository, professionalSpecialtyRepository, expertAvailabilityRepository);
 
         service.approveExpert(profileId, adminId);
         service.rejectExpert(profileId, adminId, "reason");

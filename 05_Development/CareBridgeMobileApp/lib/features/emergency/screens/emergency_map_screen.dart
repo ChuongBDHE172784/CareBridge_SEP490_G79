@@ -818,7 +818,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
             // 2m: chỉ dẫn rẽ bám sát bước chân thay vì nhảy từng đoạn 10m. Đổi
             // lại máy xử lý vị trí dày hơn, nên _handlingNavigationPosition ở
             // dưới càng quan trọng — nó chặn hai lượt chồng lên nhau.
-            distanceFilter: 2,
+            distanceFilter: 5,
           ),
         ).listen(
           (position) => unawaited(_handleNavigationPosition(position)),

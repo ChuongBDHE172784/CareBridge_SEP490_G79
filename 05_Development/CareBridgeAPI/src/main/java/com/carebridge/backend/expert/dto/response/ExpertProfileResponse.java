@@ -33,6 +33,12 @@ public class ExpertProfileResponse {
 	private ExpertType expertType;
 	private boolean contracted;
 	private boolean isConsultationEligible;
+	/**
+	 * True khi chuyên gia còn ít nhất một ca AVAILABLE trong tương lai. Danh sách vẫn
+	 * hiển thị người đã kín lịch — mẹ vẫn được đặt — nhưng gắn nhãn "đang bận" thay vì
+	 * để mẹ bấm vào rồi mới thấy không còn khung giờ nào.
+	 */
+	private boolean hasOpenSlot;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;
 	private BigDecimal ratingAvg;
