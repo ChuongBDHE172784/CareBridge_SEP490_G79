@@ -110,7 +110,16 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
                    AND s2.is_active = true
                    AND (LOWER(s2.code) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
                         OR LOWER(s2.name) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))))
-      ORDER BY CASE WHEN u.expert_type = 'CONTRACTED' THEN 0 ELSE 1 END,
+        AND EXISTS (
+             SELECT 1 FROM expert_availability ea
+             WHERE ea.user_id = u.user_id
+               AND ea.end_at > CURRENT_TIMESTAMP)
+      ORDER BY CASE WHEN EXISTS (
+                        SELECT 1 FROM expert_availability ea2
+                        WHERE ea2.user_id = u.user_id
+                          AND ea2.status = 'AVAILABLE'
+                          AND ea2.start_at > CURRENT_TIMESTAMP) THEN 0 ELSE 1 END,
+               CASE WHEN u.expert_type = 'CONTRACTED' THEN 0 ELSE 1 END,
                u.rating_avg DESC NULLS LAST, u.user_id ASC
       """,
       countQuery = """
@@ -147,6 +156,10 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
                    AND s2.is_active = true
                    AND (LOWER(s2.code) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
                         OR LOWER(s2.name) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))))
+        AND EXISTS (
+             SELECT 1 FROM expert_availability ea
+             WHERE ea.user_id = u.user_id
+               AND ea.end_at > CURRENT_TIMESTAMP)
       """,
       nativeQuery = true)
 

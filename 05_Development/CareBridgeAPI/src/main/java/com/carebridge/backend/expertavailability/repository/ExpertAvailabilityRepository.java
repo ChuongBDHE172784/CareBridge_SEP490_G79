@@ -26,6 +26,22 @@ public interface ExpertAvailabilityRepository extends JpaRepository<ExpertAvaila
     Optional<ExpertAvailability> findTopByExpertProfileIdOrderByCreatedAtDesc(UUID expertProfileId);
 
     /**
+     * Ai trong nhóm này còn ít nhất một ca trống sắp tới. Danh sách chuyên gia dùng nó
+     * để gắn nhãn rảnh/bận cho cả trang bằng một truy vấn, thay vì hỏi từng người.
+     *
+     * <p>Cùng định nghĩa "còn trống" mà searchDirectory dùng để xếp thứ tự, nên nhãn
+     * hiển thị không bao giờ mâu thuẫn với thứ tự sắp xếp.
+     */
+    @Query(value = """
+            SELECT DISTINCT a.user_id FROM expert_availability a
+            WHERE a.user_id IN (:expertProfileIds)
+              AND a.status = 'AVAILABLE'
+              AND a.start_at > CURRENT_TIMESTAMP
+            """, nativeQuery = true)
+    List<UUID> findExpertProfileIdsWithOpenSlot(
+            @Param("expertProfileIds") java.util.Collection<UUID> expertProfileIds);
+
+    /**
      * Quét ngang toàn bộ ca CÓ THỂ ĐẶT của mọi chuyên gia đủ điều kiện, phục vụ hàm vét điều phối.
      *
      * <p>Bốn điều kiện tài khoản lấy nguyên từ truy vấn danh bạ — thiếu một cái là lọt chuyên gia

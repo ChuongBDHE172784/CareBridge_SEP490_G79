@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,6 +42,7 @@ class ExpertProfileServiceImplSpecialtyTest {
     @Mock private SpecialtyRepository specialtyRepository;
     @Mock private CareFacilityRepository facilityRepository;
     @Mock private ProfessionalSpecialtyRepository professionalSpecialtyRepository;
+    @Mock private ExpertAvailabilityRepository expertAvailabilityRepository;
 
     private ExpertProfileServiceImpl service;
 
@@ -48,7 +50,7 @@ class ExpertProfileServiceImplSpecialtyTest {
     void setUp() {
         service = new ExpertProfileServiceImpl(profileRepository, userRepository,
             new ExpertProfileMapper(), identityRepository, credentialRepository, auditService,
-            specialtyRepository, facilityRepository, professionalSpecialtyRepository);
+            specialtyRepository, facilityRepository, professionalSpecialtyRepository, expertAvailabilityRepository);
     }
 
     @Test
