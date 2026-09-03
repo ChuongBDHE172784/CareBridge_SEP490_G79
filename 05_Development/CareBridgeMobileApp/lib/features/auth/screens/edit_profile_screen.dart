@@ -1,12 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/components/app_user_avatar.dart';
+import '../../recommendation/models/recommendation_model.dart';
+import '../../recommendation/models/recommendation_questionnaire.dart';
+import '../../recommendation/screens/progressive_recommendation_profile_screen.dart';
+import '../../recommendation/services/recommendation_service.dart';
 import '../services/auth_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key});
+  const EditProfileScreen({super.key, this.recommendationService});
+
+  final RecommendationService? recommendationService;
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -28,6 +35,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _phone;
   String? _avatarUrl;
   String? _selectedArea;
+  DateTime? _dateOfBirth;
+
+  late final RecommendationService _recommendationService;
+  RecommendationProfileResponse? _recommendationProfile;
+  bool _isLoadingRecommendation = false;
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -35,7 +47,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _recommendationService = widget.recommendationService ?? RecommendationService();
     _loadProfile();
+    _loadRecommendationProfile();
   }
 
   Future<void> _loadProfile() async {
@@ -48,6 +62,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         email = null;
       }
       final data = res['data'] as Map<String, dynamic>;
+      final rawDob = data['dateOfBirth'];
+      DateTime? parsedDob;
+      if (rawDob is String && rawDob.isNotEmpty) {
+        try {
+          parsedDob = DateTime.parse(rawDob);
+        } catch (_) {}
+      }
       if (!mounted) return;
       setState(() {
         _nameController.text = data['displayName'] as String? ?? '';
@@ -56,10 +77,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _phoneController.text = _phone ?? '';
         _avatarUrl = data['avatarUrl'] as String?;
         _selectedArea = data['area'] as String?;
+        _dateOfBirth = parsedDob;
         _isLoading = false;
       });
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadRecommendationProfile() async {
+    if (AuthState.instance.role != null && AuthState.instance.role != 'MOTHER') {
+      return;
+    }
+    setState(() => _isLoadingRecommendation = true);
+    try {
+      final profile = await _recommendationService.getProfile();
+      if (!mounted) return;
+      setState(() {
+        _recommendationProfile = profile;
+        _isLoadingRecommendation = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingRecommendation = false);
     }
   }
 
@@ -70,6 +109,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final body = <String, dynamic>{
         'displayName': _nameController.text.trim(),
         'phoneNumber': _phoneController.text.trim(),
+        if (_dateOfBirth != null)
+          'dateOfBirth':
+              '${_dateOfBirth!.year.toString().padLeft(4, '0')}-${_dateOfBirth!.month.toString().padLeft(2, '0')}-${_dateOfBirth!.day.toString().padLeft(2, '0')}',
         if (_selectedArea != null && _selectedArea!.isNotEmpty)
           'area': _selectedArea,
       };
@@ -98,6 +140,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (_) => const _AddressPickerSheet(),
     );
     if (result != null) setState(() => _selectedArea = result);
+  }
+
+  Future<void> _openRecommendationQuestionnaire() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const RecommendationProfileScreen(),
+      ),
+    );
+    if (mounted) {
+      _loadProfile();
+    }
   }
 
   @override
@@ -226,9 +279,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 20),
+        _buildLabel('Ngày sinh'),
+        const SizedBox(height: 8),
+        _buildDateField(),
+        const SizedBox(height: 20),
         _buildLabel('Khu vực'),
         const SizedBox(height: 8),
         _buildAreaField(),
+        _buildPersonalizedProfileSection(),
       ],
     );
   }
@@ -344,6 +402,591 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildDateField() {
+    final hasDob = _dateOfBirth != null;
+    final formatted = hasDob
+        ? '${_dateOfBirth!.day.toString().padLeft(2, '0')}/${_dateOfBirth!.month.toString().padLeft(2, '0')}/${_dateOfBirth!.year}'
+        : 'Chọn ngày sinh...';
+    return GestureDetector(
+      onTap: _pickDateOfBirth,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: _surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                formatted,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  color: hasDob ? _onSurface : _outlineVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.calendar_today_outlined, color: _onSurfaceVariant, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dateOfBirth ?? DateTime(now.year - 25, 1, 1),
+      firstDate: DateTime(1940),
+      lastDate: DateTime(now.year, now.month, now.day),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _primaryColor,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: _onSurface,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _dateOfBirth = picked);
+    }
+  }
+
+  Widget _buildPersonalizedProfileSection() {
+    if (AuthState.instance.role != null && AuthState.instance.role != 'MOTHER') {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 32),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: _primaryColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hồ sơ sức khoẻ cá nhân hoá',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: _primaryColor,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Dữ liệu gợi ý cẩm nang y tế & trợ lý AI Nurse',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _buildStatusBadge(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (_isLoadingRecommendation)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: CircularProgressIndicator(color: _primaryContainer, strokeWidth: 2.5),
+            ),
+          )
+        else if (_recommendationProfile == null ||
+            _recommendationProfile!.status == RecommendationProfileStatus.notStarted ||
+            _recommendationProfile!.status == RecommendationProfileStatus.declined)
+          _buildEmptyRecommendationCard()
+        else
+          _buildActiveRecommendationCard(),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge() {
+    final status = _recommendationProfile?.status ?? RecommendationProfileStatus.notStarted;
+    String label;
+    Color bg;
+    Color text;
+    IconData icon;
+
+    switch (status) {
+      case RecommendationProfileStatus.active:
+        label = 'Hoạt động';
+        bg = const Color(0xFFE8F5E9);
+        text = const Color(0xFF2E7D32);
+        icon = Icons.check_circle_outline_rounded;
+        break;
+      case RecommendationProfileStatus.reviewRequired:
+      case RecommendationProfileStatus.reconsentRequired:
+        label = 'Cần cập nhật';
+        bg = const Color(0xFFFFF3E0);
+        text = const Color(0xFFE65100);
+        icon = Icons.update_rounded;
+        break;
+      case RecommendationProfileStatus.declined:
+        label = 'Đã từ chối';
+        bg = const Color(0xFFECEFF1);
+        text = const Color(0xFF546E7A);
+        icon = Icons.block_flipped;
+        break;
+      case RecommendationProfileStatus.notStarted:
+      default:
+        label = 'Chưa khảo sát';
+        bg = const Color(0xFFFFF1EC);
+        text = _primaryColor;
+        icon = Icons.info_outline_rounded;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: text.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: text),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyRecommendationCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF1EC),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.health_and_safety_outlined,
+                  color: _primaryColor,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cá nhân hoá trải nghiệm chăm sóc',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _onSurface,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Khảo sát 9 nhóm thông tin sức khỏe giúp CareBridge chọn lọc cẩm nang y khoa phù hợp nhất với tuần thai & thể trạng của bạn.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        height: 1.4,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _openRecommendationQuestionnaire,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: const Text(
+                'Làm khảo sát cá nhân hoá ngay',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveRecommendationCard() {
+    final profile = _recommendationProfile?.profile;
+    final derived = _recommendationProfile?.derived;
+
+    final bmiData = _extractBmi(profile);
+    final repCodes = _extractCodes(profile, 'reproductiveHistory');
+    final conditionCodes = _extractCodes(profile, 'underlyingConditions');
+    final ls = _extractLifestyle(profile);
+    final nutritionCodes = _extractCodes(profile, 'nutrition');
+    final vacList = _extractVaccines(profile);
+    final medCodes = _extractCodes(profile, 'currentMedications');
+    final sexCodes = _extractCodes(profile, 'sexualHealth');
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Thể trạng & BMI
+          if (bmiData != null) ...[
+            _buildGroupHeader('Thể trạng & Chỉ số BMI', Icons.monitor_weight_outlined),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (bmiData['heightCm'] != null)
+                  _buildChip('Chiều cao: ${bmiData['heightCm']} cm'),
+                if (bmiData['weightKg'] != null)
+                  _buildChip('Cân nặng: ${bmiData['weightKg']} kg'),
+                if (derived?['bmi'] != null)
+                  _buildChip(
+                    'BMI: ${derived!['bmi']} (${_bmiCategoryLabel(derived['bmiCategory'] as String?)})',
+                    bg: const Color(0xFFE8F5E9),
+                    textColor: const Color(0xFF2E7D32),
+                  ),
+                if (bmiData['weightContext'] != null)
+                  _buildChip(
+                    RecommendationQuestionnaire.labelFor(bmiData['weightContext'].toString()),
+                    bg: _surfaceContainerLow,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Tiền sử thai kỳ
+          if (repCodes.isNotEmpty) ...[
+            _buildGroupHeader('Tiền sử sinh sản', Icons.child_care_outlined),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: repCodes
+                  .map((code) => _buildChip(RecommendationQuestionnaire.labelFor(code)))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Bệnh nền
+          if (conditionCodes.isNotEmpty) ...[
+            _buildGroupHeader('Bệnh nền & Tình trạng sức khỏe', Icons.medical_services_outlined),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: conditionCodes
+                  .map((code) => _buildChip(RecommendationQuestionnaire.labelFor(code)))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Lối sống
+          if (ls != null) ...[
+            _buildGroupHeader('Lối sống & Thói quen', Icons.spa_outlined),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (ls['smoking'] is Map && ls['smoking']['value'] != null)
+                  _buildChip('Hút thuốc: ${RecommendationQuestionnaire.labelFor(ls['smoking']['value'].toString())}'),
+                if (ls['alcohol'] is Map && ls['alcohol']['value'] != null)
+                  _buildChip('Rượu bia: ${RecommendationQuestionnaire.labelFor(ls['alcohol']['value'].toString())}'),
+                if (ls['physicalActivity'] is Map && ls['physicalActivity']['value'] != null)
+                  _buildChip('Vận động: ${RecommendationQuestionnaire.labelFor(ls['physicalActivity']['value'].toString())}'),
+                if (ls['sleep'] is Map && ls['sleep']['value'] != null)
+                  _buildChip('Giấc ngủ: ${RecommendationQuestionnaire.labelFor(ls['sleep']['value'].toString())}'),
+                if (ls['flags'] is List)
+                  ...((ls['flags'] as List).map(
+                    (f) => _buildChip(
+                      RecommendationQuestionnaire.labelFor(f.toString()),
+                      bg: const Color(0xFFFFF3E0),
+                      textColor: const Color(0xFFE65100),
+                    ),
+                  )),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Dinh dưỡng & Vi chất
+          if (nutritionCodes.isNotEmpty) ...[
+            _buildGroupHeader('Dinh dưỡng & Vi chất', Icons.restaurant_outlined),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: nutritionCodes
+                  .map((code) => _buildChip(RecommendationQuestionnaire.labelFor(code)))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Tiêm chủng
+          if (vacList.isNotEmpty) ...[
+            _buildGroupHeader('Tình trạng tiêm chủng', Icons.vaccines_outlined),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: vacList.map((v) {
+                final name = RecommendationQuestionnaire.labelFor(v['code']?.toString() ?? '');
+                final status = RecommendationQuestionnaire.labelFor(v['value']?.toString() ?? '');
+                final isUpToDate = v['value'] == 'UP_TO_DATE';
+                return _buildChip(
+                  '$name: $status',
+                  bg: isUpToDate ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+                  textColor: isUpToDate ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Thuốc
+          if (medCodes.isNotEmpty) ...[
+            _buildGroupHeader('Thuốc đang sử dụng', Icons.medication_outlined),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: medCodes
+                  .map((code) => _buildChip(RecommendationQuestionnaire.labelFor(code)))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Sức khỏe tình dục
+          if (sexCodes.isNotEmpty) ...[
+            _buildGroupHeader('Sức khỏe tình dục', Icons.favorite_outline),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: sexCodes
+                  .map((code) => _buildChip(RecommendationQuestionnaire.labelFor(code)))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Action button to update questionnaire
+          const Divider(height: 24, thickness: 0.8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openRecommendationQuestionnaire,
+              icon: const Icon(Icons.edit_note_rounded, size: 20),
+              label: const Text(
+                'Cập nhật khảo sát cá nhân hoá',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primaryColor,
+                side: const BorderSide(color: _primaryColor),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: _primaryColor),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChip(String label, {Color? bg, Color? textColor}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg ?? _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: textColor ?? _onSurface,
+        ),
+      ),
+    );
+  }
+
+  List<String> _extractCodes(Map<String, dynamic>? profile, String domain) {
+    if (profile == null) return const [];
+    final domainMap = profile[domain];
+    if (domainMap is Map && domainMap['state'] == 'KNOWN') {
+      final codes = domainMap['codes'];
+      if (codes is List) {
+        return codes.map((e) => e.toString()).toList();
+      }
+    }
+    return const [];
+  }
+
+  Map<String, dynamic>? _extractBmi(Map<String, dynamic>? profile) {
+    if (profile == null) return null;
+    final bmi = profile['bmi'];
+    if (bmi is Map && bmi['state'] == 'KNOWN') {
+      return bmi.cast<String, dynamic>();
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _extractLifestyle(Map<String, dynamic>? profile) {
+    if (profile == null) return null;
+    final ls = profile['lifestyle'];
+    if (ls is Map) return ls.cast<String, dynamic>();
+    return null;
+  }
+
+  List<Map<String, dynamic>> _extractVaccines(Map<String, dynamic>? profile) {
+    if (profile == null) return const [];
+    final vac = profile['vaccination'];
+    if (vac is Map && vac['answers'] is List) {
+      return (vac['answers'] as List)
+          .whereType<Map>()
+          .map((e) => e.cast<String, dynamic>())
+          .toList();
+    }
+    return const [];
+  }
+
+  String _bmiCategoryLabel(String? category) {
+    switch (category) {
+      case 'UNDERWEIGHT':
+        return 'Nhẹ cân';
+      case 'HEALTHY_RANGE':
+        return 'Bình thường';
+      case 'OVERWEIGHT':
+        return 'Thừa cân';
+      case 'OBESITY':
+        return 'Béo phì';
+      default:
+        return category ?? 'Bình thường';
+    }
   }
 }
 

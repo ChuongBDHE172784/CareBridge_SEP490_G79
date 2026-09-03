@@ -1,6 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchRecommendationTags, fetchStaffContentDetail, fetchTags, updateContent, archiveContent } from '../services/contentApi';
+import {
+  fetchRecommendationTags,
+  fetchStaffContentDetail,
+  fetchTags,
+  updateContent,
+  archiveContent,
+  decideExpertContent,
+  decideContent,
+} from '../services/contentApi';
 import type { ContentDetail, RecommendationTag } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS, TYPE_LABELS } from '../models/content';
 import { formatRecommendationTagLabel, recommendationClassification } from './recommendationMetadata';
@@ -41,6 +49,10 @@ export default function ContentDetailPage() {
   // /content/:id/edit and the archive/list routes below are gated to CONTENT_ADMIN only, so those
   // actions must stay hidden rather than link into a route that will bounce to /forbidden.
   const canManage = hasRole('CONTENT_ADMIN');
+  const isExpert = hasRole('EXPERT');
+  const isSystemAdmin = hasRole('SYSTEM_ADMIN');
+  const canReview = isExpert || isSystemAdmin;
+
   const [detail, setDetail] = useState<ContentDetail | null>(null);
   // Gửi phê duyệt chỉ mở sau khi người gửi đã cuộn tới cuối bài. Một cái mốc đặt
   // ngay dưới thân bài rẻ hơn là đo scrollTop: nó đúng với mọi chiều cao màn hình,
@@ -53,6 +65,59 @@ export default function ContentDetailPage() {
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [submittingApproval, setSubmittingApproval] = useState(false);
+
+  // Review Decision State
+  const [decisionModal, setDecisionModal] = useState<'APPROVE' | 'REJECT' | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReasonError, setRejectReasonError] = useState<string | null>(null);
+  const [submittingDecision, setSubmittingDecision] = useState(false);
+  const [decisionSuccess, setDecisionSuccess] = useState<string | null>(null);
+
+  const handleOpenDecision = (decision: 'APPROVE' | 'REJECT') => {
+    setDecisionModal(decision);
+    setRejectReason('');
+    setRejectReasonError(null);
+  };
+
+  const handleCloseDecision = () => {
+    if (submittingDecision) return;
+    setDecisionModal(null);
+    setRejectReason('');
+    setRejectReasonError(null);
+  };
+
+  const handleSubmitDecision = async () => {
+    if (!detail || !decisionModal) return;
+    if (decisionModal === 'REJECT' && !rejectReason.trim()) {
+      setRejectReasonError('Vui lòng nhập lý do từ chối / góp ý chỉnh sửa cho tác giả.');
+      return;
+    }
+    setSubmittingDecision(true);
+    setActionError('');
+    try {
+      if (isExpert) {
+        await decideExpertContent(detail.id, decisionModal, decisionModal === 'REJECT' ? rejectReason.trim() : undefined);
+      } else {
+        await decideContent(detail.id, decisionModal, decisionModal === 'REJECT' ? rejectReason.trim() : undefined);
+      }
+      setDecisionSuccess(
+        decisionModal === 'APPROVE'
+          ? 'Nội dung đã được phê duyệt và xuất bản thành công.'
+          : 'Đã gửi yêu cầu chỉnh sửa cho tác giả nội dung.'
+      );
+      setTimeout(() => {
+        if (isExpert) {
+          navigate('/expert/content-approval');
+        } else {
+          navigate('/admin/content-approval-queue');
+        }
+      }, 1000);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Không thể thực hiện thẩm định. Vui lòng thử lại.');
+    } finally {
+      setSubmittingDecision(false);
+    }
+  };
 
   const loadDetail = useCallback(async () => {
     if (!id) return;
@@ -175,8 +240,12 @@ export default function ContentDetailPage() {
     <div className="p-8 font-sans">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-[13px] text-outline mb-4">
-        {canManage ? (
-          <span className="cursor-pointer" onClick={() => navigate(typeListPath)}>{typeLabel}</span>
+        {isExpert ? (
+          <span className="cursor-pointer hover:underline text-primary" onClick={() => navigate('/expert/content-approval')}>Thẩm định nội dung</span>
+        ) : isSystemAdmin ? (
+          <span className="cursor-pointer hover:underline text-primary" onClick={() => navigate('/admin/content-approval-queue')}>Hàng đợi phê duyệt</span>
+        ) : canManage ? (
+          <span className="cursor-pointer hover:underline text-primary" onClick={() => navigate(typeListPath)}>{typeLabel}</span>
         ) : (
           <span>{typeLabel}</span>
         )}
@@ -186,13 +255,23 @@ export default function ContentDetailPage() {
 
       {/* Back button */}
       <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6"
+        onClick={() => {
+          if (isExpert) navigate('/expert/content-approval');
+          else if (isSystemAdmin) navigate('/admin/content-approval-queue');
+          else navigate(-1);
+        }}
+        className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6 hover:bg-surface-container-low transition-colors"
       >
         <span className="material-symbols-outlined text-lg">arrow_back</span>
-        Quay lại
+        {isExpert || isSystemAdmin ? 'Quay lại hàng đợi' : 'Quay lại'}
       </button>
 
+      {decisionSuccess && (
+        <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 mb-4 text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-emerald-600">check_circle</span>
+          {decisionSuccess}
+        </div>
+      )}
       {actionError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{actionError}</div>}
       {canManage && <ReviewFeedbackNotice feedback={detail.latestReviewFeedback} />}
 
@@ -328,6 +407,37 @@ export default function ContentDetailPage() {
             <div className="text-xs text-outline">Xuất bản: {formatDate(detail.publishedAt)}</div>
           </div>
 
+          {/* Review actions card for Expert / System Admin */}
+          {canReview && detail.status === 'PENDING_REVIEW' && (
+            <div className="bg-surface rounded-2xl p-5 shadow-md border border-primary/20">
+              <div className="text-[11px] font-bold text-primary uppercase tracking-[0.05em] mb-2 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base">rate_review</span>
+                THẨM ĐỊNH & PHÊ DUYỆT
+              </div>
+              <p className="text-xs text-on-surface-variant mb-4 leading-relaxed">
+                Rà soát kỹ nội dung y khoa, thông tin chuyên mục, đối tượng thai kỳ và tài liệu trích dẫn trước khi phê duyệt.
+              </p>
+              <div className="flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleOpenDecision('APPROVE')}
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-colors"
+                >
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  Phê duyệt & Xuất bản
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenDecision('REJECT')}
+                  className="w-full py-2.5 px-4 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-base">undo</span>
+                  Yêu cầu chỉnh sửa / Trả về
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Action buttons — hidden for read-only reviewers (e.g. System Admin from the approval queue) */}
           {canManage && (
             <>
@@ -381,6 +491,88 @@ export default function ContentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Decision Modal */}
+      {decisionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-outline-variant/70 bg-surface p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-outline-variant/70 pb-3">
+              <h3 className="text-base font-bold text-on-surface">
+                {decisionModal === 'APPROVE' ? 'Xác nhận phê duyệt & xuất bản' : 'Yêu cầu tác giả chỉnh sửa lại'}
+              </h3>
+              <button
+                type="button"
+                onClick={handleCloseDecision}
+                disabled={submittingDecision}
+                className="text-outline hover:text-on-surface cursor-pointer disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <p className="text-xs text-on-surface-variant leading-relaxed">
+                {decisionModal === 'APPROVE'
+                  ? `Bạn đang phê duyệt nội dung "${detail.title}". Sau khi xuất bản, nội dung sẽ được hiển thị cho người dùng.`
+                  : `Vui lòng nhập lý do hoặc góp ý chuyên môn để tác giả nắm được nội dung cần hoàn thiện trước khi gửi lại:`}
+              </p>
+
+              {decisionModal === 'REJECT' && (
+                <div>
+                  <textarea
+                    rows={4}
+                    value={rejectReason}
+                    onChange={(e) => {
+                      setRejectReason(e.target.value);
+                      if (rejectReasonError) setRejectReasonError(null);
+                    }}
+                    placeholder="Ví dụ: Cần bổ sung nguồn tài liệu trích dẫn y khoa; chỉnh sửa lại tuần thai đủ điều kiện..."
+                    className="w-full rounded-xl border border-outline-variant/70 bg-surface-container-low p-3 text-xs text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  />
+                  {rejectReasonError && (
+                    <p className="mt-1 text-[11px] text-error font-medium">{rejectReasonError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3 border-t border-outline-variant/70 pt-4">
+              <button
+                type="button"
+                onClick={handleCloseDecision}
+                disabled={submittingDecision}
+                className="rounded-lg border border-outline-variant bg-surface px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-low disabled:opacity-50 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitDecision}
+                disabled={submittingDecision}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white transition-colors disabled:opacity-50 cursor-pointer ${
+                  decisionModal === 'APPROVE'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {submittingDecision ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">
+                      {decisionModal === 'APPROVE' ? 'check' : 'send'}
+                    </span>
+                    {decisionModal === 'APPROVE' ? 'Xác nhận xuất bản' : 'Gửi yêu cầu sửa'}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

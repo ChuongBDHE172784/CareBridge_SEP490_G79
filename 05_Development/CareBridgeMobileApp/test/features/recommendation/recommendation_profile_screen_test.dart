@@ -265,6 +265,41 @@ void main() {
     );
   });
 
+  testWidgets(
+    'direct DOB entry with DD-MM-YYYY format patches account and pre-fills in DD-MM-YYYY',
+    (tester) async {
+      final service = _FakeRecommendationService();
+      service.dateOfBirth = '1996-05-15';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RecommendationProfileScreen(
+            service: service,
+            journeyService: _FakeJourneyService(),
+            now: () => DateTime(2026, 8, 3),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Đồng ý và tiếp tục'));
+      await tester.pumpAndSettle();
+
+      // Pre-filled ISO 1996-05-15 should display as 15-05-1996
+      expect(find.text('15-05-1996'), findsOneWidget);
+
+      // Enter new date in DD-MM-YYYY
+      await tester.enterText(
+        find.byKey(const Key('recommendation-dob-field')),
+        '25-12-1998',
+      );
+      await tester.tap(find.byKey(const Key('recommendation-continue-button')));
+      await tester.pumpAndSettle();
+
+      expect(service.events, contains('patch-dob'));
+      expect(service.dateOfBirth, '1998-12-25');
+      expect((service.lastDraft?['age'] as Map?)?['state'], 'KNOWN');
+    },
+  );
+
   testWidgets('BMI derives stage context and measurement date automatically', (
     tester,
   ) async {

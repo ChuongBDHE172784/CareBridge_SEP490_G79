@@ -43,7 +43,7 @@ import com.carebridge.backend.common.response.PaginatedResponse;
 
 @RestController
 @RequestMapping("/api/v1/admin/content")
-@PreAuthorize("hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN')")
+@PreAuthorize("hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN','EXPERT')")
 @RequiredArgsConstructor
 public class AdminContentController {
 
