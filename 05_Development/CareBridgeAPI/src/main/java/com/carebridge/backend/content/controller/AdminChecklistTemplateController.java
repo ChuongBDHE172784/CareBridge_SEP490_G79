@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 // SYSTEM_ADMIN needs list/detail for the approval queue), writes overridden to CONTENT_ADMIN-only.
 @RestController
 @RequestMapping("/api/v1/admin/checklist-templates")
-@PreAuthorize("hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN')")
+@PreAuthorize("hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN','EXPERT')")
 @RequiredArgsConstructor
 public class AdminChecklistTemplateController {
 
