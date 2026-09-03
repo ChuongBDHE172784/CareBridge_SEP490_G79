@@ -132,11 +132,11 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
         if (!profile.isEligibleForConsultation()) {
             throw new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found");
         }
-        return availabilityRepository
-                .findByExpertProfileIdAndEndAtAfterOrderByStartAtAsc(expertProfileId, clock.instant())
+        // Only hours a mother can actually take: open, still ahead, and not already
+        // claimed by someone else's pending request. Offering a claimed hour just moves
+        // the disappointment from the list to the confirm button.
+        return availabilityRepository.findBookableSlotsForExpert(expertProfileId)
                 .stream()
-                .filter(slot -> slot.getStatus() == com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE
-                        && slot.getStartAt().isAfter(clock.instant()))
                 .map(availabilityMapper::toResponse)
                 .toList();
     }
@@ -207,6 +207,16 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
                         .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE)
                         .build());
             }
+        }
+
+        // Every requested hour landed in the past. Letting this through would be
+        // silently destructive: the day's existing slots have just been deleted and
+        // nothing replaces them, yet the expert is told the save succeeded. Throwing
+        // rolls the deletes back. An empty slot list is a deliberate "clear the day"
+        // and is left alone.
+        if (replacements.isEmpty() && !request.getSlots().isEmpty()) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-013",
+                    "Selected hours have already passed");
         }
 
         return availabilityRepository.saveAll(replacements).stream()

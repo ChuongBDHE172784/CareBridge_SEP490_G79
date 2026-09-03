@@ -58,6 +58,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private final SpecialtyRepository specialtyRepository;
 	private final CareFacilityRepository careFacilityRepository;
 	private final ProfessionalSpecialtyRepository professionalSpecialtyRepository;
+	private final com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository expertAvailabilityRepository;
 
 	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl, email, phone from the same users row,
 	// 1 lookup, for every response that uses ExpertProfileResponse/ExpertProfileDetailResponse.
@@ -237,8 +238,12 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		Set<UUID> userIds = result.getContent().stream().map(ExpertProfile::getUserId).collect(Collectors.toSet());
 		Map<UUID, User> usersById = userIds.isEmpty() ? Map.of()
 				: userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> u));
+		// One query for the whole page rather than one per expert.
+		Set<UUID> expertIdsWithOpenSlot = userIds.isEmpty() ? Set.of()
+				: Set.copyOf(expertAvailabilityRepository.findExpertProfileIdsWithOpenSlot(userIds));
 		return expertProfileMapper.toDirectoryResponse(
-				result, usersById, expertProfileRepository.findApprovedSpecialties());
+				result, usersById, expertProfileRepository.findApprovedSpecialties(),
+				expertIdsWithOpenSlot);
 	}
 
 	private static String blankToNull(String s) {

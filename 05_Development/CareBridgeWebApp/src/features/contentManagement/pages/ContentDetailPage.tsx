@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchRecommendationTags, fetchStaffContentDetail, fetchTags, updateContent, archiveContent } from '../services/contentApi';
 import type { ContentDetail, RecommendationTag } from '../models/content';
@@ -42,6 +42,11 @@ export default function ContentDetailPage() {
   // actions must stay hidden rather than link into a route that will bounce to /forbidden.
   const canManage = hasRole('CONTENT_ADMIN');
   const [detail, setDetail] = useState<ContentDetail | null>(null);
+  // Gửi phê duyệt chỉ mở sau khi người gửi đã cuộn tới cuối bài. Một cái mốc đặt
+  // ngay dưới thân bài rẻ hơn là đo scrollTop: nó đúng với mọi chiều cao màn hình,
+  // và với bài ngắn không cần cuộn thì mốc đã nằm trong khung nhìn nên nút mở luôn.
+  const [hasReadBody, setHasReadBody] = useState(false);
+  const bodyEndRef = useRef<HTMLDivElement | null>(null);
   const [recommendationTags, setRecommendationTags] = useState<RecommendationTag[]>([]);
   const [ordinaryTagIds, setOrdinaryTagIds] = useState<Set<string> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +74,7 @@ export default function ContentDetailPage() {
       }
       setRecommendationTags(catalogItems);
       setOrdinaryTagIds(ordinaryIds);
+      setHasReadBody(false);
       setDetail(data);
     } catch {
       setError('Không tải được nội dung. Vui lòng thử lại.');
@@ -78,6 +84,23 @@ export default function ContentDetailPage() {
   }, [id]);
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
+
+  useEffect(() => {
+    if (!detail || hasReadBody) return;
+    const node = bodyEndRef.current;
+    if (!node) return;
+    // Trình duyệt không hỗ trợ thì mở nút, thà bỏ lỡ một lần nhắc còn hơn khoá
+    // cứng người dùng khỏi việc gửi bài.
+    if (typeof IntersectionObserver === 'undefined') {
+      setHasReadBody(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) setHasReadBody(true);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [detail, hasReadBody]);
 
   const submitForApproval = async () => {
     if (!detail) return;
@@ -232,6 +255,8 @@ export default function ContentDetailPage() {
               className="rich-content-body text-[15px] leading-7 text-on-surface"
               dangerouslySetInnerHTML={{ __html: detail.body }}
             />
+            {/* Mốc đánh dấu đã đọc hết — xem khối state ở đầu file. */}
+            <div ref={bodyEndRef} aria-hidden="true" className="h-px w-full" />
           </div>
 
           {/* Sources & References Block */}
@@ -320,14 +345,24 @@ export default function ContentDetailPage() {
                 </p>
               )}
               {detail.status === 'DRAFT' && (
-                <button
-                  onClick={submitForApproval}
-                  disabled={submittingApproval}
-                  className="w-full py-3.5 rounded-2xl bg-transparent text-primary border border-outline-variant text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-lg">send</span>
-                  {submittingApproval ? 'Đang gửi...' : 'Gửi phê duyệt'}
-                </button>
+                <>
+                  <button
+                    onClick={submitForApproval}
+                    disabled={submittingApproval || !hasReadBody}
+                    title={hasReadBody ? undefined : 'Đọc hết nội dung bài viết trước khi gửi phê duyệt'}
+                    className="w-full py-3.5 rounded-2xl bg-transparent text-primary border border-outline-variant text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {hasReadBody ? 'send' : 'lock'}
+                    </span>
+                    {submittingApproval ? 'Đang gửi...' : 'Gửi phê duyệt'}
+                  </button>
+                  {!hasReadBody && (
+                    <p className="text-xs text-outline text-center px-2 -mt-2">
+                      Cuộn hết nội dung bài viết để mở nút gửi phê duyệt.
+                    </p>
+                  )}
+                </>
               )}
               <button
                 onClick={handleDelete}

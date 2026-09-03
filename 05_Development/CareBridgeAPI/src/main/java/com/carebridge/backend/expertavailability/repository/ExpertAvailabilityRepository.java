@@ -26,6 +26,49 @@ public interface ExpertAvailabilityRepository extends JpaRepository<ExpertAvaila
     Optional<ExpertAvailability> findTopByExpertProfileIdOrderByCreatedAtDesc(UUID expertProfileId);
 
     /**
+     * Ai trong nhóm này còn ít nhất một ca trống sắp tới. Danh sách chuyên gia dùng nó
+     * để gắn nhãn rảnh/bận cho cả trang bằng một truy vấn, thay vì hỏi từng người.
+     *
+     * <p>Cùng định nghĩa "còn trống" mà searchDirectory dùng để xếp thứ tự, nên nhãn
+     * hiển thị không bao giờ mâu thuẫn với thứ tự sắp xếp.
+     */
+    @Query(value = """
+            SELECT DISTINCT a.user_id FROM expert_availability a
+            WHERE a.user_id IN (:expertProfileIds)
+              AND a.status = 'AVAILABLE'
+              AND a.start_at > CURRENT_TIMESTAMP
+              AND NOT EXISTS (
+                  SELECT 1 FROM expert_consultation_requests r
+                  WHERE r.expert_profile_id = a.user_id
+                    AND r.status IN ('PENDING', 'ACCEPTED')
+                    AND r.preferred_window_start = a.start_at
+                    AND r.preferred_window_end = a.end_at)
+            """, nativeQuery = true)
+    List<UUID> findExpertProfileIdsWithOpenSlot(
+            @Param("expertProfileIds") java.util.Collection<UUID> expertProfileIds);
+
+    /**
+     * Cac ca mot me thuc su dat duoc: con AVAILABLE, chua toi gio, va chua co yeu cau
+     * PENDING/ACCEPTED nao giu cho. O trang thai cua slot chi doi khi chuyen gia xu ly
+     * yeu cau, nen neu chi loc theo status thi hai me van chon trung mot khung gio.
+     */
+    @Query(value = """
+            SELECT a.* FROM expert_availability a
+            WHERE a.user_id = :expertProfileId
+              AND a.status = 'AVAILABLE'
+              AND a.start_at > CURRENT_TIMESTAMP
+              AND NOT EXISTS (
+                  SELECT 1 FROM expert_consultation_requests r
+                  WHERE r.expert_profile_id = a.user_id
+                    AND r.status IN ('PENDING', 'ACCEPTED')
+                    AND r.preferred_window_start = a.start_at
+                    AND r.preferred_window_end = a.end_at)
+            ORDER BY a.start_at
+            """, nativeQuery = true)
+    List<ExpertAvailability> findBookableSlotsForExpert(
+            @Param("expertProfileId") UUID expertProfileId);
+
+    /**
      * Quét ngang toàn bộ ca CÓ THỂ ĐẶT của mọi chuyên gia đủ điều kiện, phục vụ hàm vét điều phối.
      *
      * <p>Bốn điều kiện tài khoản lấy nguyên từ truy vấn danh bạ — thiếu một cái là lọt chuyên gia

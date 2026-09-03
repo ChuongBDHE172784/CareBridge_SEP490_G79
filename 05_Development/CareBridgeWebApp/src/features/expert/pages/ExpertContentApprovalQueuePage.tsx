@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   decideExpertChecklist,
   decideExpertContent,
@@ -6,6 +6,7 @@ import {
 } from '../../contentManagement/services/contentApi';
 import type { ContentStage, ContentType, ExpertApprovalQueueItem } from '../../contentManagement/models/content';
 import { STAGE_LABELS, STAGE_OPTIONS, TYPE_LABELS } from '../../contentManagement/models/content';
+import '../../contentManagement/richContentBody.css';
 
 type TypeFilter = 'ALL' | ContentType;
 
@@ -39,6 +40,32 @@ export default function ExpertContentApprovalQueuePage() {
 
   // Preview Modal
   const [previewItem, setPreviewItem] = useState<ExpertApprovalQueueItem | null>(null);
+
+  // Duyệt chỉ mở sau khi chuyên gia đã mở bài và đọc tới cuối. Mốc đặt dưới thân
+  // bài rẻ hơn đo scrollTop: đúng với mọi chiều cao, và checklist hay bài ngắn
+  // không cần cuộn thì mốc nằm sẵn trong khung nhìn nên mở ngay khi mở modal.
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
+  const previewEndRef = useRef<HTMLDivElement | null>(null);
+  const hasReviewed = (item: ExpertApprovalQueueItem) => reviewedIds.has(item.id);
+
+  useEffect(() => {
+    if (!previewItem || reviewedIds.has(previewItem.id)) return;
+    const node = previewEndRef.current;
+    if (!node) return;
+    const markRead = () =>
+      setReviewedIds((prev) => (prev.has(previewItem.id) ? prev : new Set(prev).add(previewItem.id)));
+    // Trình duyệt không hỗ trợ thì mở nút — thà bỏ lỡ một lần nhắc còn hơn khoá
+    // cứng chuyên gia khỏi việc duyệt.
+    if (typeof IntersectionObserver === 'undefined') {
+      markRead();
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) markRead();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [previewItem, reviewedIds]);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -332,11 +359,18 @@ export default function ExpertContentApprovalQueuePage() {
 
                         <button
                           type="button"
+                          disabled={!hasReviewed(item)}
                           onClick={() => handleOpenDecision(item, 'APPROVE')}
-                          className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
-                          title="Phê duyệt xuất bản"
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer"
+                          title={
+                            hasReviewed(item)
+                              ? 'Phê duyệt xuất bản'
+                              : 'Bấm Xem và đọc hết nội dung trước khi duyệt'
+                          }
                         >
-                          <span className="material-symbols-outlined text-[16px]">check</span>
+                          <span className="material-symbols-outlined text-[16px]">
+                            {hasReviewed(item) ? 'check' : 'lock'}
+                          </span>
                           Duyệt
                         </button>
 
@@ -529,6 +563,25 @@ export default function ExpertContentApprovalQueuePage() {
                   <span>{formatDateTime(previewItem.assignedAt || previewItem.createdAt)}</span>
                 </div>
               </div>
+
+              {previewItem.body ? (
+                <div className="border-t border-outline-variant/40 pt-4">
+                  <p className="font-semibold text-on-surface mb-2">Nội dung bài viết:</p>
+                  <div
+                    className="rich-content-body text-[13px] leading-6 text-on-surface"
+                    dangerouslySetInnerHTML={{ __html: previewItem.body }}
+                  />
+                </div>
+              ) : (
+                <p className="border-t border-outline-variant/40 pt-4 text-outline">
+                  {previewItem.kind === 'CHECKLIST'
+                    ? 'Checklist được thẩm định theo danh sách mục, không có phần thân bài.'
+                    : 'Bài viết này không có nội dung để hiển thị.'}
+                </p>
+              )}
+
+              {/* Mốc đánh dấu đã đọc hết — xem khối state ở đầu file. */}
+              <div ref={previewEndRef} aria-hidden="true" className="h-px w-full" />
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-outline-variant/70 p-4 bg-surface-container-low/30">
@@ -546,14 +599,18 @@ export default function ExpertContentApprovalQueuePage() {
               </button>
               <button
                 type="button"
+                disabled={!hasReviewed(previewItem)}
+                title={hasReviewed(previewItem) ? undefined : 'Đọc hết nội dung trước khi phê duyệt'}
                 onClick={() => {
                   const item = previewItem;
                   setPreviewItem(null);
                   handleOpenDecision(item, 'APPROVE');
                 }}
-                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[16px]">check</span>
+                <span className="material-symbols-outlined text-[16px]">
+                  {hasReviewed(previewItem) ? 'check' : 'lock'}
+                </span>
                 Phê duyệt & Xuất bản
               </button>
             </div>

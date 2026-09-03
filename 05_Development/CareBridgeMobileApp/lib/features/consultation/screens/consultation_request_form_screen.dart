@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../expert/models/expert_availability_slot.dart';
@@ -78,12 +79,57 @@ class _ConsultationRequestFormScreenState
       if (Navigator.of(context).canPop()) Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
+      final message = error.toString();
+      // CONREQ-011: mot me chi giu mot yeu cau song tai mot thoi diem. Bao bang mot
+      // hop thoai co loi ra thay vi snackbar, vi me phai lam mot viec cu the (huy
+      // yeu cau cu) truoc khi dat duoc nguoi khac.
+      if (message.contains('CONREQ-011')) {
+        _showOpenRequestDialog();
+        return;
+      }
+      // CONREQ-010: khung gio vua bi nguoi khac lay mat, hoac da troi qua.
+      if (message.contains('CONREQ-010')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Khung giờ này vừa có người đặt hoặc đã qua. Bạn chọn giờ khác giúp mình nhé.',
+            ),
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Không thể gửi yêu cầu: $error')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _showOpenRequestDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Bạn đang có một yêu cầu tư vấn'),
+        content: const Text(
+          'Mỗi lần chỉ đặt được một chuyên gia. Bạn hãy hủy yêu cầu đang mở, '
+          'rồi quay lại đặt chuyên gia này nhé.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Để sau'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context.push('/consultation-requests');
+            },
+            child: const Text('Xem yêu cầu đang mở'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

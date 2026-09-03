@@ -756,6 +756,55 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                                     ),
                                   ),
                                 ),
+                              // Ranh/ban doc thang tu lich da mo, khong phai suy ra tu
+                              // trang thai dang chat: mot chuyen gia dang tu van nguoi
+                              // khac van con the con gio trong chieu mai.
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: expert.hasOpenSlot
+                                      ? const Color(0xFFE8F5E9)
+                                      : _surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: expert.hasOpenSlot
+                                        ? const Color(0xFFA5D6A7)
+                                        : _outlineVariant,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      expert.hasOpenSlot
+                                          ? Icons.event_available_rounded
+                                          : Icons.event_busy_rounded,
+                                      size: 11,
+                                      color: expert.hasOpenSlot
+                                          ? const Color(0xFF2E7D32)
+                                          : _onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      expert.hasOpenSlot
+                                          ? 'Đang rảnh'
+                                          : 'Đang bận',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: expert.hasOpenSlot
+                                            ? const Color(0xFF2E7D32)
+                                            : _onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               if (hasActiveChat)
                                 Container(
                                   padding: const EdgeInsets.symmetric(

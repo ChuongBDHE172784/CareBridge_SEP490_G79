@@ -109,6 +109,9 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
         this.expiryHours = expiryHours;
     }
 
+    private static final java.util.List<ConsultationRequestStatus> OPEN_STATUSES =
+            java.util.List.of(ConsultationRequestStatus.PENDING, ConsultationRequestStatus.ACCEPTED);
+
     @Override
     public CreateConsultationRequestResult create(
             CreateConsultationRequestRequest request, UUID requesterUserId) {
@@ -138,6 +141,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                 .findByIdForUpdate(lockedExpert.getUserId())
                 .orElseThrow(ConsultationRequestException::expertNotEligible);
         policy.assertExpertEligibleForConsultation(lockedExpert, lockedExpertAccount, now);
+        assertNoOtherOpenRequest(requesterUserId);
         validatePreferredAvailability(request, now);
         ConsultationRequest candidate = ConsultationRequest.builder()
                 .id(UUID.randomUUID())
@@ -192,6 +196,25 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                                 AvailabilityStatus.AVAILABLE);
         if (!exists) {
             throw ConsultationRequestException.availabilityNoLongerAvailable();
+        }
+        // The slot row stays AVAILABLE until the expert answers, so two mothers could
+        // otherwise claim the same hour and only find out when one got rejected.
+        boolean alreadyClaimed = repository
+                .existsByExpertProfileIdAndPreferredWindowStartAndStatusIn(
+                        request.getExpertProfileId(), start, OPEN_STATUSES);
+        if (alreadyClaimed) {
+            throw ConsultationRequestException.availabilityNoLongerAvailable();
+        }
+    }
+
+    /**
+     * One live request per mother. She can still choose a busy expert, but not queue
+     * behind two of them at once — the app offers to cancel the open one first.
+     */
+    private void assertNoOtherOpenRequest(UUID requesterUserId) {
+        if (repository.findFirstByRequesterUserIdAndStatusIn(requesterUserId, OPEN_STATUSES)
+                .isPresent()) {
+            throw ConsultationRequestException.activeRequestAlreadyOpen();
         }
     }
 

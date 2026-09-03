@@ -59,10 +59,23 @@ function resolveTargetDates(
   return [...new Set(candidates.filter(date => date >= today).map(dateKey))];
 }
 
+/**
+ * Gio da troi qua thi khong mo lich duoc nua. Server bo qua nhung khung gio nam
+ * trong qua khu, nen truoc khi co man chan nay, chon 07:00 luc 21:00 se xoa sach
+ * lich con lai cua hom do va van bao luu thanh cong.
+ */
+function isHourPast(dateKeyValue: string, hour: number, now: Date) {
+  const start = parseDateKey(dateKeyValue);
+  start.setHours(hour, 0, 0, 0);
+  return start.getTime() <= now.getTime();
+}
+
 function translateError(error: any) {
   const message = error.response?.data?.message || error.message || '';
   if (message.includes('verified')) return 'Hồ sơ chuyên gia cần được duyệt trước khi thiết lập lịch làm việc.';
   if (message.includes('time zone')) return 'Múi giờ không hợp lệ. Vui lòng tải lại trang.';
+  if (message.includes('already passed'))
+    return 'Những khung giờ bạn chọn đều đã trôi qua. Hãy chọn giờ còn lại trong ngày hoặc một ngày khác.';
   return message || 'Không thể lưu lịch làm việc. Vui lòng thử lại.';
 }
 
@@ -78,6 +91,29 @@ export default function AvailabilityCalendarPage() {
   const [mode, setMode] = useState<ApplyMode>('DAY');
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [monthDays, setMonthDays] = useState<number[]>([]);
+
+  // Gio da qua chi bi khoa khi hom nay la NGAY DUY NHAT bi anh huong. Ap dung ca
+  // tuan hay ca thang thi 07:00 van hop le voi nhung ngay sau, khong duoc khoa.
+  const pastHours = useMemo(() => {
+    if (!editingDate) return [] as number[];
+    const targetDates = resolveTargetDates(parseDateKey(editingDate), mode, weekdays, monthDays);
+    const now = new Date();
+    if (targetDates.length !== 1 || targetDates[0] !== dateKey(now)) return [] as number[];
+    return HOURS.filter(hour => isHourPast(targetDates[0], hour, now));
+  }, [editingDate, mode, weekdays, monthDays]);
+
+  const dayIsOver = pastHours.length === HOURS.length;
+
+  // Bo cac khung gio vua tro thanh qua khu khi doi ngay hoac doi pham vi ap dung,
+  // de nut Luu khong gui di thu ma nguoi dung khong con nhin thay minh dang chon.
+  useEffect(() => {
+    if (pastHours.length === 0) return;
+    setSelectedHours(prev =>
+      prev.some(hour => pastHours.includes(hour))
+        ? prev.filter(hour => !pastHours.includes(hour))
+        : prev
+    );
+  }, [pastHours]);
 
   const load = useCallback(async () => {
     try {
@@ -150,17 +186,17 @@ export default function AvailabilityCalendarPage() {
 
   // Quick Preset Helper
   const applyPreset = (preset: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'ALL' | 'CLEAR') => {
+    // Cac nut nhanh phai ton trong dung nhung gio ma luoi da khoa, khong thi bam
+    // "Chon tat ca" se dem ca gio da troi qua vao vung chon.
+    const selectable = (hours: number[]) => hours.filter(hour => !pastHours.includes(hour));
     if (preset === 'MORNING') {
-      const morningHours = [7, 8, 9, 10, 11];
-      setSelectedHours(prev => Array.from(new Set([...prev, ...morningHours])));
+      setSelectedHours(prev => Array.from(new Set([...prev, ...selectable([7, 8, 9, 10, 11])])));
     } else if (preset === 'AFTERNOON') {
-      const afternoonHours = [12, 13, 14, 15, 16, 17];
-      setSelectedHours(prev => Array.from(new Set([...prev, ...afternoonHours])));
+      setSelectedHours(prev => Array.from(new Set([...prev, ...selectable([12, 13, 14, 15, 16, 17])])));
     } else if (preset === 'EVENING') {
-      const eveningHours = [18, 19, 20];
-      setSelectedHours(prev => Array.from(new Set([...prev, ...eveningHours])));
+      setSelectedHours(prev => Array.from(new Set([...prev, ...selectable([18, 19, 20])])));
     } else if (preset === 'ALL') {
-      setSelectedHours([...HOURS]);
+      setSelectedHours(selectable([...HOURS]));
     } else if (preset === 'CLEAR') {
       setSelectedHours([]);
     }
@@ -173,13 +209,18 @@ export default function AvailabilityCalendarPage() {
       setError('Không có ngày hợp lệ trong phạm vi đã chọn.');
       return;
     }
+    const usableHours = selectedHours.filter(hour => !pastHours.includes(hour));
+    if (usableHours.length === 0 && selectedHours.length > 0) {
+      setError('Những khung giờ bạn chọn đều đã trôi qua. Hãy chọn giờ còn lại trong ngày hoặc một ngày khác.');
+      return;
+    }
     setSaving(true);
     try {
       await replaceAvailability({
         targetDates,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh',
         channelType: 'ONLINE_CHAT',
-        slots: selectedHours.sort((a, b) => a - b).map(hour => ({
+        slots: usableHours.sort((a, b) => a - b).map(hour => ({
           startTime: `${String(hour).padStart(2, '0')}:00`,
         })),
       });
@@ -432,11 +473,23 @@ export default function AvailabilityCalendarPage() {
               </button>
             </div>
 
+            {dayIsOver && (
+              <div className="flex items-start gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3">
+                <span className="material-symbols-outlined text-base text-outline">schedule</span>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Hôm nay đã qua khung giờ cuối (20:00–21:00), nên không còn ca nào để mở.
+                  Hãy chọn một ngày khác, hoặc đổi “Áp dụng lịch này cho” sang cả tuần / cả tháng để đặt cho những ngày tới.
+                </p>
+              </div>
+            )}
+
             {/* Quick Presets Toolbar */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-on-surface">Chọn khung giờ rảnh</span>
-                <span className="text-xs text-outline font-medium">Đã chọn: {selectedHours.length} khung giờ</span>
+                <span className="text-xs text-outline font-medium">
+                  Đã chọn: {selectedHours.filter(hour => !pastHours.includes(hour)).length} khung giờ
+                </span>
               </div>
 
               <div className="flex flex-wrap gap-2 mb-3">
@@ -481,23 +534,28 @@ export default function AvailabilityCalendarPage() {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                 {HOURS.map(hour => {
                   const active = selectedHours.includes(hour);
+                  const past = pastHours.includes(hour);
                   return (
                     <button
                       key={hour}
                       type="button"
+                      disabled={past}
+                      title={past ? 'Khung giờ này đã trôi qua' : undefined}
                       onClick={() =>
                         setSelectedHours(
                           active ? selectedHours.filter(value => value !== hour) : [...selectedHours, hour]
                         )
                       }
-                      className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 px-3 text-xs font-semibold transition-all cursor-pointer ${
-                        active
-                          ? 'border-primary bg-primary text-on-primary shadow-xs'
-                          : 'border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/50'
+                      className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 px-3 text-xs font-semibold transition-all ${
+                        past
+                          ? 'border-outline-variant bg-surface-container text-outline line-through cursor-not-allowed opacity-60'
+                          : active
+                            ? 'border-primary bg-primary text-on-primary shadow-xs cursor-pointer'
+                            : 'border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/50 cursor-pointer'
                       }`}
                     >
                       <span className="material-symbols-outlined text-sm">
-                        {active ? 'check_circle' : 'schedule'}
+                        {past ? 'history' : active ? 'check_circle' : 'schedule'}
                       </span>
                       {String(hour).padStart(2, '0')}:00–{String(hour + 1).padStart(2, '0')}:00
                     </button>
@@ -607,7 +665,7 @@ export default function AvailabilityCalendarPage() {
               </button>
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || dayIsOver}
                 onClick={save}
                 className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary border-0 text-xs font-semibold hover:brightness-110 cursor-pointer shadow-xs disabled:opacity-50 transition-all"
               >

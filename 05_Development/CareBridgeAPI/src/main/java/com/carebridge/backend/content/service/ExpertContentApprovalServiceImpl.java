@@ -69,6 +69,7 @@ public class ExpertContentApprovalServiceImpl implements ExpertContentApprovalSe
                         .status(item.getStatus().name())
                         .versionNo(item.getVersionNo())
                         .summary(item.getSummary())
+                        .body(item.getBody())
                         .sourceLabel(item.getSourceLabel())
                         .assignedAt(item.getAssignedAt())
                         .updatedAt(item.getUpdatedAt())
