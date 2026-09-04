@@ -195,6 +195,11 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const [sending, setSending] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [expertAvailable, setExpertAvailable] = useState(true);
+  // Buổi tư vấn có khung giờ; hết giờ thì server đóng cuộc trò chuyện và từ chối mọi
+  // tin nhắn mới. Đọc lại trạng thái đó để ẩn ô soạn, thay vì để người dùng gõ xong
+  // mới nhận lỗi.
+  const [conversationOpen, setConversationOpen] = useState(true);
+  const canWrite = expertAvailable && conversationOpen;
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
@@ -280,6 +285,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
         previousCursorRef.current = page.previousCursor;
         setHasMoreOlder(page.hasMoreOlder);
         setExpertAvailable(conversation.expertAvailable);
+        setConversationOpen(conversation.status === 'ACTIVE');
         if (pendingNewerSyncRef.current) {
           pendingNewerSyncRef.current = false;
           queueMicrotask(() => void syncNewer());
@@ -359,7 +365,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   }, [pendingAttachment]);
 
   const handleSelectFile = (file: File, kind: 'IMAGE' | 'DOCUMENT') => {
-    if (sending || !expertAvailable || !currentUserId) return;
+    if (sending || !canWrite || !currentUserId) return;
     const image = kind === 'IMAGE';
     const sizeLimit = image ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
     if (file.size > sizeLimit) {
@@ -375,7 +381,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
   const handleSend = async () => {
     const body = draft.trim();
-    if ((!body && !pendingAttachment) || sending || !expertAvailable || !currentUserId) return;
+    if ((!body && !pendingAttachment) || sending || !canWrite || !currentUserId) return;
 
     const attachment = pendingAttachment;
     const clientMessageId = crypto.randomUUID();
@@ -512,7 +518,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
         <div className="flex items-center gap-2.5 self-start md:self-auto">
           <button
-            disabled={!expertAvailable}
+            disabled={!canWrite}
             onClick={() => handleCall('VOICE')}
             className="flex items-center gap-2 py-2.5 px-5 rounded-full border border-outline-variant bg-surface text-primary text-[13px] font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
@@ -520,7 +526,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
             Gọi thoại
           </button>
           <button
-            disabled={!expertAvailable}
+            disabled={!canWrite}
             onClick={() => handleCall('VIDEO')}
             className="flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary border-0 text-[13px] font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
           >
@@ -532,7 +538,14 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
       {/* Main Chat Box Container */}
       <div className="bg-surface rounded-2xl shadow-md border border-outline-variant/60 flex flex-col h-[calc(100vh-220px)] overflow-hidden">
-        {!expertAvailable && (
+        {!conversationOpen && (
+          <div className="bg-surface-container-low border-b border-outline-variant text-on-surface-variant px-4 py-3 text-xs flex items-center gap-2 shrink-0 font-medium">
+            <span className="material-symbols-outlined text-lg text-outline">timer_off</span>
+            Buổi tư vấn đã kết thúc. Bạn vẫn xem lại được nội dung đã trao đổi.
+          </div>
+        )}
+
+        {conversationOpen && !expertAvailable && (
           <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-3 text-xs flex items-center gap-2 shrink-0 font-medium">
             <span className="material-symbols-outlined text-lg text-amber-700">warning</span>
             Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.
@@ -675,7 +688,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
         </div>
 
         {/* Input Bar */}
-        {expertAvailable && (
+        {canWrite && (
           <div className="bg-surface border-t border-outline-variant/60 shrink-0">
             {pendingAttachment && (
               <div className="px-4 py-2.5 flex items-center justify-between bg-surface-container-low/90 border-b border-outline-variant/40">

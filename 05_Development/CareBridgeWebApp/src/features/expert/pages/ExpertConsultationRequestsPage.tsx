@@ -17,6 +17,10 @@ const STATUS_TABS: { key: string; label: string; status?: string }[] = [
   { key: 'accepted', label: 'Đã chấp nhận', status: 'ACCEPTED' },
   { key: 'rejected', label: 'Đã từ chối', status: 'REJECTED' },
   { key: 'cancelled', label: 'Đã hủy', status: 'CANCELLED' },
+  // Hết hạn là kết cục thường gặp nhất sau "chờ phản hồi": mẹ đợi 48 giờ không ai
+  // trả lời thì yêu cầu tự đóng. Thiếu tab này thì nó chỉ hiện ở "Tất cả", lẫn giữa
+  // mọi thứ khác, nên chuyên gia không thấy được mình đã để lỡ bao nhiêu người.
+  { key: 'expired', label: 'Đã hết hạn', status: 'EXPIRED' },
 ];
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -24,6 +28,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   ACCEPTED: { label: 'Đã chấp nhận', className: 'bg-[#E6F4EA] text-[#137333]' },
   REJECTED: { label: 'Đã từ chối', className: 'bg-error-container text-error' },
   CANCELLED: { label: 'Đã hủy', className: 'bg-[#F5F5F5] text-[#616161]' },
+  EXPIRED: { label: 'Đã hết hạn', className: 'bg-[#F5F5F5] text-[#616161]' },
 };
 
 function timeAgo(iso: string): string {
@@ -256,6 +261,8 @@ export default function ExpertConsultationRequestsPage() {
                             <span className="material-symbols-outlined text-base">chat</span>
                             Vào nhắn tin
                           </button>
+                        ) : req.status === 'EXPIRED' ? (
+                          <span className="text-xs text-outline">Đã đóng do quá hạn</span>
                         ) : (
                           <span className="text-xs text-outline">—</span>
                         )}

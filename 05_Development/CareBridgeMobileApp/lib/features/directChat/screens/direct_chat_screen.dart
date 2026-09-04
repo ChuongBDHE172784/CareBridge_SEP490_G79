@@ -65,6 +65,14 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   bool _syncingNewer = false;
   bool _pendingNewerSync = false;
   bool _expertAvailable = true;
+  // Buoi tu van co khung gio; het gio thi server dong cuoc tro chuyen va tu choi
+  // moi tin nhan moi. Man hinh doc lai trang thai do de an o soan thay vi de me go
+  // xong roi moi an loi.
+  bool _conversationOpen = true;
+
+  /// Con gui duoc tin nhan hay khong. Chuyen gia phai con nhan tu van, VA buoi tu
+  /// van phai chua het gio.
+  bool get _canWrite => _expertAvailable && _conversationOpen;
   String? _nextCursor;
   String? _previousCursor;
   bool _hasMoreOlder = false;
@@ -105,6 +113,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         _previousCursor = page.previousCursor;
         _hasMoreOlder = page.hasMoreOlder;
         _expertAvailable = conversation.expertAvailable;
+        _conversationOpen = conversation.status == 'ACTIVE';
         _loading = false;
       });
       _scheduleMarkReadIfNeeded();
@@ -258,7 +267,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     final body = _textController.text.trim();
     if ((body.isEmpty && _pendingAttachment == null) ||
         _sending ||
-        !_expertAvailable) {
+        !_canWrite) {
       return;
     }
 
@@ -322,7 +331,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _attachImage(ImageSource source) async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     try {
       final image = await ImagePicker().pickImage(
         source: source,
@@ -347,7 +356,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _attachDocument() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     try {
       final picked = await FilePicker.platform.pickFiles(withData: true);
       final file = picked?.files.single;
@@ -371,7 +380,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _shareCurrentLocation() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     setState(() => _sending = true);
     String? optimisticClientMessageId;
     try {
@@ -439,7 +448,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _openShareHealthMetrics() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     final result = await ShareHealthMetricsDialog.show(context);
     if (result == null || !mounted) return;
     final clientMessageId = _uuid.v4();
@@ -479,7 +488,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _openShareChecklist() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     final result = await ShareChecklistDialog.show(context);
     if (result == null || !mounted) return;
     final clientMessageId = _uuid.v4();
@@ -667,12 +676,12 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           IconButton(
             tooltip: 'Gọi thoại',
             icon: const Icon(Icons.phone_rounded, color: _primary),
-            onPressed: _expertAvailable ? () => _placeCall('VOICE') : null,
+            onPressed: _canWrite ? () => _placeCall('VOICE') : null,
           ),
           IconButton(
             tooltip: 'Gọi video',
             icon: const Icon(Icons.videocam_rounded, color: _primary),
-            onPressed: _expertAvailable ? () => _placeCall('VIDEO') : null,
+            onPressed: _canWrite ? () => _placeCall('VIDEO') : null,
           ),
           const SizedBox(width: 4),
         ],
@@ -681,7 +690,37 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : Column(
               children: [
-                if (!_expertAvailable)
+                if (!_conversationOpen)
+                  Container(
+                    width: double.infinity,
+                    color: const Color(0xFFF1E6E0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.timer_off_outlined,
+                          color: Color(0xFF6B5B54),
+                          size: 20,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Buổi tư vấn đã kết thúc. Bạn vẫn xem lại được nội dung đã trao đổi.',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: Color(0xFF4A3F3A),
+                              fontSize: 13,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_conversationOpen && !_expertAvailable)
                   Container(
                     width: double.infinity,
                     color: const Color(0xFFFEF3C7),
@@ -751,7 +790,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                     ),
                   ),
                 ),
-                if (_expertAvailable) _buildInputRow(),
+                if (_canWrite) _buildInputRow(),
               ],
             ),
     );
@@ -873,7 +912,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                       color: _primary,
                       size: 24,
                     ),
-                    onPressed: _sending || !_expertAvailable
+                    onPressed: _sending || !_canWrite
                         ? null
                         : _showAttachmentMenu,
                   ),

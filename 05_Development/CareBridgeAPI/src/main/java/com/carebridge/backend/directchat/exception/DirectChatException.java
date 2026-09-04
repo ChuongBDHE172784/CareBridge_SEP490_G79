@@ -34,6 +34,14 @@ public class DirectChatException extends RuntimeException {
         return new DirectChatException("DCC-002", "Expert is no longer APPROVED", HttpStatus.FORBIDDEN);
     }
 
+    /** Khung gio tu van da ket thuc; cuoc tro chuyen chi con doc lai duoc. */
+    public static DirectChatException consultationWindowEnded() {
+        return new DirectChatException(
+                "DCC-014",
+                "The consultation window for this conversation has ended",
+                HttpStatus.CONFLICT);
+    }
+
     public static DirectChatException notParticipant() {
         return new DirectChatException("DCC-003", "You are not a participant of this conversation", HttpStatus.FORBIDDEN);
     }

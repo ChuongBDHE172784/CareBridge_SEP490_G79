@@ -23,6 +23,14 @@ public interface ConsultationRequestRepository extends JpaRepository<Consultatio
 
     Page<ConsultationRequest> findByRequesterUserId(UUID requesterUserId, Pageable pageable);
 
+    /**
+     * Buoi tu van gan voi cuoc tro chuyen nay. Chat mo ra tu mot yeu cau da nhan, va
+     * dong lai khi khung gio cua yeu cau do troi qua — khong co no thi moi cuoc tro
+     * chuyen mo mot lan roi mo mai mai.
+     */
+    Optional<ConsultationRequest> findFirstByDirectConversationIdAndStatusOrderByCreatedAtDesc(
+            UUID directConversationId, ConsultationRequestStatus status);
+
     /** The mother's live request, if she has one — PENDING or already accepted. */
     Optional<ConsultationRequest> findFirstByRequesterUserIdAndStatusIn(
             UUID requesterUserId, java.util.Collection<ConsultationRequestStatus> statuses);
