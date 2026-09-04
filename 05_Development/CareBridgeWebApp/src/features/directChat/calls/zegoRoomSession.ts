@@ -136,9 +136,22 @@ export function mountZegoRoomSession({
     }
   };
 
+  // Tắt micro/camera của luồng ghi âm. Tách riêng vì có hai đường tới đây và cả hai
+  // đều phải nhả thiết bị: đèn báo đang thu của trình duyệt chỉ tắt khi track dừng.
+  const releaseRecordingStream = () => {
+    recordingStream?.getTracks().forEach((track) => track.stop());
+    recordingStream = null;
+  };
+
   const stopRecordingAndUpload = (): Promise<void> => {
     if (recordingFinalizePromise) return recordingFinalizePromise;
-    if (!mediaRecorder) return Promise.resolve();
+    // Không có recorder không có nghĩa là không có micro đang mở: getUserMedia chạy
+    // trước khi dựng MediaRecorder, nên nếu bước dựng ném lỗi thì luồng vẫn sống.
+    // Thoát sớm mà không nhả ở đây chính là lúc đèn thu còn sáng sau khi cúp máy.
+    if (!mediaRecorder) {
+      releaseRecordingStream();
+      return Promise.resolve();
+    }
 
     const recorder = mediaRecorder;
     recordingFinalizePromise = (async () => {
@@ -149,6 +162,10 @@ export function mountZegoRoomSession({
             recorder.stop();
           });
         }
+        // Nhả thiết bị ngay khi recorder dừng, trước khi tải lên. Việc tải có thể mất
+        // vài giây, và giữ micro suốt quãng đó là giữ vô ích — dữ liệu đã nằm trong
+        // recordedChunks rồi.
+        releaseRecordingStream();
 
         if (recordedChunks.length > 0 && call.conversationId && call.callId) {
           const mimeType = call.callType === 'VIDEO' ? 'video/webm' : 'audio/webm';
@@ -167,8 +184,8 @@ export function mountZegoRoomSession({
       } catch (error) {
         console.warn('[zegoRoomSession] Stop/upload recording failed:', error);
       } finally {
-        recordingStream?.getTracks().forEach((track) => track.stop());
-        recordingStream = null;
+        // Lưới thứ hai: nếu recorder.stop() ném lỗi thì đoạn nhả ở trên bị bỏ qua.
+        releaseRecordingStream();
         mediaRecorder = null;
       }
     })();

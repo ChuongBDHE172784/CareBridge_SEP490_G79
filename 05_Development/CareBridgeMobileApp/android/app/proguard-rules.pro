@@ -34,3 +34,15 @@
 # ZEGO gọi phương thức này qua reflection nên R8 rút gọn làm mất.
 -keep class im.zego.** { *; }
 -dontwarn im.zego.**
+
+# SDK còn một nhánh package thứ hai, và giữ mỗi im.zego là chưa đủ. Bản release
+# chết ngay khi mẹ bấm gọi:
+#   ClassNotFoundException: Didn't find class "com/zego/zegoavkit2/utils/ZegoLogUtil"
+#       at ZegoExpressEngineJniAPI.engineInitJni(Native Method)
+#   Fatal signal 11 (SIGSEGV)
+#
+# engineInitJni tra lớp này bằng JNI FindClass rồi dùng luôn kết quả. Không code
+# Java nào gọi tới nó nên R8 thấy là rác và xoá, FindClass trả null, native deref
+# null và giết cả tiến trình — nên triệu chứng là văng app chứ không phải báo lỗi.
+-keep class com.zego.** { *; }
+-dontwarn com.zego.**
