@@ -420,12 +420,21 @@ export default function ContentDetailPage() {
               <div className="flex flex-col gap-2.5">
                 <button
                   type="button"
+                  disabled={!hasReadBody}
+                  title={hasReadBody ? undefined : 'Đọc hết nội dung bài viết trước khi phê duyệt'}
                   onClick={() => handleOpenDecision('APPROVE')}
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-colors"
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  <span className="material-symbols-outlined text-base">
+                    {hasReadBody ? 'check_circle' : 'lock'}
+                  </span>
                   Phê duyệt & Xuất bản
                 </button>
+                {!hasReadBody && (
+                  <p className="text-[11px] text-outline text-center px-1 -mt-1">
+                    Cuộn hết nội dung bài viết để mở nút phê duyệt.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => handleOpenDecision('REJECT')}
