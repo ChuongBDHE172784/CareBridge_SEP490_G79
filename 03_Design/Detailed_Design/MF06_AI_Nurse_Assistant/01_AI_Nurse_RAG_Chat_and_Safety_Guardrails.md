@@ -31,6 +31,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_AINurseRAGChatandSafetyGuardrails
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "RagChatScreen" as UI1 <<UI>>
@@ -184,11 +185,11 @@ The lifecycle below belongs to **The request-scoped RAG answer (in-memory, not a
 hide empty description
 [*] --> QueryReceived
 
-QueryReceived --> EmergencyGuidanceReturned : checkSafetyFilter() [safety.isRedFlag()] / returnEmergencyGuidance()
-QueryReceived --> AudienceResolved : checkSafetyFilter() [no red flag] / resolveAudienceAndStage()
-AudienceResolved --> ContextRetrieved : retrieveKnowledge() / similaritySearchOverApprovedCorpus()
-ContextRetrieved --> AnswerGrounded : generateAnswer() [model call succeeded] / attachCitationsAndDisclaimer()
-ContextRetrieved --> AnswerFallback : generateAnswer() [model unavailable] / returnFallbackAnswer()
+QueryReceived --> EmergencyGuidanceReturned : checkSafetyFilter()\n[safety.isRedFlag()]\n/ returnEmergencyGuidance()
+QueryReceived --> AudienceResolved : checkSafetyFilter()\n[no red flag]\n/ resolveAudienceAndStage()
+AudienceResolved --> ContextRetrieved : retrieveKnowledge()\n/ similaritySearchOverApprovedCorpus()
+ContextRetrieved --> AnswerGrounded : generateAnswer()\n[model call succeeded]\n/ attachCitationsAndDisclaimer()
+ContextRetrieved --> AnswerFallback : generateAnswer()\n[model unavailable]\n/ returnFallbackAnswer()
 AnswerGrounded --> [*]
 AnswerFallback --> [*]
 EmergencyGuidanceReturned --> [*]

@@ -271,7 +271,7 @@ class _RecommendationProfileScreenState
   }
 
   void _syncControllers() {
-    _dobController.text = _accountDateOfBirth ?? '';
+    _dobController.text = _isoToDisplayDate(_accountDateOfBirth);
     final bmi = _map('bmi');
     if (bmi['state'] == 'KNOWN') {
       _heightController.text = bmi['heightCm']?.toString() ?? '';
@@ -706,8 +706,8 @@ class _RecommendationProfileScreenState
           color: _textDark,
         ),
         decoration: InputDecoration(
-          labelText: 'Ngày sinh (YYYY-MM-DD)',
-          hintText: 'Ví dụ: 1995-08-21',
+          labelText: 'Ngày sinh (DD-MM-YYYY)',
+          hintText: 'Ví dụ: 21-08-1995',
           filled: true,
           fillColor: _surfaceLow,
           border: OutlineInputBorder(
@@ -1513,9 +1513,10 @@ class _RecommendationProfileScreenState
         );
         return false;
       }
+      final isoDate = _toIsoDate(raw);
       try {
-        if (_accountDateOfBirth != raw) {
-          await _service.updateDateOfBirth(raw);
+        if (_accountDateOfBirth != isoDate) {
+          await _service.updateDateOfBirth(isoDate);
           if (!_isCurrentOperation(generation, expectedUserId)) return false;
         }
       } on ApiException catch (error) {
@@ -1531,7 +1532,7 @@ class _RecommendationProfileScreenState
         }
         return false;
       }
-      _accountDateOfBirth = raw;
+      _accountDateOfBirth = isoDate;
       _setDomain('age', <String, dynamic>{'state': 'KNOWN'});
       return true;
     }
@@ -1585,17 +1586,71 @@ class _RecommendationProfileScreenState
     return point < 0 || text.length - point - 1 <= 1;
   }
 
-  bool _isValidDate(String value, {required bool allowToday}) {
-    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) return false;
-    final parsed = DateTime.tryParse(value);
-    final parts = value.split('-').map(int.parse).toList(growable: false);
-    if (parsed == null ||
-        parsed.year != parts[0] ||
-        parsed.month != parts[1] ||
-        parsed.day != parts[2] ||
-        parsed.year < 1900) {
-      return false;
+  String _formatDisplayDate(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.year.toString().padLeft(4, '0')}';
+
+  String _formatDate(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
+
+  String _isoToDisplayDate(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    final parts = iso.split('-');
+    if (parts.length == 3 && parts[0].length == 4) {
+      return '${parts[2]}-${parts[1]}-${parts[0]}';
     }
+    return iso;
+  }
+
+  DateTime? _parseFlexibleDate(String value) {
+    final trimmed = value.trim();
+    final dmyMatch =
+        RegExp(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$').firstMatch(trimmed);
+    if (dmyMatch != null) {
+      final day = int.parse(dmyMatch.group(1)!);
+      final month = int.parse(dmyMatch.group(2)!);
+      final year = int.parse(dmyMatch.group(3)!);
+      if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return null;
+      }
+      final parsed = DateTime(year, month, day);
+      if (parsed.year == year && parsed.month == month && parsed.day == day) {
+        return parsed;
+      }
+      return null;
+    }
+    final ymdMatch =
+        RegExp(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$').firstMatch(trimmed);
+    if (ymdMatch != null) {
+      final year = int.parse(ymdMatch.group(1)!);
+      final month = int.parse(ymdMatch.group(2)!);
+      final day = int.parse(ymdMatch.group(3)!);
+      if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return null;
+      }
+      final parsed = DateTime(year, month, day);
+      if (parsed.year == year && parsed.month == month && parsed.day == day) {
+        return parsed;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  String _toIsoDate(String value) {
+    final parsed = _parseFlexibleDate(value);
+    if (parsed != null) {
+      return _formatDate(parsed);
+    }
+    return value;
+  }
+
+  bool _isValidDate(String value, {required bool allowToday}) {
+    final parsed = _parseFlexibleDate(value);
+    if (parsed == null) return false;
     if (allowToday) {
       return !parsed.isAfter(_today);
     }
@@ -1605,7 +1660,7 @@ class _RecommendationProfileScreenState
   Future<void> _pickDateOfBirth() async {
     final generation = _loadGeneration;
     final expectedUserId = AuthState.instance.userId;
-    final current = DateTime.tryParse(_dobController.text.trim());
+    final current = _parseFlexibleDate(_dobController.text.trim());
     final firstDate = DateTime(1900);
     final lastDate = _today.subtract(const Duration(days: 1));
     final initial = current != null && current.year >= 1900
@@ -1624,13 +1679,8 @@ class _RecommendationProfileScreenState
     if (picked == null || !_isCurrentOperation(generation, expectedUserId)) {
       return;
     }
-    _dobController.text = _formatDate(picked);
+    _dobController.text = _formatDisplayDate(picked);
   }
-
-  String _formatDate(DateTime value) =>
-      '${value.year.toString().padLeft(4, '0')}-'
-      '${value.month.toString().padLeft(2, '0')}-'
-      '${value.day.toString().padLeft(2, '0')}';
 
   Future<void> _decline() async {
     if (_saving) return;

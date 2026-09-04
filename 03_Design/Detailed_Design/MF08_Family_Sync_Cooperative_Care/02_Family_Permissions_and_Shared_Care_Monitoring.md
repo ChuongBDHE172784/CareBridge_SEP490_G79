@@ -38,6 +38,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_02FamilyPermissionsandSharedCareMonitoring
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "FamilyMemberHomeScreen" as UIFamilyMemberHomeScreen <<UI>>
@@ -233,15 +234,14 @@ The lifecycle below belongs to **The effective shared-care access grant for one 
 hide empty description
 [*] --> NoAccess
 
-NoAccess --> MembershipOnly : inviteAccepted() [inviteStatus == ACCEPTED] / establishMembership()
-MembershipOnly --> NoAccess : membershipRevoked() / dropAllSharedAccess()
-MembershipOnly --> ScopedAccess : grantPermissionFlag() [caller is the group owner] / persistPermissionScope()
-ScopedAccess --> MembershipOnly : revokeAllPermissionFlags() / clearPermissionScope()
-ScopedAccess --> ScopedAccess : updatePermissionFlags() [caller is the group owner] / persistRevisedScope()
-ScopedAccess --> ConsentBlocked : ownerRevokesConsent() / suppressSharedCategory()
-ConsentBlocked --> ScopedAccess : ownerGrantsConsent() / restoreSharedCategory()
-ScopedAccess --> ScopedAccess : readSharedCareProjection() [flag covers the requested category] / composeScopedView()
-ConsentBlocked --> NoAccess : membershipRevoked() / dropAllSharedAccess()
+NoAccess --> MembershipOnly : inviteAccepted()\n[inviteStatus == ACCEPTED]\n/ establishMembership()
+MembershipOnly --> NoAccess : membershipRevoked()\n/ dropAllSharedAccess()
+MembershipOnly --> ScopedAccess : grantPermissionFlag()\n[caller is the group owner]\n/ persistPermissionScope()
+ScopedAccess --> MembershipOnly : revokeAllPermissionFlags()\n/ clearPermissionScope()
+ScopedAccess --> ScopedAccess : updatePermissionFlags()\n[caller is the group owner]\n/ persistRevisedScope()\n\nreadSharedCareProjection()\n[flag covers the requested category]\n/ composeScopedView()
+ScopedAccess --> ConsentBlocked : ownerRevokesConsent()\n/ suppressSharedCategory()
+ConsentBlocked --> ScopedAccess : ownerGrantsConsent()\n/ restoreSharedCategory()
+ConsentBlocked --> NoAccess : membershipRevoked()\n/ dropAllSharedAccess()
 
 MembershipOnly : inviteStatus = ACCEPTED, no PermissionFlag
 ScopedAccess : PermissionFlag covers a SharedDataCategory

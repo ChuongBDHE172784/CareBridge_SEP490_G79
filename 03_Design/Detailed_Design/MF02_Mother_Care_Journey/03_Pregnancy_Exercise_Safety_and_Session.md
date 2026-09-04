@@ -43,6 +43,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_03PregnancyExerciseSafetyandSession
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "ExerciseSessionScreen" as UIExerciseSessionScreen <<UI>>
@@ -317,15 +318,15 @@ The lifecycle below belongs to **ExerciseSession.sessionStatus**. Its states are
 hide empty description
 [*] --> NotStarted
 
-NotStarted --> InProgress : startSession() [pre-exercise safety check passed] / createSession(IN_PROGRESS)
-InProgress --> Paused : pauseSession() [sessionStatus == IN_PROGRESS] / setSessionStatus(PAUSED)
-Paused --> InProgress : resumeSession() [sessionStatus == PAUSED] / setSessionStatus(IN_PROGRESS)
-InProgress --> Completed : completeSession() / setSessionStatus(COMPLETED)
-Paused --> Completed : completeSession() / setSessionStatus(COMPLETED)
-InProgress --> Abandoned : abandonSession() / setSessionStatus(ABANDONED)
-Paused --> Abandoned : abandonSession() / setSessionStatus(ABANDONED)
-InProgress --> InProgress : submitPostureFrame() [sessionStatus == IN_PROGRESS] / analysePosture()
-Completed --> Completed : readSessionResult() [sessionStatus == COMPLETED] / returnStoredResult()
+NotStarted --> InProgress : startSession()\n[pre-exercise safety check passed]\n/ createSession(IN_PROGRESS)
+InProgress --> Paused : pauseSession()\n[sessionStatus == IN_PROGRESS]\n/ setSessionStatus(PAUSED)
+Paused --> InProgress : resumeSession()\n[sessionStatus == PAUSED]\n/ setSessionStatus(IN_PROGRESS)
+InProgress --> Completed : completeSession()\n/ setSessionStatus(COMPLETED)
+Paused --> Completed : completeSession()\n/ setSessionStatus(COMPLETED)
+InProgress --> Abandoned : abandonSession()\n/ setSessionStatus(ABANDONED)
+Paused --> Abandoned : abandonSession()\n/ setSessionStatus(ABANDONED)
+InProgress --> InProgress : submitPostureFrame()\n[sessionStatus == IN_PROGRESS]\n/ analysePosture()
+Completed --> Completed : readSessionResult()\n[sessionStatus == COMPLETED]\n/ returnStoredResult()
 
 InProgress : sessionStatus = IN_PROGRESS
 Paused : sessionStatus = PAUSED

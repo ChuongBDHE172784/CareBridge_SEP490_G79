@@ -35,6 +35,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_03FamilyCareTaskAssignmentandStatus
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "AssignedTasksScreen" as UIAssignedTasksScreen <<UI>>
@@ -157,17 +158,17 @@ The lifecycle below belongs to **CareTask.status, whose legal transitions are de
 hide empty description
 [*] --> Open
 
-Open --> InProgress : updateTaskStatus(IN_PROGRESS) [canTransitionTo allows it] / persistStatus()
-Open --> NeedsSupport : updateTaskStatus(NEEDS_SUPPORT) [canTransitionTo allows it] / persistStatus()
-Open --> Done : updateTaskStatus(DONE) [canTransitionTo allows it] / stampCompletion()
-InProgress --> NeedsSupport : updateTaskStatus(NEEDS_SUPPORT) [canTransitionTo allows it] / persistStatus()
-InProgress --> Done : updateTaskStatus(DONE) [canTransitionTo allows it] / stampCompletion()
-NeedsSupport --> InProgress : updateTaskStatus(IN_PROGRESS) [canTransitionTo allows it] / persistStatus()
-NeedsSupport --> Done : updateTaskStatus(DONE) [canTransitionTo allows it] / stampCompletion()
-Open --> Cancelled : cancelFamilyTask() [status is OPEN or IN_PROGRESS] / stampCancellation()
-InProgress --> Cancelled : cancelFamilyTask() [status is OPEN or IN_PROGRESS] / stampCancellation()
-Open --> Open : updateTaskStatus(OPEN) / acceptIdempotentRepeat()
-InProgress --> InProgress : updateTaskStatus(IN_PROGRESS) / acceptIdempotentRepeat()
+Open --> InProgress : updateTaskStatus(IN_PROGRESS)\n[canTransitionTo allows it]\n/ persistStatus()
+Open --> NeedsSupport : updateTaskStatus(NEEDS_SUPPORT)\n[canTransitionTo allows it]\n/ persistStatus()
+Open --> Done : updateTaskStatus(DONE)\n[canTransitionTo allows it]\n/ stampCompletion()
+InProgress --> NeedsSupport : updateTaskStatus(NEEDS_SUPPORT)\n[canTransitionTo allows it]\n/ persistStatus()
+InProgress --> Done : updateTaskStatus(DONE)\n[canTransitionTo allows it]\n/ stampCompletion()
+NeedsSupport --> InProgress : updateTaskStatus(IN_PROGRESS)\n[canTransitionTo allows it]\n/ persistStatus()
+NeedsSupport --> Done : updateTaskStatus(DONE)\n[canTransitionTo allows it]\n/ stampCompletion()
+Open --> Cancelled : cancelFamilyTask()\n[status is OPEN or IN_PROGRESS]\n/ stampCancellation()
+InProgress --> Cancelled : cancelFamilyTask()\n[status is OPEN or IN_PROGRESS]\n/ stampCancellation()
+Open --> Open : updateTaskStatus(OPEN)\n/ acceptIdempotentRepeat()
+InProgress --> InProgress : updateTaskStatus(IN_PROGRESS)\n/ acceptIdempotentRepeat()
 
 Open : CareTaskStatus = OPEN
 InProgress : CareTaskStatus = IN_PROGRESS

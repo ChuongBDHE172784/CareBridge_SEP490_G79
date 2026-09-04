@@ -33,6 +33,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_06EPDSScreeningHistoryandFamilyNotification
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "EpdsHistoryDetailScreen" as UIEpdsHistoryDetailScreen <<UI>>
@@ -151,16 +152,16 @@ The lifecycle below belongs to **The EPDS HealthMetricObservation.recordStatus, 
 hide empty description
 [*] --> NotScreened
 
-NotScreened --> Screened : submitEpdsQuestionnaire() [owning journey is ACTIVE] / persistTypedMetric(ACTIVE)
-Screened --> Deleted : deleteScreening() [caller owns the observation] / setRecordStatus(DELETED)
-Screened --> NotScreened : submitEpdsQuestionnaire() / supersedeWithNewerScreening()
+NotScreened --> Screened : submitEpdsQuestionnaire()\n[owning journey is ACTIVE]\n/ persistTypedMetric(ACTIVE)
+Screened --> Deleted : deleteScreening()\n[caller owns the observation]\n/ setRecordStatus(DELETED)
+Screened --> NotScreened : submitEpdsQuestionnaire()\n/ supersedeWithNewerScreening()
 
 state Screened {
   [*] --> BandEvaluated
-  BandEvaluated --> LowConcern : classifyScore() [score below concern threshold] / storeBand()
-  BandEvaluated --> ElevatedConcern : classifyScore() [score at or above concern threshold] / storeBand()
-  ElevatedConcern --> FamilyNotified : notifyFamily() [family notification consent granted] / dispatchNotificationRecord()
-  ElevatedConcern --> FamilyNotSharable : notifyFamily() [family notification consent absent] / suppressNotification()
+  BandEvaluated --> LowConcern : classifyScore()\n[score below concern threshold]\n/ storeBand()
+  BandEvaluated --> ElevatedConcern : classifyScore()\n[score at or above concern threshold]\n/ storeBand()
+  ElevatedConcern --> FamilyNotified : notifyFamily()\n[family notification consent granted]\n/ dispatchNotificationRecord()
+  ElevatedConcern --> FamilyNotSharable : notifyFamily()\n[family notification consent absent]\n/ suppressNotification()
 }
 
 Screened : recordStatus = ACTIVE

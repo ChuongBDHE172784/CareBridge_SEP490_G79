@@ -34,6 +34,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_01EmergencyMapFacilityRouteandNavigation
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "EmergencyMapScreen" as UIEmergencyMapScreen <<UI>>
@@ -129,10 +130,10 @@ The lifecycle below belongs to **EmergencyMapHandoff.status, with the consumer-v
 hide empty description
 [*] --> NoHandoff
 
-NoHandoff --> HandoffOpen : selectFacilityForNavigation() [facility is discoverable] / persistHandoff(OPEN)
-HandoffOpen --> HandoffAccepted : externalMapAppLaunched() / setStatus(ACCEPTED)
-HandoffOpen --> NoHandoff : startNewHandoff() / supersedePreviousHandoff()
-HandoffAccepted --> NoHandoff : startNewHandoff() / supersedePreviousHandoff()
+NoHandoff --> HandoffOpen : selectFacilityForNavigation()\n[facility is discoverable]\n/ persistHandoff(OPEN)
+HandoffOpen --> HandoffAccepted : externalMapAppLaunched()\n/ setStatus(ACCEPTED)
+HandoffOpen --> NoHandoff : startNewHandoff()\n/ supersedePreviousHandoff()
+HandoffAccepted --> NoHandoff : startNewHandoff()\n/ supersedePreviousHandoff()
 
 HandoffOpen : HandoffStatus = OPEN
 HandoffAccepted : HandoffStatus = ACCEPTED
