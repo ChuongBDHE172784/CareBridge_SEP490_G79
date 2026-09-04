@@ -30,29 +30,38 @@ public interface DirectConversationRepository extends JpaRepository<DirectConver
     void touchActivity(@Param("conversationId") UUID conversationId, @Param("timestamp") Instant timestamp);
 
     /**
-     * Đóng những cuộc trò chuyện mà buổi tư vấn sinh ra chúng đã hết giờ.
+     * Buổi tư vấn của cuộc trò chuyện này đã hết giờ chưa.
      *
-     * <p>Chat mở ra khi chuyên gia nhận yêu cầu, và trước đây không có gì đóng nó lại,
-     * nên một khung giờ đã trôi qua từ lâu vẫn nhắn tiếp được. Mẹ đặt khung giờ nào thì
-     * nói chuyện trong khung giờ đó; hết giờ, cuộc trò chuyện thành chỉ đọc.
+     * <p>Chat mở ra khi chuyên gia nhận yêu cầu và trước đây không có gì đóng lại, nên
+     * một khung giờ trôi qua từ lâu vẫn nhắn tiếp được. Mẹ đặt khung giờ nào thì nói
+     * chuyện trong khung giờ đó.
      *
-     * <p>Một câu lệnh thay vì vòng lặp, và chỉ chạm vào hàng còn ACTIVE nên chạy lại
-     * bao nhiêu lần cũng không đổi thêm gì. Yêu cầu không chọn khung giờ (preferred
-     * window để trống) không bị đóng — không có hạn thì không có gì để hết.
+     * <p>Suy ra lúc đọc chứ không lưu vào cột status: cột đó mang
+     * {@code CHECK (status = 'ACTIVE')} nên không nhận được giá trị nào khác, và nới
+     * constraint là đổi schema. Suy ra cũng không có độ trễ như quét định kỳ.
+     *
+     * <p>Yêu cầu không chọn khung giờ thì không bao giờ hết giờ — không có hạn thì
+     * không có gì để hết.
      */
-    @Modifying
-    @Transactional
     @Query(value = """
-            UPDATE direct_conversations c
-               SET status = 'CLOSED'
-             WHERE c.status = 'ACTIVE'
-               AND EXISTS (
-                   SELECT 1 FROM expert_consultation_requests r
-                    WHERE r.direct_conversation_id = c.conversation_id
-                      AND r.status = 'ACCEPTED'
-                      AND r.preferred_window_end IS NOT NULL
-                      AND r.preferred_window_end < CURRENT_TIMESTAMP)
+            SELECT EXISTS (
+                SELECT 1 FROM expert_consultation_requests r
+                 WHERE r.direct_conversation_id = :conversationId
+                   AND r.status = 'ACCEPTED'
+                   AND r.preferred_window_end IS NOT NULL
+                   AND r.preferred_window_end < CURRENT_TIMESTAMP)
             """, nativeQuery = true)
-    int closeConversationsPastConsultationWindow();
+    boolean isConsultationWindowEnded(@Param("conversationId") UUID conversationId);
+
+    /** Cùng câu hỏi cho cả danh sách hội thoại, một truy vấn thay vì hỏi từng cái. */
+    @Query(value = """
+            SELECT DISTINCT r.direct_conversation_id FROM expert_consultation_requests r
+             WHERE r.direct_conversation_id IN (:conversationIds)
+               AND r.status = 'ACCEPTED'
+               AND r.preferred_window_end IS NOT NULL
+               AND r.preferred_window_end < CURRENT_TIMESTAMP
+            """, nativeQuery = true)
+    List<UUID> findIdsWithEndedConsultationWindow(
+            @Param("conversationIds") java.util.Collection<UUID> conversationIds);
 
 }

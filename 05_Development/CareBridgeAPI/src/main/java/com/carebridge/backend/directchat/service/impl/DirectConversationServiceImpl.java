@@ -147,8 +147,13 @@ public class DirectConversationServiceImpl implements IDirectConversationService
         Map<UUID, LastMessageRow> lastMessages = aggregateRepository.fetchLastMessages(conversationIdList); // 4/5
         Map<UUID, Integer> unreadCounts = aggregateRepository.fetchUnreadCounts(conversationIdList, currentUserId); // 5/5
 
+        // Buổi tư vấn nào đã hết giờ — một truy vấn cho cả danh sách, không hỏi từng cái.
+        Set<UUID> endedConversationIds = Set.copyOf(
+                conversationRepository.findIdsWithEndedConsultationWindow(conversationIds));
+
         return conversations.stream()
-                .map(c -> toSummary(c, currentUserId, usersById, expertProfilesByUserId, lastMessages, unreadCounts))
+                .map(c -> toSummary(c, currentUserId, usersById, expertProfilesByUserId, lastMessages,
+                        unreadCounts, endedConversationIds))
                 .toList();
     }
 
@@ -158,7 +163,8 @@ public class DirectConversationServiceImpl implements IDirectConversationService
             Map<UUID, User> usersById,
             Map<UUID, ExpertProfile> expertProfilesByUserId,
             Map<UUID, LastMessageRow> lastMessages,
-            Map<UUID, Integer> unreadCounts) {
+            Map<UUID, Integer> unreadCounts,
+            Set<UUID> endedConversationIds) {
         boolean viewerIsMother = currentUserId.equals(conversation.getMotherUserId());
         boolean viewerIsExpert = currentUserId.equals(conversation.getExpertUserId());
         UUID counterpartUserId = viewerIsMother || !viewerIsExpert
@@ -185,7 +191,8 @@ public class DirectConversationServiceImpl implements IDirectConversationService
                 .lastMessagePreview(lastMessage != null ? truncate(lastMessage.messageBody()) : null)
                 .lastMessageAt(lastMessage != null ? lastMessage.createdAt() : null)
                 .unreadCount(unreadCount)
-                .conversationStatus(conversation.getStatus())
+                .conversationStatus(endedConversationIds.contains(conversation.getId())
+                        ? "CLOSED" : conversation.getStatus())
                 .build();
     }
 
@@ -267,7 +274,10 @@ public class DirectConversationServiceImpl implements IDirectConversationService
                 .conversationId(conversation.getId())
                 .motherUserId(conversation.getMotherUserId())
                 .expertUserId(conversation.getExpertUserId())
-                .status(conversation.getStatus())
+                // Cột status trong CSDL bị CHECK ràng buộc chỉ nhận 'ACTIVE', nên trạng
+                // thái đóng được suy ra ở đây thay vì lưu xuống.
+                .status(conversationRepository.isConsultationWindowEnded(conversation.getId())
+                        ? "CLOSED" : conversation.getStatus())
                 .createdAt(conversation.getCreatedAt())
                 .lastActivityAt(conversation.getLastActivityAt())
                 .expertAvailable(expertAvailable)

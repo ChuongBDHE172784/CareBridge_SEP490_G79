@@ -108,7 +108,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
         policy.assertConversationWritable(lockedExpert);
         // Het khung gio thi chi con doc lai duoc. Kiem o day chu khong chi an o giao
         // dien: client cu van goi thang endpoint nay duoc.
-        if (!"ACTIVE".equals(conversation.getStatus())) {
+        if (conversationRepository.isConsultationWindowEnded(conversationId)) {
             throw DirectChatException.consultationWindowEnded();
         }
 
