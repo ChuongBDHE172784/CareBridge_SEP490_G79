@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   activateChecklistVersion,
@@ -71,6 +71,12 @@ export default function ChecklistDetailPage() {
   const [submittingApproval, setSubmittingApproval] = useState(false);
   const [versionAction, setVersionAction] = useState<'clone' | 'review' | 'activate' | null>(null);
 
+  // Phê duyệt chỉ mở sau khi người thẩm định đã cuộn hết danh sách mục. Một cái mốc
+  // đặt cuối danh sách rẻ hơn đo scrollTop: đúng với mọi chiều cao màn hình, và
+  // checklist ngắn không cần cuộn thì mốc đã nằm trong khung nhìn nên mở luôn.
+  const [hasReadItems, setHasReadItems] = useState(false);
+  const itemsEndRef = useRef<HTMLDivElement | null>(null);
+
   // Review Decision State
   const [decisionModal, setDecisionModal] = useState<'APPROVE' | 'REJECT' | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -130,6 +136,7 @@ export default function ChecklistDetailPage() {
     setError('');
     try {
       const data = await fetchChecklistTemplateDetail(id);
+      setHasReadItems(false);
       setDetail(data);
     } catch {
       setError('Không tải được nội dung. Vui lòng thử lại.');
@@ -139,6 +146,23 @@ export default function ChecklistDetailPage() {
   }, [id]);
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
+
+  useEffect(() => {
+    if (!detail || hasReadItems) return;
+    const node = itemsEndRef.current;
+    if (!node) return;
+    // Trình duyệt không hỗ trợ thì mở nút — thà bỏ lỡ một lần nhắc còn hơn khoá
+    // cứng người thẩm định khỏi hàng đợi của họ.
+    if (typeof IntersectionObserver === 'undefined') {
+      setHasReadItems(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) setHasReadItems(true);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [detail, hasReadItems]);
 
   const submitForApproval = async () => {
     if (!detail) return;
@@ -439,6 +463,8 @@ export default function ChecklistDetailPage() {
                 ))}
               </ul>
             )}
+            {/* Mốc đánh dấu đã đọc hết — xem khối state ở đầu file. */}
+            <div ref={itemsEndRef} aria-hidden="true" className="h-px w-full" />
           </div>
         </div>
 
@@ -468,12 +494,21 @@ export default function ChecklistDetailPage() {
               <div className="flex flex-col gap-2.5">
                 <button
                   type="button"
+                  disabled={!hasReadItems}
+                  title={hasReadItems ? undefined : 'Đọc hết danh sách mục trước khi phê duyệt'}
                   onClick={() => handleOpenDecision('APPROVE')}
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-colors"
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  <span className="material-symbols-outlined text-base">
+                    {hasReadItems ? 'check_circle' : 'lock'}
+                  </span>
                   Phê duyệt & Xuất bản
                 </button>
+                {!hasReadItems && (
+                  <p className="text-[11px] text-outline text-center px-1 -mt-1">
+                    Cuộn hết danh sách mục để mở nút phê duyệt.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => handleOpenDecision('REJECT')}

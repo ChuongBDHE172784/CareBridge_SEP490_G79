@@ -335,11 +335,15 @@ export default function ExpertContentApprovalQueuePage() {
                           Xem
                         </button>
 
+                        {/* Duyet tu bang se ky duyet mot bai chua he mo ra doc, vi
+                            duong nay khong render than bai o buoc nao. No dua sang
+                            trang chi tiet, noi bai duoc hien ra va nut phe duyet chi
+                            mo sau khi doc het. */}
                         <button
                           type="button"
-                          onClick={() => handleOpenDecision(item, 'APPROVE')}
+                          onClick={() => navigate(getDetailPath(item))}
                           className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
-                          title="Phê duyệt xuất bản"
+                          title="Mở nội dung để đọc và phê duyệt"
                         >
                           <span className="material-symbols-outlined text-[16px]">check</span>
                           Duyệt
