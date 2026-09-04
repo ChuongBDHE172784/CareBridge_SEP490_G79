@@ -26,25 +26,30 @@ public interface ExpertAvailabilityRepository extends JpaRepository<ExpertAvaila
     Optional<ExpertAvailability> findTopByExpertProfileIdOrderByCreatedAtDesc(UUID expertProfileId);
 
     /**
-     * Ai trong nhóm này còn ít nhất một ca trống sắp tới. Danh sách chuyên gia dùng nó
-     * để gắn nhãn rảnh/bận cho cả trang bằng một truy vấn, thay vì hỏi từng người.
+     * Tình trạng lịch sắp tới của cả trang trong một truy vấn, thay vì hỏi từng người.
+     * Mỗi dòng là {@code [user_id, còn_ca_trống]} và chỉ những chuyên gia CÓ lịch phía
+     * trước mới xuất hiện — ai vắng mặt trong kết quả là chưa xếp lịch. Ba khả năng đó
+     * đúng bằng ba nhãn danh sách hiển thị.
      *
-     * <p>Cùng định nghĩa "còn trống" mà searchDirectory dùng để xếp thứ tự, nên nhãn
-     * hiển thị không bao giờ mâu thuẫn với thứ tự sắp xếp.
+     * <p>Dùng cùng định nghĩa "còn trống" mà searchDirectory dùng để xếp thứ tự, nên
+     * nhãn không bao giờ mâu thuẫn với vị trí.
      */
     @Query(value = """
-            SELECT DISTINCT a.user_id FROM expert_availability a
+            SELECT a.user_id,
+                   bool_or(a.status = 'AVAILABLE'
+                           AND a.start_at > CURRENT_TIMESTAMP
+                           AND NOT EXISTS (
+                               SELECT 1 FROM expert_consultation_requests r
+                               WHERE r.expert_profile_id = a.user_id
+                                 AND r.status IN ('PENDING', 'ACCEPTED')
+                                 AND r.preferred_window_start = a.start_at
+                                 AND r.preferred_window_end = a.end_at)) AS has_open_slot
+            FROM expert_availability a
             WHERE a.user_id IN (:expertProfileIds)
-              AND a.status = 'AVAILABLE'
-              AND a.start_at > CURRENT_TIMESTAMP
-              AND NOT EXISTS (
-                  SELECT 1 FROM expert_consultation_requests r
-                  WHERE r.expert_profile_id = a.user_id
-                    AND r.status IN ('PENDING', 'ACCEPTED')
-                    AND r.preferred_window_start = a.start_at
-                    AND r.preferred_window_end = a.end_at)
+              AND a.end_at > CURRENT_TIMESTAMP
+            GROUP BY a.user_id
             """, nativeQuery = true)
-    List<UUID> findExpertProfileIdsWithOpenSlot(
+    List<Object[]> findUpcomingScheduleState(
             @Param("expertProfileIds") java.util.Collection<UUID> expertProfileIds);
 
     /**

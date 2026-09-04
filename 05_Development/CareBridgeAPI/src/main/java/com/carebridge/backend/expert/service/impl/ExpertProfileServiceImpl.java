@@ -238,12 +238,25 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		Set<UUID> userIds = result.getContent().stream().map(ExpertProfile::getUserId).collect(Collectors.toSet());
 		Map<UUID, User> usersById = userIds.isEmpty() ? Map.of()
 				: userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> u));
-		// One query for the whole page rather than one per expert.
-		Set<UUID> expertIdsWithOpenSlot = userIds.isEmpty() ? Set.of()
-				: Set.copyOf(expertAvailabilityRepository.findExpertProfileIdsWithOpenSlot(userIds));
 		return expertProfileMapper.toDirectoryResponse(
 				result, usersById, expertProfileRepository.findApprovedSpecialties(),
-				expertIdsWithOpenSlot);
+				resolveAvailabilityStates(userIds));
+	}
+
+	/**
+	 * Ba trạng thái hiển thị của danh sách, tính một lần cho cả trang thay vì hỏi từng
+	 * chuyên gia. Truy vấn chỉ trả về người CÓ lịch phía trước, nên ai không có mặt
+	 * trong kết quả là chưa xếp lịch — đó cũng là mặc định phía mapper.
+	 */
+	private Map<UUID, String> resolveAvailabilityStates(Set<UUID> expertUserIds) {
+		if (expertUserIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<UUID, String> states = new java.util.HashMap<>();
+		for (Object[] row : expertAvailabilityRepository.findUpcomingScheduleState(expertUserIds)) {
+			states.put((UUID) row[0], Boolean.TRUE.equals(row[1]) ? "OPEN" : "BUSY");
+		}
+		return states;
 	}
 
 	private static String blankToNull(String s) {

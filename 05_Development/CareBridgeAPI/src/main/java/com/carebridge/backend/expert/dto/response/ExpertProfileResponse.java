@@ -34,11 +34,18 @@ public class ExpertProfileResponse {
 	private boolean contracted;
 	private boolean isConsultationEligible;
 	/**
-	 * True khi chuyên gia còn ít nhất một ca AVAILABLE trong tương lai. Danh sách vẫn
-	 * hiển thị người đã kín lịch — mẹ vẫn được đặt — nhưng gắn nhãn "đang bận" thay vì
-	 * để mẹ bấm vào rồi mới thấy không còn khung giờ nào.
+	 * Tình trạng nhận tư vấn, do backend quyết định để mọi client hiển thị giống nhau:
+	 *
+	 * <ul>
+	 *   <li>{@code OPEN} — còn ca trống chưa ai giữ chỗ.</li>
+	 *   <li>{@code BUSY} — có lịch phía trước nhưng đã kín.</li>
+	 *   <li>{@code NO_SCHEDULE} — chưa xếp lịch nào sắp tới.</li>
+	 * </ul>
+	 *
+	 * <p>Cả ba đều nằm trong danh sách; nhãn nói rõ khác biệt thay vì để mẹ bấm vào rồi
+	 * mới biết không đặt được.
 	 */
-	private boolean hasOpenSlot;
+	private String availabilityState;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;
 	private BigDecimal ratingAvg;
