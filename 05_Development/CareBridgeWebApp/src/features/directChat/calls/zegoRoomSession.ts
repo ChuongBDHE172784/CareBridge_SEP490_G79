@@ -4,6 +4,8 @@ import { uploadCallRecording } from '../services/directChatApi';
 interface ZegoRoomInstancePort {
   autoLeaveRoomWhenOnlySelfInRoom: boolean;
   joinRoom(config: Record<string, unknown>): void;
+  /** Rời phòng và ngắt thu. Tuỳ chọn vì bản giả trong test không cần dựng nó. */
+  hangUp?(): void;
   destroy(): void;
 }
 
@@ -253,6 +255,41 @@ export function mountZegoRoomSession({
       pdpaBanner.remove();
     }
     void stopRecordingAndUpload();
-    room?.destroy();
+    // hangUp() rời phòng và ngắt thu; destroy() chỉ huỷ thực thể. Trước đây chỉ gọi
+    // destroy(), nên camera của người thoát trước vẫn sáng đèn sau khi cúp máy.
+    // Người dùng có thể đã tự bấm rời trong giao diện của ZEGO, khi đó hangUp() lần
+    // hai ném lỗi — nuốt đi, vì destroy() bên dưới mới là phần bắt buộc phải chạy.
+    try {
+      room?.hangUp?.();
+    } catch {
+      /* đã rời phòng từ trước */
+    }
+    try {
+      room?.destroy();
+    } catch {
+      /* đã huỷ từ trước */
+    }
+    releaseContainerMediaTracks(container);
   };
+}
+
+/**
+ * Lưới cuối: dừng mọi track còn sống trong các thẻ media mà SDK đã gắn vào khung.
+ *
+ * <p>Đèn báo đang thu của trình duyệt chỉ tắt khi track dừng hẳn, và việc dọn dẹp
+ * ở trên phụ thuộc vào SDK làm đúng. Đây là thứ ta tự kiểm chứng được: nếu còn
+ * thẻ video nào giữ luồng thì dừng tại chỗ, thay vì tin rằng destroy() đã lo.
+ */
+function releaseContainerMediaTracks(container: HTMLElement) {
+  // Cùng lối phòng thủ mà phần treo biểu ngữ PDPA ở trên đang dùng: khung chứa có
+  // thể là một bản giả tối giản trong test, không dựng đủ mặt DOM.
+  if (typeof container?.querySelectorAll !== 'function') return;
+  const elements = container.querySelectorAll<HTMLMediaElement>('video, audio');
+  elements.forEach((element) => {
+    const source = element.srcObject;
+    if (source && typeof (source as MediaStream).getTracks === 'function') {
+      (source as MediaStream).getTracks().forEach((track) => track.stop());
+    }
+    element.srcObject = null;
+  });
 }
