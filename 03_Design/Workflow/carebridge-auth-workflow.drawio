@@ -1,0 +1,322 @@
+<mxfile host="app.diagrams.net" agent="CareBridge" scale="1" border="0">
+  <diagram id="CareBridge-Auth-Workflow" name="User-Auth-Workflow">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1860" pageHeight="940" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- POOL CONTAINER -->
+        <mxCell id="pool" parent="1" style="shape=table;html=1;whiteSpace=wrap;startSize=0;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=15;strokeColor=#b85450;fillColor=#dae8fc;fontColor=#1d4076;" value="CareBridge User Authentication &amp;amp; Registration Workflow (Mother &amp;amp; Family Member)" vertex="1">
+          <mxGeometry height="860" width="1800" x="30" y="30" as="geometry" />
+        </mxCell>
+
+        <!-- HEADER ROW -->
+        <mxCell id="row_header" parent="pool" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[];portConstraint=rotation;" value="" vertex="1">
+          <mxGeometry height="42" width="1800" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_user_header" parent="row_header" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#d32f2f;fillColor=#f8cecc;fontStyle=1;fontSize=13;fontColor=#b85450;align=center;" value="User (Mother / Family Member)" vertex="1">
+          <mxGeometry height="42" width="670" as="geometry">
+            <mxRectangle height="42" width="670" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_system_header" parent="row_header" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#82b366;fillColor=#d5e8d4;fontStyle=1;fontSize=13;fontColor=#274e13;align=center;" value="CareBridge System" vertex="1">
+          <mxGeometry height="42" width="650" x="670" as="geometry">
+            <mxRectangle height="42" width="650" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_provider_header" parent="row_header" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#6c8ebf;fillColor=#dae8fc;fontStyle=1;fontSize=13;fontColor=#1d4076;align=center;" value="External Services (Google / SMS / Email)" vertex="1">
+          <mxGeometry height="42" width="480" x="1320" as="geometry">
+            <mxRectangle height="42" width="480" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BODY ROW -->
+        <mxCell id="row_body" parent="pool" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[];portConstraint=rotation;" value="" vertex="1">
+          <mxGeometry height="818" width="1800" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_user" parent="row_body" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#e1d5e7;fillColor=#fff2f2;align=center;" value="" vertex="1">
+          <mxGeometry height="818" width="670" as="geometry">
+            <mxRectangle height="818" width="670" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_system" parent="row_body" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#e1d5e7;fillColor=#f2f9f2;align=center;" value="" vertex="1">
+          <mxGeometry height="818" width="650" x="670" as="geometry">
+            <mxRectangle height="818" width="650" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_provider" parent="row_body" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#e1d5e7;fillColor=#f2f6fc;align=center;" value="" vertex="1">
+          <mxGeometry height="818" width="480" x="1320" as="geometry">
+            <mxRectangle height="818" width="480" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 1. ENTRY -->
+        <mxCell id="node_start" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="371" y="95" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="1. Open CareBridge App" vertex="1">
+          <mxGeometry height="42" width="210" x="280" y="145" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_2" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="2. Already have an&lt;br&gt;account?" vertex="1">
+          <mxGeometry height="65" width="170" x="880" y="133.5" as="geometry" />
+        </mxCell>
+
+        <!-- REGISTRATION FLOW -->
+        <mxCell id="node_3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="3. Select Register Method&lt;br&gt;(Email / Phone / Google)" vertex="1">
+          <mxGeometry height="44" width="210" x="70" y="235" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="4. Submit Registration Details" vertex="1">
+          <mxGeometry height="44" width="210" x="70" y="315" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="5. Send Verification OTP /&lt;br&gt;Authorize Google Identity" vertex="1">
+          <mxGeometry height="44" width="220" x="1450" y="315" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="6. Enter OTP / Confirm Identity" vertex="1">
+          <mxGeometry height="44" width="210" x="70" y="395" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="7. Verify &amp;amp; Activate Account" vertex="1">
+          <mxGeometry height="44" width="210" x="860" y="395" as="geometry" />
+        </mxCell>
+
+        <!-- ROLE ONBOARDING -->
+        <mxCell id="node_8" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="8. Select Role?" vertex="1">
+          <mxGeometry height="65" width="150" x="310" y="480" as="geometry" />
+        </mxCell>
+
+        <!-- MOTHER BRANCH -->
+        <mxCell id="node_9a" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="9A. Fill Health &amp;amp; Stage Survey&lt;br&gt;(Preconception, Pregnancy, Postpartum)" vertex="1">
+          <mxGeometry height="46" width="220" x="65" y="580" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_10a" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="10A. Generate Personalized Care&lt;br&gt;Journey &amp;amp; Daily Plan" vertex="1">
+          <mxGeometry height="46" width="210" x="740" y="580" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_11a" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="11A. Access Mother Dashboard&lt;br&gt;(Daily Care Plan, Reminders, Fall SOS)" vertex="1">
+          <mxGeometry height="46" width="220" x="65" y="665" as="geometry" />
+        </mxCell>
+
+        <!-- FAMILY BRANCH -->
+        <mxCell id="node_9b" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="9B. Enter Care Group Code /&lt;br&gt;Scan QR Code" vertex="1">
+          <mxGeometry height="46" width="210" x="410" y="580" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_10b" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="10B. Link to Mother's Care Group" vertex="1">
+          <mxGeometry height="46" width="210" x="1000" y="580" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_11b" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="11B. Access Family Dashboard&lt;br&gt;(Shared Monitoring &amp;amp; SOS Alerts)" vertex="1">
+          <mxGeometry height="46" width="220" x="405" y="665" as="geometry" />
+        </mxCell>
+
+        <!-- LOGIN FLOW -->
+        <mxCell id="node_12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="12. Select Login Method&lt;br&gt;(Password / Phone SMS / Google)" vertex="1">
+          <mxGeometry height="44" width="210" x="410" y="235" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="13. Enter Login Credentials" vertex="1">
+          <mxGeometry height="44" width="210" x="410" y="315" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="14. Authenticate &amp;amp; Check Security&lt;br&gt;(Credentials, Rate Limit, Lockout)" vertex="1">
+          <mxGeometry height="44" width="210" x="860" y="315" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_15" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="15. Valid&lt;br&gt;Credentials?" vertex="1">
+          <mxGeometry height="65" width="140" x="1130" y="304.5" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_16" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="16. Profile &amp;amp; Role&lt;br&gt;Completed?" vertex="1">
+          <mxGeometry height="65" width="150" x="1125" y="480" as="geometry" />
+        </mxCell>
+
+        <!-- END STATES -->
+        <mxCell id="node_end_mother" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="161" y="745" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_end_family" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="501" y="745" as="geometry" />
+        </mxCell>
+
+        <!-- ================= EDGES ================= -->
+        <mxCell id="e1" edge="1" parent="1" source="node_start" target="node_1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e2" edge="1" parent="1" source="node_1" target="node_2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Decision: Already have account? No -> Step 3 (Register) -->
+        <mxCell id="e2_no" edge="1" parent="1" source="node_2" target="node_3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="No (Chưa có)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="965" y="210" />
+              <mxPoint x="175" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Decision: Already have account? Yes -> Step 12 (Login) -->
+        <mxCell id="e2_yes" edge="1" parent="1" source="node_2" target="node_12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="Yes (Đã có)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="965" y="210" />
+              <mxPoint x="515" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Registration sequence -->
+        <mxCell id="e3" edge="1" parent="1" source="node_3" target="node_4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e4" edge="1" parent="1" source="node_4" target="node_5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e5" edge="1" parent="1" source="node_5" target="node_6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;" value="Send Code / Token">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1560" y="380" />
+              <mxPoint x="175" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e6" edge="1" parent="1" source="node_6" target="node_7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e7" edge="1" parent="1" source="node_7" target="node_8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="965" y="455" />
+              <mxPoint x="385" y="455" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Role Decision: Mother vs Family -->
+        <mxCell id="e8_mother" edge="1" parent="1" source="node_8" target="node_9a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="Mother (Mẹ)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="175" y="512.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e8_family" edge="1" parent="1" source="node_8" target="node_9b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="Family Member (Người nhà)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="515" y="512.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Mother Plan Path -->
+        <mxCell id="e9a" edge="1" parent="1" source="node_9a" target="node_10a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e10a" edge="1" parent="1" source="node_10a" target="node_11a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="845" y="650" />
+              <mxPoint x="175" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e11a" edge="1" parent="1" source="node_11a" target="node_end_mother" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Family Group Path -->
+        <mxCell id="e9b" edge="1" parent="1" source="node_9b" target="node_10b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e10b" edge="1" parent="1" source="node_10b" target="node_11b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1105" y="650" />
+              <mxPoint x="515" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e11b" edge="1" parent="1" source="node_11b" target="node_end_family" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Login Path -->
+        <mxCell id="e12" edge="1" parent="1" source="node_12" target="node_13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e13" edge="1" parent="1" source="node_13" target="node_14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e14" edge="1" parent="1" source="node_14" target="node_15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Valid Credentials? No -> return to 13 -->
+        <mxCell id="e15_no" edge="1" parent="1" source="node_15" target="node_13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" value="No (Invalid / Locked)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="290" />
+              <mxPoint x="515" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Valid Credentials? Yes -> 16. Profile Completed? -->
+        <mxCell id="e15_yes" edge="1" parent="1" source="node_15" target="node_16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Profile Completed? No -> Role Selection (8) -->
+        <mxCell id="e16_no" edge="1" parent="1" source="node_16" target="node_8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="No (Chưa xong)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="512.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Profile Completed? Yes -> Mother or Family Dashboard -->
+        <mxCell id="e16_mother" edge="1" parent="1" source="node_16" target="node_11a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="Yes (Mother)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260" y="512.5" />
+              <mxPoint x="1260" y="695" />
+              <mxPoint x="285" y="695" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e16_family" edge="1" parent="1" source="node_16" target="node_11b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" value="Yes (Family)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1230" y="512.5" />
+              <mxPoint x="1230" y="680" />
+              <mxPoint x="625" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
