@@ -136,8 +136,6 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
                 _buildDatePicker(),
                 const SizedBox(height: 16),
                 _buildNoteField(),
-                const SizedBox(height: 16),
-                _buildAdvisorCTA(),
                 const SizedBox(height: 24),
                 _buildActionButtons(),
               ],
@@ -386,68 +384,6 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAdvisorCTA() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _primaryContainer.withAlpha(40),
-            _primaryContainer.withAlpha(15),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _primaryContainer.withAlpha(60), width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.support_agent_rounded,
-              color: _primaryContainer,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mẹ có lo lắng gì không?',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _onSurface,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Tư vấn chuyên gia về sự phát triển của bé',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 11,
-                    color: _onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: _primary),
         ],
       ),
     );

@@ -20,5 +20,6 @@
     "dart.showTodos": false,
     "files.watcherExclude": {
         "**/05_Development/Gadgetbridge/**": true
-    }
+    },
+    "python.defaultInterpreterPath": "${workspaceFolder}/05_Development/CareBridgeAITriageService/venv/bin/python"
 }

@@ -4,9 +4,17 @@ from __future__ import annotations
 
 import logging
 from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import AsyncSession
 
 from app.config import MEDICAL_DISCLAIMER
+from app.constants.vital_thresholds import (
+    BP_STAGE1_DIASTOLIC,
+    BP_STAGE1_SYSTOLIC,
+    EPDS_MILD_RISK_DEPRESSION_THRESHOLD,
+    FETAL_MIN_KICKS_2H_THRESHOLD,
+    GLUCOSE_POST_MEAL_1H_WARNING_THRESHOLD,
+    TEMP_CRITICAL_FEVER_PREGNANCY,
+)
 from app.core.gemini import get_gemini_client
 from app.models.schemas import (
     HealthMetricsLogRequest,
@@ -332,15 +340,17 @@ class RagChatService:
         """Evaluates numerical clinical thresholds from structured logged metrics (ACOG/WHO Standards)."""
         if not metrics:
             return False
-        if (metrics.systolic_bp and metrics.systolic_bp >= 140) or (metrics.diastolic_bp and metrics.diastolic_bp >= 90):
+        if (metrics.systolic_bp and metrics.systolic_bp >= BP_STAGE1_SYSTOLIC) or (
+            metrics.diastolic_bp and metrics.diastolic_bp >= BP_STAGE1_DIASTOLIC
+        ):
             return True
-        if metrics.temperature and metrics.temperature >= 38.5:
+        if metrics.temperature and metrics.temperature >= TEMP_CRITICAL_FEVER_PREGNANCY:
             return True
-        if metrics.blood_glucose and metrics.blood_glucose >= 7.8:
+        if metrics.blood_glucose and metrics.blood_glucose >= GLUCOSE_POST_MEAL_1H_WARNING_THRESHOLD:
             return True
-        if metrics.epds_score and metrics.epds_score >= 10:
+        if metrics.epds_score and metrics.epds_score >= EPDS_MILD_RISK_DEPRESSION_THRESHOLD:
             return True
-        if metrics.fetal_movements_count is not None and metrics.fetal_movements_count < 4:
+        if metrics.fetal_movements_count is not None and metrics.fetal_movements_count < FETAL_MIN_KICKS_2H_THRESHOLD:
             return True
         return False
 
