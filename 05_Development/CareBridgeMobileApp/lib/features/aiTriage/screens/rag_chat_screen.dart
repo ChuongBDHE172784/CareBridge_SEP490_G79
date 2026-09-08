@@ -2459,10 +2459,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
     final surveyProfile = (rawSurveyProfile is Map)
         ? Map<String, dynamic>.from(rawSurveyProfile)
         : null;
-    final rawSurveyDerived = contextData['surveyDerived'];
-    final surveyDerived = (rawSurveyDerived is Map)
-        ? Map<String, dynamic>.from(rawSurveyDerived)
-        : null;
+    // surveyDerived was previously used for survey BMI category
     final surveyStatus = contextData['surveyStatus'] as String?;
     String formatSurveyLabel(String raw) {
       switch (raw) {
@@ -2488,6 +2485,20 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
           return 'Bệnh tự miễn';
         case 'ANEMIA':
           return 'Thiếu máu';
+        case 'EPILEPSY':
+          return 'Động kinh';
+        case 'LUPUS':
+          return 'Lupus ban đỏ';
+        case 'PCOS':
+          return 'Hội chứng buồng trứng đa nang (PCOS)';
+        case 'ENDOMETRIOSIS':
+          return 'Lạc nội mạc tử cung';
+        case 'INFERTILITY':
+          return 'Hiếm muộn';
+        case 'MENTAL_HEALTH_CONDITION':
+          return 'Tình trạng sức khỏe tâm thần';
+        case 'OTHER_CLINICIAN_CONFIRMED':
+          return 'Bệnh lý khác đã xác nhận';
         case 'PRIOR_PRETERM_BIRTH':
           return 'Tiền sử sinh non';
         case 'PRIOR_STILLBIRTH':
@@ -2496,6 +2507,45 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
           return 'Tiền sử sảy thai nhiều lần';
         case 'PRIOR_ECTOPIC_PREGNANCY':
           return 'Tiền sử thai ngoài tử cung';
+        case 'PRIOR_LIVE_BIRTH':
+          return 'Từng sinh con sống';
+        case 'PRIOR_MULTIPLE_PREGNANCY':
+          return 'Từng mang đa thai';
+        case 'NO_PRIOR_PREGNANCY':
+          return 'Chưa từng mang thai';
+        case 'OTHER_HISTORY':
+          return 'Tiền sử khác';
+        // Age groups
+        case 'UNDER_18':
+        case 'AGE_UNDER_18':
+        case '<18':
+          return 'Dưới 18 tuổi';
+        case '18_34':
+        case 'AGE_18_34':
+        case '18-34':
+          return '18 - 34 tuổi';
+        case '35_OR_OLDER':
+        case 'AGE_35_OR_OLDER':
+        case '>=35':
+        case '35+':
+          return 'Từ 35 tuổi trở lên';
+        // STI
+        case 'HIV':
+          return 'HIV';
+        case 'SYPHILIS':
+          return 'Giang mai';
+        case 'HEPATITIS_B':
+          return 'Viêm gan B';
+        case 'HEPATITIS_C':
+          return 'Viêm gan C';
+        case 'CHLAMYDIA':
+          return 'Chlamydia';
+        case 'GONORRHEA':
+          return 'Bệnh lậu';
+        case 'HERPES':
+          return 'Herpes sinh dục';
+        case 'HPV':
+          return 'Virus HPV';
         default:
           return raw;
       }
@@ -2568,7 +2618,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       );
     }
 
-    final bmiItems = <String>[];
+    final ageItems = <String>[];
     final reproItems = <String>[];
     final conditionItems = <String>[];
     final lifestyleItems = <String>[];
@@ -2578,33 +2628,14 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
     final sexualHealthItems = <String>[];
 
     if (surveyProfile != null) {
-      // 1. BMI & Age
-      final bmi = surveyProfile['bmi'] as Map?;
+      // 1. Age (Bỏ qua chiều cao, cân nặng, BMI từ survey)
       final age = surveyProfile['age'] as Map?;
-      if (bmi != null) {
-        if (bmi['heightCm'] != null) {
-          bmiItems.add('Chiều cao: ${bmi['heightCm']} cm');
-        }
-        if (bmi['weightKg'] != null) {
-          final ctx = bmi['weightContext'] == 'PRE_PREGNANCY'
-              ? ' (Trước mang thai)'
-              : '';
-          bmiItems.add('Cân nặng: ${bmi['weightKg']} kg$ctx');
-        }
-        final cat = surveyDerived?['bmiCategory'] ?? bmi['bmiCategory'];
-        if (cat != null) {
-          bmiItems.add('Thể trạng: ${translateCode(cat.toString())}');
-        }
-        if (bmi['calculatedBmi'] != null) {
-          bmiItems.add('BMI: ${bmi['calculatedBmi']}');
-        }
-      }
       if (age != null) {
         final ageGroup = age['ageGroup']?.toString();
         if (ageGroup != null) {
-          bmiItems.add('Nhóm tuổi: ${translateCode(ageGroup)}');
+          ageItems.add('Nhóm tuổi: ${translateCode(ageGroup)}');
         } else if (age['dateOfBirth'] != null) {
-          bmiItems.add('Ngày sinh: ${age['dateOfBirth']}');
+          ageItems.add('Ngày sinh: ${age['dateOfBirth']}');
         }
       }
 
@@ -2692,13 +2723,14 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
         }
         if (vaccination['answers'] is List) {
           for (final a in vaccination['answers']) {
-            if (a is Map &&
-                a['code'] != null &&
-                a['status'] != null &&
-                a['state'] == 'KNOWN') {
-              vaccinationItems.add(
-                '${translateCode(a['code'].toString())}: ${translateCode(a['status'].toString())}',
-              );
+            if (a is Map && a['state'] == 'KNOWN') {
+              final code = a['code']?.toString();
+              final status = (a['value'] ?? a['status'])?.toString();
+              if (code != null && status != null) {
+                vaccinationItems.add(
+                  '${translateCode(code)}: ${translateCode(status)}',
+                );
+              }
             }
           }
         }
@@ -2709,7 +2741,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       if (meds?['conditionCodes'] is List) {
         for (final m in meds!['conditionCodes']) {
           final s = m.toString();
-          if (s != 'NONE_KNOWN_MEDICATION') {
+          if (s != 'NONE_KNOWN_MEDICATION' && s != 'NONE') {
             medicationItems.add(translateCode(s));
           }
         }
@@ -2720,7 +2752,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       if (sexHealth?['conditionCodes'] is List) {
         for (final s in sexHealth!['conditionCodes']) {
           final code = s.toString();
-          if (code != 'NO_CURRENT_INFORMATION_NEED') {
+          if (code != 'NO_CURRENT_INFORMATION_NEED' && code != 'NONE') {
             sexualHealthItems.add(translateCode(code));
           }
         }
@@ -2729,9 +2761,18 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       if (sti != null &&
           sti['status'] != null &&
           sti['status'] != 'NO_KNOWN_HISTORY') {
-        sexualHealthItems.add(
-          'STIs: ${translateCode(sti['status'].toString())}',
-        );
+        final stiStatusText = translateCode(sti['status'].toString());
+        final infections = (sti['infectionCodes'] as List?)
+            ?.whereType<String>()
+            .map(translateCode)
+            .toList();
+        if (infections != null && infections.isNotEmpty) {
+          sexualHealthItems.add(
+            'STIs: $stiStatusText (${infections.join(', ')})',
+          );
+        } else {
+          sexualHealthItems.add('STIs: $stiStatusText');
+        }
       }
     }
 
@@ -2743,7 +2784,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
     }
 
     final hasAnySurveyData =
-        bmiItems.isNotEmpty ||
+        ageItems.isNotEmpty ||
         reproItems.isNotEmpty ||
         conditionItems.isNotEmpty ||
         lifestyleItems.isNotEmpty ||
@@ -3092,9 +3133,9 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                   const SizedBox(height: 8),
                   if (hasAnySurveyData) ...[
                     buildCategoryBlock(
-                      icon: Icons.accessibility_new_rounded,
-                      title: 'Thể trạng & Chỉ số nhân trắc',
-                      items: bmiItems,
+                      icon: Icons.person_outline_rounded,
+                      title: 'Thông tin độ tuổi',
+                      items: ageItems,
                       badgeBg: const Color(0xFFF3E5F5),
                       badgeBorder: const Color(0xFFE1BEE7),
                       badgeText: const Color(0xFF6A1B9A),

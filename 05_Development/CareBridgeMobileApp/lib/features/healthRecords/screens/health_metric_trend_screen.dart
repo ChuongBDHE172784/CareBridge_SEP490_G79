@@ -2215,10 +2215,6 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                     vitalsMap['Huyết áp'] =
                         '${_latestBp!.valueNumeric.round()}/${_latestBp!.valueSecondary?.round() ?? 0} mmHg';
                   }
-                  if (_latestBmi != null) {
-                    vitalsMap['BMI'] =
-                        '${_latestBmi!.valueNumeric.toStringAsFixed(1)} kg/m²';
-                  }
                   if (_latestGlucose != null) {
                     vitalsMap['Đường huyết'] =
                         '${_latestGlucose!.valueNumeric} mg/dL';
@@ -2242,6 +2238,13 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                   if (_latestTemp != null) {
                     vitalsMap['Thân nhiệt'] =
                         '${_latestTemp!.valueNumeric.toStringAsFixed(1)} °C';
+                  }
+
+                  // Loại bỏ thông tin BMI/chiều cao/cân nặng từ surveyProfile khi gửi sang AI Nurse
+                  Map<String, dynamic>? cleanSurveyProfile;
+                  if (_surveyProfile != null) {
+                    cleanSurveyProfile = Map<String, dynamic>.from(_surveyProfile!)
+                      ..remove('bmi');
                   }
 
                   final isPrePregnancy = _journeyType == 'PRE_PREGNANCY';
@@ -2269,7 +2272,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
                             : (isPostpartum ? 'POSTPARTUM' : 'PREGNANCY'),
                         'riskFactors': reasons,
                         'latestVitals': vitalsMap,
-                        'surveyProfile': _surveyProfile,
+                        'surveyProfile': cleanSurveyProfile,
                         'surveyDerived': _surveyDerived,
                         'surveyStatus': _surveyStatus,
                         'surveyRiskConditions': _surveyRiskConditions,

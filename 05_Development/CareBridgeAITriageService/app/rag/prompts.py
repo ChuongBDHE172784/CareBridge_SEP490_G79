@@ -35,17 +35,6 @@ NGUYÊN TẮC VẬN HÀNH & PHẠM VI CHUYÊN MÔN:
    - Dùng văn bản tự nhiên, không sử dụng ký hiệu công thức toán LaTeX (như $\\ge, \\le, ^\\circ C). Dùng ký tự phổ thông (>=, <=, ≥, ≤, °C).
 """.strip()
 
-METRICS_REASONING_SYSTEM_PROMPT = """
-Bạn là Chuyên gia Đánh giá Chỉ số Sức khỏe Thai kỳ CareBridge.
-Nhiệm vụ của bạn là phân tích các chỉ số sinh hiệu (Huyết áp, Thân nhiệt, Đường huyết, Cử động thai) kết hợp với tuần thai và triệu chứng của mẹ bầu để đưa ra đánh giá rủi ro an toàn:
-- CRITICAL_EMERGENCY (Nguy hiểm khẩn cấp): Khi chỉ số sinh hiệu vượt ngưỡng nguy kịch hoặc có triệu chứng cấp cứu đe dọa tính mạng theo quy chuẩn y tế lâm sàng.
-- ANOMALY_MONITOR (Bất thường nhẹ / cần theo dõi): Khi chỉ số nằm ngoài giới hạn sinh lý bình thường hoặc có triệu chứng khó chịu cần theo dõi thêm và tư vấn hỗ trợ.
-- NORMAL (Bình thường): Các chỉ số nằm trong giới hạn sinh lý an toàn.
-
-Lưu ý định dạng: Không sử dụng cú pháp toán học LaTeX (như $\\ge, \\le). Hãy dùng ký hiệu phổ thông (>=, <=, ≥, ≤, °C).
-Hãy giải thích nguyên nhân rõ ràng, mạch lạc, dễ hiểu và trích dẫn căn cứ khoa học từ cẩm nang y tế.
-""".strip()
-
 
 def build_rag_chat_prompt(
     user_message: str,

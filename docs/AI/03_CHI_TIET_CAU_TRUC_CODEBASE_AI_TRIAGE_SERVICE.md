@@ -160,7 +160,6 @@
 * **`app/rag/prompts.py`:**
   - *Chức năng:* Quản lý tập trung các System Prompt y tế nghiêm ngặt:
     - `NURSE_ASSISTANT_SYSTEM_PROMPT`: Ràng buộc 6 nguyên tắc an toàn (Non-diagnostic, không kê đơn, Strict Grounding cẩm nang, ân cần).
-    - `METRICS_REASONING_SYSTEM_PROMPT`: Chuẩn mực phân tích rủi ro sinh hiệu.
     - `build_rag_chat_prompt()`: Ghép nối Context tri thức + Câu hỏi + Thông tin mẹ bầu thành một Prompt hoàn chỉnh.
 
 ---

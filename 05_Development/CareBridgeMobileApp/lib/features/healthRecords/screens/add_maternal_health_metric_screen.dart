@@ -85,7 +85,6 @@ class _AddMaternalHealthMetricScreenState
   String? _surveyStatus;
   List<String> _surveyRiskConditions = [];
   MetricDataPoint? _latestBp;
-  MetricDataPoint? _latestBmi;
   MetricDataPoint? _latestGlucose;
   MetricDataPoint? _latestKicks;
   MetricDataPoint? _latestHydration;
@@ -298,9 +297,6 @@ class _AddMaternalHealthMetricScreenState
         setState(() {
           if (results[0].dataPoints.isNotEmpty) {
             _latestBp = results[0].dataPoints.last;
-          }
-          if (results[1].dataPoints.isNotEmpty) {
-            _latestBmi = results[1].dataPoints.last;
           }
           if (results[2].dataPoints.isNotEmpty) {
             _latestGlucose = results[2].dataPoints.last;
@@ -1381,9 +1377,6 @@ class _AddMaternalHealthMetricScreenState
                 if (_latestBp != null) {
                   vitalsMap['Huyết áp'] = '${_latestBp!.valueDisplay} mmHg';
                 }
-                if (_latestBmi != null) {
-                  vitalsMap['BMI'] = _latestBmi!.valueDisplay;
-                }
                 if (_latestGlucose != null) {
                   vitalsMap['Đường huyết'] =
                       '${_latestGlucose!.valueDisplay} mmol/L';
@@ -1408,6 +1401,13 @@ class _AddMaternalHealthMetricScreenState
                   vitalsMap['Thân nhiệt'] = '${_latestTemp!.valueDisplay} °C';
                 }
 
+                // Loại bỏ thông tin BMI/chiều cao/cân nặng từ surveyProfile khi gửi sang AI Nurse
+                Map<String, dynamic>? cleanSurveyProfile;
+                if (_surveyProfile != null) {
+                  cleanSurveyProfile = Map<String, dynamic>.from(_surveyProfile!)
+                    ..remove('bmi');
+                }
+
                 context.push(
                   '/rag/chat',
                   extra: {
@@ -1425,7 +1425,7 @@ class _AddMaternalHealthMetricScreenState
                                 : 'PREGNANCY'),
                       'riskFactors': riskFactors,
                       'latestVitals': vitalsMap,
-                      'surveyProfile': _surveyProfile,
+                      'surveyProfile': cleanSurveyProfile,
                       'surveyDerived': _surveyDerived,
                       'surveyStatus': _surveyStatus,
                       'surveyRiskConditions': _surveyRiskConditions,
