@@ -19,6 +19,7 @@ type TimeRangeFilterType = 'ALL' | '7D' | '14D' | '30D' | '90D';
 export interface MotherSummaryCardData {
   motherUserId: string;
   conversationId: string;
+  conversationStatus?: string;
   motherName: string;
   motherAvatar?: string;
   motherPhone?: string;
@@ -70,6 +71,8 @@ export default function ExpertSharedRecordsPage() {
     completed: boolean;
     doctorNote: string;
     sourceUrl?: string;
+    replacesText?: string;
+    supportFunction?: string;
     conversationId: string;
     checklistData: ChecklistShareData;
     motherName: string;
@@ -139,9 +142,14 @@ export default function ExpertSharedRecordsPage() {
 
       setDeleteConfirmModal(null);
       loadData(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete checklist item', err);
-      showToast('Có lỗi xảy ra khi xóa việc cần làm', 'error');
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.error;
+      if (err?.response?.status === 409) {
+        showToast('Buổi tư vấn đã kết thúc khung giờ, không thể xóa công việc.', 'error');
+      } else {
+        showToast(serverMsg || 'Có lỗi xảy ra khi xóa việc cần làm', 'error');
+      }
     } finally {
       setSavingTask(false);
     }
@@ -170,8 +178,14 @@ export default function ExpertSharedRecordsPage() {
         setSelectedChecklistModal((prev) => (prev ? { ...prev, data: updatedData } : null));
       }
       loadData(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to toggle task status', err);
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.error;
+      if (err?.response?.status === 409) {
+        showToast('Buổi tư vấn đã kết thúc khung giờ, không thể cập nhật việc cần làm.', 'error');
+      } else {
+        showToast(serverMsg || 'Không thể cập nhật trạng thái công việc', 'error');
+      }
     }
   };
 
@@ -216,6 +230,7 @@ export default function ExpertSharedRecordsPage() {
         existing = {
           motherUserId: record.motherUserId,
           conversationId: record.conversationId,
+          conversationStatus: record.conversationStatus,
           motherName: record.motherName,
           motherAvatar: record.motherAvatar,
           motherPhone: record.motherPhone,
@@ -232,6 +247,9 @@ export default function ExpertSharedRecordsPage() {
       if (new Date(record.createdAt).getTime() > new Date(existing.lastActiveAt).getTime()) {
         existing.lastActiveAt = record.createdAt;
         existing.conversationId = record.conversationId;
+        if (record.conversationStatus) {
+          existing.conversationStatus = record.conversationStatus;
+        }
       }
 
       // Update gestational week
@@ -609,6 +627,12 @@ export default function ExpertSharedRecordsPage() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                      {card.conversationStatus === 'CLOSED' && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant border border-outline-variant/60">
+                          <span className="material-symbols-outlined text-xs">lock</span>
+                          Phiên tư vấn đã kết thúc
+                        </span>
+                      )}
                       {getStatusBadge(card.overallAlertLevel)}
                     </div>
                   </div>
@@ -950,6 +974,8 @@ export default function ExpertSharedRecordsPage() {
                                                   completed: item.completed,
                                                   doctorNote: item.doctorNote || '',
                                                   sourceUrl: item.sourceUrl || '',
+                                                  replacesText: item.replacesText,
+                                                  supportFunction: item.supportFunction,
                                                   conversationId: card.conversationId,
                                                   checklistData,
                                                   motherName: card.motherName,
@@ -1466,6 +1492,8 @@ export default function ExpertSharedRecordsPage() {
                                   completed: item.completed,
                                   doctorNote: item.doctorNote || '',
                                   sourceUrl: item.sourceUrl || '',
+                                  replacesText: item.replacesText,
+                                  supportFunction: item.supportFunction,
                                   conversationId: selectedChecklistModal.conversationId,
                                   checklistData: selectedChecklistModal.data,
                                   motherName: selectedChecklistModal.motherName,
@@ -1612,6 +1640,8 @@ export default function ExpertSharedRecordsPage() {
                                     completed: item.completed,
                                     doctorNote: item.doctorNote || '',
                                     sourceUrl: item.sourceUrl || '',
+                                    replacesText: item.replacesText,
+                                    supportFunction: item.supportFunction,
                                     conversationId: selectedChecklistModal.conversationId,
                                     checklistData: selectedChecklistModal.data,
                                     motherName: selectedChecklistModal.motherName,
@@ -1757,6 +1787,8 @@ export default function ExpertSharedRecordsPage() {
                                     completed: item.completed,
                                     doctorNote: item.doctorNote || '',
                                     sourceUrl: item.sourceUrl || '',
+                                    replacesText: item.replacesText,
+                                    supportFunction: item.supportFunction,
                                     conversationId: selectedChecklistModal.conversationId,
                                     checklistData: selectedChecklistModal.data,
                                     motherName: selectedChecklistModal.motherName,
@@ -1854,6 +1886,8 @@ export default function ExpertSharedRecordsPage() {
                   timeLabel: taskFormModal.timeLabel,
                   doctorNote: taskFormModal.doctorNote,
                   sourceUrl: taskFormModal.sourceUrl,
+                  replacesText: taskFormModal.replacesText,
+                  supportFunction: taskFormModal.supportFunction,
                 }
               : undefined
           }

@@ -39,6 +39,7 @@ export interface ChecklistItemShareData {
   origin?: 'SYSTEM' | 'USER' | 'EXPERT';
   createdBy?: 'SYSTEM' | 'USER' | 'EXPERT';
   isExpertCustom?: boolean;
+  replacesText?: string;
   doctorNote?: string;
   sourceUrl?: string;
   supportFunction?: string;
@@ -53,6 +54,7 @@ export interface ChecklistShareData {
   totalCount: number;
   progressPercent: number;
   note?: string;
+  removedItems?: string[];
   historyItems?: ChecklistItemShareData[];
   currentItems?: ChecklistItemShareData[];
   futureItems?: ChecklistItemShareData[];
@@ -62,6 +64,7 @@ export interface ChecklistShareData {
 export interface SharedRecordEntry {
   id: string;
   conversationId: string;
+  conversationStatus?: string;
   motherUserId: string;
   motherName: string;
   motherAvatar?: string;
@@ -527,6 +530,7 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
           records.push({
             id: item.messageId || item.clientMessageId || `rec-${Date.now()}`,
             conversationId: conversation.conversationId,
+            conversationStatus: conversation.conversationStatus,
             motherUserId: counterpartId,
             motherName: motherDisplayName,
             createdAt: item.createdAt || new Date().toISOString(),
@@ -544,6 +548,7 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
           records.push({
             id: item.messageId || item.clientMessageId || `rec-${Date.now()}`,
             conversationId: conversation.conversationId,
+            conversationStatus: conversation.conversationStatus,
             motherUserId: counterpartId,
             motherName: motherDisplayName,
             createdAt: item.createdAt || new Date().toISOString(),
@@ -688,19 +693,12 @@ export async function editChecklistItemInSharedRecord(
   doctorNote?: string,
   originalItemText?: string
 ): Promise<ChecklistShareData> {
-  const itemToSave: ChecklistItemShareData = {
-    ...updatedItem,
-    origin: 'EXPERT',
-    createdBy: 'EXPERT',
-    isExpertCustom: true,
-    doctorNote: doctorNote || updatedItem.doctorNote,
-  };
-
   const updated: ChecklistShareData = {
     ...currentChecklist,
     currentItems: [...(currentChecklist.currentItems || currentChecklist.items || [])],
     historyItems: [...(currentChecklist.historyItems || [])],
     futureItems: [...(currentChecklist.futureItems || [])],
+    removedItems: [...(currentChecklist.removedItems || [])],
   };
 
   const targetList =
@@ -717,6 +715,22 @@ export async function editChecklistItemInSharedRecord(
     );
     if (foundIdx >= 0) targetIdx = foundIdx;
   }
+
+  const existingItem = targetIdx >= 0 && targetIdx < targetList.length ? targetList[targetIdx] : undefined;
+  const originalText = originalItemText || existingItem?.text;
+  const isRenamed =
+    originalText && originalText.trim().toLowerCase() !== updatedItem.text.trim().toLowerCase();
+  const replacesText =
+    updatedItem.replacesText || (isRenamed ? originalText.trim() : existingItem?.replacesText || undefined);
+
+  const itemToSave: ChecklistItemShareData = {
+    ...updatedItem,
+    origin: 'EXPERT',
+    createdBy: 'EXPERT',
+    isExpertCustom: true,
+    replacesText,
+    doctorNote: doctorNote || updatedItem.doctorNote,
+  };
 
   if (targetIdx >= 0 && targetIdx < targetList.length) {
     targetList[targetIdx] = itemToSave;
@@ -735,8 +749,22 @@ export async function deleteChecklistItemFromSharedRecord(
   doctorNote?: string,
   itemText?: string
 ): Promise<ChecklistShareData> {
+  const targetListOriginal =
+    targetGroup === 'CURRENT'
+      ? currentChecklist.currentItems || currentChecklist.items || []
+      : targetGroup === 'FUTURE'
+      ? currentChecklist.futureItems || []
+      : currentChecklist.historyItems || [];
+
+  const textToDelete = itemText || targetListOriginal[itemIndex]?.text;
+  const removedItems = [...(currentChecklist.removedItems || [])];
+  if (textToDelete && !removedItems.includes(textToDelete.trim())) {
+    removedItems.push(textToDelete.trim());
+  }
+
   const updated: ChecklistShareData = {
     ...currentChecklist,
+    removedItems,
     currentItems: [...(currentChecklist.currentItems || currentChecklist.items || [])],
     historyItems: [...(currentChecklist.historyItems || [])],
     futureItems: [...(currentChecklist.futureItems || [])],
@@ -750,9 +778,9 @@ export async function deleteChecklistItemFromSharedRecord(
       : updated.historyItems!;
 
   let targetIdx = itemIndex;
-  if (itemText) {
+  if (textToDelete) {
     const foundIdx = targetList.findIndex(
-      (i) => i.text.trim().toLowerCase() === itemText.trim().toLowerCase()
+      (i) => i.text.trim().toLowerCase() === textToDelete.trim().toLowerCase()
     );
     if (foundIdx >= 0) targetIdx = foundIdx;
   }

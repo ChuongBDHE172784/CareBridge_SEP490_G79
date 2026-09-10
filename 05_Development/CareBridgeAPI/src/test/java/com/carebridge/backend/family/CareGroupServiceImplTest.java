@@ -23,6 +23,11 @@ import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.notification.entity.NotificationRecord;
+import com.carebridge.backend.notification.entity.NotificationType;
+import com.carebridge.backend.notification.repository.DeviceTokenRepository;
+import com.carebridge.backend.notification.repository.NotificationRecordRepository;
+import com.carebridge.backend.notification.service.FcmService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -48,6 +53,9 @@ class CareGroupServiceImplTest {
     @Mock private AuditService auditService;
     @Mock private CareTaskRepository taskRepository;
     @Mock private MotherJourneyRepository journeyRepository;
+    @Mock private FcmService fcmService;
+    @Mock private DeviceTokenRepository deviceTokenRepository;
+    @Mock private NotificationRecordRepository notificationRecordRepository;
     @InjectMocks private CareGroupServiceImpl careGroupService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -428,5 +436,62 @@ class CareGroupServiceImplTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getGroupId()).isEqualTo(GROUP_ID);
+    }
+
+    @Test
+    void joinGroupByCode_validNewRequest_notifiesMother() {
+        UUID requesterId = INVITEE_ID;
+        CareGroup group = savedGroup(GROUP_ID);
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(GROUP_ID, requesterId, InviteStatus.ACCEPTED))
+                .thenReturn(false);
+        when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(GROUP_ID, requesterId, InviteStatus.PENDING))
+                .thenReturn(false);
+        when(memberRepository.findAllByCareGroupIdAndUserId(GROUP_ID, requesterId))
+                .thenReturn(List.of());
+        when(memberRepository.countByCareGroupIdAndInviteStatus(GROUP_ID, InviteStatus.ACCEPTED))
+                .thenReturn(1L);
+
+        User requester = User.builder().id(requesterId).name("Chồng Yêu").email("husband@example.com").build();
+        when(userRepository.findById(requesterId)).thenReturn(Optional.of(requester));
+
+        careGroupService.joinGroupByCode(GROUP_ID.toString(), "CHONG", null, requesterId);
+
+        verify(memberRepository).save(argThat(m -> m.getInviteStatus() == InviteStatus.PENDING
+                && m.getUserId().equals(requesterId)
+                && "CHONG".equals(m.getFamilyRelationshipRole())));
+
+        ArgumentCaptor<NotificationRecord> recordCaptor = ArgumentCaptor.forClass(NotificationRecord.class);
+        verify(notificationRecordRepository).save(recordCaptor.capture());
+        NotificationRecord savedRecord = recordCaptor.getValue();
+        assertThat(savedRecord.getUserId()).isEqualTo(group.getOwnerUserId());
+        assertThat(savedRecord.getType()).isEqualTo(NotificationType.GROUP_INVITE);
+        assertThat(savedRecord.getTitle()).isEqualTo("Yêu cầu tham gia nhóm chăm sóc");
+        assertThat(savedRecord.getBody()).contains("Chồng Yêu");
+    }
+
+    @Test
+    void respondJoinRequest_approve_notifiesMother() {
+        UUID memberId = UUID.randomUUID();
+        CareGroup group = savedGroup(GROUP_ID);
+        CareGroupMember pending = CareGroupMember.builder()
+                .id(memberId).careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(memberRepository.findByIdAndCareGroupId(memberId, GROUP_ID)).thenReturn(Optional.of(pending));
+        when(memberRepository.save(pending)).thenReturn(pending);
+
+        User memberUser = User.builder().id(INVITEE_ID).name("Bố").build();
+        when(userRepository.findById(INVITEE_ID)).thenReturn(Optional.of(memberUser));
+
+        careGroupService.respondJoinRequest(GROUP_ID, memberId, true, CALLER_ID);
+
+        ArgumentCaptor<NotificationRecord> recordCaptor = ArgumentCaptor.forClass(NotificationRecord.class);
+        verify(notificationRecordRepository).save(recordCaptor.capture());
+        NotificationRecord savedRecord = recordCaptor.getValue();
+        assertThat(savedRecord.getUserId()).isEqualTo(group.getOwnerUserId());
+        assertThat(savedRecord.getType()).isEqualTo(NotificationType.GROUP_INVITE);
+        assertThat(savedRecord.getTitle()).isEqualTo("Thành viên đã tham gia nhóm");
+        assertThat(savedRecord.getBody()).contains("Bố");
     }
 }

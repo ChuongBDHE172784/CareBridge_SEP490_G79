@@ -8,6 +8,7 @@ import '../../directChat/widgets/checklist_message_card.dart';
 import '../models/reminder_model.dart';
 import '../models/today_task_model.dart';
 import '../models/today_task_support_function.dart';
+import '../services/expert_checklist_sync.dart';
 import '../services/today_task_service.dart';
 
 enum TodayTasksAudience { mother, family }
@@ -74,6 +75,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   late UserChecklistService _checklistService;
   TodayTasksSnapshot? _snapshot;
   List<TodayTask> _expertTasks = [];
+  Set<String> _suppressedSystemTaskTitles = {};
   final Map<String, Map<String, dynamic>> _expertTaskMeta = {};
   TodayTasksFailure? _failure;
   bool _loading = true;
@@ -177,6 +179,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
 
       final List<TodayTask> expertTasks = [];
       _expertTaskMeta.clear();
+      _suppressedSystemTaskTitles.clear();
 
       for (final conv in conversations) {
         try {
@@ -188,12 +191,29 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 ChecklistShareData.isChecklistShareMessage(item.messageBody)) {
               final shareData = ChecklistShareData.parse(item.messageBody);
               if (shareData != null && shareData.currentItems.isNotEmpty) {
+                // 1. Process removedItems if present
+                for (final removed in shareData.removedItems) {
+                  final norm = removed.trim().toLowerCase();
+                  if (norm.isNotEmpty) {
+                    _suppressedSystemTaskTitles.add(norm);
+                  }
+                }
+
+                // 2. Process each item in currentItems
                 for (int idx = 0; idx < shareData.currentItems.length; idx++) {
                   final cItem = shareData.currentItems[idx];
                   final isExpert = cItem.origin == 'EXPERT' ||
                       cItem.createdBy == 'EXPERT' ||
                       cItem.isExpertCustom == true;
                   final normalized = cItem.text.trim().toLowerCase();
+
+                  if (cItem.replacesText != null &&
+                      cItem.replacesText!.trim().isNotEmpty) {
+                    _suppressedSystemTaskTitles.add(
+                      cItem.replacesText!.trim().toLowerCase(),
+                    );
+                  }
+
                   if (isExpert && !existingTitles.contains(normalized)) {
                     existingTitles.add(normalized);
                     final taskId = 'expert-task-${conv.conversationId}-$idx';
@@ -202,6 +222,35 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                       'itemIndex': idx,
                       'shareData': shareData,
                     };
+                    TodayTaskSupportFunction? supportFunc;
+                    if (cItem.supportFunction != null &&
+                        cItem.supportFunction!.trim().isNotEmpty) {
+                      supportFunc = TodayTaskSupportFunction.fromJson(
+                        cItem.supportFunction,
+                      );
+                    }
+                    if (supportFunc == null) {
+                      final checkText =
+                          '${cItem.text} ${cItem.replacesText ?? ''}'
+                              .toLowerCase();
+                      if (checkText.contains('khám thai') ||
+                          checkText.contains('lịch hẹn') ||
+                          checkText.contains('bác sĩ') ||
+                          checkText.contains('khám')) {
+                        supportFunc = TodayTaskSupportFunction.appointments;
+                      } else if (checkText.contains('chỉ số') ||
+                          checkText.contains('cân nặng') ||
+                          checkText.contains('bmi') ||
+                          checkText.contains('huyết áp') ||
+                          checkText.contains('đường huyết')) {
+                        supportFunc =
+                            TodayTaskSupportFunction.maternalHealthMetrics;
+                      } else if (checkText.contains('bài tập')) {
+                        supportFunc =
+                            TodayTaskSupportFunction.maternalExercises;
+                      }
+                    }
+
                     expertTasks.add(TodayTask(
                       id: taskId,
                       kind: TodayTaskKind.checklist,
@@ -225,11 +274,44 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                         TodayTaskAction.complete,
                         TodayTaskAction.reopen,
                       },
+                      careGroupId: widget.careGroupId,
+                      careContextType:
+                          shareData.journeyId != null ? 'JOURNEY' : null,
+                      careContextId: shareData.journeyId,
                       careContextLabel: 'Chuyên gia chỉ định',
-                      supportFunction: TodayTaskSupportFunction.fromJson(
-                        cItem.supportFunction,
-                      ),
+                      sourceUrl: cItem.sourceUrl,
+                      supportFunction: supportFunc,
                     ));
+                  }
+                }
+
+                // 3. Fallback inference ONLY for legacy messages without explicit replacesText / removedItems:
+                final hasExplicitTracking =
+                    shareData.removedItems.isNotEmpty ||
+                    shareData.allItems.any((i) => i.replacesText != null);
+
+                if (!hasExplicitTracking) {
+                  final hasExpertCustomization = shareData.allItems.any(
+                    (i) =>
+                        i.isExpertCustom ||
+                        i.origin == 'EXPERT' ||
+                        i.createdBy == 'EXPERT',
+                  );
+                  if (hasExpertCustomization && currentTasks != null) {
+                    final shareDataTitles = {
+                      for (final i in shareData.allItems)
+                        i.text.trim().toLowerCase(),
+                    };
+                    for (final t in currentTasks) {
+                      if (t.origin == TodayTaskOrigin.systemTemplate &&
+                          (t.stage == TodayChecklistStage.pregnancy ||
+                              t.stage == TodayChecklistStage.unknown)) {
+                        final normTitle = t.title.trim().toLowerCase();
+                        if (!shareDataTitles.contains(normTitle)) {
+                          _suppressedSystemTaskTitles.add(normTitle);
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -245,62 +327,11 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   }
 
   Future<void> _toggleExpertTaskStatus(TodayTask task, bool completed) async {
-    final meta = _expertTaskMeta[task.id];
-    if (meta == null) return;
-    final conversationId = meta['conversationId'] as String?;
-    final itemIndex = meta['itemIndex'] as int?;
-    final shareData = meta['shareData'] as ChecklistShareData?;
-    if (conversationId == null || itemIndex == null || shareData == null) return;
-
-    if (itemIndex >= 0 && itemIndex < shareData.currentItems.length) {
-      final oldItem = shareData.currentItems[itemIndex];
-      final updatedItem = ChecklistItemShareData(
-        text: oldItem.text,
-        completed: completed,
-        category: oldItem.category,
-        timeLabel: oldItem.timeLabel,
-        origin: oldItem.origin,
-        createdBy: oldItem.createdBy,
-        isExpertCustom: oldItem.isExpertCustom,
-        doctorNote: oldItem.doctorNote,
-        sourceUrl: oldItem.sourceUrl,
-        supportFunction: oldItem.supportFunction,
-      );
-      final newCurrentItems = List<ChecklistItemShareData>.from(
-        shareData.currentItems,
-      );
-      newCurrentItems[itemIndex] = updatedItem;
-
-      final newTotal =
-          shareData.historyItems.length +
-          newCurrentItems.length +
-          shareData.futureItems.length;
-      final newCompleted =
-          shareData.historyItems.where((i) => i.completed).length +
-          newCurrentItems.where((i) => i.completed).length;
-      final newPercent =
-          newTotal > 0 ? ((newCompleted / newTotal) * 100).round() : 0;
-
-      final updatedPayload = ChecklistShareData(
-        title: shareData.title,
-        gestationalWeek: shareData.gestationalWeek,
-        journeyId: shareData.journeyId,
-        isLiveSync: true,
-        completedCount: newCompleted,
-        totalCount: newTotal,
-        progressPercent: newPercent,
-        note: shareData.note,
-        historyItems: shareData.historyItems,
-        currentItems: newCurrentItems,
-        futureItems: shareData.futureItems,
-      );
-
-      await DirectChatService.instance.sendMessage(
-        conversationId,
-        clientMessageId: const Uuid().v4(),
-        messageBody: updatedPayload.serialize(),
-      );
-    }
+    await ExpertChecklistSync.toggleTaskStatus(
+      taskId: task.id,
+      completed: completed,
+      taskTitle: task.title,
+    );
   }
 
   Future<void> _clear() async {
@@ -309,6 +340,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     setState(() {
       _snapshot = null;
       _expertTasks = [];
+      _suppressedSystemTaskTitles = {};
       _failure = null;
       _loading = true;
       _announcement = null;
@@ -451,15 +483,33 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     if (_snapshot == null && _expertTasks.isEmpty) return const [];
     final tasks = [
       if (_snapshot != null)
-        ..._snapshot!.sections.all.where((task) => task.isChecklist),
+        ..._snapshot!.sections.all.where((task) {
+          if (!task.isChecklist) return false;
+          if (task.origin == TodayTaskOrigin.systemTemplate &&
+              _suppressedSystemTaskTitles.contains(
+                task.title.trim().toLowerCase(),
+              )) {
+            return false;
+          }
+          return true;
+        }),
       ..._expertTasks,
     ];
     tasks.sort(_compareNewestFirst);
     return tasks;
   }
 
-  List<TodayTask> _checklistOnly(List<TodayTask> tasks) =>
-      tasks.toList(growable: false);
+  List<TodayTask> _checklistOnly(List<TodayTask> tasks) => tasks
+      .where((task) {
+        if (task.origin == TodayTaskOrigin.systemTemplate &&
+            _suppressedSystemTaskTitles.contains(
+              task.title.trim().toLowerCase(),
+            )) {
+          return false;
+        }
+        return true;
+      })
+      .toList(growable: false);
 
   static int _compareNewestFirst(TodayTask left, TodayTask right) {
     final leftTime = left.dueAt ?? left.scheduledAt;
