@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# CareBridge Service Stopper CLI
+# Usage:
+#   ./stop all       - Dừng sạch sẽ tất cả 4 services và giải phóng toàn bộ ports
+#   ./stop api       - Dừng riêng Backend CareBridgeAPI (8080)
+#   ./stop ai        - Dừng riêng CareBridgeAITriageService (8001)
+#   ./stop sidecar   - Dừng riêng Exercise Sidecar Docker (8002)
+#   ./stop web       - Dừng riêng Frontend CareBridgeWebApp (5173)
+# ==============================================================================
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$PROJECT_ROOT/stop-all.sh" "${1:-all}"
