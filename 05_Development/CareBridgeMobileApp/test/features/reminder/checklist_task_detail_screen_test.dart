@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:untitled/features/reminder/models/today_task_model.dart';
 import 'package:untitled/features/reminder/models/today_task_support_function.dart';
 import 'package:untitled/features/reminder/screens/checklist_task_detail_screen.dart';
+import 'package:untitled/features/reminder/services/reminder_schedule_service.dart';
 import 'package:untitled/features/reminder/services/today_task_service.dart';
 
 const _supportRoutes = <String, String>{
@@ -53,7 +54,7 @@ TodayTask _task({
     'status': completed ? 'COMPLETED' : 'PENDING',
     'timeBucket': 'TODAY',
     'allowedActions': [action.apiValue],
-    if (sourceUrl != null) 'sourceUrl': sourceUrl,
+    'sourceUrl': ?sourceUrl,
   });
 }
 
@@ -403,4 +404,174 @@ void main() {
       expect(find.byKey(const Key('task-detail-source-url')), findsNothing);
     },
   );
+
+  testWidgets('renders quick reminder action in app bar and in list', (
+    tester,
+  ) async {
+    final task = _task();
+
+    await tester.pumpWidget(
+      MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+    );
+
+    expect(
+      find.byKey(const Key('task-detail-quick-reminder-action')),
+      findsOneWidget,
+    );
+
+    final addReminderButton = find.byKey(
+      const Key('task-detail-add-quick-reminder-button'),
+    );
+    await tester.ensureVisible(addReminderButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lịch nhắc nhở'), findsOneWidget);
+    expect(addReminderButton, findsOneWidget);
+  });
+
+  testWidgets(
+    'tapping quick reminder opens ReminderScheduleEditor pre-filled with task title',
+    (tester) async {
+      final task = _task(title: 'Uống vitamin D');
+
+      await tester.pumpWidget(
+        MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+      );
+
+      await tester.tap(
+        find.byKey(const Key('task-detail-quick-reminder-action')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tạo lịch nhắc nhanh'), findsOneWidget);
+      expect(find.text('Uống vitamin D'), findsWidgets);
+      expect(
+        find.byKey(const Key('reminder-schedule-title-input')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('reminder-schedule-save-button')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'saving quick reminder creates schedule via service and displays confirmation',
+    (tester) async {
+      String? createdPath;
+      Map<String, dynamic>? createdBody;
+
+      final reminderScheduleService = ReminderScheduleService(
+        postRequest: (path, body) async {
+          createdPath = path;
+          createdBody = Map<String, dynamic>.from(body);
+          return {
+            'data': {
+              'scheduleId': 'sched-99',
+              'title': body['title'],
+              'times': body['times'],
+              'timeZone': body['timeZone'] ?? 'Asia/Ho_Chi_Minh',
+              'recurrence': body['recurrence'] ?? 'DAILY',
+              'startDate': '2026-09-08',
+              'active': true,
+              'revision': 1,
+            },
+          };
+        },
+      );
+
+      final task = _task(title: 'Massage cho bé');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChecklistTaskDetailScreen(
+            task: task,
+            reminderScheduleService: reminderScheduleService,
+          ),
+        ),
+      );
+
+      final addReminderButton = find.byKey(
+        const Key('task-detail-add-quick-reminder-button'),
+      );
+      await tester.ensureVisible(addReminderButton);
+      await tester.pumpAndSettle();
+      await tester.tap(addReminderButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tạo lịch nhắc nhanh'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('reminder-schedule-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(createdPath, '/api/v1/reminder-schedules');
+      expect(createdBody?['title'], 'Massage cho bé');
+      expect(find.text('Đã tạo lịch nhắc cho việc này.'), findsOneWidget);
+      expect(find.text('Xem lịch nhắc'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'can select tomorrow date for one-time reminder and save successfully',
+    (tester) async {
+      String? savedStartDate;
+      final reminderScheduleService = ReminderScheduleService(
+        postRequest: (path, body) async {
+          savedStartDate = body['startDate'] as String?;
+          return {
+            'data': {
+              'scheduleId': 'sched-100',
+              'title': body['title'],
+              'times': body['times'],
+              'timeZone': 'Asia/Ho_Chi_Minh',
+              'recurrence': body['recurrence'],
+              'startDate': body['startDate'],
+              'active': true,
+              'revision': 1,
+            },
+          };
+        },
+      );
+
+      final task = _task(title: 'Sàng lọc dị tật bẩm sinh');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChecklistTaskDetailScreen(
+            task: task,
+            reminderScheduleService: reminderScheduleService,
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(const Key('task-detail-quick-reminder-action')),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to "Một lần"
+      await tester.tap(
+        find.byKey(const Key('reminder-schedule-recurrence-dropdown')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Một lần').last);
+      await tester.pumpAndSettle();
+
+      // Select "Ngày mai"
+      await tester.tap(find.byKey(const Key('reminder-schedule-date-tomorrow')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('reminder-schedule-save-button')));
+      await tester.pumpAndSettle();
+
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final expectedDate =
+          '${tomorrow.year.toString().padLeft(4, '0')}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
+      expect(savedStartDate, expectedDate);
+      expect(find.text('Đã tạo lịch nhắc cho việc này.'), findsOneWidget);
+    },
+  );
 }
+
+
