@@ -268,10 +268,13 @@ BEGIN
             '94000000-0000-4000-8000-000000001003', v_m1, v_exp1, '94100000-0000-4000-8000-000000001003',
             'Tư vấn dấu hiệu chuyển dạ sớm và chuẩn bị sinh',
             'Nhờ Bác sĩ hướng dẫn các dấu hiệu cần nhập viện cấp cứu và chuẩn bị hồ sơ sinh tại Bệnh viện Từ Dũ.',
-            v_today + interval '19 hours', v_today + interval '20 hours',
+            now() - interval '1 hour', now() + interval '30 days',
             'ACCEPTED', NULL, '93000000-0000-4000-8000-000000000001', now() - interval '1 day', v_exp1,
-            now() + interval '5 days', now() - interval '1 day', now() - interval '1 day'
-        ) ON CONFLICT (id) DO NOTHING;
+            now() + interval '30 days', now() - interval '1 day', now() - interval '1 day'
+        ) ON CONFLICT (id) DO UPDATE SET
+            preferred_window_start = EXCLUDED.preferred_window_start,
+            preferred_window_end = EXCLUDED.preferred_window_end,
+            expires_at = EXCLUDED.expires_at;
 
         -- Request 4: REJECTED -> BS Đỗ Hải Long (Từ chối kèm lý do)
         INSERT INTO public.expert_consultation_requests (
@@ -326,10 +329,13 @@ BEGIN
             '94000000-0000-4000-8000-000000003002', v_m4, v_exp3, '94100000-0000-4000-8000-000000003002',
             'Tư vấn bé sơ sinh bị nấc cụt và trớ sữa',
             'Bé 1 tháng tuổi hay bị nấc cụt sau khi bú xong và trớ sữa ra mũi miệng. Nhờ Bác sĩ tư vấn tư thế vỗ ợ hơi chuẩn.',
-            v_tomorrow + interval '14 hours', v_tomorrow + interval '15 hours',
+            now() - interval '1 hour', now() + interval '30 days',
             'ACCEPTED', NULL, '93000000-0000-4000-8000-000000000002', now() - interval '6 hours', v_exp3,
-            now() + interval '4 days', now() - interval '12 hours', now() - interval '6 hours'
-        ) ON CONFLICT (id) DO NOTHING;
+            now() + interval '30 days', now() - interval '12 hours', now() - interval '6 hours'
+        ) ON CONFLICT (id) DO UPDATE SET
+            preferred_window_start = EXCLUDED.preferred_window_start,
+            preferred_window_end = EXCLUDED.preferred_window_end,
+            expires_at = EXCLUDED.expires_at;
     END IF;
 
     -- Requests for EXPERT 4: BS Nguyễn Văn Minh (expert4@carebridge.dev)

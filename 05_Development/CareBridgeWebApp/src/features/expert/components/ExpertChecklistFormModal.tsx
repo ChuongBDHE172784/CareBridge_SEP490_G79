@@ -166,6 +166,12 @@ export const ExpertChecklistFormModal: React.FC<ExpertChecklistFormModalProps> =
 
       if (mode === 'EDIT') {
         const updatedRow = validItems[0];
+        const originalText = initialItem?.replacesText || initialItem?.text;
+        const isRenamed =
+          originalText && originalText.trim().toLowerCase() !== updatedRow.itemText.trim().toLowerCase();
+        const replacesText =
+          isRenamed ? originalText.trim() : (initialItem?.replacesText || undefined);
+
         const newItem: ChecklistItemShareData = {
           text: updatedRow.itemText.trim(),
           completed: updatedRow.completed,
@@ -174,6 +180,7 @@ export const ExpertChecklistFormModal: React.FC<ExpertChecklistFormModalProps> =
           origin: 'EXPERT',
           createdBy: 'EXPERT',
           isExpertCustom: true,
+          replacesText,
           doctorNote: doctorNote.trim() || undefined,
           sourceUrl: updatedRow.sourceUrl.trim() || undefined,
           supportFunction: updatedRow.supportFunction || undefined,
@@ -258,9 +265,26 @@ export const ExpertChecklistFormModal: React.FC<ExpertChecklistFormModalProps> =
       const saved = await savePersonalizedChecklist(conversationId, updatedPayload, actionNote);
       onSuccess(saved);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to submit checklist form', err);
-      setErrorMsg('Không thể lưu checklist. Vui lòng thử lại.');
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      const code = data?.code;
+      const serverMsg = data?.message || data?.error;
+
+      if (status === 409) {
+        if (code === 'DCC-014' || (typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('consultation window'))) {
+          setErrorMsg('Buổi tư vấn của cuộc trò chuyện này đã kết thúc khung giờ, không thể gửi cập nhật chỉ định mới.');
+        } else if (code === 'DCC-010') {
+          setErrorMsg('Tài khoản chuyên gia hiện không khả dụng để gửi cập nhật cho cuộc trò chuyện này.');
+        } else {
+          setErrorMsg(serverMsg || 'Xung đột phiên làm việc khi lưu checklist. Vui lòng thử lại.');
+        }
+      } else if (serverMsg && typeof serverMsg === 'string') {
+        setErrorMsg(serverMsg);
+      } else {
+        setErrorMsg('Không thể lưu checklist. Vui lòng thử lại.');
+      }
     } finally {
       setSubmitting(false);
     }
