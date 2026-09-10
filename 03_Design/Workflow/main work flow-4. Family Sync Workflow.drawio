@@ -1,0 +1,246 @@
+<mxfile host="app.diagrams.net" agent="CareBridge" scale="1" border="0">
+  <diagram id="CareBridge-Family-Sync-Workflow" name="4. Family Sync Workflow">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1940" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- POOL CONTAINER -->
+        <mxCell id="pool" parent="1" style="shape=table;html=1;whiteSpace=wrap;startSize=0;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;fontSize=15;strokeColor=#b85450;fillColor=#dae8fc;fontColor=#1d4076;" value="" vertex="1">
+          <mxGeometry height="1880" width="1440" x="30" y="30" as="geometry" />
+        </mxCell>
+
+        <!-- HEADER ROW -->
+        <mxCell id="row_header" parent="pool" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[];portConstraint=rotation;" value="" vertex="1">
+          <mxGeometry height="42" width="1440" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_mother_header" parent="row_header" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#b85450;fillColor=#f8cecc;fontStyle=1;fontSize=13;fontColor=#993333;align=center;" value="Mother (Group Owner)" vertex="1">
+          <mxGeometry height="42" width="480" as="geometry">
+            <mxRectangle height="42" width="480" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_system_header" parent="row_header" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#6c8ebf;fillColor=#dae8fc;fontStyle=1;fontSize=13;fontColor=#1d4076;align=center;" value="System" vertex="1">
+          <mxGeometry height="42" width="500" x="480" as="geometry">
+            <mxRectangle height="42" width="500" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_family_header" parent="row_header" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#d79b00;fillColor=#ffe6cc;fontStyle=1;fontSize=13;fontColor=#98620a;align=center;" value="Family Member" vertex="1">
+          <mxGeometry height="42" width="460" x="980" as="geometry">
+            <mxRectangle height="42" width="460" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BODY ROW -->
+        <mxCell id="row_body" parent="pool" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[];portConstraint=rotation;" value="" vertex="1">
+          <mxGeometry height="1838" width="1440" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_mother" parent="row_body" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#e1d5e7;fillColor=#fff5f5;align=center;" value="" vertex="1">
+          <mxGeometry height="1838" width="480" as="geometry">
+            <mxRectangle height="1838" width="480" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_system" parent="row_body" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#e1d5e7;fillColor=#f4f8ff;align=center;" value="" vertex="1">
+          <mxGeometry height="1838" width="500" x="480" as="geometry">
+            <mxRectangle height="1838" width="500" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_family" parent="row_body" style="shape=tableCell;html=1;whiteSpace=wrap;strokeColor=#e1d5e7;fillColor=#fffaf2;align=center;" value="" vertex="1">
+          <mxGeometry height="1838" width="460" x="980" as="geometry">
+            <mxRectangle height="1838" width="460" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- START -->
+        <mxCell id="node_start" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="255" y="96" as="geometry" />
+        </mxCell>
+
+        <!-- MOTHER / SYSTEM: CREATE GROUP -->
+        <mxCell id="n1" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontColor=#333333;" value="1. Create care group" vertex="1">
+          <mxGeometry height="60" width="260" x="140" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontColor=#333333;" value="2. Save group, auto-add Mother as OWNER (ACCEPTED) and link care journey" vertex="1">
+          <mxGeometry height="70" width="260" x="600" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontColor=#333333;" value="3. Invite family member or share group code" vertex="1">
+          <mxGeometry height="60" width="260" x="140" y="360" as="geometry" />
+        </mxCell>
+
+        <!-- DECISION: INVITE CHANNEL -->
+        <mxCell id="d4" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;fontColor=#333333;" value="4. Invite channel?" vertex="1">
+          <mxGeometry height="80" width="240" x="610" y="460" as="geometry" />
+        </mxCell>
+
+        <!-- BRANCH A: DIRECT INVITE BY PHONE / EMAIL -->
+        <mxCell id="n5a" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontColor=#333333;" value="5A. Match existing CareBridge account, create PENDING invite (7-day expiry) and notify" vertex="1">
+          <mxGeometry height="80" width="260" x="600" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="n6a" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontColor=#333333;" value="6A. Open pending invitation, choose family relationship role and accept" vertex="1">
+          <mxGeometry height="80" width="240" x="1000" y="710" as="geometry" />
+        </mxCell>
+
+        <!-- BRANCH B: JOIN BY GROUP CODE / LINK / QR -->
+        <mxCell id="n5b" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontColor=#333333;" value="5B. Enter shared group code and choose family relationship role" vertex="1">
+          <mxGeometry height="80" width="240" x="1150" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="n6b" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontColor=#333333;" value="6B. Create PENDING join request and notify Mother" vertex="1">
+          <mxGeometry height="80" width="260" x="600" y="970" as="geometry" />
+        </mxCell>
+        <mxCell id="d7" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;fontColor=#333333;" value="7. Mother approves request?" vertex="1">
+          <mxGeometry height="90" width="240" x="150" y="1085" as="geometry" />
+        </mxCell>
+        <mxCell id="n7b" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontColor=#333333;" value="7B. Join request rejected (REJECTED)" vertex="1">
+          <mxGeometry height="60" width="260" x="1080" y="1100" as="geometry" />
+        </mxCell>
+        <mxCell id="node_end_reject" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="1195" y="1215" as="geometry" />
+        </mxCell>
+
+        <!-- MEMBERSHIP ACTIVATED -->
+        <mxCell id="n8" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontColor=#333333;" value="8. Activate member as ACCEPTED, store joinedAt, write audit log and notify Mother" vertex="1">
+          <mxGeometry height="80" width="260" x="600" y="1220" as="geometry" />
+        </mxCell>
+
+        <!-- PERMISSION GRANT -->
+        <mxCell id="n9" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontColor=#333333;" value="9. Grant per-member sharing permissions: calendar, logs, alerts, records, checklist, quick notes" vertex="1">
+          <mxGeometry height="90" width="260" x="140" y="1340" as="geometry" />
+        </mxCell>
+        <mxCell id="n10" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontColor=#333333;" value="10. Save member permission_json, write audit and publish permission updated event" vertex="1">
+          <mxGeometry height="80" width="260" x="600" y="1465" as="geometry" />
+        </mxCell>
+
+        <!-- FAMILY CONSUMES SHARED DATA -->
+        <mxCell id="n11" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontColor=#333333;" value="11. Open family dashboard or shared data screen" vertex="1">
+          <mxGeometry height="70" width="260" x="1080" y="1470" as="geometry" />
+        </mxCell>
+        <mxCell id="d12" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;fontColor=#333333;" value="12. Has permission for this category? (OWNER sees all)" vertex="1">
+          <mxGeometry height="100" width="250" x="605" y="1600" as="geometry" />
+        </mxCell>
+        <mxCell id="n12b" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontColor=#333333;" value="12B. Deny access and hide categories without permission" vertex="1">
+          <mxGeometry height="70" width="260" x="600" y="1740" as="geometry" />
+        </mxCell>
+        <mxCell id="n13" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontColor=#333333;" value="13. View shared calendar, alerts, tasks and health metrics" vertex="1">
+          <mxGeometry height="70" width="260" x="1080" y="1740" as="geometry" />
+        </mxCell>
+        <mxCell id="node_end_system" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="715" y="1845" as="geometry" />
+        </mxCell>
+        <mxCell id="node_end_family" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="1195" y="1845" as="geometry" />
+        </mxCell>
+
+        <!-- BOUNDARY NOTE -->
+        <mxCell id="note_boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=none;strokeColor=#666666;fontSize=11;fontColor=#555555;align=center;verticalAlign=middle;" value="Boundary: Family Sync only exposes data the Mother agreed to share. Every permission is granted by the Mother (OWNER) after a member is accepted, and can be revoked at any time." vertex="1">
+          <mxGeometry height="110" width="280" x="130" y="1690" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES -->
+        <mxCell id="e0" parent="1" source="node_start" target="n1" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="1" source="n1" target="n2" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" parent="1" source="n2" target="n3" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" parent="1" source="n3" target="d4" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4a" parent="1" source="d4" target="n5a" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" value="Phone / Email">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4b" parent="1" source="d4" target="n5b" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="Care group code">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1270" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5a" parent="1" source="n5a" target="n6a" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930" y="630" />
+              <mxPoint x="930" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6a" parent="1" source="n6a" target="n8" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" value="Accept">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1415" y="750" />
+              <mxPoint x="1415" y="1260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5b" parent="1" source="n5b" target="n6b" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1050" y="890" />
+              <mxPoint x="1050" y="1010" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6b" parent="1" source="n6b" target="d7" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="270" y="1010" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7no" parent="1" source="d7" target="n7b" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7b" parent="1" source="n7b" target="node_end_reject" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7yes" parent="1" source="d7" target="n8" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" value="Approve">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="270" y="1260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" parent="1" source="n8" target="n9" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="730" y="1315" />
+              <mxPoint x="270" y="1315" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" parent="1" source="n9" target="n10" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" parent="1" source="n10" target="n11" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" parent="1" source="n11" target="d12" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="1565" />
+              <mxPoint x="730" y="1565" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12yes" parent="1" source="d12" target="n13" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="Yes">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="1650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12no" parent="1" source="d12" target="n12b" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" parent="1" source="n13" target="node_end_family" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12bend" parent="1" source="n12b" target="node_end_system" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
