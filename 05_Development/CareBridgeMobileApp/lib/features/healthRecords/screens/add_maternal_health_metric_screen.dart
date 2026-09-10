@@ -13,6 +13,7 @@ import '../../safety/services/safety_permission_service.dart';
 import '../models/health_metric_model.dart';
 import '../models/maternal_metric_lifecycle_policy.dart';
 import '../services/health_metric_service.dart';
+import '../../recommendation/services/recommendation_service.dart';
 
 class AddMaternalHealthMetricScreen extends StatefulWidget {
   final String journeyId;
@@ -319,6 +320,22 @@ class _AddMaternalHealthMetricScreenState
           }
           if (results[7].dataPoints.isNotEmpty) {
             _latestTemp = results[7].dataPoints.last;
+          }
+          if (_isBmi) {
+            final bmiWeight = _latestBmi?.context['weightKg'] ?? _surveyProfile?['bmi']?['weightKg'];
+            final bmiHeight = _latestBmi?.context['heightCm'] ?? _surveyProfile?['bmi']?['heightCm'];
+            if (_primaryCtrl.text.isEmpty && bmiWeight != null) {
+              final wNum = bmiWeight is num ? bmiWeight : num.tryParse(bmiWeight.toString());
+              if (wNum != null) {
+                _primaryCtrl.text = wNum % 1 == 0 ? wNum.toStringAsFixed(0) : wNum.toStringAsFixed(1);
+              }
+            }
+            if (_secondaryCtrl.text.isEmpty && bmiHeight != null) {
+              final hNum = bmiHeight is num ? bmiHeight : num.tryParse(bmiHeight.toString());
+              if (hNum != null) {
+                _secondaryCtrl.text = hNum % 1 == 0 ? hNum.toStringAsFixed(0) : hNum.toStringAsFixed(1);
+              }
+            }
           }
         });
       }
@@ -709,6 +726,10 @@ class _AddMaternalHealthMetricScreenState
           definitionVersion: _capability?.version,
         ),
       );
+
+      if (_isBmi) {
+        RecommendationService.notifyProfileChanged();
+      }
 
       // 2. Chạy dịch vụ sàng lọc rủi ro lâm sàng
       final evalResult = await _evaluateMetricWithAi(

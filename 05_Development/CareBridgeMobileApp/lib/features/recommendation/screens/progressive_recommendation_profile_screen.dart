@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../../journey/services/journey_service.dart';
+import '../../healthRecords/services/health_metric_service.dart';
 import '../models/recommendation_model.dart';
 import '../models/recommendation_questionnaire.dart';
 import '../services/recommendation_service.dart';
@@ -21,12 +22,14 @@ class RecommendationProfileScreen extends StatefulWidget {
     super.key,
     this.service,
     this.journeyService,
+    this.healthMetricService,
     this.journeyStage,
     this.now,
   });
 
   final RecommendationService? service;
   final JourneyService? journeyService;
+  final HealthMetricService? healthMetricService;
   final String? journeyStage;
   final DateTime Function()? now;
 
@@ -50,6 +53,7 @@ class _RecommendationProfileScreenState
 
   late final RecommendationService _service;
   late final JourneyService _journeyService;
+  late final HealthMetricService _healthMetricService;
 
   final _dobController = TextEditingController();
   final _heightController = TextEditingController();
@@ -87,6 +91,7 @@ class _RecommendationProfileScreenState
     super.initState();
     _service = widget.service ?? RecommendationService();
     _journeyService = widget.journeyService ?? JourneyService();
+    _healthMetricService = widget.healthMetricService ?? HealthMetricService();
     _observedUserId = AuthState.instance.userId;
     AuthState.instance.addListener(_onAccountChanged);
     unawaited(_load());
@@ -170,6 +175,48 @@ class _RecommendationProfileScreenState
         _profile['age'] = <String, dynamic>{'state': 'UNKNOWN'};
       }
       _normalizeStageConditionedInputs();
+
+      // If BMI is unknown in profile, attempt to pre-fill from latest maternal health metric
+      final bmiState = _profile['bmi'] is Map ? _profile['bmi']['state'] : null;
+      if (bmiState != 'KNOWN' && dashboard.journeyId != null) {
+        try {
+          final trend = await _healthMetricService.getMetricTrend(
+            journeyId: dashboard.journeyId!,
+            metricType: 'BMI',
+          );
+          if (!current()) return;
+          if (trend.dataPoints.isNotEmpty) {
+            final latestPoint = trend.dataPoints.last;
+            num? heightCm;
+            num? weightKg;
+            if (latestPoint.context['heightCm'] is num) {
+              heightCm = latestPoint.context['heightCm'] as num;
+            } else if (latestPoint.valueSecondary != null) {
+              heightCm = latestPoint.valueSecondary;
+            }
+            if (latestPoint.context['weightKg'] is num) {
+              weightKg = latestPoint.context['weightKg'] as num;
+            } else if (latestPoint.valueNumeric > 0) {
+              weightKg = latestPoint.valueNumeric;
+            }
+            if (weightKg != null || heightCm != null) {
+              final existingBmi = _profile['bmi'] is Map
+                  ? Map<String, dynamic>.from(_profile['bmi'] as Map)
+                  : <String, dynamic>{};
+              existingBmi['state'] = 'KNOWN';
+              if (weightKg != null) existingBmi['weightKg'] = weightKg;
+              if (heightCm != null) existingBmi['heightCm'] = heightCm;
+              existingBmi['weightContext'] = _defaultWeightContext;
+              existingBmi['measuredOn'] =
+                  latestPoint.measuredAt.toIso8601String().split('T').first;
+              _profile['bmi'] = existingBmi;
+            }
+          }
+        } catch (_) {
+          // Best-effort prefill; ignore failures
+        }
+      }
+
       _syncControllers();
       if (!current()) return;
       setState(() {
