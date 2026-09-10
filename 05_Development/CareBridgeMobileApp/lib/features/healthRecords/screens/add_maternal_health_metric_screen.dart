@@ -86,6 +86,7 @@ class _AddMaternalHealthMetricScreenState
   String? _surveyStatus;
   List<String> _surveyRiskConditions = [];
   MetricDataPoint? _latestBp;
+  MetricDataPoint? _latestBmi;
   MetricDataPoint? _latestGlucose;
   MetricDataPoint? _latestKicks;
   MetricDataPoint? _latestHydration;
@@ -298,6 +299,9 @@ class _AddMaternalHealthMetricScreenState
         setState(() {
           if (results[0].dataPoints.isNotEmpty) {
             _latestBp = results[0].dataPoints.last;
+          }
+          if (results[1].dataPoints.isNotEmpty) {
+            _latestBmi = results[1].dataPoints.last;
           }
           if (results[2].dataPoints.isNotEmpty) {
             _latestGlucose = results[2].dataPoints.last;
