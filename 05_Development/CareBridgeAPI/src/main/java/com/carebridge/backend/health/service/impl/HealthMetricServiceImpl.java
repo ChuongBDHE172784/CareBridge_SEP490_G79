@@ -18,7 +18,9 @@ import com.carebridge.backend.health.event.EpdsScreeningCompleted;
 import com.carebridge.backend.health.event.MaternalHealthMetricDeleted;
 import com.carebridge.backend.health.repository.HealthObservationRepository;
 import com.carebridge.backend.health.repository.MetricDefinitionRepository;
+import java.math.BigDecimal;
 import com.carebridge.backend.health.service.IHealthMetricService;
+import com.carebridge.backend.health.service.MaternalHealthMetricBmiSynchronizer;
 import com.carebridge.backend.health.service.MetricObservationValidator;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.MotherJourney;
@@ -53,6 +55,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     private final ApplicationEventPublisher eventPublisher;
     private final MetricObservationValidator validator;
     private final com.carebridge.backend.expert.repository.ExpertProfileRepository expertProfileRepository;
+    private final MaternalHealthMetricBmiSynchronizer bmiSynchronizer;
 
     @Override
     public MetricDetailResponse getMetricDetail(UUID metricId, UUID callerId) {
@@ -112,6 +115,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
         observation.getPayload().put("journeyId", journeyId.toString());
         HealthObservation saved = observationRepository.save(observation);
 
+        syncBmiToProfile(journey, normalized);
         auditService.log(AuditAction.HEALTH_METRIC_ADDED, userId,
                 "HealthObservation", saved.getId().toString(), "added");
         publishIfEpdsScreening(saved, journeyId, userId, normalized);
@@ -184,9 +188,31 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
         observation.setPayload(new LinkedHashMap<>(normalized.context()));
         observation.getPayload().put("journeyId", journeyId.toString());
         HealthObservation saved = observationRepository.save(observation);
+        syncBmiToProfile(journey, normalized);
         auditService.log(AuditAction.HEALTH_METRIC_UPDATED, userId,
                 "HealthObservation", saved.getId().toString(), "updated");
         return toMetricResponse(saved, journeyId, null, false, definition.getVersion());
+    }
+
+    private void syncBmiToProfile(MotherJourney journey, MetricObservationValidator.NormalizedObservation normalized) {
+        if (bmiSynchronizer != null && "BMI".equals(normalized.metricCode()) && normalized.context() != null) {
+            BigDecimal weight = toBigDecimal(normalized.context().get("weightKg"));
+            BigDecimal height = toBigDecimal(normalized.context().get("heightCm"));
+            if (weight != null && height != null) {
+                bmiSynchronizer.synchronize(journey, weight, height, normalized.measuredAt());
+            }
+        }
+    }
+
+    private BigDecimal toBigDecimal(Object val) {
+        if (val instanceof BigDecimal b) return b;
+        if (val instanceof Number n) return new BigDecimal(n.toString());
+        if (val instanceof String s && !s.isBlank()) {
+            try {
+                return new BigDecimal(s);
+            } catch (Exception ignored) {}
+        }
+        return null;
     }
 
     @Override

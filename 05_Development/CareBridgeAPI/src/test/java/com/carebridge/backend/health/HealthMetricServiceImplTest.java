@@ -21,8 +21,10 @@ import com.carebridge.backend.health.entity.ObservationShape;
 import com.carebridge.backend.health.event.MaternalHealthMetricDeleted;
 import com.carebridge.backend.health.repository.HealthObservationRepository;
 import com.carebridge.backend.health.repository.MetricDefinitionRepository;
+import com.carebridge.backend.health.service.MaternalHealthMetricBmiSynchronizer;
 import com.carebridge.backend.health.service.MetricObservationValidator;
 import com.carebridge.backend.health.service.impl.HealthMetricServiceImpl;
+import java.util.Map;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
@@ -56,6 +58,7 @@ class HealthMetricServiceImplTest {
     @Mock private CareGroupRepository careGroupRepository;
     @Mock private CareGroupAuthorizationPolicy careGroupAuthorizationPolicy;
     @Mock private MetricObservationValidator validator;
+    @Mock private MaternalHealthMetricBmiSynchronizer bmiSynchronizer;
     @InjectMocks private HealthMetricServiceImpl metricService;
 
     private static final UUID CALLER_ID  = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -299,5 +302,40 @@ class HealthMetricServiceImplTest {
         verify(observationRepository, never()).save(any());
         verify(observationRepository, never()).updateStatus(any(), any());
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void addMetric_bmiSynchronizesToProfile() {
+        MotherJourney journey = makeJourney(CALLER_ID);
+        when(journeyRepository.findById(JOURNEY_ID)).thenReturn(Optional.of(journey));
+        when(validator.canonicalCode(MetricType.BMI)).thenReturn("BMI");
+
+        MetricDefinition bmiDef = definition("BMI", ObservationShape.POINT, "kg/m²", true);
+        when(definitionRepository.findByMetricCodeAndActiveTrue("BMI")).thenReturn(Optional.of(bmiDef));
+
+        Instant measuredAt = Instant.now();
+        Map<String, Object> context = Map.of("weightKg", new BigDecimal("55.0"), "heightCm", new BigDecimal("160.0"));
+        MetricObservationValidator.NormalizedObservation normalized = new MetricObservationValidator.NormalizedObservation(
+                "BMI", new BigDecimal("21.48"), null, "kg/m²", measuredAt,
+                DataSource.MANUAL, null, context, null, null, 1);
+
+        AddMetricRequest request = new AddMetricRequest();
+        request.setMetricType(MetricType.BMI);
+        request.setValueNumeric(new BigDecimal("21.48"));
+        request.setUnit("kg/m²");
+        request.setMeasuredAt(measuredAt);
+        request.setContext(context);
+
+        when(validator.normalize(eq(request), any())).thenReturn(normalized);
+        when(observationRepository.save(any(HealthObservation.class))).thenAnswer(inv -> {
+            HealthObservation saved = inv.getArgument(0);
+            saved.setId(METRIC_ID);
+            return saved;
+        });
+
+        metricService.addMetric(CALLER_ID, JOURNEY_ID, request);
+
+        verify(bmiSynchronizer).synchronize(eq(journey), eq(new BigDecimal("55.0")), eq(new BigDecimal("160.0")), eq(measuredAt));
+        verify(auditService).log(eq(com.carebridge.backend.audit.entity.AuditAction.HEALTH_METRIC_ADDED), eq(CALLER_ID), eq("HealthObservation"), any(), eq("added"));
     }
 }
