@@ -45,21 +45,33 @@ public interface DirectConversationRepository extends JpaRepository<DirectConver
      */
     @Query(value = """
             SELECT EXISTS (
-                SELECT 1 FROM expert_consultation_requests r
-                 WHERE r.direct_conversation_id = :conversationId
-                   AND r.status = 'ACCEPTED'
-                   AND r.preferred_window_end IS NOT NULL
-                   AND r.preferred_window_end < CURRENT_TIMESTAMP)
+                SELECT 1 FROM expert_consultation_requests r_ended
+                 WHERE r_ended.direct_conversation_id = :conversationId
+                   AND r_ended.status = 'ACCEPTED'
+                   AND r_ended.preferred_window_end IS NOT NULL
+                   AND r_ended.preferred_window_end < CURRENT_TIMESTAMP
+            ) AND NOT EXISTS (
+                SELECT 1 FROM expert_consultation_requests r_active
+                 WHERE r_active.direct_conversation_id = :conversationId
+                   AND r_active.status = 'ACCEPTED'
+                   AND (r_active.preferred_window_end IS NULL OR r_active.preferred_window_end >= CURRENT_TIMESTAMP)
+            )
             """, nativeQuery = true)
     boolean isConsultationWindowEnded(@Param("conversationId") UUID conversationId);
 
     /** Cùng câu hỏi cho cả danh sách hội thoại, một truy vấn thay vì hỏi từng cái. */
     @Query(value = """
-            SELECT DISTINCT r.direct_conversation_id FROM expert_consultation_requests r
-             WHERE r.direct_conversation_id IN (:conversationIds)
-               AND r.status = 'ACCEPTED'
-               AND r.preferred_window_end IS NOT NULL
-               AND r.preferred_window_end < CURRENT_TIMESTAMP
+            SELECT DISTINCT r_ended.direct_conversation_id FROM expert_consultation_requests r_ended
+             WHERE r_ended.direct_conversation_id IN (:conversationIds)
+               AND r_ended.status = 'ACCEPTED'
+               AND r_ended.preferred_window_end IS NOT NULL
+               AND r_ended.preferred_window_end < CURRENT_TIMESTAMP
+               AND NOT EXISTS (
+                   SELECT 1 FROM expert_consultation_requests r_active
+                    WHERE r_active.direct_conversation_id = r_ended.direct_conversation_id
+                      AND r_active.status = 'ACCEPTED'
+                      AND (r_active.preferred_window_end IS NULL OR r_active.preferred_window_end >= CURRENT_TIMESTAMP)
+               )
             """, nativeQuery = true)
     List<UUID> findIdsWithEndedConsultationWindow(
             @Param("conversationIds") java.util.Collection<UUID> conversationIds);

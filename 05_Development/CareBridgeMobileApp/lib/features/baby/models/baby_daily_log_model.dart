@@ -1,5 +1,51 @@
 enum LogType { feeding, sleep, diaper, fever, vomiting, medicine, symptom }
 
+/// The log types selectable when adding a new daily log.
+/// Fever and vomiting are merged into [LogType.symptom] (Sức khỏe).
+const List<LogType> creationLogTypes = [
+  LogType.feeding,
+  LogType.sleep,
+  LogType.diaper,
+  LogType.symptom,
+  LogType.medicine,
+];
+
+/// Returns the display unit for a given [LogType].
+String? fixedDisplayUnitFor(LogType type) {
+  switch (type) {
+    case LogType.feeding:
+      return 'ml';
+    case LogType.sleep:
+      return 'giờ';
+    case LogType.diaper:
+      return 'lần';
+    case LogType.medicine:
+      return 'liều';
+    case LogType.symptom:
+    case LogType.fever:
+    case LogType.vomiting:
+      return null;
+  }
+}
+
+/// Returns the API unit sent to backend for standard aggregation.
+String? fixedApiUnitFor(LogType type) {
+  switch (type) {
+    case LogType.feeding:
+      return 'ml';
+    case LogType.sleep:
+      return 'hours';
+    case LogType.diaper:
+      return 'lần';
+    case LogType.medicine:
+      return 'liều';
+    case LogType.symptom:
+    case LogType.fever:
+    case LogType.vomiting:
+      return null;
+  }
+}
+
 extension LogTypeExtension on LogType {
   String get displayLabel {
     switch (this) {
@@ -238,8 +284,8 @@ String formatSleepDuration(LogTypeSummary? summary) {
   if (quantity == null || unit == null || unit.isEmpty) return '—';
 
   final hours = switch (unit) {
-    'h' || 'hr' || 'hrs' || 'hour' || 'hours' => quantity,
-    'm' || 'min' || 'mins' || 'minute' || 'minutes' => quantity / 60,
+    'h' || 'hr' || 'hrs' || 'hour' || 'hours' || 'giờ' || 'gio' => quantity,
+    'm' || 'min' || 'mins' || 'minute' || 'minutes' || 'phút' || 'phut' => quantity / 60,
     _ => null,
   };
   if (hours == null) return '—';
