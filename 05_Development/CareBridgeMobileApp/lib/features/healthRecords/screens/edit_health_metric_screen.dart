@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../models/health_metric_model.dart';
 import '../models/maternal_metric_lifecycle_policy.dart';
 import '../services/health_metric_service.dart';
+import '../../recommendation/services/recommendation_service.dart';
 
 class EditHealthMetricScreen extends StatefulWidget {
   final String journeyId;
@@ -331,6 +332,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
           context: contextPayload.isEmpty ? null : contextPayload,
         ),
       );
+      if (_isBmi) {
+        RecommendationService.notifyProfileChanged();
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

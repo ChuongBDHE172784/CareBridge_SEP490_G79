@@ -3,18 +3,22 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/today_task_model.dart';
+import '../services/reminder_schedule_service.dart';
 import '../services/today_task_service.dart';
+import '../widgets/reminder_schedule_editor.dart';
 
 class ChecklistTaskDetailScreen extends StatefulWidget {
   const ChecklistTaskDetailScreen({
     super.key,
     required this.task,
     this.service,
+    this.reminderScheduleService,
     this.showSupportFunction = true,
   });
 
   final TodayTask task;
   final TodayTaskService? service;
+  final ReminderScheduleService? reminderScheduleService;
   final bool showSupportFunction;
 
   @override
@@ -33,12 +37,15 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
   static const _error = Color(0xFFBA1A1A);
 
   late TodayTaskService _service;
+  late ReminderScheduleService _reminderScheduleService;
   bool _processing = false;
 
   @override
   void initState() {
     super.initState();
     _service = widget.service ?? TodayTaskService.instance;
+    _reminderScheduleService =
+        widget.reminderScheduleService ?? ReminderScheduleService.instance;
   }
 
   @override
@@ -46,6 +53,10 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.service != widget.service) {
       _service = widget.service ?? TodayTaskService.instance;
+    }
+    if (oldWidget.reminderScheduleService != widget.reminderScheduleService) {
+      _reminderScheduleService =
+          widget.reminderScheduleService ?? ReminderScheduleService.instance;
     }
   }
 
@@ -131,6 +142,40 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
     await context.push<void>(route);
   }
 
+  Future<void> _openQuickReminderSheet() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => ReminderScheduleEditor(
+        initialTitle: widget.task.title,
+        service: _reminderScheduleService,
+      ),
+    );
+
+    if (created == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Đã tạo lịch nhắc cho việc này.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          action: SnackBarAction(
+            label: 'Xem lịch nhắc',
+            textColor: _accent,
+            onPressed: () {
+              context.push('/reminder-schedules');
+            },
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
@@ -152,6 +197,14 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
             fontWeight: FontWeight.w800,
           ),
         ),
+        actions: [
+          IconButton(
+            key: const Key('task-detail-quick-reminder-action'),
+            icon: const Icon(Icons.alarm_add_rounded),
+            tooltip: 'Thêm lịch nhắc nhanh',
+            onPressed: _openQuickReminderSheet,
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -176,6 +229,10 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
                 onOpen: _openSupportFunction,
               ),
             ],
+            const SizedBox(height: 20),
+            _QuickReminderCard(
+              onAddReminder: _openQuickReminderSheet,
+            ),
           ],
         ),
       ),
@@ -623,6 +680,104 @@ class _SourceReferenceCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickReminderCard extends StatelessWidget {
+  const _QuickReminderCard({required this.onAddReminder});
+
+  final VoidCallback onAddReminder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _ChecklistTaskDetailScreenState._surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _ChecklistTaskDetailScreenState._border),
+        boxShadow: [
+          BoxShadow(
+            color: _ChecklistTaskDetailScreenState._text.withValues(alpha: .04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFEEE8),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.alarm_add_rounded,
+                  size: 20,
+                  color: _ChecklistTaskDetailScreenState._primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Lịch nhắc nhở',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: _ChecklistTaskDetailScreenState._text,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Cài đặt giờ nhắc nhở để không bỏ lỡ việc cần làm này.',
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: _ChecklistTaskDetailScreenState._muted,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              key: const Key('task-detail-add-quick-reminder-button'),
+              onPressed: onAddReminder,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _ChecklistTaskDetailScreenState._primary,
+                side: const BorderSide(
+                  color: _ChecklistTaskDetailScreenState._primary,
+                  width: 1.2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.alarm_add_rounded, size: 20),
+              label: const Text(
+                'Thêm lịch nhắc nhanh',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),

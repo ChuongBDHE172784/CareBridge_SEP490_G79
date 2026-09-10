@@ -11,7 +11,8 @@ interface Props {
 
 export const SharedChecklistBubble: React.FC<Props> = ({ data }) => {
   const percent = data.progressPercent ?? 0;
-  const displayItems = data.currentItems || data.items || [...(data.historyItems || []), ...(data.futureItems || [])];
+  const rawItems = data.currentItems || data.items || [...(data.historyItems || []), ...(data.futureItems || [])];
+  const displayItems = rawItems.filter((item) => getTaskOriginCategory(item) !== 'USER');
 
   return (
     <div className="w-[320px] max-w-full rounded-2xl bg-surface border border-outline-variant/70 shadow-sm overflow-hidden text-on-surface">
@@ -72,7 +73,6 @@ export const SharedChecklistBubble: React.FC<Props> = ({ data }) => {
       {/* Checklist Items */}
       <div className="p-3 space-y-1.5 max-h-64 overflow-y-auto">
         {displayItems.map((item, idx) => {
-          const originCat = getTaskOriginCategory(item);
           return (
             <div
               key={idx}
@@ -95,10 +95,10 @@ export const SharedChecklistBubble: React.FC<Props> = ({ data }) => {
                     <p className={`m-0 text-xs leading-snug ${item.completed ? 'font-medium' : 'text-on-surface'}`}>
                       {item.text}
                     </p>
-                    {originCat === 'USER' ? (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[8px] font-bold bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
-                        <span className="material-symbols-outlined text-[10px] text-purple-600">person</span>
-                        Việc cá nhân
+                    {item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT' ? (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[8px] font-bold bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+                        <span className="material-symbols-outlined text-[10px] text-teal-600">medical_services</span>
+                        Bác sĩ chỉ định
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[8px] font-bold bg-sky-100 text-sky-800 border border-sky-200 shrink-0">

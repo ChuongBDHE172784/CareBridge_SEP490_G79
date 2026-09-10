@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/components/app_user_avatar.dart';
+import '../../journey/services/journey_service.dart';
+import '../../healthRecords/models/health_metric_model.dart';
+import '../../healthRecords/services/health_metric_service.dart';
 import '../../recommendation/models/recommendation_model.dart';
 import '../../recommendation/models/recommendation_questionnaire.dart';
 import '../../recommendation/screens/progressive_recommendation_profile_screen.dart';
@@ -11,9 +14,16 @@ import '../../recommendation/services/recommendation_service.dart';
 import '../services/auth_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key, this.recommendationService});
+  const EditProfileScreen({
+    super.key,
+    this.recommendationService,
+    this.journeyService,
+    this.healthMetricService,
+  });
 
   final RecommendationService? recommendationService;
+  final JourneyService? journeyService;
+  final HealthMetricService? healthMetricService;
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -38,7 +48,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   DateTime? _dateOfBirth;
 
   late final RecommendationService _recommendationService;
+  late final JourneyService _journeyService;
+  late final HealthMetricService _healthMetricService;
   RecommendationProfileResponse? _recommendationProfile;
+  MetricDataPoint? _latestBmiMetric;
   bool _isLoadingRecommendation = false;
 
   bool _isLoading = true;
@@ -48,8 +61,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     _recommendationService = widget.recommendationService ?? RecommendationService();
+    _journeyService = widget.journeyService ?? JourneyService();
+    _healthMetricService = widget.healthMetricService ?? HealthMetricService();
+    RecommendationService.profileChangeRevision.addListener(_onProfileRevisionChanged);
     _loadProfile();
     _loadRecommendationProfile();
+  }
+
+  void _onProfileRevisionChanged() {
+    if (mounted) {
+      _loadRecommendationProfile();
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -92,9 +114,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isLoadingRecommendation = true);
     try {
       final profile = await _recommendationService.getProfile();
+      MetricDataPoint? latestBmi;
+      try {
+        final dashboard = await _journeyService.getDashboard();
+        if (dashboard.journeyId != null) {
+          final trend = await _healthMetricService.getMetricTrend(
+            journeyId: dashboard.journeyId!,
+            metricType: 'BMI',
+          );
+          if (trend.dataPoints.isNotEmpty) {
+            latestBmi = trend.dataPoints.last;
+          }
+        }
+      } catch (_) {
+        // Best effort
+      }
       if (!mounted) return;
       setState(() {
         _recommendationProfile = profile;
+        _latestBmiMetric = latestBmi;
         _isLoadingRecommendation = false;
       });
     } catch (_) {
@@ -150,11 +188,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
     if (mounted) {
       _loadProfile();
+      _loadRecommendationProfile();
     }
   }
 
   @override
   void dispose() {
+    RecommendationService.profileChangeRevision.removeListener(_onProfileRevisionChanged);
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
@@ -527,7 +567,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         else if (_recommendationProfile == null ||
             _recommendationProfile!.status == RecommendationProfileStatus.notStarted ||
             _recommendationProfile!.status == RecommendationProfileStatus.declined)
-          _buildEmptyRecommendationCard()
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_latestBmiMetric != null) _buildBmiFromMetricCard(_latestBmiMetric!),
+              _buildEmptyRecommendationCard(),
+            ],
+          )
         else
           _buildActiveRecommendationCard(),
       ],
@@ -744,6 +790,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ],
             ),
             const SizedBox(height: 16),
+          ] else if (_latestBmiMetric != null) ...[
+            _buildBmiFromMetricCard(_latestBmiMetric!),
           ],
 
           // Tiền sử thai kỳ
@@ -972,6 +1020,86 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           .toList();
     }
     return const [];
+  }
+
+  Widget _buildBmiFromMetricCard(MetricDataPoint metric) {
+    final weight = metric.context['weightKg'] ?? (metric.valueNumeric > 0 ? metric.valueNumeric : null);
+    final height = metric.context['heightCm'] ?? metric.valueSecondary;
+    final bmi = metric.context['bmi'] ?? (metric.valueNumeric > 0 ? metric.valueNumeric : null);
+    final category = metric.context['bmiCategory']?.toString();
+    final measuredDate =
+        '${metric.measuredAt.day.toString().padLeft(2, '0')}/${metric.measuredAt.month.toString().padLeft(2, '0')}/${metric.measuredAt.year}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.monitor_weight_outlined, size: 18, color: _primaryColor),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Thể trạng & Chỉ số BMI (Gần nhất)',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.sync, size: 12, color: Color(0xFF2E7D32)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Đo chỉ số sức khoẻ',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (height != null) _buildChip('Chiều cao: $height cm'),
+              if (weight != null) _buildChip('Cân nặng: $weight kg'),
+              if (bmi != null)
+                _buildChip(
+                  'BMI: $bmi${category != null ? ' (${_bmiCategoryLabel(category)})' : ''}',
+                  bg: const Color(0xFFE8F5E9),
+                  textColor: const Color(0xFF2E7D32),
+                ),
+              _buildChip('Đo ngày $measuredDate', bg: _surfaceContainerLow),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   String _bmiCategoryLabel(String? category) {
