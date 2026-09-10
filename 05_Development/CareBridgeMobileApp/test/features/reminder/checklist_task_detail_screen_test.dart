@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:untitled/features/directChat/models/timeline_item.dart';
+import 'package:untitled/features/directChat/models/timeline_page.dart';
+import 'package:untitled/features/directChat/services/direct_chat_service.dart';
+import 'package:untitled/features/directChat/widgets/checklist_message_card.dart';
+import 'package:untitled/features/reminder/models/reminder_model.dart';
 import 'package:untitled/features/reminder/models/today_task_model.dart';
 import 'package:untitled/features/reminder/models/today_task_support_function.dart';
 import 'package:untitled/features/reminder/screens/checklist_task_detail_screen.dart';
@@ -58,10 +63,54 @@ TodayTask _task({
   });
 }
 
+class _FakeDirectChatService extends DirectChatService {
+  final List<TimelineItem> timelineItems;
+  String? sentMessageBody;
+
+  _FakeDirectChatService({this.timelineItems = const []});
+
+  @override
+  Future<TimelinePage> getTimeline(
+    String conversationId, {
+    String? after,
+    String? before,
+    int limit = 30,
+  }) async {
+    return TimelinePage(
+      items: timelineItems,
+      hasMoreNewer: false,
+      hasMoreOlder: false,
+    );
+  }
+
+  @override
+  Future<TimelineItem> sendMessage(
+    String conversationId, {
+    required String clientMessageId,
+    String? messageBody,
+    String messageType = 'TEXT',
+    String? attachmentId,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationLabel,
+  }) async {
+    sentMessageBody = messageBody;
+    return TimelineItem(
+      kind: 'MESSAGE',
+      messageId: 'msg-1',
+      senderUserId: 'user-1',
+      messageType: messageType,
+      messageBody: messageBody,
+      createdAt: DateTime.now(),
+    );
+  }
+}
+
 Future<void> _openDetail(
   WidgetTester tester, {
   required TodayTask task,
   required TodayTaskService service,
+  DirectChatService? directChatService,
   required ValueChanged<bool?> onResult,
 }) async {
   await tester.pumpWidget(
@@ -74,8 +123,11 @@ Future<void> _openDetail(
               onPressed: () async {
                 final result = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        ChecklistTaskDetailScreen(task: task, service: service),
+                    builder: (_) => ChecklistTaskDetailScreen(
+                      task: task,
+                      service: service,
+                      directChatService: directChatService,
+                    ),
                   ),
                 );
                 onResult(result);
@@ -345,6 +397,162 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'expert task COMPLETE updates chat message payload and pops true',
+    (tester) async {
+      final initialShare = ChecklistShareData(
+        title: 'Checklist thai kỳ',
+        completedCount: 0,
+        totalCount: 1,
+        progressPercent: 0,
+        currentItems: [
+          const ChecklistItemShareData(
+            text: 'Đi khám thai lần 2',
+            completed: false,
+            origin: 'EXPERT',
+            createdBy: 'EXPERT',
+            isExpertCustom: true,
+            replacesText: 'Đi khám thai lần đầu',
+            supportFunction: 'APPOINTMENTS',
+          ),
+        ],
+      );
+
+      final fakeChatService = _FakeDirectChatService(
+        timelineItems: [
+          TimelineItem(
+            kind: 'MESSAGE',
+            messageId: 'msg-1',
+            senderUserId: 'expert-1',
+            messageType: 'TEXT',
+            messageBody: initialShare.serialize(),
+            createdAt: DateTime.now(),
+          ),
+        ],
+      );
+
+      final task = TodayTask(
+        id: 'expert-task-conv-123-0',
+        kind: TodayTaskKind.checklist,
+        sourceType: TodayTaskSourceType.checklist,
+        type: ReminderType.other,
+        title: 'Đi khám thai lần 2',
+        status: ReminderStatus.pending,
+        taskStatus: TodayTaskStatus.pending,
+        priority: 1,
+        target: TodayTaskTarget.mother,
+        origin: TodayTaskOrigin.systemTemplate,
+        bucket: TodayTimeBucket.today,
+        allowedActions: const {TodayTaskAction.complete, TodayTaskAction.reopen},
+        supportFunction: TodayTaskSupportFunction.appointments,
+      );
+
+      bool? detailResult;
+      await _openDetail(
+        tester,
+        task: task,
+        service: TodayTaskService(
+          getRequest: (_, {queryParams}) async => const {},
+          postRequest: (_, _) async => const {},
+        ),
+        directChatService: fakeChatService,
+        onResult: (result) => detailResult = result,
+      );
+
+      expect(find.text('Đánh dấu hoàn tất'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('task-detail-status-action')));
+      await tester.pumpAndSettle();
+
+      expect(detailResult, isTrue);
+      expect(fakeChatService.sentMessageBody, isNotNull);
+      final updatedShare = ChecklistShareData.parse(
+        fakeChatService.sentMessageBody!,
+      );
+      expect(updatedShare, isNotNull);
+      expect(updatedShare!.currentItems.first.completed, isTrue);
+      expect(updatedShare.completedCount, 1);
+      expect(updatedShare.progressPercent, 100);
+    },
+  );
+
+  testWidgets(
+    'expert task REOPEN updates chat message payload and pops true',
+    (tester) async {
+      final initialShare = ChecklistShareData(
+        title: 'Checklist thai kỳ',
+        completedCount: 1,
+        totalCount: 1,
+        progressPercent: 100,
+        currentItems: [
+          const ChecklistItemShareData(
+            text: 'Đi khám thai lần 2',
+            completed: true,
+            origin: 'EXPERT',
+            createdBy: 'EXPERT',
+            isExpertCustom: true,
+            replacesText: 'Đi khám thai lần đầu',
+            supportFunction: 'APPOINTMENTS',
+          ),
+        ],
+      );
+
+      final fakeChatService = _FakeDirectChatService(
+        timelineItems: [
+          TimelineItem(
+            kind: 'MESSAGE',
+            messageId: 'msg-1',
+            senderUserId: 'expert-1',
+            messageType: 'TEXT',
+            messageBody: initialShare.serialize(),
+            createdAt: DateTime.now(),
+          ),
+        ],
+      );
+
+      final task = TodayTask(
+        id: 'expert-task-conv-123-0',
+        kind: TodayTaskKind.checklist,
+        sourceType: TodayTaskSourceType.checklist,
+        type: ReminderType.other,
+        title: 'Đi khám thai lần 2',
+        status: ReminderStatus.pending,
+        taskStatus: TodayTaskStatus.completed,
+        priority: 1,
+        target: TodayTaskTarget.mother,
+        origin: TodayTaskOrigin.systemTemplate,
+        bucket: TodayTimeBucket.today,
+        allowedActions: const {TodayTaskAction.complete, TodayTaskAction.reopen},
+        supportFunction: TodayTaskSupportFunction.appointments,
+      );
+
+      bool? detailResult;
+      await _openDetail(
+        tester,
+        task: task,
+        service: TodayTaskService(
+          getRequest: (_, {queryParams}) async => const {},
+          postRequest: (_, _) async => const {},
+        ),
+        directChatService: fakeChatService,
+        onResult: (result) => detailResult = result,
+      );
+
+      expect(find.text('Mở lại việc'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('task-detail-status-action')));
+      await tester.pumpAndSettle();
+
+      expect(detailResult, isTrue);
+      expect(fakeChatService.sentMessageBody, isNotNull);
+      final updatedShare = ChecklistShareData.parse(
+        fakeChatService.sentMessageBody!,
+      );
+      expect(updatedShare, isNotNull);
+      expect(updatedShare!.currentItems.first.completed, isFalse);
+      expect(updatedShare.completedCount, 0);
+      expect(updatedShare.progressPercent, 0);
+    },
+  );
 
   testWidgets(
     'hides support function section when showSupportFunction is false',

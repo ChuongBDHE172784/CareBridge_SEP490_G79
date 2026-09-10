@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../directChat/services/direct_chat_service.dart';
 import '../models/today_task_model.dart';
+import '../services/expert_checklist_sync.dart';
 import '../services/reminder_schedule_service.dart';
 import '../services/today_task_service.dart';
 import '../widgets/reminder_schedule_editor.dart';
@@ -13,12 +15,14 @@ class ChecklistTaskDetailScreen extends StatefulWidget {
     required this.task,
     this.service,
     this.reminderScheduleService,
+    this.directChatService,
     this.showSupportFunction = true,
   });
 
   final TodayTask task;
   final TodayTaskService? service;
   final ReminderScheduleService? reminderScheduleService;
+  final DirectChatService? directChatService;
   final bool showSupportFunction;
 
   @override
@@ -38,6 +42,7 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
 
   late TodayTaskService _service;
   late ReminderScheduleService _reminderScheduleService;
+  late DirectChatService _directChatService;
   bool _processing = false;
 
   @override
@@ -46,6 +51,8 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
     _service = widget.service ?? TodayTaskService.instance;
     _reminderScheduleService =
         widget.reminderScheduleService ?? ReminderScheduleService.instance;
+    _directChatService =
+        widget.directChatService ?? DirectChatService.instance;
   }
 
   @override
@@ -57,6 +64,10 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
     if (oldWidget.reminderScheduleService != widget.reminderScheduleService) {
       _reminderScheduleService =
           widget.reminderScheduleService ?? ReminderScheduleService.instance;
+    }
+    if (oldWidget.directChatService != widget.directChatService) {
+      _directChatService =
+          widget.directChatService ?? DirectChatService.instance;
     }
   }
 
@@ -96,7 +107,14 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
     setState(() => _processing = true);
     try {
       final task = widget.task;
-      if (task.isChecklist) {
+      if (task.id.startsWith('expert-task-')) {
+        await ExpertChecklistSync.toggleTaskStatus(
+          taskId: task.id,
+          completed: action == TodayTaskAction.complete,
+          directChatService: _directChatService,
+          taskTitle: task.title,
+        );
+      } else if (task.isChecklist) {
         await _service.performChecklistAction(
           taskId: task.id,
           action: action,
