@@ -5,7 +5,6 @@ import {
   fetchExpertSharedRecords,
   editChecklistItemInSharedRecord,
   deleteChecklistItemFromSharedRecord,
-  getTaskOriginCategory,
   type SharedRecordEntry,
   type HealthMetricsShareData,
   type HealthMetricItem,
@@ -56,8 +55,8 @@ export default function ExpertSharedRecordsPage() {
     data: ChecklistShareData;
   } | null>(null);
   const [checklistModalTab, setChecklistModalTab] = useState<'HISTORY' | 'CURRENT' | 'FUTURE'>('CURRENT');
-  const [checklistModalOriginFilter, setChecklistModalOriginFilter] = useState<'ALL' | 'CAREBRIDGE' | 'PERSONAL'>('ALL');
-  const [cardOriginFilters, setCardOriginFilters] = useState<Record<string, 'ALL' | 'CAREBRIDGE' | 'PERSONAL'>>({});
+  const [checklistModalOriginFilter, setChecklistModalOriginFilter] = useState<'ALL' | 'CAREBRIDGE' | 'EXPERT'>('ALL');
+  const [cardOriginFilters, setCardOriginFilters] = useState<Record<string, 'ALL' | 'CAREBRIDGE' | 'EXPERT'>>({});
 
   // Checklist Item Customization Modals & State
   const [taskFormModal, setTaskFormModal] = useState<{
@@ -802,74 +801,75 @@ export default function ExpertSharedRecordsPage() {
                               ).filter((item) => !historyTexts.has(item.text.trim().toLowerCase()));
 
                               const cbCount = currentList.filter(
-                                (i) => getTaskOriginCategory(i) === 'CAREBRIDGE'
+                                (i) => !(i.isExpertCustom || i.origin === 'EXPERT' || i.createdBy === 'EXPERT')
                               ).length;
-                              const personalCount = currentList.filter(
-                                (i) => getTaskOriginCategory(i) === 'USER'
+                              const expertCount = currentList.filter(
+                                (i) => i.isExpertCustom || i.origin === 'EXPERT' || i.createdBy === 'EXPERT'
                               ).length;
                               const currentOriginFilter = cardOriginFilters[cardKey] || 'ALL';
 
                               const displayedList = currentList.filter((item) => {
-                                const originCat = getTaskOriginCategory(item);
-                                const isCareBridge = originCat === 'CAREBRIDGE';
-                                if (currentOriginFilter === 'CAREBRIDGE') return isCareBridge;
-                                if (currentOriginFilter === 'PERSONAL') return !isCareBridge;
+                                const isExp = item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT';
+                                if (currentOriginFilter === 'CAREBRIDGE') return !isExp;
+                                if (currentOriginFilter === 'EXPERT') return isExp;
                                 return true;
                               });
 
                               return (
                                 <div className="space-y-2">
-                                  {/* Origin Filter Bar on Card */}
-                                  <div className="flex items-center gap-1.5 flex-wrap pb-1">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setCardOriginFilters((prev) => ({
-                                          ...prev,
-                                          [cardKey]: 'ALL',
-                                        }))
-                                      }
-                                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
-                                        currentOriginFilter === 'ALL'
-                                          ? 'bg-primary text-white shadow-xs'
-                                          : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
-                                      }`}
-                                    >
-                                      Tất cả ({currentList.length})
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setCardOriginFilters((prev) => ({
-                                          ...prev,
-                                          [cardKey]: 'CAREBRIDGE',
-                                        }))
-                                      }
-                                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
-                                        currentOriginFilter === 'CAREBRIDGE'
-                                          ? 'bg-sky-700 text-white shadow-xs'
-                                          : 'bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100'
-                                      }`}
-                                    >
-                                      ✨ Gợi ý CareBridge ({cbCount})
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setCardOriginFilters((prev) => ({
-                                          ...prev,
-                                          [cardKey]: 'PERSONAL',
-                                        }))
-                                      }
-                                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
-                                        currentOriginFilter === 'PERSONAL'
-                                          ? 'bg-purple-700 text-white shadow-xs'
-                                          : 'bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100'
-                                      }`}
-                                    >
-                                      👤 Việc cá nhân ({personalCount})
-                                    </button>
-                                  </div>
+                                  {/* Origin Filter Bar on Card if there are expert tasks */}
+                                  {expertCount > 0 && (
+                                    <div className="flex items-center gap-1.5 flex-wrap pb-1">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCardOriginFilters((prev) => ({
+                                            ...prev,
+                                            [cardKey]: 'ALL',
+                                          }))
+                                        }
+                                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
+                                          currentOriginFilter === 'ALL'
+                                            ? 'bg-primary text-white shadow-xs'
+                                            : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                                        }`}
+                                      >
+                                        Tất cả ({currentList.length})
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCardOriginFilters((prev) => ({
+                                            ...prev,
+                                            [cardKey]: 'CAREBRIDGE',
+                                          }))
+                                        }
+                                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
+                                          currentOriginFilter === 'CAREBRIDGE'
+                                            ? 'bg-sky-700 text-white shadow-xs'
+                                            : 'bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100'
+                                        }`}
+                                      >
+                                        ✨ Gợi ý CareBridge ({cbCount})
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCardOriginFilters((prev) => ({
+                                            ...prev,
+                                            [cardKey]: 'EXPERT',
+                                          }))
+                                        }
+                                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
+                                          currentOriginFilter === 'EXPERT'
+                                            ? 'bg-teal-700 text-white shadow-xs'
+                                            : 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100'
+                                        }`}
+                                      >
+                                        🩺 Bác sĩ chỉ định ({expertCount})
+                                      </button>
+                                    </div>
+                                  )}
 
                                   <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                                     {displayedList.length === 0 ? (
@@ -878,7 +878,6 @@ export default function ExpertSharedRecordsPage() {
                                       </div>
                                     ) : (
                                       displayedList.map((item, idx) => {
-                                        const originCat = getTaskOriginCategory(item);
                                         return (
                                         <div
                                           key={idx}
@@ -909,10 +908,10 @@ export default function ExpertSharedRecordsPage() {
                                             </span>
                                             <div className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap">
                                               <span className="truncate leading-snug">{item.text}</span>
-                                              {originCat === 'USER' ? (
-                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-800 border border-purple-200 shrink-0">
-                                                  <span className="material-symbols-outlined text-[11px] text-purple-600">person</span>
-                                                  Việc cá nhân
+                                              {item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT' ? (
+                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-50 text-teal-800 border border-teal-200 shrink-0">
+                                                  <span className="material-symbols-outlined text-[11px] text-teal-600">medical_services</span>
+                                                  Bác sĩ chỉ định
                                                 </span>
                                               ) : (
                                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-50 text-sky-800 border border-sky-200 shrink-0">
@@ -1313,14 +1312,14 @@ export default function ExpertSharedRecordsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setChecklistModalOriginFilter('PERSONAL')}
+                onClick={() => setChecklistModalOriginFilter('EXPERT')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                  checklistModalOriginFilter === 'PERSONAL'
-                    ? 'bg-purple-700 text-white shadow-xs'
-                    : 'bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100'
+                  checklistModalOriginFilter === 'EXPERT'
+                    ? 'bg-teal-700 text-white shadow-xs'
+                    : 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100'
                 }`}
               >
-                👤 Việc cá nhân
+                🩺 Bác sĩ chỉ định
               </button>
             </div>
 
@@ -1347,10 +1346,9 @@ export default function ExpertSharedRecordsPage() {
                     ).filter((item) => !historyTexts.has(item.text.trim().toLowerCase()));
 
                     const displayed = currentFiltered.filter((item) => {
-                      const originCat = getTaskOriginCategory(item);
-                      const isCareBridge = originCat === 'CAREBRIDGE';
-                      if (checklistModalOriginFilter === 'CAREBRIDGE') return isCareBridge;
-                      if (checklistModalOriginFilter === 'PERSONAL') return !isCareBridge;
+                      const isExp = item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT';
+                      if (checklistModalOriginFilter === 'CAREBRIDGE') return !isExp;
+                      if (checklistModalOriginFilter === 'EXPERT') return isExp;
                       return true;
                     });
 
@@ -1365,7 +1363,6 @@ export default function ExpertSharedRecordsPage() {
                     return (
                       <div className="space-y-2">
                         {displayed.map((item, idx) => {
-                          const originCat = getTaskOriginCategory(item);
                           return (
                           <div
                             key={idx}
@@ -1399,10 +1396,10 @@ export default function ExpertSharedRecordsPage() {
                                   <span className={item.completed ? 'font-medium' : 'text-on-surface font-semibold'}>
                                     {item.text}
                                   </span>
-                                  {originCat === 'USER' ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
-                                      <span className="material-symbols-outlined text-xs text-purple-600">person</span>
-                                      Việc cá nhân
+                                  {item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT' ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                      <span className="material-symbols-outlined text-xs text-teal-600">medical_services</span>
+                                      Bác sĩ chỉ định
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
@@ -1518,10 +1515,9 @@ export default function ExpertSharedRecordsPage() {
 
                   {(() => {
                     const displayed = (selectedChecklistModal.data.historyItems || []).filter((item) => {
-                      const originCat = getTaskOriginCategory(item);
-                      const isCareBridge = originCat === 'CAREBRIDGE';
-                      if (checklistModalOriginFilter === 'CAREBRIDGE') return isCareBridge;
-                      if (checklistModalOriginFilter === 'PERSONAL') return !isCareBridge;
+                      const isExp = item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT';
+                      if (checklistModalOriginFilter === 'CAREBRIDGE') return !isExp;
+                      if (checklistModalOriginFilter === 'EXPERT') return isExp;
                       return true;
                     });
 
@@ -1536,7 +1532,6 @@ export default function ExpertSharedRecordsPage() {
                     return (
                       <div className="space-y-2">
                         {displayed.map((item, idx) => {
-                          const originCat = getTaskOriginCategory(item);
                           return (
                           <div
                             key={idx}
@@ -1560,10 +1555,10 @@ export default function ExpertSharedRecordsPage() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-medium text-emerald-950">{item.text}</span>
-                                  {originCat === 'USER' ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
-                                      <span className="material-symbols-outlined text-xs text-purple-600">person</span>
-                                      Việc cá nhân
+                                  {item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT' ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                      <span className="material-symbols-outlined text-xs text-teal-600">medical_services</span>
+                                      Bác sĩ chỉ định
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
@@ -1665,10 +1660,9 @@ export default function ExpertSharedRecordsPage() {
 
                   {(() => {
                     const displayed = (selectedChecklistModal.data.futureItems || []).filter((item) => {
-                      const originCat = getTaskOriginCategory(item);
-                      const isCareBridge = originCat === 'CAREBRIDGE';
-                      if (checklistModalOriginFilter === 'CAREBRIDGE') return isCareBridge;
-                      if (checklistModalOriginFilter === 'PERSONAL') return !isCareBridge;
+                      const isExp = item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT';
+                      if (checklistModalOriginFilter === 'CAREBRIDGE') return !isExp;
+                      if (checklistModalOriginFilter === 'EXPERT') return isExp;
                       return true;
                     });
 
@@ -1683,7 +1677,6 @@ export default function ExpertSharedRecordsPage() {
                     return (
                       <div className="space-y-2">
                         {displayed.map((item, idx) => {
-                          const originCat = getTaskOriginCategory(item);
                           return (
                           <div
                             key={idx}
@@ -1707,10 +1700,10 @@ export default function ExpertSharedRecordsPage() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-medium text-purple-950">{item.text}</span>
-                                  {originCat === 'USER' ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
-                                      <span className="material-symbols-outlined text-xs text-purple-600">person</span>
-                                      Việc cá nhân
+                                  {item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT' ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                      <span className="material-symbols-outlined text-xs text-teal-600">medical_services</span>
+                                      Bác sĩ chỉ định
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">

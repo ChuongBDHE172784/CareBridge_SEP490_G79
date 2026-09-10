@@ -55,6 +55,13 @@ class ChecklistItemShareData {
     if (sourceUrl != null) 'sourceUrl': sourceUrl,
     if (supportFunction != null) 'supportFunction': supportFunction,
   };
+
+  bool get isPersonal =>
+      origin == 'USER' ||
+      origin == 'USER_CREATED' ||
+      createdBy == 'USER' ||
+      createdBy == 'USER_CREATED';
+  bool get isCareBridgeSuggestion => !isPersonal;
 }
 
 class ChecklistShareData {
@@ -106,23 +113,31 @@ class ChecklistShareData {
       final jsonStr = body.replaceFirst(tag, '').trim();
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
 
+      bool isNotPersonal(ChecklistItemShareData item) =>
+          item.origin != 'USER' &&
+          item.origin != 'USER_CREATED' &&
+          item.createdBy != 'USER' &&
+          item.createdBy != 'USER_CREATED';
+
       final historyList = (decoded['historyItems'] as List? ?? [])
           .map((item) => ChecklistItemShareData.fromJson(item as Map<String, dynamic>))
+          .where(isNotPersonal)
           .toList();
 
       final currentList = (decoded['currentItems'] as List? ?? decoded['items'] as List? ?? [])
           .map((item) => ChecklistItemShareData.fromJson(item as Map<String, dynamic>))
+          .where(isNotPersonal)
           .toList();
 
       final futureList = (decoded['futureItems'] as List? ?? [])
           .map((item) => ChecklistItemShareData.fromJson(item as Map<String, dynamic>))
+          .where(isNotPersonal)
           .toList();
 
-      final total = (decoded['totalCount'] as num?)?.toInt() ??
-          (historyList.length + currentList.length + futureList.length);
-      final completed = (decoded['completedCount'] as num?)?.toInt() ??
-          historyList.where((i) => i.completed).length +
-              currentList.where((i) => i.completed).length;
+      final total = historyList.length + currentList.length + futureList.length;
+      final completed = historyList.where((i) => i.completed).length +
+          currentList.where((i) => i.completed).length +
+          futureList.where((i) => i.completed).length;
       final percent = total > 0 ? ((completed / total) * 100).round() : 0;
 
       return ChecklistShareData(
@@ -454,31 +469,6 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF00695C),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else if (item.origin == 'USER' || item.createdBy == 'USER')
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3E5F5),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: const Color(0xFFCE93D8)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.person_outline_rounded, size: 10, color: Color(0xFF6A1B9A)),
-                                SizedBox(width: 3),
-                                Text(
-                                  'Mẹ tự tạo',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF6A1B9A),
                                   ),
                                 ),
                               ],
