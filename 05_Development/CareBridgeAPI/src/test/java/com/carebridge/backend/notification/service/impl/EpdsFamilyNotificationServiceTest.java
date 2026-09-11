@@ -16,6 +16,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -260,6 +261,16 @@ class EpdsFamilyNotificationServiceTest {
         appender.start();
         serviceLogger.addAppender(appender);
 
+        // The dispatch line this test reads is log.info. CI pins com.carebridge.backend to
+        // WARN through SPRING_APPLICATION_JSON, and surefire reuses one JVM, so a Spring
+        // context booted by an earlier class leaves that level applied to this plain unit
+        // test and the appender sees nothing. Pin the level the assertions need instead of
+        // inheriting whatever ran first. getLevel() is null when the logger inherits, and
+        // restoring that null is what puts inheritance back rather than freezing a level
+        // onto every later test in the same JVM.
+        Level previousLevel = serviceLogger.getLevel();
+        serviceLogger.setLevel(Level.INFO);
+
         try {
             when(memberRepository.findAcceptedFamilyMembersForEpdsAlerts(MOTHER_ID))
                     .thenReturn(List.of(makeFamilyMember(FAMILY_1), makeFamilyMember(FAMILY_2)));
@@ -287,6 +298,7 @@ class EpdsFamilyNotificationServiceTest {
                     .doesNotContain("question10")
                     .doesNotContain("q10");
         } finally {
+            serviceLogger.setLevel(previousLevel);
             serviceLogger.detachAppender(appender);
             appender.stop();
         }

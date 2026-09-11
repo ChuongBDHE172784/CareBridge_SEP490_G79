@@ -2,6 +2,7 @@ package com.carebridge.backend.triage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -20,6 +21,15 @@ class LifecycleSafetyMetricsTest {
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);
+
+        // record() emits log.info, but CI pins com.carebridge.backend to WARN through
+        // SPRING_APPLICATION_JSON and surefire reuses one JVM, so a Spring context booted
+        // by an earlier class silences this one and hasSize() below sees an empty list.
+        // INFO rather than DEBUG: the size assertion is exact, so a stray debug event from
+        // this logger would turn a pass into a count mismatch. getLevel() is null while the
+        // logger inherits, and restoring that null hands inheritance back to later tests.
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
         try {
             LifecycleSafetyMetrics metrics = new LifecycleSafetyMetrics();
             Arrays.stream(Outcome.values()).forEach(outcome -> {
@@ -38,6 +48,7 @@ class LifecycleSafetyMetricsTest {
                             .contains(" outcome=", " count=")
                             .doesNotContain("token", "owner", "user", "journey", "route", "symptom"));
         } finally {
+            logger.setLevel(previousLevel);
             logger.detachAppender(appender);
             appender.stop();
         }
