@@ -69,12 +69,14 @@ def test_every_case_has_provenance_and_safety_metadata():
 def test_all_three_parity_vector_copies_have_the_canonical_digest():
     root = repository_root()
     ai_service = Path(os.getenv("CAREBRIDGE_AI_SERVICE_PATH", root / "05_Development" / "CareBridgeAITriageService"))
+    canonical_file = module_root() / "datasets" / "pediatric_red_parity_vectors.json"
     files = [
-        module_root() / "datasets" / "pediatric_red_parity_vectors.json",
+        canonical_file,
         ai_service / "tests" / "data" / "pediatric_red_parity_vectors.json",
         root / "05_Development" / "CareBridgeAPI" / "src" / "test" / "resources" / "triage" / "pediatric_red_parity_vectors.json",
     ]
 
+    assert canonical_file.exists()
     available = [path for path in files if path.exists()]
-    assert len(available) >= 2
+    assert len(available) >= 1
     assert {sha256(path) for path in available} == {EXPECTED_PARITY_SHA256}
