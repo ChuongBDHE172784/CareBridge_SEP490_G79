@@ -1,12 +1,18 @@
-"""Sync the canonical AI Triage V2 rule registry into the Java and Python runtimes.
+"""Sync the canonical AI Triage V2 rule registry into the Java runtime.
 
 The registry under 05_Development/Contracts/triage/ is the single source of truth.
-Java and Python each need a local copy because their Docker build contexts are
-separate directories, so a shared path is not reachable at runtime.
+The Java backend needs a local copy because its Docker build context is a separate
+directory, so the canonical path is not reachable at runtime.
+
+The Python CareBridgeAITriageService was a second consumer until commit 0480d53c5
+replaced its rule-based engine (app/rules/registry.py, app/questions/catalog.py and
+tests/test_rule_registry_parity_v2.py) with the RAG pipeline. That service no longer
+reads the registry, so its destinations were removed here. Re-add them if a Python
+runtime consumes the registry again.
 
 This script copies each canonical file and writes a sidecar ``.sha256`` digest next
-to every copy. The parity tests on both sides recompute the digest of their local
-copy and compare it against that sidecar, so a hand-edited copy fails immediately.
+to every copy. ``--check`` recomputes each copy's digest against the canonical file
+and against that sidecar, so a hand-edited copy fails CI immediately.
 
 Usage:
     python 05_Development/DevTools/sync_triage_rule_registry.py            # write copies
@@ -26,72 +32,31 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL_DIR = REPO_ROOT / "05_Development" / "Contracts" / "triage"
 
+JAVA_MAIN_RESOURCES = (
+    REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage"
+)
+JAVA_TEST_RESOURCES = (
+    REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "test" / "resources" / "triage"
+)
+
 # canonical filename -> list of destination directories
 TARGETS: dict[str, list[Path]] = {
-    "triage_rules_v2.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "triage_rule_condition.schema.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "context_parity_vectors_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "test" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "tests" / "data",
-    ],
-    "triage_rule_parity_vectors_v2.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "test" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "tests" / "data",
-    ],
-    "required_rule_manifest.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "internal_rule_review_manifest.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "source_verification_manifest.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "context_contract_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "target_entity_indicators_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "intent_indicators_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "question_catalog_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "canonical_answer_mapping_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "oos_complaint_taxonomy_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "matrix_snapshot_v0.1.0.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "dataset_requirements_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
-    "draft_safety_disposition_matrix_v1.json": [
-        REPO_ROOT / "05_Development" / "CareBridgeAPI" / "src" / "main" / "resources" / "triage",
-        REPO_ROOT / "05_Development" / "CareBridgeAITriageService" / "data",
-    ],
+    "triage_rules_v2.json": [JAVA_MAIN_RESOURCES],
+    "triage_rule_condition.schema.json": [JAVA_MAIN_RESOURCES],
+    "context_parity_vectors_v1.json": [JAVA_TEST_RESOURCES],
+    "triage_rule_parity_vectors_v2.json": [JAVA_TEST_RESOURCES],
+    "required_rule_manifest.json": [JAVA_MAIN_RESOURCES],
+    "internal_rule_review_manifest.json": [JAVA_MAIN_RESOURCES],
+    "source_verification_manifest.json": [JAVA_MAIN_RESOURCES],
+    "context_contract_v1.json": [JAVA_MAIN_RESOURCES],
+    "target_entity_indicators_v1.json": [JAVA_MAIN_RESOURCES],
+    "intent_indicators_v1.json": [JAVA_MAIN_RESOURCES],
+    "question_catalog_v1.json": [JAVA_MAIN_RESOURCES],
+    "canonical_answer_mapping_v1.json": [JAVA_MAIN_RESOURCES],
+    "oos_complaint_taxonomy_v1.json": [JAVA_MAIN_RESOURCES],
+    "matrix_snapshot_v0.1.0.json": [JAVA_MAIN_RESOURCES],
+    "dataset_requirements_v1.json": [JAVA_MAIN_RESOURCES],
+    "draft_safety_disposition_matrix_v1.json": [JAVA_MAIN_RESOURCES],
 }
 
 INTEGRITY_MANIFEST = CANONICAL_DIR / "artifact_integrity_manifest.json"

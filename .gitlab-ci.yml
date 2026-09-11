@@ -130,8 +130,6 @@ check_triage_registry:
         - "05_Development/Contracts/triage/**/*"
         - "05_Development/CareBridgeAPI/src/main/resources/triage/**/*"
         - "05_Development/CareBridgeAPI/src/test/resources/triage/**/*"
-        - "05_Development/CareBridgeAITriageService/data/**/*"
-        - "05_Development/CareBridgeAITriageService/tests/data/**/*"
         - "05_Development/DevTools/sync_triage_rule_registry.py"
     - if: '$CI_COMMIT_BRANCH == "page-web"'
       changes: *registry_paths
