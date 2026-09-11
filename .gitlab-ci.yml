@@ -20,6 +20,28 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
   EVALUATION_IMAGE: "$CI_REGISTRY_IMAGE/ai-evaluator:$CI_COMMIT_SHORT_SHA"
 
+# MAVEN_OPTS above has always pointed the local repo at $CI_PROJECT_DIR/.m2/repository,
+# which is the one location a GitLab cache: can actually persist — but no cache: block
+# ever existed, so that line only moved the directory and all three Maven jobs still
+# re-resolved the whole tree from Maven Central on every run. The backend pulls 378 jars
+# (~237 MB) plus several hundred POMs, and the POM half is latency-bound rather than
+# bandwidth-bound: the job log shows 2.7 kB files arriving at 79 kB/s because each one
+# costs a round trip. That is the part a warm cache removes and a fast mirror does not.
+#
+# Only test_backend carries pull-push. It resolves the superset (compile + test scope,
+# surefire, junit, testcontainers, h2), so it is the job whose cache is worth keeping,
+# and having exactly one uploader avoids two jobs racing to write the same key with
+# different halves of the tree. validate_backend and database_gate0_audit read it.
+# On a cold key validate_backend downloads without saving, then test_backend saves the
+# superset, and every later pipeline is warm for all three.
+#
+# Keying on pom.xml means a dependency change starts a new cache instead of silently
+# serving a stale one. A cache miss is never fatal: Maven simply downloads as it does today.
+.maven_cache: &maven_cache
+  key:
+    files: ["05_Development/CareBridgeAPI/pom.xml"]
+  paths: [".m2/repository"]
+
 # $CI_DEFAULT_BRANCH is "main" on both remotes, and main has not moved in weeks.
 # The branch the team actually pushes to every day is "dev", which matched none of
 # these anchors — so every push to dev ran zero validate, zero test and zero
@@ -142,6 +164,9 @@ validate_backend:
   stage: validate
   image: eclipse-temurin:21-jdk
   rules: *backend_rules
+  cache:
+    <<: *maven_cache
+    policy: pull
   script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B -DskipTests compile"]
 database_gate0_audit:
   stage: validate
@@ -154,6 +179,9 @@ database_gate0_audit:
       when: manual
       allow_failure: true
     - when: never
+  cache:
+    <<: *maven_cache
+    policy: pull
   script:
     - test -n "$GATE0_DB_URL" && test -n "$GATE0_DB_USERNAME" && test -n "$GATE0_DB_PASSWORD"
     - cd 05_Development/CareBridgeAPI
@@ -185,6 +213,9 @@ test_backend:
   variables:
     SPRING_APPLICATION_JSON: '{"logging":{"level":{"root":"WARN","org.hibernate.SQL":"OFF","org.hibernate.type.descriptor.sql":"OFF","org.springframework.orm":"WARN","com.carebridge.backend":"WARN"}}}'
   rules: *backend_rules
+  cache:
+    <<: *maven_cache
+    policy: pull-push
   script: ["cd 05_Development/CareBridgeAPI", "./mvnw -B -Dmaven.test.redirectTestOutputToFile=true test"]
   artifacts:
     when: always
