@@ -111,8 +111,19 @@ class GeminiRagServiceStory69Test {
                 .userStage(requestedStage)
                 .maxContextChunks(3)
                 .build();
+        // Must be non-empty: GeminiRagServiceImpl returns the safe fallback without
+        // calling Gemini when retrieval yields no grounding context, so an empty list
+        // means the prompt is never built and the assertions below can never run.
+        ContentItem grounding = ContentItem.builder()
+                .id(UUID.fromString("69000000-0000-0000-0000-000000000704"))
+                .type(ContentType.ARTICLE)
+                .title("Generic grounding title")
+                .body("Generic grounding body")
+                .stage(ContentStage.PRE_PREGNANCY)
+                .status(ContentStatus.APPROVED)
+                .build();
         when(retriever.retrieveContext("synthetic generic question", null, 3))
-                .thenReturn(List.of());
+                .thenReturn(List.of(grounding));
         when(client.generate(anyString())).thenReturn("synthetic answer");
 
         service.generateAnswer(request, new RagExecutionContext(false, null, requestedStage));
