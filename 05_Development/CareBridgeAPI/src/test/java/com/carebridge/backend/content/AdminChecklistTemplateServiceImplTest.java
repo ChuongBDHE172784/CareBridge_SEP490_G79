@@ -42,6 +42,7 @@ import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.service.AdminChecklistTemplateServiceImpl;
+import com.carebridge.backend.content.service.ContentWorkloadDispatcherService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -75,6 +76,11 @@ class AdminChecklistTemplateServiceImplTest {
 
         @Mock
         private AuditService auditService;
+
+        // The service dispatches a resubmitted draft to an expert; without this mock
+        // @InjectMocks leaves the field null and the resubmit path throws NPE.
+        @Mock
+        private ContentWorkloadDispatcherService contentWorkloadDispatcherService;
 
         @InjectMocks
         private AdminChecklistTemplateServiceImpl service;

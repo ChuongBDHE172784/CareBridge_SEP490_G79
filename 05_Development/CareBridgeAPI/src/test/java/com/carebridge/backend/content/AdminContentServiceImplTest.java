@@ -32,6 +32,7 @@ import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.policy.HtmlContentSanitizer;
 import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.content.service.AdminContentServiceImpl;
+import com.carebridge.backend.content.service.ContentWorkloadDispatcherService;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.List;
@@ -62,6 +63,11 @@ class AdminContentServiceImplTest {
 
     @Mock
     private HtmlContentSanitizer htmlContentSanitizer;
+
+    // The service dispatches a resubmitted draft to an expert; without this mock
+    // @InjectMocks leaves the field null and the resubmit path throws NPE.
+    @Mock
+    private ContentWorkloadDispatcherService contentWorkloadDispatcherService;
 
     @InjectMocks
     private AdminContentServiceImpl adminContentService;
