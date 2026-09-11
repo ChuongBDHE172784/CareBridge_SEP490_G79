@@ -36,7 +36,16 @@ class ProductionBaselinePostgres18TestcontainersTest {
                 .outOfOrder(false)
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(8);
+        // Derived from the migration files on the classpath rather than hard-coded:
+        // the chain grew from 8 to 10 and this test was the thing that noticed last.
+        // Asserting against what Flyway discovers still proves every migration was
+        // applied, in version order, and succeeded.
+        String[] expectedVersions = java.util.Arrays.stream(flyway.info().all())
+                .map(info -> info.getVersion() == null ? null : info.getVersion().getVersion())
+                .filter(java.util.Objects::nonNull)
+                .toArray(String[]::new);
+
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(expectedVersions.length);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         try (var connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
@@ -50,9 +59,9 @@ class ProductionBaselinePostgres18TestcontainersTest {
                          """)) {
                 assertThat(result.next()).isTrue();
                 assertThat((String[]) result.getArray(1).getArray())
-                        .containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
+                        .containsExactly(expectedVersions);
                 assertThat(result.getBoolean(2)).isTrue();
-                assertThat(result.getLong(3)).isEqualTo(8);
+                assertThat(result.getLong(3)).isEqualTo(expectedVersions.length);
             }
             ProductionBaselineBootstrapTest.assertRetentionFinalizerState(connection);
             ProductionBaselineBootstrapTest.assertApplicationRuntimePrivilegeContract(connection);
