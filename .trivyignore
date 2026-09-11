@@ -1,2 +1,5 @@
 # Add a CVE only after review, with a reason and expiry date on the preceding line.
 # Example: CVE-YYYY-NNNN # false positive; reviewed YYYY-MM-DD; expires YYYY-MM-DD
+
+# GHSA-j95f-988m-3j2f: Tiptap ReDoS in markdown attribute parser. CareBridge RichTextEditor operates exclusively on HTML/ProseMirror JSON without markdown parser extensions; reviewed 2026-09-11; expires 2026-12-31
+GHSA-j95f-988m-3j2f
