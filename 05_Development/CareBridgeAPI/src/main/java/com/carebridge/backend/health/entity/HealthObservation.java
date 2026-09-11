@@ -149,7 +149,10 @@ public class HealthObservation {
         if (subjectType == null || subjectType.isBlank()) subjectType = "MOTHER";
         if (sourceType == null) sourceType = DataSource.MANUAL;
         if (qualityLabel == null || qualityLabel.isBlank()) qualityLabel = "UNKNOWN";
+        // Copy before writing: callers hand in Map.of(...) literals, and mutating a
+        // caller-supplied immutable map throws UnsupportedOperationException at flush.
         if (payload == null) payload = new LinkedHashMap<>();
+        else payload = new LinkedHashMap<>(payload);
         payload.putIfAbsent("recordStatus", MetricStatus.ACTIVE.name());
     }
 
@@ -159,7 +162,7 @@ public class HealthObservation {
     }
 
     public void setRecordStatus(MetricStatus status) {
-        if (payload == null) payload = new LinkedHashMap<>();
+        payload = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
         payload.put("recordStatus", status.name());
     }
 }

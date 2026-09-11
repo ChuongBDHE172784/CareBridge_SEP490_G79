@@ -1,5 +1,6 @@
 package com.carebridge.backend.directchat.repository;
 
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.directchat.entity.DirectConversation;
@@ -34,7 +35,7 @@ class DirectConversationRepositorySortIntegrationTest extends AbstractPostgresIn
         jdbcTemplate.update(
                 "INSERT INTO users (user_id,person_id,full_name,display_name,phone,role,enabled,locked,created_at,updated_at) "
                         + "VALUES (?,?,'Mother Sort','Mother Sort',?,'MOTHER',true,false,now(),now())",
-                MOTHER_ID, MOTHER_ID, "09" + String.valueOf(System.nanoTime()).substring(0, 8));
+                MOTHER_ID, MOTHER_ID, CanonicalUserFixture.uniquePhone("09"));
 
         convOld = seedConversation(Instant.parse("2026-07-10T00:00:00Z"));
         convNew = seedConversation(Instant.parse("2026-07-16T00:00:00Z"));
@@ -47,7 +48,7 @@ class DirectConversationRepositorySortIntegrationTest extends AbstractPostgresIn
         jdbcTemplate.update(
                 "INSERT INTO users (user_id,person_id,full_name,display_name,phone,role,enabled,locked,created_at,updated_at) "
                         + "VALUES (?,?,'Expert Sort','Expert Sort',?,'EXPERT',true,false,now(),now())",
-                expertUserId, expertUserId, "08" + String.valueOf(System.nanoTime()).substring(0, 8));
+                expertUserId, expertUserId, CanonicalUserFixture.uniquePhone("08"));
         // Seed preserves last_activity_at >= created_at.
         jdbcTemplate.update(
                 "INSERT INTO direct_conversations (conversation_id,mother_user_id,expert_user_id,status,created_at,last_activity_at) "
