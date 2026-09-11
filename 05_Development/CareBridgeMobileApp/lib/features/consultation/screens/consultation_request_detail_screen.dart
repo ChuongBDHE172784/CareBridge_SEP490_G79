@@ -8,6 +8,7 @@ import '../models/consultation_request.dart';
 import '../services/consultation_request_refresh_bus.dart';
 import '../services/consultation_request_service.dart';
 import '../services/triage_expert_handoff_service.dart';
+import 'consultation_request_form_screen.dart';
 
 class ConsultationRequestDetailScreen extends StatefulWidget {
   final String requestId;
@@ -422,6 +423,73 @@ class _ConsultationRequestDetailScreenState
                       ),
                     ),
                     const SizedBox(height: 16),
+                  ],
+
+                  // Het han la ngo cut: yeu cau tu dong, ma man hinh truoc day khong
+                  // noi gi tiep theo. Mo lai duong di — dat lai chinh nguoi do, hoac
+                  // sang danh sach xem ai dang ranh.
+                  if (request.status == 'EXPIRED') ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _surfaceHigh,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Text(
+                        'Yêu cầu này đã hết hạn nên đã tự đóng. Bạn có thể gửi lại '
+                        'yêu cầu cho chính chuyên gia này, hoặc chọn một chuyên gia '
+                        'đang còn lịch trống.',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          height: 1.5,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ConsultationRequestFormScreen(
+                              expertProfileId: request.expertProfileId,
+                              expertDisplayName:
+                                  request.counterpartDisplayName ?? 'Chuyên gia',
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Gửi lại yêu cầu'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.push('/experts'),
+                        icon: const Icon(Icons.groups_outlined, size: 18),
+                        label: const Text('Xem chuyên gia đang rảnh'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _primary,
+                          side: const BorderSide(color: _outline),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
 
                   // Action Buttons Footer

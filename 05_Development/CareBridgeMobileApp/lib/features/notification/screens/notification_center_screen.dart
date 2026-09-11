@@ -256,9 +256,19 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             type == 'FAMILY_SYNC') {
           final groupId = n.referenceId ?? n.metadata?['groupId'] as String?;
           if (groupId != null) {
+            String groupName = n.metadata?['groupName'] as String? ?? '';
+            if (groupName.isEmpty) {
+              const prefix = 'Bạn vừa nhận được lời mời tham gia nhóm gia đình: ';
+              if (n.body.contains(prefix)) {
+                groupName = n.body.split(prefix).last.trim();
+              }
+            }
+            if (groupName.isEmpty) {
+              groupName = 'Nhóm chăm sóc';
+            }
             final pendingInvite = PendingInvitation(
               groupId: groupId,
-              groupName: n.metadata?['groupName'] as String? ?? 'Nhóm chăm sóc',
+              groupName: groupName,
               memberRole: 'MEMBER',
             );
             await Navigator.of(context).push(

@@ -358,6 +358,18 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
             icon: Icons.bloodtype_outlined,
             shared: _isHealthMetricShared('BLOOD_GLUCOSE', permission),
           ),
+          (
+            code: 'MATERNAL_HEART_RATE',
+            label: 'Nhịp tim mẹ',
+            icon: Icons.favorite_border_rounded,
+            shared: _isHealthMetricShared('MATERNAL_HEART_RATE', permission),
+          ),
+          (
+            code: 'TEMPERATURE',
+            label: 'Nhiệt độ',
+            icon: Icons.thermostat_outlined,
+            shared: _isHealthMetricShared('TEMPERATURE', permission),
+          ),
         ].where((item) => item.shared).toList(growable: false);
 
     return Column(
@@ -490,6 +502,12 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
         'BLOOD_GLUCOSE' =>
           dashboardPermission.quickNotes &&
               dashboardPermission.quickNoteBloodGlucose,
+        'MATERNAL_HEART_RATE' =>
+          dashboardPermission.quickNotes &&
+              dashboardPermission.quickNoteHeartRate,
+        'TEMPERATURE' =>
+          dashboardPermission.quickNotes &&
+              dashboardPermission.quickNoteTemperature,
         _ => false,
       };
     }
@@ -501,6 +519,8 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
       'HYDRATION' => directPermission.quickNoteHydration,
       'EPDS_SCORE' => directPermission.quickNoteEpds,
       'BLOOD_GLUCOSE' => directPermission.quickNoteBloodGlucose,
+      'MATERNAL_HEART_RATE' => directPermission.quickNoteHeartRate,
+      'TEMPERATURE' => directPermission.quickNoteTemperature,
       _ => false,
     };
   }

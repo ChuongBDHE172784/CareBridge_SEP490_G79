@@ -834,19 +834,37 @@ class _AddBabyLogSheet extends StatefulWidget {
 }
 
 class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
+  static const List<String> _commonSymptoms = [
+    'Sốt',
+    'Nôn trớ',
+    'Ho',
+    'Sổ mũi / Nghẹt mũi',
+    'Tiêu chảy',
+    'Táo bón',
+    'Phát ban / Nổi mẩn',
+    'Quấy khóc / Khó chịu',
+    'Bỏ bú / Biếng ăn',
+    'Khác',
+  ];
+
   late final TextEditingController _quantityController;
   late final TextEditingController _unitController;
   late final TextEditingController _noteController;
+  late final TextEditingController _symptomDescriptionController;
   final _formKey = GlobalKey<FormState>();
   LogType _selectedType = LogType.feeding;
+  String _selectedSymptom = 'Sốt';
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _quantityController = TextEditingController();
-    _unitController = TextEditingController(text: 'ml');
+    _unitController = TextEditingController(
+      text: fixedDisplayUnitFor(_selectedType) ?? 'ml',
+    );
     _noteController = TextEditingController();
+    _symptomDescriptionController = TextEditingController();
   }
 
   @override
@@ -854,6 +872,7 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
     _quantityController.dispose();
     _unitController.dispose();
     _noteController.dispose();
+    _symptomDescriptionController.dispose();
     super.dispose();
   }
 
@@ -861,37 +880,66 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
     if (next == null || _saving) return;
     setState(() {
       _selectedType = next;
-      switch (next) {
-        case LogType.feeding:
-          _unitController.text = 'ml';
-        case LogType.sleep:
-          _unitController.text = 'hours';
-        case LogType.diaper:
-        case LogType.fever:
-        case LogType.vomiting:
-        case LogType.medicine:
-        case LogType.symptom:
-          _quantityController.clear();
-          _unitController.clear();
+      final displayUnit = fixedDisplayUnitFor(next);
+      if (displayUnit != null) {
+        _unitController.text = displayUnit;
+      } else {
+        _unitController.clear();
+      }
+      if (next == LogType.symptom) {
+        _quantityController.clear();
       }
     });
+  }
+
+  String _quantityLabelFor(LogType type) {
+    switch (type) {
+      case LogType.feeding:
+        return 'Lượng sữa / thức ăn (tuỳ chọn)';
+      case LogType.sleep:
+        return 'Thời gian ngủ (tuỳ chọn)';
+      case LogType.diaper:
+        return 'Số lần (tuỳ chọn)';
+      case LogType.medicine:
+        return 'Liều lượng (tuỳ chọn)';
+      default:
+        return 'Số lượng (tuỳ chọn)';
+    }
   }
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     try {
+      final double? qty;
+      final String? unit;
+      final String? note;
+
+      if (_selectedType == LogType.symptom) {
+        qty = null;
+        unit = null;
+        final desc = _symptomDescriptionController.text.trim();
+        if (_selectedSymptom == 'Khác') {
+          note = desc.isNotEmpty ? 'Khác: $desc' : 'Khác';
+        } else {
+          note = desc.isNotEmpty ? '$_selectedSymptom: $desc' : _selectedSymptom;
+        }
+      } else {
+        qty = double.tryParse(_quantityController.text);
+        final rawUnit = _unitController.text.trim();
+        unit = rawUnit.isEmpty ? null : rawUnit;
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
+      }
+
       await widget.logService.addDailyLog(
         widget.babyId,
         AddBabyDailyLogRequest(
           logType: _selectedType,
-          quantity: double.tryParse(_quantityController.text),
-          unit: _unitController.text.trim().isEmpty
-              ? null
-              : _unitController.text.trim(),
-          note: _noteController.text.trim().isEmpty
-              ? null
-              : _noteController.text.trim(),
+          quantity: qty,
+          unit: unit,
+          note: note,
           startedAt: DateTime.now(),
         ),
       );
@@ -914,6 +962,8 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isSymptom = _selectedType == LogType.symptom;
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -954,9 +1004,10 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<LogType>(
+                key: const Key('baby-log-type-select'),
                 initialValue: _selectedType,
                 decoration: const InputDecoration(labelText: 'Loại nhật ký'),
-                items: LogType.values
+                items: creationLogTypes
                     .map(
                       (type) => DropdownMenuItem(
                         value: type,
@@ -967,38 +1018,93 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
                 onChanged: _onTypeChanged,
               ),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _quantityController,
-                enabled: !_saving,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              if (isSymptom) ...[
+                DropdownButtonFormField<String>(
+                  key: const Key('baby-log-symptom-select'),
+                  initialValue: _selectedSymptom,
+                  decoration: const InputDecoration(
+                    labelText: 'Triệu chứng',
+                  ),
+                  items: _commonSymptoms
+                      .map(
+                        (symptom) => DropdownMenuItem(
+                          value: symptom,
+                          child: Text(symptom),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _saving
+                      ? null
+                      : (val) {
+                          if (val != null) {
+                            setState(() => _selectedSymptom = val);
+                          }
+                        },
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Số lượng (tuỳ chọn)',
+                const SizedBox(height: 8),
+                TextFormField(
+                  key: const Key('baby-log-symptom-description'),
+                  controller: _symptomDescriptionController,
+                  enabled: !_saving,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: _selectedSymptom == 'Khác'
+                        ? 'Mô tả triệu chứng *'
+                        : 'Mô tả chi tiết (tuỳ chọn)',
+                    hintText: _selectedSymptom == 'Khác'
+                        ? 'Nhập triệu chứng cụ thể của bé...'
+                        : 'Ví dụ: nhiệt độ, mức độ, biểu hiện của bé...',
+                  ),
+                  validator: (value) {
+                    if (_selectedType == LogType.symptom &&
+                        _selectedSymptom == 'Khác') {
+                      final raw = value?.trim() ?? '';
+                      if (raw.isEmpty) {
+                        return 'Vui lòng nhập mô tả cho triệu chứng này';
+                      }
+                    }
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  final raw = value?.trim() ?? '';
-                  if (raw.isEmpty) return null;
-                  final parsed = double.tryParse(raw);
-                  if (parsed == null || !parsed.isFinite || parsed <= 0) {
-                    return 'Nhập số dương hợp lệ';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _unitController,
-                enabled: !_saving,
-                decoration: const InputDecoration(labelText: 'Đơn vị'),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _noteController,
-                enabled: !_saving,
-                maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Ghi chú'),
-              ),
+              ] else ...[
+                TextFormField(
+                  key: const Key('baby-log-quantity'),
+                  controller: _quantityController,
+                  enabled: !_saving,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: _quantityLabelFor(_selectedType),
+                  ),
+                  validator: (value) {
+                    final raw = value?.trim() ?? '';
+                    if (raw.isEmpty) return null;
+                    final parsed = double.tryParse(raw);
+                    if (parsed == null || !parsed.isFinite || parsed <= 0) {
+                      return 'Nhập số dương hợp lệ';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  key: const Key('baby-log-unit'),
+                  controller: _unitController,
+                  enabled: !_saving,
+                  decoration: const InputDecoration(
+                    labelText: 'Đơn vị',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  key: const Key('baby-log-note'),
+                  controller: _noteController,
+                  enabled: !_saving,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Ghi chú'),
+                ),
+              ],
               const SizedBox(height: 16),
               FilledButton(
                 key: const Key('baby-log-save'),

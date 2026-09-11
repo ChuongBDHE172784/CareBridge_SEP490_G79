@@ -109,11 +109,16 @@ public class ExpertProfileMapper {
 	// ADR-MEDI-001 mục 3 — usersById resolved by the caller via 1 batch userRepository.findAllById(...)
 	// for the whole page; never queried per-row here.
 	public ExpertDirectoryResponse toDirectoryResponse(
-		Page<ExpertProfile> page, Map<UUID, User> usersById, List<String> specialties) {
+		Page<ExpertProfile> page, Map<UUID, User> usersById, List<String> specialties,
+		Map<UUID, String> availabilityStateByExpertId) {
 		List<ExpertProfileResponse> experts = page.getContent().stream()
 			.map(ep -> {
 				User u = usersById.get(ep.getUserId());
-				return toResponse(ep, u != null ? u.getName() : null, u != null ? u.getAvatarUrl() : null);
+				ExpertProfileResponse response =
+					toResponse(ep, u != null ? u.getName() : null, u != null ? u.getAvatarUrl() : null);
+				response.setAvailabilityState(
+					availabilityStateByExpertId.getOrDefault(ep.getUserId(), "NO_SCHEDULE"));
+				return response;
 			})
 			.collect(Collectors.toList());
 		return new ExpertDirectoryResponse(

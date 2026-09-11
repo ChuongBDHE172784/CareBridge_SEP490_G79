@@ -109,6 +109,9 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
         this.expiryHours = expiryHours;
     }
 
+    private static final java.util.List<ConsultationRequestStatus> OPEN_STATUSES =
+            java.util.List.of(ConsultationRequestStatus.PENDING, ConsultationRequestStatus.ACCEPTED);
+
     @Override
     public CreateConsultationRequestResult create(
             CreateConsultationRequestRequest request, UUID requesterUserId) {
@@ -138,6 +141,7 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                 .findByIdForUpdate(lockedExpert.getUserId())
                 .orElseThrow(ConsultationRequestException::expertNotEligible);
         policy.assertExpertEligibleForConsultation(lockedExpert, lockedExpertAccount, now);
+        assertNoOtherOpenRequest(requesterUserId, now);
         validatePreferredAvailability(request, now);
         ConsultationRequest candidate = ConsultationRequest.builder()
                 .id(UUID.randomUUID())
@@ -192,6 +196,36 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                                 AvailabilityStatus.AVAILABLE);
         if (!exists) {
             throw ConsultationRequestException.availabilityNoLongerAvailable();
+        }
+        // The slot row stays AVAILABLE until the expert answers, so two mothers could
+        // otherwise claim the same hour and only find out when one got rejected.
+        boolean alreadyClaimed = repository
+                .existsByExpertProfileIdAndPreferredWindowStartAndStatusIn(
+                        request.getExpertProfileId(), start, OPEN_STATUSES);
+        if (alreadyClaimed) {
+            throw ConsultationRequestException.availabilityNoLongerAvailable();
+        }
+    }
+
+    /**
+     * One live request per mother. She can still choose a busy expert, but not queue
+     * behind two of them at once — the app offers to cancel the open one first.
+     */
+    private void assertNoOtherOpenRequest(UUID requesterUserId, Instant now) {
+        ConsultationRequest open = repository
+                .findFirstByRequesterUserIdAndStatusIn(requesterUserId, OPEN_STATUSES)
+                .orElse(null);
+        if (open == null) {
+            return;
+        }
+        // Yêu cầu quá hạn không còn giữ chỗ nữa. Nó vẫn mang trạng thái PENDING cho tới
+        // khi job quét, mà job chạy mỗi phút — không tính ở đây thì mẹ bị chặn thêm tối
+        // đa một phút sau khi hạn đã trôi qua, đúng lúc bà cần đặt người khác nhất.
+        boolean alreadyOverdue = open.getStatus() == ConsultationRequestStatus.PENDING
+                && open.getExpiresAt() != null
+                && !open.getExpiresAt().isAfter(now);
+        if (!alreadyOverdue) {
+            throw ConsultationRequestException.activeRequestAlreadyOpen();
         }
     }
 
@@ -400,7 +434,8 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                     counterpart == null ? null : counterpart.getName(),
                     request.getTopic(),
                     request.getStatus().name(),
-                    request.getCreatedAt());
+                    request.getCreatedAt(),
+                    request.getDirectConversationId());
         });
     }
 

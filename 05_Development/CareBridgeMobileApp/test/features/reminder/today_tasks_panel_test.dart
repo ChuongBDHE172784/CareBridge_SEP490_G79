@@ -8,6 +8,11 @@ import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/checklist/services/user_checklist_service.dart';
 import 'package:untitled/features/reminder/models/today_task_model.dart';
 import 'package:untitled/features/reminder/services/today_task_service.dart';
+import 'package:untitled/features/directChat/models/direct_conversation.dart';
+import 'package:untitled/features/directChat/models/timeline_item.dart';
+import 'package:untitled/features/directChat/models/timeline_page.dart';
+import 'package:untitled/features/directChat/services/direct_chat_service.dart';
+import 'package:untitled/features/directChat/widgets/checklist_message_card.dart';
 import 'package:untitled/features/reminder/widgets/today_tasks_panel.dart';
 
 Map<String, dynamic> _envelope({bool empty = false, bool completed = false}) =>
@@ -233,7 +238,7 @@ void main() {
     expect(postPath, '/api/v1/checklists/sequences/advance');
   });
 
-  testWidgets('family audience does not offer user-created deletion', (
+  testWidgets('family audience does not show user-created personal tasks', (
     tester,
   ) async {
     final envelope = {
@@ -271,7 +276,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Family visible personal task'), findsOneWidget);
+    expect(find.text('Family visible personal task'), findsNothing);
     expect(
       find.byKey(const Key('delete-task-family-user-created')),
       findsNothing,
@@ -1072,61 +1077,7 @@ void main() {
   });
 
   testWidgets(
-    'family audience shows adaptive empty message when no personal tasks are shared',
-    (tester) async {
-      final envelope = {
-        'asOf': '2026-08-03T01:00:00Z',
-        'zoneId': 'Asia/Ho_Chi_Minh',
-        'horizonDays': 7,
-        'sections': {
-          'overdue': <Map<String, dynamic>>[],
-          'today': [
-            {
-              'taskKind': 'CHECKLIST',
-              'taskId': 'sys-1',
-              'title': 'Hệ thống CareBridge',
-              'origin': 'SYSTEM_TEMPLATE',
-              'targetSubject': 'MOTHER',
-              'status': 'PENDING',
-              'timeBucket': 'TODAY',
-              'allowedActions': ['COMPLETE'],
-            },
-          ],
-          'upcoming': <Map<String, dynamic>>[],
-          'unscheduled': <Map<String, dynamic>>[],
-        },
-        'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
-        'correlationId': 'family-empty-user-tab',
-      };
-
-      await tester.pumpWidget(
-        _wrap(
-          TodayTasksPanel(
-            service: _service(() async => {'data': envelope}),
-            audience: TodayTasksAudience.family,
-            layout: TodayTasksLayout.sourceGroups,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap on "Việc cá nhân" tab
-      await tester.tap(find.text('Việc cá nhân'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Chưa có việc cá nhân nào được chia sẻ.'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Bạn chưa tạo công việc cá nhân nào.'),
-        findsNothing,
-      );
-    },
-  );
-
-  testWidgets(
-    'family audience renders shared mother personal tasks in user tasks tab',
+    'family audience does not show Việc cá nhân tab or personal tasks, only shows CareBridge suggestions',
     (tester) async {
       final envelope = {
         'asOf': '2026-08-03T01:00:00Z',
@@ -1164,21 +1115,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap on "Việc cá nhân" tab
-      await tester.tap(find.text('Việc cá nhân'));
-      await tester.pumpAndSettle();
+      // Heading is "Việc cần làm của mẹ"
+      expect(find.text('Việc cần làm của mẹ'), findsOneWidget);
 
-      expect(find.text('Mua sữa bầu cho Mẹ'), findsOneWidget);
-      // Family cannot delete mother's personal task
-      expect(
-        find.byKey(const Key('delete-task-mother-personal-1')),
-        findsNothing,
-      );
+      // No "Việc cá nhân" tab or text
+      expect(find.text('Việc cá nhân'), findsNothing);
+      expect(find.text('Mua sữa bầu cho Mẹ'), findsNothing);
     },
   );
 
   testWidgets(
-    'family audience displays mother system tasks in Gợi ý CareBridge tab and synchronizes completed status without allowing ticking',
+    'family audience displays mother system tasks in Gợi ý CareBridge and synchronizes completed status without allowing ticking',
     (tester) async {
       final envelope = {
         'asOf': '2026-08-03T01:00:00Z',
@@ -1227,8 +1174,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tab 0: "Gợi ý CareBridge"
-      expect(find.text('Gợi ý CareBridge'), findsWidgets);
+      // System task is visible
       expect(find.text('Uống vitamin và canxi'), findsOneWidget);
 
       // Status icon for completed task shows checkmark
@@ -1240,19 +1186,9 @@ void main() {
         findsNothing,
       );
 
-      // Tap on Tab 1: "Việc cá nhân"
-      await tester.tap(find.text('Việc cá nhân'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Mua đồ chuẩn bị đi sinh'), findsOneWidget);
-      // Status icon for pending task shows unchecked circle
-      expect(find.byIcon(Icons.radio_button_unchecked_rounded), findsOneWidget);
-
-      // Status control is read-only (no button key task-status-mother-personal-pending)
-      expect(
-        find.byKey(const Key('task-status-mother-personal-pending')),
-        findsNothing,
-      );
+      // Personal tasks are not displayed for family audience
+      expect(find.text('Việc cá nhân'), findsNothing);
+      expect(find.text('Mua đồ chuẩn bị đi sinh'), findsNothing);
     },
   );
 
@@ -1298,4 +1234,127 @@ void main() {
       expect(find.text('Uống vitamin và canxi'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'suppresses system template task when expert replaced it with an updated task',
+    (tester) async {
+      final originalService = DirectChatService.instance;
+      addTearDown(() => DirectChatService.instance = originalService);
+
+      final shareData = ChecklistShareData(
+        completedCount: 0,
+        totalCount: 1,
+        progressPercent: 0,
+        currentItems: [
+          const ChecklistItemShareData(
+            text: 'Đi khám thai lần 2',
+            completed: false,
+            origin: 'EXPERT',
+            createdBy: 'EXPERT',
+            isExpertCustom: true,
+            replacesText: 'Đi khám thai lần đầu',
+            doctorNote: 'Khám tuần 12',
+          ),
+        ],
+      );
+
+      final timelineItem = TimelineItem(
+        kind: 'MESSAGE',
+        messageId: 'msg-expert-1',
+        messageBody: shareData.serialize(),
+      );
+
+      DirectChatService.instance = _ScriptedExpertDirectChatService(
+        conversations: [
+          const DirectConversationSummary(
+            conversationId: 'conv-123',
+            counterpartUserId: 'expert-1',
+            counterpartRole: 'EXPERT',
+            expertAvailable: true,
+          ),
+        ],
+        timelinePage: TimelinePage(
+          items: [timelineItem],
+          hasMoreOlder: false,
+          hasMoreNewer: false,
+        ),
+      );
+
+      final envelope = {
+        'asOf': '2026-08-03T01:00:00Z',
+        'zoneId': 'Asia/Ho_Chi_Minh',
+        'horizonDays': 7,
+        'sections': {
+          'overdue': <Map<String, dynamic>>[],
+          'today': <Map<String, dynamic>>[
+            {
+              'taskKind': 'CHECKLIST',
+              'taskId': 'sys-1',
+              'title': 'Đi khám thai lần đầu',
+              'origin': 'SYSTEM_TEMPLATE',
+              'targetSubject': 'MOTHER',
+              'status': 'PENDING',
+              'timeBucket': 'TODAY',
+              'allowedActions': <String>['COMPLETE'],
+            },
+            {
+              'taskKind': 'CHECKLIST',
+              'taskId': 'sys-2',
+              'title': 'Sàng lọc HIV',
+              'origin': 'SYSTEM_TEMPLATE',
+              'targetSubject': 'MOTHER',
+              'status': 'PENDING',
+              'timeBucket': 'TODAY',
+              'allowedActions': <String>['COMPLETE'],
+            },
+          ],
+          'upcoming': <Map<String, dynamic>>[],
+          'unscheduled': <Map<String, dynamic>>[],
+        },
+        'counts': {'overdue': 0, 'today': 2, 'upcoming': 0, 'unscheduled': 0},
+        'correlationId': 'expert-replacement-test',
+      };
+
+      await tester.pumpWidget(
+        _wrap(
+          TodayTasksPanel(
+            service: _service(() async => {'data': envelope}),
+            layout: TodayTasksLayout.sourceGroups,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // "Đi khám thai lần đầu" MUST NOT appear
+      expect(find.text('Đi khám thai lần đầu'), findsNothing);
+      // "Đi khám thai lần 2" MUST appear with expert badge
+      expect(find.text('Đi khám thai lần 2'), findsOneWidget);
+      expect(find.text('Chuyên gia chỉ định'), findsOneWidget);
+      // Other system task "Sàng lọc HIV" MUST still appear
+      expect(find.text('Sàng lọc HIV'), findsOneWidget);
+    },
+  );
+}
+
+class _ScriptedExpertDirectChatService extends DirectChatService {
+  final List<DirectConversationSummary> conversations;
+  final TimelinePage timelinePage;
+
+  _ScriptedExpertDirectChatService({
+    required this.conversations,
+    required this.timelinePage,
+  });
+
+  @override
+  Future<List<DirectConversationSummary>> listMyConversations() async =>
+      conversations;
+
+  @override
+  Future<TimelinePage> getTimeline(
+    String conversationId, {
+    String? after,
+    String? before,
+    int limit = 30,
+  }) async =>
+      timelinePage;
 }

@@ -246,6 +246,8 @@ export const router = createBrowserRouter([
                     children: [
                       // Expert Content Approval Queue (Contracted Expert review)
                       { path: '/expert/content-approval', element: <ExpertContentApprovalQueuePage /> },
+                      { path: '/expert/content-review/:id', element: <ContentDetailPage /> },
+                      { path: '/expert/content-review/checklists/:id', element: <ChecklistDetailPage /> },
                       { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
                       { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
                       // CB-055: Expert Profile

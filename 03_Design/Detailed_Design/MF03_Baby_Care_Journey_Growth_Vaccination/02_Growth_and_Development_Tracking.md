@@ -39,6 +39,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_02GrowthandDevelopmentTracking
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "GrowthMeasurementHistoryScreen" as UIGrowthMeasurementHistoryScreen <<UI>>
@@ -213,18 +214,18 @@ The lifecycle below belongs to **MilestoneRecord.status, with the derived Milest
 hide empty description
 [*] --> NotRecorded
 
-NotRecorded --> RecordActive : recordGrowthOrMilestone() [BabyAccessPolicy grants write access] / persistRecord(ACTIVE)
-RecordActive --> RecordActive : updateRecord() [caller owns or shares the baby] / persistRevisedValue()
-RecordActive --> RecordDeleted : deleteRecord() [caller owns the record] / setStatus(DELETED)
+NotRecorded --> RecordActive : recordGrowthOrMilestone()\n[BabyAccessPolicy grants write access]\n/ persistRecord(ACTIVE)
+RecordActive --> RecordActive : updateRecord()\n[caller owns or shares the baby]\n/ persistRevisedValue()
+RecordActive --> RecordDeleted : deleteRecord()\n[caller owns the record]\n/ setStatus(DELETED)
 
 state RecordActive {
   [*] --> Achieved
-  Achieved --> Pending : updateMilestone(status = PENDING) [caller may manage the baby] / setMilestoneStatus(PENDING)
-  Achieved --> Delayed : updateMilestone(status = DELAYED) [caller may manage the baby] / setMilestoneStatus(DELAYED)
-  Pending --> Achieved : updateMilestone(status = ACHIEVED) [achievedDate is not null] / setMilestoneStatus(ACHIEVED)
-  Delayed --> Achieved : updateMilestone(status = ACHIEVED) [achievedDate is not null] / setMilestoneStatus(ACHIEVED)
-  Pending --> Delayed : updateMilestone(status = DELAYED) / setMilestoneStatus(DELAYED)
-  Delayed --> Pending : updateMilestone(status = PENDING) / setMilestoneStatus(PENDING)
+  Achieved --> Pending : updateMilestone(status = PENDING)\n[caller may manage the baby]\n/ setMilestoneStatus(PENDING)
+  Achieved --> Delayed : updateMilestone(status = DELAYED)\n[caller may manage the baby]\n/ setMilestoneStatus(DELAYED)
+  Pending --> Achieved : updateMilestone(status = ACHIEVED)\n[achievedDate is not null]\n/ setMilestoneStatus(ACHIEVED)
+  Delayed --> Achieved : updateMilestone(status = ACHIEVED)\n[achievedDate is not null]\n/ setMilestoneStatus(ACHIEVED)
+  Pending --> Delayed : updateMilestone(status = DELAYED)\n/ setMilestoneStatus(DELAYED)
+  Delayed --> Pending : updateMilestone(status = PENDING)\n/ setMilestoneStatus(PENDING)
 }
 
 RecordActive : MilestoneRecordStatus = ACTIVE

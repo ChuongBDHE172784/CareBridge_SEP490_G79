@@ -46,6 +46,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_01CareGroupandMembershipLifecycle
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "CareGroupInvitationScreen" as UICareGroupInvitationScreen <<UI>>
@@ -210,20 +211,20 @@ The lifecycle below belongs to **CareGroup.status, with CareGroupMember.inviteSt
 hide empty description
 [*] --> NoGroup
 
-NoGroup --> ActiveGroup : createCareGroup() [owner is below the active-group quota] / persistGroup(ACTIVE)
-ActiveGroup --> ArchivedGroup : archiveCareGroup() [status != ARCHIVED] / setStatus(ARCHIVED)
+NoGroup --> ActiveGroup : createCareGroup()\n[owner is below the active-group quota]\n/ persistGroup(ACTIVE)
+ActiveGroup --> ArchivedGroup : archiveCareGroup()\n[status != ARCHIVED]\n/ setStatus(ARCHIVED)
 
 state ActiveGroup {
   [*] --> NotInvited
-  NotInvited --> InvitePending : inviteMember() [no non-revoked membership exists] / persistMember(PENDING)
-  InvitePending --> InviteAccepted : acceptInvite() / setInviteStatus(ACCEPTED)
-  InvitePending --> InviteRejected : rejectInvite() / setInviteStatus(REJECTED)
-  InvitePending --> InviteExpired : inviteWindowElapses() / setInviteStatus(EXPIRED)
-  InvitePending --> InviteRevoked : revokeInvite() [caller is the group owner] / setInviteStatus(REVOKED)
-  InviteAccepted --> InviteRevoked : removeMember() [caller is the group owner] / setInviteStatus(REVOKED)
-  InviteAccepted --> NotInvited : leaveGroup() [caller is the member] / clearMembership()
-  InviteRejected --> InvitePending : inviteMember() / setInviteStatus(PENDING)
-  InviteExpired --> InvitePending : inviteMember() / setInviteStatus(PENDING)
+  NotInvited --> InvitePending : inviteMember()\n[no non-revoked membership exists]\n/ persistMember(PENDING)
+  InvitePending --> InviteAccepted : acceptInvite()\n/ setInviteStatus(ACCEPTED)
+  InvitePending --> InviteRejected : rejectInvite()\n/ setInviteStatus(REJECTED)
+  InvitePending --> InviteExpired : inviteWindowElapses()\n/ setInviteStatus(EXPIRED)
+  InvitePending --> InviteRevoked : revokeInvite()\n[caller is the group owner]\n/ setInviteStatus(REVOKED)
+  InviteAccepted --> InviteRevoked : removeMember()\n[caller is the group owner]\n/ setInviteStatus(REVOKED)
+  InviteAccepted --> NotInvited : leaveGroup()\n[caller is the member]\n/ clearMembership()
+  InviteRejected --> InvitePending : inviteMember()\n/ setInviteStatus(PENDING)
+  InviteExpired --> InvitePending : inviteMember()\n/ setInviteStatus(PENDING)
 }
 
 ActiveGroup : CareGroupStatus = ACTIVE

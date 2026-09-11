@@ -74,6 +74,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_01ExpertOnboardingIdentityCredentialsandTrust
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "ExpertContractScreen" as UIExpertContractScreen <<UI>>
@@ -446,19 +447,19 @@ The lifecycle below belongs to **ExpertProfile.verificationStatus, with the Iden
 hide empty description
 [*] --> NoProfile
 
-NoProfile --> Pending : submitExpertProfile() / setVerificationStatus(PENDING)
-Pending --> UnderReview : submitCredentialEvidence() / openIdentityVerificationAttempt()
-UnderReview --> Approved : adminApprove() [reviewStatus == APPROVED] / setVerificationStatus(APPROVED)
-UnderReview --> Rejected : adminReject() [reviewStatus == REJECTED] / setVerificationStatus(REJECTED)
-Rejected --> Pending : renewSubmission() [verificationStatus == REJECTED] / setVerificationStatus(PENDING)
-Approved --> Suspended : suspendExpert() / setTrustStatus(SUSPENDED)
-Suspended --> Approved : reinstateExpert() / setTrustStatus(ACTIVE)
+NoProfile --> Pending : submitExpertProfile()\n/ setVerificationStatus(PENDING)
+Pending --> UnderReview : submitCredentialEvidence()\n/ openIdentityVerificationAttempt()
+UnderReview --> Approved : adminApprove()\n[reviewStatus == APPROVED]\n/ setVerificationStatus(APPROVED)
+UnderReview --> Rejected : adminReject()\n[reviewStatus == REJECTED]\n/ setVerificationStatus(REJECTED)
+Rejected --> Pending : renewSubmission()\n[verificationStatus == REJECTED]\n/ setVerificationStatus(PENDING)
+Approved --> Suspended : suspendExpert()\n/ setTrustStatus(SUSPENDED)
+Suspended --> Approved : reinstateExpert()\n/ setTrustStatus(ACTIVE)
 
 state UnderReview {
   [*] --> AwaitingAutomatedCheck
-  AwaitingAutomatedCheck --> ManualReviewRequired : runFaceAndRegistryCheck() [no confident automated match] / setReviewStatus(MANUAL_REVIEW_REQUIRED)
-  AwaitingAutomatedCheck --> ReadyForDecision : runFaceAndRegistryCheck() [face MATCHED and registry consistent] / setReviewStatus(PENDING_REVIEW)
-  ManualReviewRequired --> ReadyForDecision : moderatorCompletesManualCheck() / attachReviewerFindings()
+  AwaitingAutomatedCheck --> ManualReviewRequired : runFaceAndRegistryCheck()\n[no confident automated match]\n/ setReviewStatus(MANUAL_REVIEW_REQUIRED)
+  AwaitingAutomatedCheck --> ReadyForDecision : runFaceAndRegistryCheck()\n[face MATCHED and registry consistent]\n/ setReviewStatus(PENDING_REVIEW)
+  ManualReviewRequired --> ReadyForDecision : moderatorCompletesManualCheck()\n/ attachReviewerFindings()
 }
 
 Pending : VerificationStatus = PENDING

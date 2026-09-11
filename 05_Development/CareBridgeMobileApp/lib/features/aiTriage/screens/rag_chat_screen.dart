@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
-import 'package:universal_io/io.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/auth/auth_state.dart';
@@ -408,24 +405,6 @@ class _RagChatScreenState extends State<RagChatScreen> {
     });
   }
 
-  List<String> get _pythonCandidates {
-    final list = <String>[];
-    try {
-      final uri = Uri.parse(apiBaseUrl);
-      if (uri.host.isNotEmpty) {
-        list.add('${uri.scheme}://${uri.host}:8001');
-      }
-    } catch (_) {}
-    if (kIsWeb) {
-      list.add('http://127.0.0.1:8001');
-    } else if (Platform.isAndroid) {
-      list.addAll(['http://10.0.2.2:8001', 'http://127.0.0.1:8001']);
-    } else {
-      list.addAll(['http://127.0.0.1:8001', 'http://localhost:8001']);
-    }
-    return list;
-  }
-
   Future<void> _send([String? customPrompt]) async {
     final question = (customPrompt ?? _inputCtrl.text).trim();
     if (question.isEmpty || _sending) return;
@@ -446,7 +425,11 @@ class _RagChatScreenState extends State<RagChatScreen> {
     List<String> followupsList = [];
     bool isWarning = false;
 
-    // 1. Prioritize direct Python FastAPI AI RAG Service (PGVector + Gemini + Citations)
+    // The RAG service (pgvector + Gemini + citations) is reached through the
+    // backend, not directly: it listens on 8001 inside the server's Docker
+    // network and is deliberately not published. The backend forwards the
+    // conversation context and falls back to its own answer when that service is
+    // down, so this call has a single path and a single failure mode.
     final role = (AuthState.instance.role ?? 'MOTHER').toUpperCase();
     final isMother = role == 'MOTHER';
 
@@ -458,18 +441,16 @@ class _RagChatScreenState extends State<RagChatScreen> {
         .toList();
 
     final Map<String, dynamic> requestPayload = {
-      'message': question,
-      'stage': isMother ? _effectiveStage : 'ALL',
-      'user_role': isMother ? 'MOTHER' : 'FAMILY',
-      'conversation_history': historyPayload,
+      'query': question,
+      'conversationHistory': historyPayload,
     };
 
     if (isMother) {
       if (_pregnancyWeek != null) {
-        requestPayload['gestational_age_weeks'] = _pregnancyWeek;
+        requestPayload['gestationalAgeWeeks'] = _pregnancyWeek;
       }
       if (_surveyProfile != null && _surveyProfile!.isNotEmpty) {
-        requestPayload['survey_profile'] = _surveyProfile;
+        requestPayload['surveyProfile'] = _surveyProfile;
       }
       if (_attachedContext != null) {
         final metricType = _attachedContext!['metricType']
@@ -500,96 +481,64 @@ class _RagChatScreenState extends State<RagChatScreen> {
           recentMetrics['symptoms'] = [notes];
         }
         if (recentMetrics.isNotEmpty) {
-          requestPayload['recent_metrics'] = recentMetrics;
+          requestPayload['recentMetrics'] = recentMetrics;
         }
       }
     }
 
-    for (final base in _pythonCandidates) {
-      try {
-        final response = await http
-            .post(
-              Uri.parse('$base/api/v1/chat/message'),
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Internal-API-Key': 'carebridge',
-              },
-              body: jsonEncode(requestPayload),
-            )
-            .timeout(const Duration(seconds: 15));
+    try {
+      final data = await apiPost('/api/v1/rag/answer', requestPayload);
+      final resData = (data is Map && data.containsKey('data'))
+          ? data['data']
+          : data;
 
-        if (response.statusCode == 200) {
-          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-          answerText = decoded['answer']?.toString() ?? '';
-          isWarning =
-              decoded['has_critical_warning'] == true ||
-              decoded['need_expert_consultation'] == true;
+      if (resData is Map) {
+        answerText = resData['answer']?.toString() ?? '';
+        isWarning =
+            resData['hasCriticalWarning'] == true ||
+            resData['needExpertConsultation'] == true;
 
-          if (decoded['sources'] is List) {
-            for (final s in decoded['sources']) {
-              if (s is Map && s['title'] != null) {
-                final title = s['title'].toString().trim();
-                final sec = s['section']?.toString().trim();
-                final formatted =
-                    (sec != null &&
-                        sec.isNotEmpty &&
-                        sec.toLowerCase() != title.toLowerCase())
-                    ? '$title ($sec)'
-                    : title;
-                if (!sourcesList.contains(formatted)) {
-                  sourcesList.add(formatted);
-                }
+        if (resData['sources'] is List) {
+          for (final s in resData['sources']) {
+            if (s is Map && s['title'] != null) {
+              final title = s['title'].toString().trim();
+              if (title.isNotEmpty && !sourcesList.contains(title)) {
+                sourcesList.add(title);
               }
             }
           }
-          if (decoded['suggested_followups'] is List) {
-            followupsList = (decoded['suggested_followups'] as List)
-                .map((e) => e.toString())
-                .toList();
-          }
-          if (answerText.isNotEmpty) {
-            break;
-          }
         }
-      } catch (_) {}
-    }
-
-    // 2. Fallback to Spring Boot /api/v1/rag/answer if Python service was unreachable
-    if (answerText.isEmpty) {
-      try {
-        final data = await apiPost('/api/v1/rag/answer', {'query': question});
-
-        final resData = (data is Map && data.containsKey('data'))
-            ? data['data']
-            : data;
-
-        if (resData is Map) {
-          answerText = resData['answer']?.toString() ?? '';
-          if (resData['sources'] is List) {
-            for (final s in resData['sources']) {
-              if (s is Map && s['title'] != null) {
-                sourcesList.add(s['title'].toString());
-              }
-            }
-          }
-        } else if (resData is String) {
-          answerText = resData;
+        if (resData['suggestedFollowups'] is List) {
+          followupsList = (resData['suggestedFollowups'] as List)
+              .map((e) => e.toString())
+              .toList();
         }
-      } catch (_) {}
-    }
+      } else if (resData is String) {
+        answerText = resData;
+      }
+    } catch (_) {}
 
+    // Khong ket noi duoc thi noi thang, khong tu bia cau tra loi khong co nguon.
     if (!mounted) return;
+
+    final String finalAnswer = answerText.isNotEmpty
+        ? answerText
+        : '⚠️ Không thể kết nối đến Máy chủ Cẩm nang Y tế CareBridge (RAG Service). '
+          'Để đảm bảo an toàn, AI không tự ý đưa ra tư vấn khi chưa kết nối được cơ sở dữ liệu cẩm nang y tế. '
+          'Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ trực tiếp Bác sĩ / Gọi cấp cứu 115 nếu cần hỗ trợ khẩn cấp!';
 
     setState(() {
       _messages.add(
         _Message(
-          text: answerText.isNotEmpty
-              ? answerText
-              : 'Chào bạn, hiện tại hệ thống AI đang kết nối lại với cơ sở dữ liệu y tế. Bạn vui lòng thử lại sau giây lát hoặc liên hệ trực tiếp Bác sĩ/Cơ sở y tế nếu cần hỗ trợ khẩn cấp nhé!',
+          text: finalAnswer,
           isUser: false,
           time: DateTime.now(),
           sources: sourcesList.take(3).toList(),
-          followups: followupsList.take(3).toList(),
+          followups: followupsList.isNotEmpty
+              ? followupsList.take(3).toList()
+              : (isWarning
+                  ? ['Gọi cấp cứu 115 ngay?', 'Bệnh viện phụ sản gần nhất?']
+                  : ['Dấu hiệu cảnh báo nguy hiểm trong thai kỳ?', 'Chế độ dinh dưỡng khoa học theo giai đoạn?']),
           isWarning: isWarning,
         ),
       );
@@ -2510,10 +2459,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
     final surveyProfile = (rawSurveyProfile is Map)
         ? Map<String, dynamic>.from(rawSurveyProfile)
         : null;
-    final rawSurveyDerived = contextData['surveyDerived'];
-    final surveyDerived = (rawSurveyDerived is Map)
-        ? Map<String, dynamic>.from(rawSurveyDerived)
-        : null;
+    // surveyDerived was previously used for survey BMI category
     final surveyStatus = contextData['surveyStatus'] as String?;
     String formatSurveyLabel(String raw) {
       switch (raw) {
@@ -2539,6 +2485,20 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
           return 'Bệnh tự miễn';
         case 'ANEMIA':
           return 'Thiếu máu';
+        case 'EPILEPSY':
+          return 'Động kinh';
+        case 'LUPUS':
+          return 'Lupus ban đỏ';
+        case 'PCOS':
+          return 'Hội chứng buồng trứng đa nang (PCOS)';
+        case 'ENDOMETRIOSIS':
+          return 'Lạc nội mạc tử cung';
+        case 'INFERTILITY':
+          return 'Hiếm muộn';
+        case 'MENTAL_HEALTH_CONDITION':
+          return 'Tình trạng sức khỏe tâm thần';
+        case 'OTHER_CLINICIAN_CONFIRMED':
+          return 'Bệnh lý khác đã xác nhận';
         case 'PRIOR_PRETERM_BIRTH':
           return 'Tiền sử sinh non';
         case 'PRIOR_STILLBIRTH':
@@ -2547,6 +2507,45 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
           return 'Tiền sử sảy thai nhiều lần';
         case 'PRIOR_ECTOPIC_PREGNANCY':
           return 'Tiền sử thai ngoài tử cung';
+        case 'PRIOR_LIVE_BIRTH':
+          return 'Từng sinh con sống';
+        case 'PRIOR_MULTIPLE_PREGNANCY':
+          return 'Từng mang đa thai';
+        case 'NO_PRIOR_PREGNANCY':
+          return 'Chưa từng mang thai';
+        case 'OTHER_HISTORY':
+          return 'Tiền sử khác';
+        // Age groups
+        case 'UNDER_18':
+        case 'AGE_UNDER_18':
+        case '<18':
+          return 'Dưới 18 tuổi';
+        case '18_34':
+        case 'AGE_18_34':
+        case '18-34':
+          return '18 - 34 tuổi';
+        case '35_OR_OLDER':
+        case 'AGE_35_OR_OLDER':
+        case '>=35':
+        case '35+':
+          return 'Từ 35 tuổi trở lên';
+        // STI
+        case 'HIV':
+          return 'HIV';
+        case 'SYPHILIS':
+          return 'Giang mai';
+        case 'HEPATITIS_B':
+          return 'Viêm gan B';
+        case 'HEPATITIS_C':
+          return 'Viêm gan C';
+        case 'CHLAMYDIA':
+          return 'Chlamydia';
+        case 'GONORRHEA':
+          return 'Bệnh lậu';
+        case 'HERPES':
+          return 'Herpes sinh dục';
+        case 'HPV':
+          return 'Virus HPV';
         default:
           return raw;
       }
@@ -2619,7 +2618,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       );
     }
 
-    final bmiItems = <String>[];
+    final ageItems = <String>[];
     final reproItems = <String>[];
     final conditionItems = <String>[];
     final lifestyleItems = <String>[];
@@ -2629,33 +2628,14 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
     final sexualHealthItems = <String>[];
 
     if (surveyProfile != null) {
-      // 1. BMI & Age
-      final bmi = surveyProfile['bmi'] as Map?;
+      // 1. Age (Bỏ qua chiều cao, cân nặng, BMI từ survey)
       final age = surveyProfile['age'] as Map?;
-      if (bmi != null) {
-        if (bmi['heightCm'] != null) {
-          bmiItems.add('Chiều cao: ${bmi['heightCm']} cm');
-        }
-        if (bmi['weightKg'] != null) {
-          final ctx = bmi['weightContext'] == 'PRE_PREGNANCY'
-              ? ' (Trước mang thai)'
-              : '';
-          bmiItems.add('Cân nặng: ${bmi['weightKg']} kg$ctx');
-        }
-        final cat = surveyDerived?['bmiCategory'] ?? bmi['bmiCategory'];
-        if (cat != null) {
-          bmiItems.add('Thể trạng: ${translateCode(cat.toString())}');
-        }
-        if (bmi['calculatedBmi'] != null) {
-          bmiItems.add('BMI: ${bmi['calculatedBmi']}');
-        }
-      }
       if (age != null) {
         final ageGroup = age['ageGroup']?.toString();
         if (ageGroup != null) {
-          bmiItems.add('Nhóm tuổi: ${translateCode(ageGroup)}');
+          ageItems.add('Nhóm tuổi: ${translateCode(ageGroup)}');
         } else if (age['dateOfBirth'] != null) {
-          bmiItems.add('Ngày sinh: ${age['dateOfBirth']}');
+          ageItems.add('Ngày sinh: ${age['dateOfBirth']}');
         }
       }
 
@@ -2743,13 +2723,14 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
         }
         if (vaccination['answers'] is List) {
           for (final a in vaccination['answers']) {
-            if (a is Map &&
-                a['code'] != null &&
-                a['status'] != null &&
-                a['state'] == 'KNOWN') {
-              vaccinationItems.add(
-                '${translateCode(a['code'].toString())}: ${translateCode(a['status'].toString())}',
-              );
+            if (a is Map && a['state'] == 'KNOWN') {
+              final code = a['code']?.toString();
+              final status = (a['value'] ?? a['status'])?.toString();
+              if (code != null && status != null) {
+                vaccinationItems.add(
+                  '${translateCode(code)}: ${translateCode(status)}',
+                );
+              }
             }
           }
         }
@@ -2760,7 +2741,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       if (meds?['conditionCodes'] is List) {
         for (final m in meds!['conditionCodes']) {
           final s = m.toString();
-          if (s != 'NONE_KNOWN_MEDICATION') {
+          if (s != 'NONE_KNOWN_MEDICATION' && s != 'NONE') {
             medicationItems.add(translateCode(s));
           }
         }
@@ -2771,7 +2752,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       if (sexHealth?['conditionCodes'] is List) {
         for (final s in sexHealth!['conditionCodes']) {
           final code = s.toString();
-          if (code != 'NO_CURRENT_INFORMATION_NEED') {
+          if (code != 'NO_CURRENT_INFORMATION_NEED' && code != 'NONE') {
             sexualHealthItems.add(translateCode(code));
           }
         }
@@ -2780,9 +2761,18 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
       if (sti != null &&
           sti['status'] != null &&
           sti['status'] != 'NO_KNOWN_HISTORY') {
-        sexualHealthItems.add(
-          'STIs: ${translateCode(sti['status'].toString())}',
-        );
+        final stiStatusText = translateCode(sti['status'].toString());
+        final infections = (sti['infectionCodes'] as List?)
+            ?.whereType<String>()
+            .map(translateCode)
+            .toList();
+        if (infections != null && infections.isNotEmpty) {
+          sexualHealthItems.add(
+            'STIs: $stiStatusText (${infections.join(', ')})',
+          );
+        } else {
+          sexualHealthItems.add('STIs: $stiStatusText');
+        }
       }
     }
 
@@ -2794,7 +2784,7 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
     }
 
     final hasAnySurveyData =
-        bmiItems.isNotEmpty ||
+        ageItems.isNotEmpty ||
         reproItems.isNotEmpty ||
         conditionItems.isNotEmpty ||
         lifestyleItems.isNotEmpty ||
@@ -3143,9 +3133,9 @@ class _AttachedHealthContextBottomSheet extends StatelessWidget {
                   const SizedBox(height: 8),
                   if (hasAnySurveyData) ...[
                     buildCategoryBlock(
-                      icon: Icons.accessibility_new_rounded,
-                      title: 'Thể trạng & Chỉ số nhân trắc',
-                      items: bmiItems,
+                      icon: Icons.person_outline_rounded,
+                      title: 'Thông tin độ tuổi',
+                      items: ageItems,
                       badgeBg: const Color(0xFFF3E5F5),
                       badgeBorder: const Color(0xFFE1BEE7),
                       badgeText: const Color(0xFF6A1B9A),

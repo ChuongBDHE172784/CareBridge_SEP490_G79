@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   decideExpertChecklist,
   decideExpertContent,
@@ -15,6 +16,7 @@ type PendingDecision = {
 };
 
 export default function ExpertContentApprovalQueuePage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<ExpertApprovalQueueItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +39,11 @@ export default function ExpertContentApprovalQueuePage() {
   const [rejectReasonError, setRejectReasonError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // Preview Modal
-  const [previewItem, setPreviewItem] = useState<ExpertApprovalQueueItem | null>(null);
+  const getDetailPath = (item: ExpertApprovalQueueItem) => {
+    return item.kind === 'CHECKLIST'
+      ? `/expert/content-review/checklists/${item.id}`
+      : `/expert/content-review/${item.id}`;
+  };
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -276,7 +281,7 @@ export default function ExpertContentApprovalQueuePage() {
                     {/* Content Title & Summary */}
                     <td className="px-4 py-3.5 max-w-md">
                       <div className="font-medium text-sm text-on-surface hover:text-primary transition-colors cursor-pointer"
-                           onClick={() => setPreviewItem(item)}>
+                           onClick={() => navigate(getDetailPath(item))}>
                         {item.title}
                       </div>
                       {item.summary && (
@@ -322,19 +327,23 @@ export default function ExpertContentApprovalQueuePage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setPreviewItem(item)}
-                          className="inline-flex items-center gap-1 rounded-md border border-outline-variant bg-surface px-2.5 py-1.5 text-xs font-semibold text-on-surface hover:bg-surface-container-low cursor-pointer"
-                          title="Xem chi tiết"
+                          onClick={() => navigate(getDetailPath(item))}
+                          className="inline-flex items-center gap-1 rounded-md border border-outline-variant bg-surface px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-surface-container-low cursor-pointer transition-colors"
+                          title="Xem chi tiết nội dung và thẩm định"
                         >
                           <span className="material-symbols-outlined text-[16px]">visibility</span>
                           Xem
                         </button>
 
+                        {/* Duyet tu bang se ky duyet mot bai chua he mo ra doc, vi
+                            duong nay khong render than bai o buoc nao. No dua sang
+                            trang chi tiet, noi bai duoc hien ra va nut phe duyet chi
+                            mo sau khi doc het. */}
                         <button
                           type="button"
-                          onClick={() => handleOpenDecision(item, 'APPROVE')}
+                          onClick={() => navigate(getDetailPath(item))}
                           className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
-                          title="Phê duyệt xuất bản"
+                          title="Mở nội dung để đọc và phê duyệt"
                         >
                           <span className="material-symbols-outlined text-[16px]">check</span>
                           Duyệt
@@ -479,82 +488,6 @@ export default function ExpertContentApprovalQueuePage() {
                     {pendingDecision.decision === 'APPROVE' ? 'Xác nhận xuất bản' : 'Gửi yêu cầu sửa'}
                   </>
                 )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Preview Modal */}
-      {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-outline-variant/70 bg-surface shadow-2xl">
-            <div className="flex items-center justify-between border-b border-outline-variant/70 p-4">
-              <div>
-                <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
-                  {TYPE_LABELS[previewItem.type]} · {previewItem.stage ? STAGE_LABELS[previewItem.stage] : 'Chung'}
-                </span>
-                <h3 className="text-base font-bold text-on-surface mt-0.5">{previewItem.title}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewItem(null)}
-                className="text-outline hover:text-on-surface cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[22px]">close</span>
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-on-surface">
-              {previewItem.summary && (
-                <div className="rounded-lg bg-surface-container-low p-3.5 border-l-4 border-primary">
-                  <p className="font-semibold text-on-surface mb-1">Tóm tắt nội dung:</p>
-                  <p className="text-on-surface-variant leading-relaxed">{previewItem.summary}</p>
-                </div>
-              )}
-
-              <div className="space-y-2 border-t border-outline-variant/40 pt-3">
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-outline">Phiên bản:</span>
-                  <span className="font-semibold">v{previewItem.versionNo ?? 1}</span>
-                </div>
-                {previewItem.sourceLabel && (
-                  <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                    <span className="text-outline">Nguồn tài liệu:</span>
-                    <span className="font-semibold">{previewItem.sourceLabel}</span>
-                  </div>
-                )}
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-outline">Thời gian tiếp nhận:</span>
-                  <span>{formatDateTime(previewItem.assignedAt || previewItem.createdAt)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-outline-variant/70 p-4 bg-surface-container-low/30">
-              <button
-                type="button"
-                onClick={() => {
-                  const item = previewItem;
-                  setPreviewItem(null);
-                  handleOpenDecision(item, 'REJECT');
-                }}
-                className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-500/20 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">close</span>
-                Trả về
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const item = previewItem;
-                  setPreviewItem(null);
-                  handleOpenDecision(item, 'APPROVE');
-                }}
-                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">check</span>
-                Phê duyệt & Xuất bản
               </button>
             </div>
           </div>

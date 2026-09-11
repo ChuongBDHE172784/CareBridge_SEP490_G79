@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,7 @@ class ExpertProfileServiceImplDirectoryTest {
     @Mock private SpecialtyRepository specialtyRepository;
     @Mock private CareFacilityRepository careFacilityRepository;
     @Mock private ProfessionalSpecialtyRepository professionalSpecialtyRepository;
+    @Mock private ExpertAvailabilityRepository expertAvailabilityRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
     @Mock private AuditService auditService;
@@ -54,7 +56,7 @@ class ExpertProfileServiceImplDirectoryTest {
     void setUp() {
         service = new ExpertProfileServiceImpl(expertProfileRepository, userRepository, mapper,
                 identityRepository, credentialRepository, auditService,
-                specialtyRepository, careFacilityRepository, professionalSpecialtyRepository);
+                specialtyRepository, careFacilityRepository, professionalSpecialtyRepository, expertAvailabilityRepository);
     }
 
     private static ExpertProfile approvedExpert(UUID userId) {

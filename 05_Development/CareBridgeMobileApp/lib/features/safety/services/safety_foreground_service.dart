@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
@@ -18,6 +19,7 @@ typedef SafetyConfigLoader = Future<SafetyConfig> Function();
 typedef SafetyConsentLoader = Future<List<ConsentGrant>> Function();
 typedef SafetyPermissionRequester = Future<bool> Function();
 typedef SafetyTaskDataSender = void Function(Object data);
+typedef SafetyLocationPermissionChecker = Future<bool> Function();
 
 @visibleForTesting
 DateTime? fallDetectorRearmAtFromTaskData(Object data) {
@@ -55,6 +57,8 @@ class SafetyForegroundServiceCoordinator {
   SafetyForegroundServiceCoordinator._({
     required SafetyForegroundGateway gateway,
     required bool Function() isAuthenticated,
+    bool Function()? isMother,
+    SafetyLocationPermissionChecker? hasLocationPermission,
     required SafetyConfigLoader loadConfig,
     required SafetyConsentLoader loadConsents,
     required bool Function() platformSupported,
@@ -63,6 +67,9 @@ class SafetyForegroundServiceCoordinator {
     required SafetyTaskDataSender sendTaskData,
   }) : _gateway = gateway,
        _isAuthenticated = isAuthenticated,
+       _isMother = isMother ?? (() => AuthState.instance.role == 'MOTHER'),
+       _hasLocationPermission =
+           hasLocationPermission ?? _defaultHasLocationPermission,
        _loadConfig = loadConfig,
        _loadConsents = loadConsents,
        _platformSupported = platformSupported,
@@ -73,6 +80,8 @@ class SafetyForegroundServiceCoordinator {
   factory SafetyForegroundServiceCoordinator.forTesting({
     required SafetyForegroundGateway gateway,
     required bool Function() isAuthenticated,
+    bool Function()? isMother,
+    SafetyLocationPermissionChecker? hasLocationPermission,
     required SafetyConfigLoader loadConfig,
     required SafetyConsentLoader loadConsents,
     bool platformSupported = true,
@@ -82,6 +91,8 @@ class SafetyForegroundServiceCoordinator {
   }) => SafetyForegroundServiceCoordinator._(
     gateway: gateway,
     isAuthenticated: isAuthenticated,
+    isMother: isMother ?? (() => true),
+    hasLocationPermission: hasLocationPermission ?? (() async => true),
     loadConfig: loadConfig,
     loadConsents: loadConsents,
     platformSupported: () => platformSupported,
@@ -106,6 +117,8 @@ class SafetyForegroundServiceCoordinator {
 
   final SafetyForegroundGateway _gateway;
   final bool Function() _isAuthenticated;
+  final bool Function() _isMother;
+  final SafetyLocationPermissionChecker _hasLocationPermission;
   final SafetyConfigLoader _loadConfig;
   final SafetyConsentLoader _loadConsents;
   final bool Function() _platformSupported;
@@ -190,7 +203,7 @@ class SafetyForegroundServiceCoordinator {
   }
 
   Future<void> _reconcileInternal() async {
-    if (!_platformSupported() || !_isAuthenticated()) {
+    if (!_platformSupported() || !_isAuthenticated() || !_isMother()) {
       await _stopIfRunning();
       return;
     }
@@ -202,7 +215,7 @@ class SafetyForegroundServiceCoordinator {
       ]);
       final config = results[0] as SafetyConfig;
       final consents = results[1] as List<ConsentGrant>;
-      if (!_isAuthenticated()) {
+      if (!_isAuthenticated() || !_isMother()) {
         await _stopIfRunning();
         return;
       }
@@ -211,9 +224,11 @@ class SafetyForegroundServiceCoordinator {
         dataType: 'SENSOR_DATA',
         purpose: 'CREATE',
       );
-      final locationSharingAllowed =
+      final locationConsent =
           config.locationSharingEnabled &&
           _hasActiveConsent(consents, dataType: 'LOCATION', purpose: 'SHARE');
+      final locationSharingAllowed =
+          locationConsent && (!_platformAndroid() || await _hasLocationPermission());
       if (!config.fallDetectionEnabled ||
           !config.sensorPermissionGranted ||
           !sensorConsent) {
@@ -228,6 +243,10 @@ class SafetyForegroundServiceCoordinator {
         await _gateway.start(locationSharingAllowed: locationSharingAllowed);
       }
     } catch (error) {
+      if (error is ApiException && error.statusCode == 403) {
+        await _stopIfRunning();
+        return;
+      }
       debugPrint(
         '[SafetyForegroundServiceCoordinator] reconciliation failed: $error',
       );
@@ -327,7 +346,13 @@ class SafetyForegroundServiceCoordinator {
   @visibleForTesting
   void handleTaskDataForTesting(Object data) => _onTaskData(data);
 
-  void _onAuthStateChanged() => unawaited(reconcile());
+  void _onAuthStateChanged() {
+    if (!_isMother()) {
+      unawaited(_stopIfRunning());
+      return;
+    }
+    unawaited(reconcile());
+  }
 }
 
 Future<bool> _requestAndroidForegroundPermissions() async {
@@ -343,25 +368,51 @@ Future<bool> _requestAndroidForegroundPermissions() async {
   return notificationPermission == NotificationPermission.granted;
 }
 
+Future<bool> _defaultHasLocationPermission() async {
+  if (kIsWeb) return false;
+  try {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  } catch (_) {
+    return false;
+  }
+}
+
 class _FlutterSafetyForegroundGateway implements SafetyForegroundGateway {
   @override
   Future<bool> isRunning() => FlutterForegroundTask.isRunningService;
 
   @override
   Future<void> start({required bool locationSharingAllowed}) async {
-    final result = await FlutterForegroundTask.startService(
+    final types = locationSharingAllowed
+        ? const [
+            ForegroundServiceTypes.health,
+            ForegroundServiceTypes.location,
+          ]
+        : const [ForegroundServiceTypes.health];
+
+    var result = await FlutterForegroundTask.startService(
       serviceId: 14136,
-      serviceTypes: locationSharingAllowed
-          ? const [
-              ForegroundServiceTypes.health,
-              ForegroundServiceTypes.location,
-            ]
-          : const [ForegroundServiceTypes.health],
+      serviceTypes: types,
       notificationTitle: 'CareBridge đang giám sát an toàn',
       notificationText: 'Nhấn để mở màn hình an toàn.',
       notificationInitialRoute: '/safety',
       callback: startSafetyForegroundTask,
     );
+
+    // Fallback: If location FGS start failed on Android (e.g. permission mismatch), retry with health only
+    if (result is ServiceRequestFailure && locationSharingAllowed) {
+      result = await FlutterForegroundTask.startService(
+        serviceId: 14136,
+        serviceTypes: const [ForegroundServiceTypes.health],
+        notificationTitle: 'CareBridge đang giám sát an toàn',
+        notificationText: 'Nhấn để mở màn hình an toàn.',
+        notificationInitialRoute: '/safety',
+        callback: startSafetyForegroundTask,
+      );
+    }
+
     if (result case ServiceRequestFailure(:final error)) throw error;
   }
 

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:untitled/features/directChat/models/timeline_item.dart';
+import 'package:untitled/features/directChat/models/timeline_page.dart';
+import 'package:untitled/features/directChat/services/direct_chat_service.dart';
+import 'package:untitled/features/directChat/widgets/checklist_message_card.dart';
+import 'package:untitled/features/reminder/models/reminder_model.dart';
 import 'package:untitled/features/reminder/models/today_task_model.dart';
 import 'package:untitled/features/reminder/models/today_task_support_function.dart';
 import 'package:untitled/features/reminder/screens/checklist_task_detail_screen.dart';
+import 'package:untitled/features/reminder/services/reminder_schedule_service.dart';
 import 'package:untitled/features/reminder/services/today_task_service.dart';
 
 const _supportRoutes = <String, String>{
@@ -53,14 +59,58 @@ TodayTask _task({
     'status': completed ? 'COMPLETED' : 'PENDING',
     'timeBucket': 'TODAY',
     'allowedActions': [action.apiValue],
-    if (sourceUrl != null) 'sourceUrl': sourceUrl,
+    'sourceUrl': ?sourceUrl,
   });
+}
+
+class _FakeDirectChatService extends DirectChatService {
+  final List<TimelineItem> timelineItems;
+  String? sentMessageBody;
+
+  _FakeDirectChatService({this.timelineItems = const []});
+
+  @override
+  Future<TimelinePage> getTimeline(
+    String conversationId, {
+    String? after,
+    String? before,
+    int limit = 30,
+  }) async {
+    return TimelinePage(
+      items: timelineItems,
+      hasMoreNewer: false,
+      hasMoreOlder: false,
+    );
+  }
+
+  @override
+  Future<TimelineItem> sendMessage(
+    String conversationId, {
+    required String clientMessageId,
+    String? messageBody,
+    String messageType = 'TEXT',
+    String? attachmentId,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationLabel,
+  }) async {
+    sentMessageBody = messageBody;
+    return TimelineItem(
+      kind: 'MESSAGE',
+      messageId: 'msg-1',
+      senderUserId: 'user-1',
+      messageType: messageType,
+      messageBody: messageBody,
+      createdAt: DateTime.now(),
+    );
+  }
 }
 
 Future<void> _openDetail(
   WidgetTester tester, {
   required TodayTask task,
   required TodayTaskService service,
+  DirectChatService? directChatService,
   required ValueChanged<bool?> onResult,
 }) async {
   await tester.pumpWidget(
@@ -73,8 +123,11 @@ Future<void> _openDetail(
               onPressed: () async {
                 final result = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        ChecklistTaskDetailScreen(task: task, service: service),
+                    builder: (_) => ChecklistTaskDetailScreen(
+                      task: task,
+                      service: service,
+                      directChatService: directChatService,
+                    ),
                   ),
                 );
                 onResult(result);
@@ -346,6 +399,162 @@ void main() {
   }
 
   testWidgets(
+    'expert task COMPLETE updates chat message payload and pops true',
+    (tester) async {
+      final initialShare = ChecklistShareData(
+        title: 'Checklist thai kỳ',
+        completedCount: 0,
+        totalCount: 1,
+        progressPercent: 0,
+        currentItems: [
+          const ChecklistItemShareData(
+            text: 'Đi khám thai lần 2',
+            completed: false,
+            origin: 'EXPERT',
+            createdBy: 'EXPERT',
+            isExpertCustom: true,
+            replacesText: 'Đi khám thai lần đầu',
+            supportFunction: 'APPOINTMENTS',
+          ),
+        ],
+      );
+
+      final fakeChatService = _FakeDirectChatService(
+        timelineItems: [
+          TimelineItem(
+            kind: 'MESSAGE',
+            messageId: 'msg-1',
+            senderUserId: 'expert-1',
+            messageType: 'TEXT',
+            messageBody: initialShare.serialize(),
+            createdAt: DateTime.now(),
+          ),
+        ],
+      );
+
+      final task = TodayTask(
+        id: 'expert-task-conv-123-0',
+        kind: TodayTaskKind.checklist,
+        sourceType: TodayTaskSourceType.checklist,
+        type: ReminderType.other,
+        title: 'Đi khám thai lần 2',
+        status: ReminderStatus.pending,
+        taskStatus: TodayTaskStatus.pending,
+        priority: 1,
+        target: TodayTaskTarget.mother,
+        origin: TodayTaskOrigin.systemTemplate,
+        bucket: TodayTimeBucket.today,
+        allowedActions: const {TodayTaskAction.complete, TodayTaskAction.reopen},
+        supportFunction: TodayTaskSupportFunction.appointments,
+      );
+
+      bool? detailResult;
+      await _openDetail(
+        tester,
+        task: task,
+        service: TodayTaskService(
+          getRequest: (_, {queryParams}) async => const {},
+          postRequest: (_, _) async => const {},
+        ),
+        directChatService: fakeChatService,
+        onResult: (result) => detailResult = result,
+      );
+
+      expect(find.text('Đánh dấu hoàn tất'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('task-detail-status-action')));
+      await tester.pumpAndSettle();
+
+      expect(detailResult, isTrue);
+      expect(fakeChatService.sentMessageBody, isNotNull);
+      final updatedShare = ChecklistShareData.parse(
+        fakeChatService.sentMessageBody!,
+      );
+      expect(updatedShare, isNotNull);
+      expect(updatedShare!.currentItems.first.completed, isTrue);
+      expect(updatedShare.completedCount, 1);
+      expect(updatedShare.progressPercent, 100);
+    },
+  );
+
+  testWidgets(
+    'expert task REOPEN updates chat message payload and pops true',
+    (tester) async {
+      final initialShare = ChecklistShareData(
+        title: 'Checklist thai kỳ',
+        completedCount: 1,
+        totalCount: 1,
+        progressPercent: 100,
+        currentItems: [
+          const ChecklistItemShareData(
+            text: 'Đi khám thai lần 2',
+            completed: true,
+            origin: 'EXPERT',
+            createdBy: 'EXPERT',
+            isExpertCustom: true,
+            replacesText: 'Đi khám thai lần đầu',
+            supportFunction: 'APPOINTMENTS',
+          ),
+        ],
+      );
+
+      final fakeChatService = _FakeDirectChatService(
+        timelineItems: [
+          TimelineItem(
+            kind: 'MESSAGE',
+            messageId: 'msg-1',
+            senderUserId: 'expert-1',
+            messageType: 'TEXT',
+            messageBody: initialShare.serialize(),
+            createdAt: DateTime.now(),
+          ),
+        ],
+      );
+
+      final task = TodayTask(
+        id: 'expert-task-conv-123-0',
+        kind: TodayTaskKind.checklist,
+        sourceType: TodayTaskSourceType.checklist,
+        type: ReminderType.other,
+        title: 'Đi khám thai lần 2',
+        status: ReminderStatus.pending,
+        taskStatus: TodayTaskStatus.completed,
+        priority: 1,
+        target: TodayTaskTarget.mother,
+        origin: TodayTaskOrigin.systemTemplate,
+        bucket: TodayTimeBucket.today,
+        allowedActions: const {TodayTaskAction.complete, TodayTaskAction.reopen},
+        supportFunction: TodayTaskSupportFunction.appointments,
+      );
+
+      bool? detailResult;
+      await _openDetail(
+        tester,
+        task: task,
+        service: TodayTaskService(
+          getRequest: (_, {queryParams}) async => const {},
+          postRequest: (_, _) async => const {},
+        ),
+        directChatService: fakeChatService,
+        onResult: (result) => detailResult = result,
+      );
+
+      expect(find.text('Mở lại việc'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('task-detail-status-action')));
+      await tester.pumpAndSettle();
+
+      expect(detailResult, isTrue);
+      expect(fakeChatService.sentMessageBody, isNotNull);
+      final updatedShare = ChecklistShareData.parse(
+        fakeChatService.sentMessageBody!,
+      );
+      expect(updatedShare, isNotNull);
+      expect(updatedShare!.currentItems.first.completed, isFalse);
+      expect(updatedShare.completedCount, 0);
+      expect(updatedShare.progressPercent, 0);
+    },
+  );
+
+  testWidgets(
     'hides support function section when showSupportFunction is false',
     (tester) async {
       final supportFunction = TodayTaskSupportFunction.fromApi(
@@ -403,4 +612,199 @@ void main() {
       expect(find.byKey(const Key('task-detail-source-url')), findsNothing);
     },
   );
+
+  testWidgets('renders quick reminder action in app bar and in list', (
+    tester,
+  ) async {
+    final task = _task();
+
+    await tester.pumpWidget(
+      MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+    );
+
+    expect(
+      find.byKey(const Key('task-detail-quick-reminder-action')),
+      findsOneWidget,
+    );
+
+    final addReminderButton = find.byKey(
+      const Key('task-detail-add-quick-reminder-button'),
+    );
+    await tester.ensureVisible(addReminderButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lịch nhắc nhở'), findsOneWidget);
+    expect(addReminderButton, findsOneWidget);
+  });
+
+  testWidgets('hides quick reminder action and card when showQuickReminder is false', (
+    tester,
+  ) async {
+    final task = _task();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChecklistTaskDetailScreen(
+          task: task,
+          showQuickReminder: false,
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const Key('task-detail-quick-reminder-action')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('task-detail-add-quick-reminder-button')),
+      findsNothing,
+    );
+    expect(find.text('Lịch nhắc nhở'), findsNothing);
+  });
+
+  testWidgets(
+    'tapping quick reminder opens ReminderScheduleEditor pre-filled with task title',
+    (tester) async {
+      final task = _task(title: 'Uống vitamin D');
+
+      await tester.pumpWidget(
+        MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+      );
+
+      await tester.tap(
+        find.byKey(const Key('task-detail-quick-reminder-action')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tạo lịch nhắc nhanh'), findsOneWidget);
+      expect(find.text('Uống vitamin D'), findsWidgets);
+      expect(
+        find.byKey(const Key('reminder-schedule-title-input')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('reminder-schedule-save-button')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'saving quick reminder creates schedule via service and displays confirmation',
+    (tester) async {
+      String? createdPath;
+      Map<String, dynamic>? createdBody;
+
+      final reminderScheduleService = ReminderScheduleService(
+        postRequest: (path, body) async {
+          createdPath = path;
+          createdBody = Map<String, dynamic>.from(body);
+          return {
+            'data': {
+              'scheduleId': 'sched-99',
+              'title': body['title'],
+              'times': body['times'],
+              'timeZone': body['timeZone'] ?? 'Asia/Ho_Chi_Minh',
+              'recurrence': body['recurrence'] ?? 'DAILY',
+              'startDate': '2026-09-08',
+              'active': true,
+              'revision': 1,
+            },
+          };
+        },
+      );
+
+      final task = _task(title: 'Massage cho bé');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChecklistTaskDetailScreen(
+            task: task,
+            reminderScheduleService: reminderScheduleService,
+          ),
+        ),
+      );
+
+      final addReminderButton = find.byKey(
+        const Key('task-detail-add-quick-reminder-button'),
+      );
+      await tester.ensureVisible(addReminderButton);
+      await tester.pumpAndSettle();
+      await tester.tap(addReminderButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tạo lịch nhắc nhanh'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('reminder-schedule-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(createdPath, '/api/v1/reminder-schedules');
+      expect(createdBody?['title'], 'Massage cho bé');
+      expect(find.text('Đã tạo lịch nhắc cho việc này.'), findsOneWidget);
+      expect(find.text('Xem lịch nhắc'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'can select tomorrow date for one-time reminder and save successfully',
+    (tester) async {
+      String? savedStartDate;
+      final reminderScheduleService = ReminderScheduleService(
+        postRequest: (path, body) async {
+          savedStartDate = body['startDate'] as String?;
+          return {
+            'data': {
+              'scheduleId': 'sched-100',
+              'title': body['title'],
+              'times': body['times'],
+              'timeZone': 'Asia/Ho_Chi_Minh',
+              'recurrence': body['recurrence'],
+              'startDate': body['startDate'],
+              'active': true,
+              'revision': 1,
+            },
+          };
+        },
+      );
+
+      final task = _task(title: 'Sàng lọc dị tật bẩm sinh');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChecklistTaskDetailScreen(
+            task: task,
+            reminderScheduleService: reminderScheduleService,
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(const Key('task-detail-quick-reminder-action')),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to "Một lần"
+      await tester.tap(
+        find.byKey(const Key('reminder-schedule-recurrence-dropdown')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Một lần').last);
+      await tester.pumpAndSettle();
+
+      // Select "Ngày mai"
+      await tester.tap(find.byKey(const Key('reminder-schedule-date-tomorrow')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('reminder-schedule-save-button')));
+      await tester.pumpAndSettle();
+
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final expectedDate =
+          '${tomorrow.year.toString().padLeft(4, '0')}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
+      expect(savedStartDate, expectedDate);
+      expect(find.text('Đã tạo lịch nhắc cho việc này.'), findsOneWidget);
+    },
+  );
 }
+
+

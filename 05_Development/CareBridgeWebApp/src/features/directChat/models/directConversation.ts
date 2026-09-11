@@ -7,6 +7,9 @@ export interface DirectConversation {
   lastActivityAt: string | null;
   // ADR-DCC-007 §4: computed at response time — drives the read-only banner client-side.
   expertAvailable: boolean;
+  counterpartDisplayName?: string | null;
+  counterpartAvatarUrl?: string | null;
+  counterpartRole?: 'MOTHER' | 'EXPERT';
 }
 
 export interface DirectConversationSummary {
@@ -15,6 +18,13 @@ export interface DirectConversationSummary {
   counterpartRole: 'MOTHER' | 'EXPERT';
   lastActivityAt: string | null;
   expertAvailable: boolean;
+  counterpartDisplayName?: string | null;
+  counterpartAvatarUrl?: string | null;
+  counterpartSpecialty?: string | null;
+  lastMessagePreview?: string | null;
+  lastMessageAt?: string | null;
+  unreadCount?: number;
+  conversationStatus?: string;
 }
 
 export interface TimelinePage {

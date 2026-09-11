@@ -4,6 +4,8 @@ import { uploadCallRecording } from '../services/directChatApi';
 interface ZegoRoomInstancePort {
   autoLeaveRoomWhenOnlySelfInRoom: boolean;
   joinRoom(config: Record<string, unknown>): void;
+  /** Rời phòng và ngắt thu. Tuỳ chọn vì bản giả trong test không cần dựng nó. */
+  hangUp?(): void;
   destroy(): void;
 }
 
@@ -51,6 +53,41 @@ export function mountZegoRoomSession({
   let callStartTime: number | null = null;
   let recordingFinalizePromise: Promise<void> | null = null;
   let leaveRequested = false;
+
+  // Mọi luồng thiết bị trang này mở ra trong cuộc gọi, kể cả luồng do SDK tự mở.
+  //
+  // Đèn báo đang thu chỉ tắt khi track dừng, và ta không cầm được tham chiếu tới
+  // luồng của SDK: nó giữ riêng, có thể gắn vào thẻ đã tháo khỏi DOM. Quét thẻ
+  // trong khung là chưa đủ vì thế. Bọc getUserMedia trong đúng vòng đời phiên gọi
+  // thì bất kể ai gọi, ta vẫn nắm được để tắt lúc dọn dẹp.
+  const openedStreams = new Set<MediaStream>();
+  const mediaDevices = navigator.mediaDevices;
+  const originalGetUserMedia = mediaDevices?.getUserMedia?.bind(mediaDevices);
+  if (mediaDevices && originalGetUserMedia) {
+    mediaDevices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
+      const stream = await originalGetUserMedia(constraints);
+      openedStreams.add(stream);
+      return stream;
+    };
+  }
+
+  const releaseOpenedStreams = () => {
+    openedStreams.forEach((stream) => {
+      // Chừa luồng ghi âm đang dùng: recorder còn cần nó tới lúc chốt file, cắt sớm
+      // thì bản ghi cụt mất đoạn cuối. releaseRecordingStream() nhả nó ngay sau
+      // recorder.stop(), ở cả nhánh thành công lẫn nhánh lỗi, rồi gỡ khỏi sổ này.
+      if (stream === recordingStream) return;
+      stream.getTracks().forEach((track) => track.stop());
+      openedStreams.delete(stream);
+    });
+  };
+
+  const restoreGetUserMedia = () => {
+    // Chỉ trả lại nếu bản vá còn là của mình — phiên khác có thể đã chồng lên.
+    if (mediaDevices && originalGetUserMedia && mediaDevices.getUserMedia !== originalGetUserMedia) {
+      mediaDevices.getUserMedia = originalGetUserMedia;
+    }
+  };
 
   // Mount the PDPA notice outside the SDK-owned container. Zego replaces the
   // container's children while rendering, which used to remove this banner.
@@ -136,9 +173,26 @@ export function mountZegoRoomSession({
     }
   };
 
+  // Tắt micro/camera của luồng ghi âm. Tách riêng vì có hai đường tới đây và cả hai
+  // đều phải nhả thiết bị: đèn báo đang thu của trình duyệt chỉ tắt khi track dừng.
+  const releaseRecordingStream = () => {
+    if (!recordingStream) return;
+    recordingStream.getTracks().forEach((track) => track.stop());
+    // Gỡ khỏi sổ luôn: nếu để lại, phần dọn dẹp cuối sẽ dừng lần nữa một luồng đã
+    // tắt, và phép loại trừ bên dưới không nhận ra nó nữa vì biến đã về null.
+    openedStreams.delete(recordingStream);
+    recordingStream = null;
+  };
+
   const stopRecordingAndUpload = (): Promise<void> => {
     if (recordingFinalizePromise) return recordingFinalizePromise;
-    if (!mediaRecorder) return Promise.resolve();
+    // Không có recorder không có nghĩa là không có micro đang mở: getUserMedia chạy
+    // trước khi dựng MediaRecorder, nên nếu bước dựng ném lỗi thì luồng vẫn sống.
+    // Thoát sớm mà không nhả ở đây chính là lúc đèn thu còn sáng sau khi cúp máy.
+    if (!mediaRecorder) {
+      releaseRecordingStream();
+      return Promise.resolve();
+    }
 
     const recorder = mediaRecorder;
     recordingFinalizePromise = (async () => {
@@ -149,6 +203,10 @@ export function mountZegoRoomSession({
             recorder.stop();
           });
         }
+        // Nhả thiết bị ngay khi recorder dừng, trước khi tải lên. Việc tải có thể mất
+        // vài giây, và giữ micro suốt quãng đó là giữ vô ích — dữ liệu đã nằm trong
+        // recordedChunks rồi.
+        releaseRecordingStream();
 
         if (recordedChunks.length > 0 && call.conversationId && call.callId) {
           const mimeType = call.callType === 'VIDEO' ? 'video/webm' : 'audio/webm';
@@ -167,8 +225,8 @@ export function mountZegoRoomSession({
       } catch (error) {
         console.warn('[zegoRoomSession] Stop/upload recording failed:', error);
       } finally {
-        recordingStream?.getTracks().forEach((track) => track.stop());
-        recordingStream = null;
+        // Lưới thứ hai: nếu recorder.stop() ném lỗi thì đoạn nhả ở trên bị bỏ qua.
+        releaseRecordingStream();
         mediaRecorder = null;
       }
     })();
@@ -236,6 +294,47 @@ export function mountZegoRoomSession({
       pdpaBanner.remove();
     }
     void stopRecordingAndUpload();
-    room?.destroy();
+    // Quét TRƯỚC khi huỷ. destroy() tháo thẻ video khỏi khung, nên quét sau đó là
+    // quét vào một khung rỗng — đó là lý do bản vá trước không tắt được đèn.
+    releaseContainerMediaTracks(container);
+    // hangUp() rời phòng và ngắt thu; destroy() chỉ huỷ thực thể. Người dùng có thể
+    // đã tự bấm rời trong giao diện của ZEGO, khi đó hangUp() lần hai ném lỗi —
+    // nuốt đi, vì destroy() bên dưới mới là phần bắt buộc phải chạy.
+    try {
+      room?.hangUp?.();
+    } catch {
+      /* đã rời phòng từ trước */
+    }
+    try {
+      room?.destroy();
+    } catch {
+      /* đã huỷ từ trước */
+    }
+    // Và lần cuối, sau khi SDK đã buông: bất cứ thứ gì còn cầm thiết bị đều tắt ở
+    // đây, kể cả luồng SDK giữ riêng không gắn vào khung.
+    releaseContainerMediaTracks(container);
+    releaseOpenedStreams();
+    restoreGetUserMedia();
   };
+}
+
+/**
+ * Lưới cuối: dừng mọi track còn sống trong các thẻ media mà SDK đã gắn vào khung.
+ *
+ * <p>Đèn báo đang thu của trình duyệt chỉ tắt khi track dừng hẳn, và việc dọn dẹp
+ * ở trên phụ thuộc vào SDK làm đúng. Đây là thứ ta tự kiểm chứng được: nếu còn
+ * thẻ video nào giữ luồng thì dừng tại chỗ, thay vì tin rằng destroy() đã lo.
+ */
+function releaseContainerMediaTracks(container: HTMLElement) {
+  // Cùng lối phòng thủ mà phần treo biểu ngữ PDPA ở trên đang dùng: khung chứa có
+  // thể là một bản giả tối giản trong test, không dựng đủ mặt DOM.
+  if (typeof container?.querySelectorAll !== 'function') return;
+  const elements = container.querySelectorAll<HTMLMediaElement>('video, audio');
+  elements.forEach((element) => {
+    const source = element.srcObject;
+    if (source && typeof (source as MediaStream).getTracks === 'function') {
+      (source as MediaStream).getTracks().forEach((track) => track.stop());
+    }
+    element.srcObject = null;
+  });
 }

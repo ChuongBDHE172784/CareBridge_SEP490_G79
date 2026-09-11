@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../../core/network/api_client.dart';
 import '../services/care_group_service.dart';
 
 class InviteFamilyMemberScreen extends StatefulWidget {
@@ -23,7 +25,9 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
     final trimmed = value.trim();
     setState(() {
       _isValid =
-          trimmed.length >= 9 || (trimmed.contains('@') && trimmed.contains('.'));
+          trimmed.isNotEmpty &&
+          (RegExp(r'^\+?[0-9]{9,15}$').hasMatch(trimmed) ||
+              RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(trimmed));
     });
   }
 
@@ -50,21 +54,31 @@ class _InviteFamilyMemberScreenState extends State<InviteFamilyMemberScreen> {
       if (mounted) {
         String message = 'Lỗi khi gửi lời mời: $e';
         final errStr = e.toString();
-        if (errStr.contains('FAM-011') ||
-            errStr.contains('already an accepted member') ||
-            errStr.contains('already a member') ||
-            errStr.contains('đã tồn tại') ||
-            errStr.contains('đã ở trong nhóm')) {
-          message = 'Thành viên này đã tồn tại trong nhóm';
-        } else if (errStr.contains('FAM-010') ||
-            errStr.contains('Pending invitation already exists') ||
-            errStr.contains('chờ xử lý')) {
-          message = 'Lời mời cho người này đang chờ xử lý';
-        } else if (errStr.contains('FAM-004') ||
-            errStr.contains('FAM-014') ||
-            errStr.contains('User not found') ||
-            errStr.contains('phone number or email')) {
-          message = 'Không tìm thấy tài khoản với SĐT hoặc Gmail này';
+        if (e is ApiException) {
+          try {
+            final map = jsonDecode(e.message) as Map<String, dynamic>;
+            if (map['message'] != null && map['message'].toString().trim().isNotEmpty) {
+              message = map['message'].toString().trim();
+            }
+          } catch (_) {}
+        }
+        if (message.startsWith('Lỗi khi gửi lời mời:')) {
+          if (errStr.contains('chờ xử lý') ||
+              errStr.contains('FAM-010') ||
+              errStr.contains('Pending invitation already exists')) {
+            message = 'Lời mời cho người này đang chờ xử lý';
+          } else if (errStr.contains('FAM-011') ||
+              errStr.contains('already an accepted member') ||
+              errStr.contains('already a member') ||
+              errStr.contains('đã tồn tại') ||
+              errStr.contains('đã ở trong nhóm')) {
+            message = 'Thành viên này đã tồn tại trong nhóm';
+          } else if (errStr.contains('FAM-004') ||
+              errStr.contains('FAM-014') ||
+              errStr.contains('User not found') ||
+              errStr.contains('phone number or email')) {
+            message = 'Không tìm thấy tài khoản với SĐT hoặc Gmail này';
+          }
         }
         ScaffoldMessenger.of(
           context,

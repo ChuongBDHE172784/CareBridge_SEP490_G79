@@ -314,20 +314,26 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                     ),
                     const SizedBox(height: 2),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.verified_rounded,
-                          size: 14,
-                          color: Color(0xFF10B981),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.verified_rounded,
+                            size: 14,
+                            color: Color(0xFF10B981),
+                          ),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Chuyên gia Hệ thống & Chuyên gia Y tế Cộng đồng, đều đã kiểm duyệt chứng chỉ',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: _onSurfaceVariant.withValues(alpha: 0.9),
+                        Expanded(
+                          child: Text(
+                            'Chuyên gia Hệ thống & Chuyên gia Y tế Cộng đồng, đều đã kiểm duyệt chứng chỉ',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: _onSurfaceVariant.withValues(alpha: 0.9),
+                            ),
                           ),
                         ),
                       ],
@@ -608,6 +614,62 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     );
   }
 
+  /// Nhan tinh trang nhan tu van. Ba trang thai khac nhau ca ICON lan chu, khong chi
+  /// khac mau, de con doc duoc khi in den trang hoac voi nguoi mu mau.
+  Widget _availabilityChip(String state) {
+    late final IconData icon;
+    late final String label;
+    late final Color foreground;
+    late final Color background;
+    late final Color border;
+
+    switch (state) {
+      case 'OPEN':
+        icon = Icons.event_available_rounded;
+        label = 'Đang rảnh';
+        foreground = const Color(0xFF2E7D32);
+        background = const Color(0xFFE8F5E9);
+        border = const Color(0xFFA5D6A7);
+      case 'BUSY':
+        icon = Icons.event_busy_rounded;
+        label = 'Đang bận';
+        foreground = const Color(0xFF9A3412);
+        background = const Color(0xFFFFF1E6);
+        border = const Color(0xFFF5C9A8);
+      default:
+        icon = Icons.event_note_outlined;
+        label = 'Chưa xếp lịch';
+        foreground = _onSurfaceVariant;
+        background = _surfaceContainerLow;
+        border = _outlineVariant;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: foreground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildExpertCard(BuildContext context, ExpertDirectoryItem expert) {
     final title =
         expert.displayName ?? expert.professionalTitle ?? 'Chuyên gia Y tế';
@@ -756,6 +818,10 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                                     ),
                                   ),
                                 ),
+                              // Ba trang thai do backend quyet dinh, client chi hien
+                              // thi. Khong suy ra tu trang thai dang chat: mot chuyen
+                              // gia dang tu van nguoi khac van con gio trong chieu mai.
+                              _availabilityChip(expert.availabilityState),
                               if (hasActiveChat)
                                 Container(
                                   padding: const EdgeInsets.symmetric(

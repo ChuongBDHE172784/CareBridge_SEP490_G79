@@ -8,6 +8,7 @@ interface ConsultationRequest {
   topic: string;
   status: string;
   createdAt: string;
+  directConversationId?: string | null;
 }
 
 const STATUS_TABS: { key: string; label: string; status?: string }[] = [
@@ -16,6 +17,10 @@ const STATUS_TABS: { key: string; label: string; status?: string }[] = [
   { key: 'accepted', label: 'Đã chấp nhận', status: 'ACCEPTED' },
   { key: 'rejected', label: 'Đã từ chối', status: 'REJECTED' },
   { key: 'cancelled', label: 'Đã hủy', status: 'CANCELLED' },
+  // Hết hạn là kết cục thường gặp nhất sau "chờ phản hồi": mẹ đợi 48 giờ không ai
+  // trả lời thì yêu cầu tự đóng. Thiếu tab này thì nó chỉ hiện ở "Tất cả", lẫn giữa
+  // mọi thứ khác, nên chuyên gia không thấy được mình đã để lỡ bao nhiêu người.
+  { key: 'expired', label: 'Đã hết hạn', status: 'EXPIRED' },
 ];
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -23,6 +28,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   ACCEPTED: { label: 'Đã chấp nhận', className: 'bg-[#E6F4EA] text-[#137333]' },
   REJECTED: { label: 'Đã từ chối', className: 'bg-error-container text-error' },
   CANCELLED: { label: 'Đã hủy', className: 'bg-[#F5F5F5] text-[#616161]' },
+  EXPIRED: { label: 'Đã hết hạn', className: 'bg-[#F5F5F5] text-[#616161]' },
 };
 
 function timeAgo(iso: string): string {
@@ -78,7 +84,12 @@ export default function ExpertConsultationRequestsPage() {
   const handleAction = async (id: string, action: 'accept' | 'reject') => {
     try {
       if (action === 'accept') {
-        await apiClient.patch(`/api/v1/consultation-requests/${id}/accept`);
+        const { data } = await apiClient.patch(`/api/v1/consultation-requests/${id}/accept`);
+        const convId = data?.data?.directConversationId;
+        if (convId) {
+          navigate(`/expert/direct-chats/${convId}`);
+          return;
+        }
       } else {
         await apiClient.post(`/api/v1/consultation-requests/${id}/reject`, {
           reason: 'Chuyên gia bận lịch công tác',
@@ -88,6 +99,24 @@ export default function ExpertConsultationRequestsPage() {
     } catch {
       alert('Thao tác thất bại. Vui lòng thử lại.');
     }
+  };
+
+  const handleGoToChat = async (req: ConsultationRequest) => {
+    if (req.directConversationId) {
+      navigate(`/expert/direct-chats/${req.directConversationId}`);
+      return;
+    }
+    try {
+      const { data } = await apiClient.get(`/api/v1/consultation-requests/${req.id}`);
+      const convId = data?.data?.directConversationId;
+      if (convId) {
+        navigate(`/expert/direct-chats/${convId}`);
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    navigate('/expert/direct-chats');
   };
 
   const filteredRequests = useMemo(() => {
@@ -226,12 +255,14 @@ export default function ExpertConsultationRequestsPage() {
                           </div>
                         ) : req.status === 'ACCEPTED' ? (
                           <button
-                            onClick={() => navigate('/expert/direct-chats')}
+                            onClick={() => handleGoToChat(req)}
                             className="py-1.5 px-3.5 rounded-lg border border-outline-variant bg-surface-container-low text-primary text-xs font-semibold hover:bg-surface-bright cursor-pointer flex items-center gap-1.5 justify-end"
                           >
                             <span className="material-symbols-outlined text-base">chat</span>
                             Vào nhắn tin
                           </button>
+                        ) : req.status === 'EXPIRED' ? (
+                          <span className="text-xs text-outline">Đã đóng do quá hạn</span>
                         ) : (
                           <span className="text-xs text-outline">—</span>
                         )}

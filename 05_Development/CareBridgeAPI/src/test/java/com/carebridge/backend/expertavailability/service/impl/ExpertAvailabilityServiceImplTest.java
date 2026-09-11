@@ -139,38 +139,33 @@ class ExpertAvailabilityServiceImplTest {
         verify(availabilityRepository, never()).saveAll(any());
     }
 
+    /**
+     * Which hours count as bookable — open, still ahead, and unclaimed by another
+     * mother's pending request — is decided by findBookableSlotsForExpert in SQL,
+     * because the unclaimed half needs a join this layer cannot do. What stays this
+     * layer's job, and what this test pins, is that eligibility is still checked and
+     * that nothing beyond that query reaches the mother.
+     */
     @Test
-    void publicAvailabilityOnlyReturnsFutureAvailableSlotsForEligibleExpert() {
+    void publicAvailabilityServesOnlyTheBookableSlotsForEligibleExpert() {
         UUID profileId = UUID.randomUUID();
-        ExpertAvailability available = ExpertAvailability.builder()
+        ExpertAvailability bookable = ExpertAvailability.builder()
                 .expertProfileId(profileId)
                 .startAt(NOW.plusSeconds(3600))
                 .endAt(NOW.plusSeconds(7200))
                 .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE)
                 .build();
-        ExpertAvailability busy = ExpertAvailability.builder()
-                .expertProfileId(profileId)
-                .startAt(NOW.plusSeconds(7200))
-                .endAt(NOW.plusSeconds(10800))
-                .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.BUSY)
-                .build();
-        ExpertAvailability alreadyStarted = ExpertAvailability.builder()
-                .expertProfileId(profileId)
-                .startAt(NOW.minusSeconds(1800))
-                .endAt(NOW.plusSeconds(1800))
-                .status(com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus.AVAILABLE)
-                .build();
         when(expertProfileRepository.findById(profileId))
                 .thenReturn(Optional.of(eligibleProfile(profileId, UUID.randomUUID())));
-        when(availabilityRepository.findByExpertProfileIdAndEndAtAfterOrderByStartAtAsc(profileId, NOW))
-                .thenReturn(List.of(alreadyStarted, available, busy));
-        when(availabilityMapper.toResponse(available))
-                .thenReturn(AvailabilityResponse.builder().expertProfileId(profileId).startAt(available.getStartAt()).build());
+        when(availabilityRepository.findBookableSlotsForExpert(profileId))
+                .thenReturn(List.of(bookable));
+        when(availabilityMapper.toResponse(bookable))
+                .thenReturn(AvailabilityResponse.builder().expertProfileId(profileId).startAt(bookable.getStartAt()).build());
 
         assertThat(service.getPublicAvailability(profileId))
                 .singleElement()
                 .extracting(AvailabilityResponse::getStartAt)
-                .isEqualTo(available.getStartAt());
+                .isEqualTo(bookable.getStartAt());
     }
 
     @Test

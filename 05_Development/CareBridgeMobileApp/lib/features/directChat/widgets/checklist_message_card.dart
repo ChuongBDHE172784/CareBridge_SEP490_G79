@@ -11,6 +11,7 @@ class ChecklistItemShareData {
   final String? origin;
   final String? createdBy;
   final bool isExpertCustom;
+  final String? replacesText;
   final String? doctorNote;
   final String? sourceUrl;
   final String? supportFunction;
@@ -23,6 +24,7 @@ class ChecklistItemShareData {
     this.origin,
     this.createdBy,
     this.isExpertCustom = false,
+    this.replacesText,
     this.doctorNote,
     this.sourceUrl,
     this.supportFunction,
@@ -38,6 +40,7 @@ class ChecklistItemShareData {
         createdBy: json['createdBy'] as String?,
         isExpertCustom: json['isExpertCustom'] as bool? ??
             (json['origin'] == 'EXPERT' || json['createdBy'] == 'EXPERT'),
+        replacesText: json['replacesText'] as String?,
         doctorNote: json['doctorNote'] as String?,
         sourceUrl: json['sourceUrl'] as String?,
         supportFunction: json['supportFunction'] as String?,
@@ -51,10 +54,18 @@ class ChecklistItemShareData {
     if (origin != null) 'origin': origin,
     if (createdBy != null) 'createdBy': createdBy,
     'isExpertCustom': isExpertCustom,
+    if (replacesText != null) 'replacesText': replacesText,
     if (doctorNote != null) 'doctorNote': doctorNote,
     if (sourceUrl != null) 'sourceUrl': sourceUrl,
     if (supportFunction != null) 'supportFunction': supportFunction,
   };
+
+  bool get isPersonal =>
+      origin == 'USER' ||
+      origin == 'USER_CREATED' ||
+      createdBy == 'USER' ||
+      createdBy == 'USER_CREATED';
+  bool get isCareBridgeSuggestion => !isPersonal;
 }
 
 class ChecklistShareData {
@@ -69,6 +80,7 @@ class ChecklistShareData {
   final List<ChecklistItemShareData> historyItems;
   final List<ChecklistItemShareData> currentItems;
   final List<ChecklistItemShareData> futureItems;
+  final List<String> removedItems;
 
   ChecklistShareData({
     this.title = 'Hồ sơ Checklist Toàn diện (Lịch sử & Tương lai)',
@@ -82,6 +94,7 @@ class ChecklistShareData {
     this.historyItems = const [],
     List<ChecklistItemShareData> currentItems = const [],
     this.futureItems = const [],
+    this.removedItems = const [],
     List<ChecklistItemShareData>? items,
   }) : currentItems = (items != null && items.isNotEmpty && currentItems.isEmpty)
             ? items
@@ -106,23 +119,35 @@ class ChecklistShareData {
       final jsonStr = body.replaceFirst(tag, '').trim();
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
 
+      bool isNotPersonal(ChecklistItemShareData item) =>
+          item.origin != 'USER' &&
+          item.origin != 'USER_CREATED' &&
+          item.createdBy != 'USER' &&
+          item.createdBy != 'USER_CREATED';
+
       final historyList = (decoded['historyItems'] as List? ?? [])
           .map((item) => ChecklistItemShareData.fromJson(item as Map<String, dynamic>))
+          .where(isNotPersonal)
           .toList();
 
       final currentList = (decoded['currentItems'] as List? ?? decoded['items'] as List? ?? [])
           .map((item) => ChecklistItemShareData.fromJson(item as Map<String, dynamic>))
+          .where(isNotPersonal)
           .toList();
 
       final futureList = (decoded['futureItems'] as List? ?? [])
           .map((item) => ChecklistItemShareData.fromJson(item as Map<String, dynamic>))
+          .where(isNotPersonal)
           .toList();
 
-      final total = (decoded['totalCount'] as num?)?.toInt() ??
-          (historyList.length + currentList.length + futureList.length);
-      final completed = (decoded['completedCount'] as num?)?.toInt() ??
-          historyList.where((i) => i.completed).length +
-              currentList.where((i) => i.completed).length;
+      final removedList = (decoded['removedItems'] as List? ?? [])
+          .map((item) => item.toString())
+          .toList();
+
+      final total = historyList.length + currentList.length + futureList.length;
+      final completed = historyList.where((i) => i.completed).length +
+          currentList.where((i) => i.completed).length +
+          futureList.where((i) => i.completed).length;
       final percent = total > 0 ? ((completed / total) * 100).round() : 0;
 
       return ChecklistShareData(
@@ -137,6 +162,7 @@ class ChecklistShareData {
         historyItems: historyList,
         currentItems: currentList,
         futureItems: futureList,
+        removedItems: removedList,
       );
     } catch (_) {
       return null;
@@ -152,6 +178,7 @@ class ChecklistShareData {
     'totalCount': totalCount,
     'progressPercent': progressPercent,
     'note': note,
+    if (removedItems.isNotEmpty) 'removedItems': removedItems,
     'historyItems': historyItems.map((i) => i.toJson()).toList(),
     'currentItems': currentItems.map((i) => i.toJson()).toList(),
     'futureItems': futureItems.map((i) => i.toJson()).toList(),
@@ -228,7 +255,10 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                 origin: i.origin,
                 createdBy: i.createdBy,
                 isExpertCustom: i.isExpertCustom,
+                replacesText: i.replacesText,
                 doctorNote: i.doctorNote,
+                sourceUrl: i.sourceUrl,
+                supportFunction: i.supportFunction,
               );
             }
             return i;
@@ -257,7 +287,10 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                 origin: i.origin,
                 createdBy: i.createdBy,
                 isExpertCustom: i.isExpertCustom,
+                replacesText: i.replacesText,
                 doctorNote: i.doctorNote,
+                sourceUrl: i.sourceUrl,
+                supportFunction: i.supportFunction,
               );
             }
             return i;
@@ -454,31 +487,6 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF00695C),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else if (item.origin == 'USER' || item.createdBy == 'USER')
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3E5F5),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: const Color(0xFFCE93D8)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.person_outline_rounded, size: 10, color: Color(0xFF6A1B9A)),
-                                SizedBox(width: 3),
-                                Text(
-                                  'Mẹ tự tạo',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF6A1B9A),
                                   ),
                                 ),
                               ],

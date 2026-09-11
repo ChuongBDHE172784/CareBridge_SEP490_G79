@@ -207,3 +207,13 @@ Theo thiết kế kiến trúc chuẩn tại `docs/mainworkflow-Trang-3.drawio.p
      - Bảng snapshot toàn bộ sinh hiệu gần nhất.
      - Nút **'Gỡ đính kèm'** để xóa ngữ cảnh khi muốn chat tự do.
 
+
+3. Cách chạy lại Benchmark khi cần (CLI)
+Khi muốn chạy lại đánh giá (ví dụ chạy toàn bộ 16 ca hoặc chỉ định số ca):
+
+bash
+cd 05_Development/CareBridgeAITriageService
+# Chạy thử 4 ca nhanh:
+./venv/bin/python scripts/evaluate_rag_benchmark.py --limit 4
+# Chạy toàn bộ 16 ca trong Golden Dataset:
+./venv/bin/python scripts/evaluate_rag_benchmark.py

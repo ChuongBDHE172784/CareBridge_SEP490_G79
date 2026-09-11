@@ -326,7 +326,11 @@ public class FamilyDashboardService {
                 quickNotes && (owner || authorizationPolicy.hasPermission(
                         groupId, userId, PermissionFlag.QUICK_NOTE_BLOOD_PRESSURE)),
                 quickNotes && (owner || authorizationPolicy.hasPermission(
-                        groupId, userId, PermissionFlag.QUICK_NOTE_BLOOD_GLUCOSE)));
+                        groupId, userId, PermissionFlag.QUICK_NOTE_BLOOD_GLUCOSE)),
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_HEART_RATE)),
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_TEMPERATURE)));
     }
 
     private List<FamilyDashboardResponse.HealthMetricSummary> loadHealthMetricSummaries(
@@ -394,6 +398,12 @@ public class FamilyDashboardService {
         }
         if (permission.quickNoteBloodGlucose()) {
             result.add(new SharedMetric("BLOOD_GLUCOSE", "BLOOD_GLUCOSE", "mg/dL", false));
+        }
+        if (permission.quickNoteHeartRate()) {
+            result.add(new SharedMetric("MATERNAL_HEART_RATE", "MATERNAL_HEART_RATE", "bpm", false));
+        }
+        if (permission.quickNoteTemperature()) {
+            result.add(new SharedMetric("TEMPERATURE", "TEMPERATURE", "°C", false));
         }
         return result;
     }

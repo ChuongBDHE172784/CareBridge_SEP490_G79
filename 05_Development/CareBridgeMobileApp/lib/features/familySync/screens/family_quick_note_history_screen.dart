@@ -260,6 +260,10 @@ class _FamilyQuickNoteHistoryScreenState
         latestPoint == null
             ? '—'
             : '${latestPoint.valueDisplay} ${_history?.unit ?? ''}'.trim(),
+      'MATERNAL_HEART_RATE' =>
+        latestPoint == null ? '—' : '${latestPoint.valueDisplay} bpm',
+      'TEMPERATURE' =>
+        latestPoint == null ? '—' : '${latestPoint.valueDisplay} °C',
       _ => '—',
     };
     final label = switch (widget.metricType) {
@@ -269,6 +273,8 @@ class _FamilyQuickNoteHistoryScreenState
       'EPDS_SCORE' => 'Điểm sàng lọc gần nhất • Không phải chẩn đoán',
       'BLOOD_PRESSURE' => 'Lần đo gần nhất trong ngày',
       'BLOOD_GLUCOSE' => 'Lần đo gần nhất trong ngày',
+      'MATERNAL_HEART_RATE' => 'Lần đo gần nhất trong ngày',
+      'TEMPERATURE' => 'Lần đo gần nhất trong ngày',
       _ => 'Tổng quan trong ngày',
     };
 
@@ -412,6 +418,8 @@ class _FamilyQuickNoteHistoryScreenState
       'BLOOD_PRESSURE' => '${point.valueDisplay} mmHg',
       'BLOOD_GLUCOSE' =>
         '${point.valueDisplay} ${_history?.unit ?? ''}${_glucoseContext(point.context['measurementContext'])}',
+      'MATERNAL_HEART_RATE' => '${point.valueDisplay} bpm',
+      'TEMPERATURE' => '${point.valueDisplay} °C',
       _ => point.valueDisplay,
     };
   }
@@ -465,6 +473,8 @@ class _FamilyQuickNoteHistoryScreenState
     'FETAL_MOVEMENT_COUNT' => 'Lịch sử cử động thai',
     'BLOOD_PRESSURE' => 'Lịch sử huyết áp',
     'BLOOD_GLUCOSE' => 'Lịch sử đường huyết',
+    'MATERNAL_HEART_RATE' => 'Lịch sử nhịp tim mẹ',
+    'TEMPERATURE' => 'Lịch sử nhiệt độ',
     _ => 'Lịch sử chỉ số sức khỏe',
   };
 
@@ -475,6 +485,8 @@ class _FamilyQuickNoteHistoryScreenState
     'FETAL_MOVEMENT_COUNT' => Icons.child_friendly_outlined,
     'BLOOD_PRESSURE' => Icons.monitor_heart_outlined,
     'BLOOD_GLUCOSE' => Icons.bloodtype_outlined,
+    'MATERNAL_HEART_RATE' => Icons.favorite_border_rounded,
+    'TEMPERATURE' => Icons.thermostat_outlined,
     _ => Icons.sticky_note_2_outlined,
   };
 }

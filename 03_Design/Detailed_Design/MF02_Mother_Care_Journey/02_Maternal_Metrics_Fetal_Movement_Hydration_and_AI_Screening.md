@@ -47,6 +47,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_02MaternalMetricsFetalMovementHydrationandAIScreening
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "AddMaternalHealthMetricScreen" as UIAddMaternalHealthMetricScreen <<UI>>
@@ -319,16 +320,16 @@ The lifecycle below belongs to **HealthMetricObservation.recordStatus, with the 
 hide empty description
 [*] --> NotRecorded
 
-NotRecorded --> Recorded : recordObservation() [owning journey is ACTIVE] / persistObservation(ACTIVE)
-Recorded --> Recorded : updateObservation() [caller owns the observation] / persistRevisedValue()
-Recorded --> Deleted : deleteObservation() [caller owns the observation] / setRecordStatus(DELETED)
+NotRecorded --> Recorded : recordObservation()\n[owning journey is ACTIVE]\n/ persistObservation(ACTIVE)
+Recorded --> Recorded : updateObservation()\n[caller owns the observation]\n/ persistRevisedValue()
+Recorded --> Deleted : deleteObservation()\n[caller owns the observation]\n/ setRecordStatus(DELETED)
 
 state Recorded {
   [*] --> NotScreened
-  NotScreened --> ScreenedNormal : screenMetrics() [no threshold breached] / returnRoutineGuidance()
-  NotScreened --> ScreenedAttention : screenMetrics() [threshold breached] / returnEscalationGuidance()
-  ScreenedNormal --> NotScreened : recordObservation() / invalidatePreviousScreening()
-  ScreenedAttention --> NotScreened : recordObservation() / invalidatePreviousScreening()
+  NotScreened --> ScreenedNormal : screenMetrics()\n[no threshold breached]\n/ returnRoutineGuidance()
+  NotScreened --> ScreenedAttention : screenMetrics()\n[threshold breached]\n/ returnEscalationGuidance()
+  ScreenedNormal --> NotScreened : recordObservation()\n/ invalidatePreviousScreening()
+  ScreenedAttention --> NotScreened : recordObservation()\n/ invalidatePreviousScreening()
 }
 
 Recorded : recordStatus = ACTIVE

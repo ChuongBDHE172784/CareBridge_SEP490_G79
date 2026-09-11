@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../checklist/services/user_checklist_service.dart';
-import '../../checklist/models/user_checklist_item_model.dart';
 import '../../checklist/services/checklist_roadmap_service.dart';
 import '../../reminder/models/today_task_model.dart';
 import '../../reminder/services/today_task_service.dart';
@@ -54,9 +53,9 @@ class _SelectableItem {
 
   bool get isPersonal =>
       origin == 'USER' ||
-      origin == 'EXPERT' ||
+      origin == 'USER_CREATED' ||
       createdBy == 'USER' ||
-      createdBy == 'EXPERT';
+      createdBy == 'USER_CREATED';
   bool get isCareBridgeSuggestion => !isPersonal;
 }
 
@@ -73,7 +72,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
   int? _gestationalWeek;
   String? _journeyId;
   String _statusFilter = 'ALL'; // ALL, COMPLETED, PENDING
-  String _originFilter = 'ALL'; // ALL, CAREBRIDGE, PERSONAL
 
   List<_SelectableItem> _historyItems = [];
   List<_SelectableItem> _currentItems = [];
@@ -166,7 +164,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       for (final f in _futureItems) f.text.trim().toLowerCase(),
     };
 
-    // 2. Load live today tasks from TodayTaskService (phân loại chính xác Gợi ý vs Việc cá nhân)
+    // 2. Load live today tasks from TodayTaskService (chỉ đồng bộ trạng thái cho lộ trình, loại bỏ việc cá nhân)
     try {
       final snapshot = await TodayTaskService.instance.loadToday();
       final liveTasks = snapshot.sections.all.toList();
@@ -183,7 +181,9 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
           final isPersonalTask = !isRoadmapItem ||
               t.origin == TodayTaskOrigin.userCreated ||
               t.isCareTask;
-          final origin = isPersonalTask ? 'USER' : 'SYSTEM';
+
+          // Loại bỏ tuyệt đối việc cá nhân khi chia sẻ cho chuyên gia
+          if (isPersonalTask) continue;
 
           updatedCurrent.add(_SelectableItem(
             id: t.id,
@@ -192,8 +192,8 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
             category: existing?.category ?? 'Khám thai & Y tế',
             timeLabel: existing?.timeLabel ?? 'Tuần $currentWk (Hiện tại)',
             section: 'CURRENT',
-            origin: origin,
-            createdBy: isPersonalTask ? 'USER' : 'SYSTEM',
+            origin: 'SYSTEM',
+            createdBy: 'SYSTEM',
             isSelected: existing?.isSelected ?? true,
           ));
         }
@@ -209,17 +209,16 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       }
     } catch (_) {}
 
-    // 3. Synchronize with UserChecklistService for custom personal items (Mẹ tự tạo)
+    // 3. Synchronize with UserChecklistService: chỉ cập nhật trạng thái completed cho việc thuộc lộ trình
+    // Tuyệt đối không thêm việc cá nhân của mẹ ngoài roadmap vào danh sách chia sẻ cho chuyên gia
     try {
       final serverItems = await UserChecklistService.instance.listItems();
       if (serverItems.isNotEmpty) {
         for (final si in serverItems) {
           final key = si.itemText.trim().toLowerCase();
           final idx = _currentItems.indexWhere((c) => c.text.trim().toLowerCase() == key);
-          if (idx >= 0) {
-            // Cập nhật trạng thái completed, nhưng giữ nguyên origin SYSTEM nếu thuộc roadmap
+          if (idx >= 0 && roadmapTitleSet.contains(key)) {
             final cur = _currentItems[idx];
-            final isRoadmapItem = roadmapTitleSet.contains(key);
             _currentItems[idx] = _SelectableItem(
               id: si.itemId,
               text: cur.text,
@@ -227,29 +226,21 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               category: cur.category,
               timeLabel: cur.timeLabel,
               section: cur.section,
-              origin: isRoadmapItem ? 'SYSTEM' : 'USER',
-              createdBy: isRoadmapItem ? 'SYSTEM' : 'USER',
+              origin: cur.origin,
+              createdBy: cur.createdBy,
               isSelected: cur.isSelected,
             );
-          } else {
-            // Việc cá nhân do mẹ tạo ngoài roadmap
-            _currentItems.add(_SelectableItem(
-              id: si.itemId,
-              text: si.itemText,
-              completed: si.completed,
-              category: si.category.label,
-              timeLabel: 'Tuần $currentWk (Hiện tại)',
-              section: 'CURRENT',
-              origin: 'USER',
-              createdBy: 'USER',
-              isSelected: true,
-            ));
           }
         }
       }
     } catch (_) {}
 
-    // 4. Lọc bỏ tuyệt đối: Các mục thuộc "Lịch sử đã qua" không được hiển thị ở "Tuần hiện tại"
+    // 4. Lọc bỏ phòng vệ: Không để sót việc cá nhân nào
+    _historyItems = _historyItems.where((i) => !i.isPersonal).toList();
+    _currentItems = _currentItems.where((i) => !i.isPersonal).toList();
+    _futureItems = _futureItems.where((i) => !i.isPersonal).toList();
+
+    // Lọc bỏ tuyệt đối: Các mục thuộc "Lịch sử đã qua" không được hiển thị ở "Tuần hiện tại"
     final historyTextSet = _historyItems.map((h) => h.text.trim().toLowerCase()).toSet();
     _currentItems = _currentItems.where((c) => !historyTextSet.contains(c.text.trim().toLowerCase())).toList();
 
@@ -276,20 +267,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       }
       for (final i in _futureItems) {
         i.isSelected = select;
-      }
-    });
-  }
-
-  void _selectByType(String type) {
-    setState(() {
-      for (final i in [..._historyItems, ..._currentItems, ..._futureItems]) {
-        if (type == 'CAREBRIDGE') {
-          i.isSelected = i.isCareBridgeSuggestion;
-        } else if (type == 'PERSONAL') {
-          i.isSelected = i.isPersonal;
-        } else {
-          i.isSelected = true;
-        }
       }
     });
   }
@@ -369,10 +346,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
 
   List<_SelectableItem> _filterItems(List<_SelectableItem> items) {
     return items.where((i) {
-      // Filter by origin/type
-      if (_originFilter == 'CAREBRIDGE' && !i.isCareBridgeSuggestion) return false;
-      if (_originFilter == 'PERSONAL' && !i.isPersonal) return false;
-
       // Filter by completion status
       if (_statusFilter == 'COMPLETED' && !i.completed) return false;
       if (_statusFilter == 'PENDING' && i.completed) return false;
@@ -389,13 +362,9 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
 
     final allItemsList = [..._historyItems, ..._currentItems, ..._futureItems];
     final totalAllItems = allItemsList.length;
-    final totalCbItems = allItemsList.where((i) => i.isCareBridgeSuggestion).length;
-    final totalPersonalItems = allItemsList.where((i) => i.isPersonal).length;
 
     final selectedItemsList = allItemsList.where((i) => i.isSelected).toList();
     final totalSelected = selectedItemsList.length;
-    final selectedCbItems = selectedItemsList.where((i) => i.isCareBridgeSuggestion).length;
-    final selectedPersonalItems = selectedItemsList.where((i) => i.isPersonal).length;
 
     final selectedCompleted = selectedItemsList.where((i) => i.completed).length;
     final selectedPending = totalSelected - selectedCompleted;
@@ -502,25 +471,38 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               ),
               const SizedBox(height: 10),
 
-              // Filter Row 1: Phân loại Nguồn việc (CareBridge vs Cá nhân)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+              // Privacy notice banner
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: const Row(
                   children: [
-                    _buildOriginChip('ALL', 'Tất cả ($totalAllItems)'),
-                    const SizedBox(width: 6),
-                    _buildOriginChip('CAREBRIDGE', '✨ Gợi ý CareBridge ($totalCbItems)'),
-                    const SizedBox(width: 6),
-                    _buildOriginChip('PERSONAL', '👤 Việc cá nhân ($totalPersonalItems)'),
+                    Icon(Icons.shield_outlined, size: 16, color: Color(0xFF16A34A)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Chỉ chia sẻ việc theo dõi y tế & lộ trình chuẩn. Việc cá nhân của mẹ luôn được bảo mật riêng tư.',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          color: Color(0xFF15803D),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
 
-              // Filter Row 2: Trạng thái hoàn thành
+              // Filter: Trạng thái hoàn thành
               Row(
                 children: [
-                  _buildStatusChip('ALL', 'Tất cả trạng thái'),
+                  _buildStatusChip('ALL', 'Tất cả ($totalAllItems)'),
                   const SizedBox(width: 6),
                   _buildStatusChip('COMPLETED', 'Đã xong ($selectedCompleted)'),
                   const SizedBox(width: 6),
@@ -531,30 +513,30 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
 
               // Quick Selective Action Bar
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF7F2F0),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Text(
+                      'Đã chọn: $totalSelected việc',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _primary,
+                      ),
+                    ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Đã chọn: $totalSelected việc ($selectedCbItems Gợi ý · $selectedPersonalItems Cá nhân)',
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: _primary,
-                          ),
-                        ),
                         TextButton(
                           onPressed: () => _selectAllTabs(false),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
@@ -563,49 +545,13 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                             style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _textMuted),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _selectByType('CAREBRIDGE'),
-                            icon: const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF0284C7)),
-                            label: const Text(
-                              'Chỉ chọn Gợi ý',
-                              style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Color(0xFF0369A1)),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-                              side: const BorderSide(color: Color(0xFFBAE6FD)),
-                              backgroundColor: const Color(0xFFF0F9FF),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _selectByType('PERSONAL'),
-                            icon: const Icon(Icons.person_rounded, size: 13, color: Color(0xFF7E22CE)),
-                            label: const Text(
-                              'Chỉ chọn Cá nhân',
-                              style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Color(0xFF6B21A8)),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-                              side: const BorderSide(color: Color(0xFFE9D5FF)),
-                              backgroundColor: const Color(0xFFFAF5FF),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         TextButton(
                           onPressed: () => _selectAllTabs(true),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             backgroundColor: _primary.withValues(alpha: 0.1),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
@@ -692,7 +638,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                 onPressed: _onConfirm,
                 icon: const Icon(Icons.send_rounded, size: 18),
                 label: Text(
-                  'Chia sẻ $totalSelected việc ($selectedCbItems gợi ý · $selectedPersonalItems cá nhân)',
+                  'Chia sẻ $totalSelected việc',
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.bold,
@@ -712,33 +658,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildOriginChip(String key, String label) {
-    final selected = _originFilter == key;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      selectedColor: _primary,
-      backgroundColor: const Color(0xFFFAF7F6),
-      labelStyle: TextStyle(
-        fontFamily: 'Lexend',
-        fontSize: 11,
-        fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-        color: selected ? Colors.white : _textDark,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: selected ? _primary : const Color(0xFFE8D5CE),
-        ),
-      ),
-      onSelected: (val) {
-        if (val) {
-          setState(() => _originFilter = key);
-        }
-      },
     );
   }
 
@@ -854,34 +773,8 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          // Badge phân loại Gợi ý CareBridge vs Việc cá nhân
-                          if (item.isCareBridgeSuggestion)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
-                              margin: const EdgeInsets.only(right: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE0F2FE),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: const Color(0xFFBAE6FD)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.auto_awesome_rounded, size: 10, color: Color(0xFF0284C7)),
-                                  SizedBox(width: 2),
-                                  Text(
-                                    'Gợi ý CareBridge',
-                                    style: TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0369A1),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else if (item.isExpertCustom || item.origin == 'EXPERT')
+                          // Badge phân loại Gợi ý CareBridge vs Bác sĩ chỉ định
+                          if (item.isExpertCustom || item.origin == 'EXPERT')
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
                               margin: const EdgeInsets.only(right: 6),
@@ -912,22 +805,22 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                               padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF3E8FF),
+                                color: const Color(0xFFE0F2FE),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: const Color(0xFFE9D5FF)),
+                                border: Border.all(color: const Color(0xFFBAE6FD)),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.person_rounded, size: 10, color: Color(0xFF7E22CE)),
+                                  Icon(Icons.auto_awesome_rounded, size: 10, color: Color(0xFF0284C7)),
                                   SizedBox(width: 2),
                                   Text(
-                                    'Mẹ tự tạo',
+                                    'Gợi ý CareBridge',
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 9,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF6B21A8),
+                                      color: Color(0xFF0369A1),
                                     ),
                                   ),
                                 ],

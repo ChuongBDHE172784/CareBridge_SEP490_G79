@@ -37,6 +37,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_03VaccinationRecordScheduleandReminder
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "CreateVaccinationReminderScreen" as UICreateVaccinationReminderScreen <<UI>>
@@ -236,16 +237,16 @@ The lifecycle below belongs to **VaccinationRecord.status**. Its states are the 
 hide empty description
 [*] --> NotPlanned
 
-NotPlanned --> Scheduled : buildVaccinationBook() / persistRecord(SCHEDULED)
-NotPlanned --> Completed : recordAdministeredDose() / persistRecord(COMPLETED)
-Scheduled --> Completed : recordAdministeredDose() [status != DELETED] / setStatus(COMPLETED)
-Scheduled --> Postponed : postponeDose() [status != DELETED] / setStatus(POSTPONED)
-Postponed --> Scheduled : rescheduleDose() / setDueDate()
-Postponed --> Completed : recordAdministeredDose() / setStatus(COMPLETED)
-Scheduled --> Deleted : deleteRecord() [status != DELETED] / setStatus(DELETED)
-Completed --> Deleted : deleteRecord() [status != DELETED] / setStatus(DELETED)
-Postponed --> Deleted : deleteRecord() [status != DELETED] / setStatus(DELETED)
-Scheduled --> Scheduled : createDoseReminder() / persistReminder(PENDING)
+NotPlanned --> Scheduled : buildVaccinationBook()\n/ persistRecord(SCHEDULED)
+NotPlanned --> Completed : recordAdministeredDose()\n/ persistRecord(COMPLETED)
+Scheduled --> Completed : recordAdministeredDose()\n[status != DELETED]\n/ setStatus(COMPLETED)
+Scheduled --> Postponed : postponeDose()\n[status != DELETED]\n/ setStatus(POSTPONED)
+Postponed --> Scheduled : rescheduleDose()\n/ setDueDate()
+Postponed --> Completed : recordAdministeredDose()\n/ setStatus(COMPLETED)
+Scheduled --> Deleted : deleteRecord()\n[status != DELETED]\n/ setStatus(DELETED)
+Completed --> Deleted : deleteRecord()\n[status != DELETED]\n/ setStatus(DELETED)
+Postponed --> Deleted : deleteRecord()\n[status != DELETED]\n/ setStatus(DELETED)
+Scheduled --> Scheduled : createDoseReminder()\n/ persistReminder(PENDING)
 
 Scheduled : VaccinationRecordStatus = SCHEDULED
 Completed : VaccinationRecordStatus = COMPLETED

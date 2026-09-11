@@ -1,4 +1,40 @@
 
+#### ***1.2.0 General User Authentication & Registration Workflow***
+
+![][image_auth]
+
+**Figure 2b: General User Authentication & Registration Workflow**
+
+**Image Detail: [General User Authentication & Registration Workflow](../03_Design/Workflow/carebridge-auth-workflow.drawio.png)**
+
+**Description**
+
+| \# | Step Name | Detail Description | Role | Note |
+| --- | --- | --- | --- | --- |
+| 1 | Open CareBridge App | The user opens the CareBridge mobile application or web portal. | User | Entry point of the workflow. |
+| 2 | Already have an account? | The system checks whether the user is already registered. | System | If No, proceeds to Step 3 (Register). If Yes, proceeds to Step 12 (Login). |
+| 3 | Select Register Method | The user chooses a registration method: Email, Phone Number, or Google. | User | Selects preferred registration channel. |
+| 4 | Submit Registration Details | The user enters basic registration details (name, email/phone, password). | User | Initiates account creation. |
+| 5 | Send Verification OTP / Authorize Identity | External provider sends verification OTP (SMS/Email) or authenticates Google account. | External Provider | Verifies user identity. |
+| 6 | Enter OTP / Confirm Identity | The user inputs the verification code or confirms Google authentication. | User | Confirms ownership of contact channel. |
+| 7 | Verify & Activate Account | The system verifies the code/token and activates the user account. | System | Account activated successfully. |
+| 8 | Select Role? | The user selects their platform role: Mother or Family Member. | User | Routes to role-specific onboarding. |
+| 9A | Fill Health & Stage Survey | The mother selects her lifecycle stage (Preconception, Pregnancy, Postpartum) and fills the baseline survey. | Mother | Establishes maternal baseline. |
+| 10A | Generate Personalized Care Journey & Daily Plan | The system initializes the personalized maternal care plan, tasks, and reminders. | System | Directly connects to Figure 3 (Step 5). |
+| 11A | Access Mother Dashboard | The mother accesses her dashboard with daily tasks, schedule, and safety monitoring. | Mother | Completes mother onboarding/login. |
+| 9B | Enter Care Group Code / Scan QR Code | The family member enters the invitation code or scans the QR code from the mother. | Family Member | Connects family circle. |
+| 10B | Link to Mother's Care Group | The system associates the family member with the mother's care group. | System | Binds family permissions. |
+| 11B | Access Family Dashboard | The family member accesses the shared family care dashboard. | Family Member | Completes family onboarding/login. |
+| 12 | Select Login Method | The registered user chooses a login method: Password, Phone SMS, or Google. | User | Authentication method selection. |
+| 13 | Enter Login Credentials | The user inputs credentials (password, phone number, or Google account). | User | Submits credentials. |
+| 14 | Authenticate & Check Security | The system verifies credentials and evaluates security policies (e.g., rate limiting). | System | Verifies authentication validity. |
+| 15 | Valid Credentials? | The system checks if credentials are valid and account is active. | System | If No, returns error to Step 13. If Yes, proceeds to Step 16. |
+| 16 | Profile & Role Completed? | The system checks if the user has completed onboarding and role assignment. | System | If No, routes to Step 8 (Select Role). If Yes, routes to Mother (11A) or Family (11B) Dashboard. |
+
+**Table 3b: General User Authentication & Registration Workflow Description**
+
+---
+
 #### ***1.2.1 Maternal Care Plan Workflow***
 
 ![][image4]

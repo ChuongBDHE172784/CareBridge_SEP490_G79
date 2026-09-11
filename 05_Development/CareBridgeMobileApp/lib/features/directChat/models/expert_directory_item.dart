@@ -13,6 +13,10 @@ class ExpertDirectoryItem {
   /// COMMUNITY | PENDING_CONTRACT | CONTRACTED | null. Nguồn sự thật cho huy hiệu.
   final String? expertType;
 
+  /// OPEN | BUSY | NO_SCHEDULE — backend quyết định, client chỉ hiển thị. Cả ba đều
+  /// nằm trong danh sách; nhãn nói rõ khác biệt thay vì để mẹ bấm vào rồi mới biết.
+  final String availabilityState;
+
   const ExpertDirectoryItem({
     required this.expertProfileId,
     this.displayName,
@@ -25,7 +29,11 @@ class ExpertDirectoryItem {
     this.verificationStatus,
     this.isConsultationEligible,
     this.expertType,
+    this.availabilityState = 'NO_SCHEDULE',
   });
+
+  bool get hasOpenSlot => availabilityState == 'OPEN';
+  bool get hasNoSchedule => availabilityState == 'NO_SCHEDULE';
 
   /// Fail-closed: chỉ CONTRACTED mới là Chuyên gia Hệ thống. PENDING_CONTRACT (đã duyệt
   /// chuyên môn nhưng chưa ký) hiển thị như nhóm cộng đồng.
@@ -48,6 +56,7 @@ class ExpertDirectoryItem {
       avatarUrl: json['avatarUrl'] as String?,
       verificationStatus: json['verificationStatus'] as String?,
       expertType: json['expertType'] as String?,
+      availabilityState: json['availabilityState'] as String? ?? 'NO_SCHEDULE',
       isConsultationEligible: consultationEligible is bool
           ? consultationEligible
           : null,

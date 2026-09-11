@@ -326,6 +326,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
                             .groupName(group != null ? group.getGroupName() : null)
                             .memberRole(member.getMemberRole() != null ? member.getMemberRole().name() : null)
                             .invitedAt(member.getCreatedAt())
+                            .inviteExpiresAt(member.getInviteExpiresAt())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -346,39 +347,12 @@ public class CareGroupServiceImpl implements ICareGroupService {
         auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
                 "CareGroup", groupId.toString(), "invite accepted");
 
-        try {
-            CareGroup group = groupRepository.findById(groupId).orElse(null);
-            if (group != null) {
-                User caller = userRepository.findById(callerId).orElse(null);
-                String callerName = (caller != null && caller.getName() != null && !caller.getName().isBlank())
-                        ? caller.getName()
-                        : ((caller != null && caller.getEmail() != null) ? caller.getEmail() : "Thành viên gia đình");
-                String title = "Lời mời đã được chấp nhận";
-                String body = callerName + " đã chấp nhận lời mời tham gia nhóm chăm sóc " + group.getGroupName() + ".";
-
-                NotificationRecord record = NotificationRecord.builder()
-                        .userId(group.getOwnerUserId())
-                        .type(NotificationType.GROUP_INVITE)
-                        .title(title)
-                        .body(body)
-                        .referenceId(groupId)
-                        .careGroupId(groupId)
-                        .referenceType("CARE_GROUP")
-                        .status(NotificationRecordStatus.SENT)
-                        .channel("PUSH")
-                        .isRead(false)
-                        .attemptCount(1)
-                        .build();
-                notificationRecordRepository.save(record);
-
-                List<String> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(group.getOwnerUserId())
-                        .stream().map(t -> t.getToken()).collect(Collectors.toList());
-                if (!tokens.isEmpty()) {
-                    fcmService.sendToTokens(tokens, title, body);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Notification logging or FCM push failed for acceptInvite (non-blocking): {}", e.getMessage());
+        CareGroup group = groupRepository.findById(groupId).orElse(null);
+        if (group != null) {
+            String callerName = resolveUserName(callerId);
+            String title = "Lời mời đã được chấp nhận";
+            String body = callerName + " đã chấp nhận lời mời tham gia nhóm chăm sóc " + group.getGroupName() + ".";
+            notifyMother(group, title, body);
         }
 
         return toMemberDto(saved);
@@ -541,6 +515,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
     }
 
     @Override
+    @Transactional
     public LeaveCareGroupResponse leaveCareGroup(UUID groupId, UUID callerId) {
         CareGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
@@ -558,8 +533,16 @@ public class CareGroupServiceImpl implements ICareGroupService {
         }
 
         int reassigned = taskRepository.reassignIncompleteTasks(groupId, callerId, group.getOwnerUserId());
-        own.setInviteStatus(InviteStatus.REVOKED);
-        memberRepository.save(own);
+        List<CareGroupMember> allRows = memberRepository.findAllByCareGroupIdAndUserId(groupId, callerId);
+        if (!allRows.isEmpty()) {
+            for (CareGroupMember m : allRows) {
+                m.setInviteStatus(InviteStatus.REVOKED);
+            }
+            memberRepository.saveAll(allRows);
+        } else {
+            own.setInviteStatus(InviteStatus.REVOKED);
+            memberRepository.save(own);
+        }
         Instant leftAt = Instant.now();
 
         auditService.log(AuditAction.CARE_GROUP_MEMBER_LEFT, callerId,
@@ -743,26 +726,66 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
                         "Thành viên này đã tồn tại trong nhóm.");
             }
+            String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
+                    ? invitee.getPhone()
+                    : trimmedInput;
+
+            // Check if user has an existing self-join request (inviteToken == null) waiting for Mother
+            Optional<CareGroupMember> pendingSelfJoin = memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                    groupId, invitee.getId(), InviteStatus.PENDING);
+            if (pendingSelfJoin.isPresent() && pendingSelfJoin.get().getInviteToken() == null) {
+                CareGroupMember m = pendingSelfJoin.get();
+                m.setInviteStatus(InviteStatus.ACCEPTED);
+                Instant now = Instant.now();
+                m.setJoinedAt(now);
+                openChecklistAccessEpoch(m);
+                CareGroupMember saved = memberRepository.save(m);
+                auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
+                        "CareGroup", groupId.toString(), "Auto-approved join request via Mother invite");
+                String memberName = resolveUserName(m.getUserId());
+                notifyMother(group, "Thành viên đã tham gia nhóm",
+                        memberName + " đã trở thành thành viên của nhóm chăm sóc " + group.getGroupName() + ".");
+                return InviteFamilyMemberResponse.builder()
+                        .careGroupMemberId(saved.getId())
+                        .channel(InviteChannel.PHONE)
+                        .inviteToken(null)
+                        .inviteExpiresAt(null)
+                        .invitedPhone(targetPhone)
+                        .build();
+            }
+
             // Check 2: Pending invite already exists for this person
             if (memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, invitee.getId(), InviteStatus.PENDING)) {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
                         "Lời mời cho người này đang chờ xử lý.");
             }
 
-            String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
-                    ? invitee.getPhone()
-                    : trimmedInput;
-
-            CareGroupMember member = CareGroupMember.builder()
-                    .careGroupId(groupId)
-                    .userId(invitee.getId())
-                    .memberRole(GroupMemberRole.MEMBER)
-                    .inviteStatus(InviteStatus.PENDING)
-                    .inviteChannel(InviteChannel.PHONE)
-                    .inviteToken(rawToken)
-                    .inviteExpiresAt(expiresAt)
-                    .invitedPhone(targetPhone)
-                    .build();
+            List<CareGroupMember> oldRows = memberRepository.findAllByCareGroupIdAndUserId(groupId, invitee.getId());
+            CareGroupMember member;
+            if (!oldRows.isEmpty()) {
+                member = oldRows.get(0);
+                if (oldRows.size() > 1) {
+                    memberRepository.deleteAll(oldRows.subList(1, oldRows.size()));
+                }
+                member.setMemberRole(GroupMemberRole.MEMBER);
+                member.setInviteStatus(InviteStatus.PENDING);
+                member.setInviteChannel(InviteChannel.PHONE);
+                member.setInviteToken(rawToken);
+                member.setInviteExpiresAt(expiresAt);
+                member.setInvitedPhone(targetPhone);
+                member.setJoinedAt(null);
+            } else {
+                member = CareGroupMember.builder()
+                        .careGroupId(groupId)
+                        .userId(invitee.getId())
+                        .memberRole(GroupMemberRole.MEMBER)
+                        .inviteStatus(InviteStatus.PENDING)
+                        .inviteChannel(InviteChannel.PHONE)
+                        .inviteToken(rawToken)
+                        .inviteExpiresAt(expiresAt)
+                        .invitedPhone(targetPhone)
+                        .build();
+            }
             CareGroupMember saved = memberRepository.save(member);
 
             auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
@@ -877,21 +900,13 @@ public class CareGroupServiceImpl implements ICareGroupService {
         auditService.log(AuditAction.CARE_GROUP_INVITATION_ACCEPTED, callerId,
                 "CareGroupMember", member.getId().toString(), "Invitation accepted via token");
 
-        // Step 8: FCM to owner — best-effort, must NOT roll back on failure
-        try {
-            memberRepository.findByCareGroupIdAndUserId(member.getCareGroupId(), member.getCareGroupId())
-                    .ifPresent(ownerMember -> {
-                        List<String> tokens = deviceTokenRepository
-                                .findByUserIdAndActiveTrue(ownerMember.getUserId())
-                                .stream().map(t -> t.getToken()).collect(Collectors.toList());
-                        if (!tokens.isEmpty()) {
-                            fcmService.sendToTokens(tokens, "Lời mời đã được chấp nhận",
-                                    "Một thành viên đã tham gia nhóm của bạn.");
-                        }
-                    });
-        } catch (Exception e) {
-            log.warn("FCM notification failed after token-based invite accept (non-blocking): {}", e.getMessage());
-        }
+        // Step 8: Notification & FCM to owner — best-effort, must NOT roll back on failure
+        groupRepository.findById(member.getCareGroupId()).ifPresent(group -> {
+            String callerName = resolveUserName(callerId);
+            String title = "Lời mời đã được chấp nhận";
+            String body = callerName + " đã chấp nhận lời mời tham gia nhóm chăm sóc " + group.getGroupName() + ".";
+            notifyMother(group, title, body);
+        });
 
         return AcceptInvitationByTokenResponse.builder()
                 .careGroupId(member.getCareGroupId())
@@ -945,15 +960,42 @@ public class CareGroupServiceImpl implements ICareGroupService {
             throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Bạn đã là thành viên của nhóm này.");
         }
 
-        // 2. If caller already has a PENDING join request
+        // 2. If caller already has a PENDING invite or join request
         if (memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, callerId, InviteStatus.PENDING)) {
-            throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt.");
+            Optional<CareGroupMember> pendingInvite = memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                    groupId, callerId, InviteStatus.PENDING);
+            if (pendingInvite.isPresent() && pendingInvite.get().getInviteToken() != null) {
+                CareGroupMember m = pendingInvite.get();
+                // Mother invited this user! Entering group code accepts the invitation!
+                Instant now = Instant.now();
+                m.setInviteStatus(InviteStatus.ACCEPTED);
+                m.setJoinedAt(now);
+                m.setFamilyRelationshipRole(familyRelationshipRole.trim().toUpperCase());
+                m.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
+                openChecklistAccessEpoch(m);
+                memberRepository.save(m);
+
+                auditService.log(AuditAction.CARE_GROUP_INVITATION_ACCEPTED, callerId,
+                        "CareGroupMember", m.getId().toString(), "Invitation accepted via group code");
+                String callerName = resolveUserName(callerId);
+                notifyMother(group, "Lời mời đã được chấp nhận",
+                        callerName + " đã chấp nhận lời mời tham gia nhóm chăm sóc " + group.getGroupName() + ".");
+
+                return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
+            } else {
+                // Self-join request already pending Mother's approval
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-007",
+                        "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt.");
+            }
         }
 
         // 3. If user had an inactive row (REJECTED / REVOKED / EXPIRED), re-activate to PENDING
         java.util.List<CareGroupMember> oldRows = memberRepository.findAllByCareGroupIdAndUserId(groupId, callerId);
         if (!oldRows.isEmpty()) {
             CareGroupMember existing = oldRows.get(0);
+            if (oldRows.size() > 1) {
+                memberRepository.deleteAll(oldRows.subList(1, oldRows.size()));
+            }
             existing.setInviteStatus(InviteStatus.PENDING);
             existing.setInviteToken(null);
             existing.setInviteExpiresAt(null);
@@ -963,6 +1005,9 @@ public class CareGroupServiceImpl implements ICareGroupService {
             memberRepository.save(existing);
             auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
                     "CareGroup", group.getId().toString(), "Re-submitted join request via code");
+            String callerName = resolveUserName(callerId);
+            notifyMother(group, "Yêu cầu tham gia nhóm chăm sóc",
+                    callerName + " đã gửi yêu cầu tham gia nhóm chăm sóc " + group.getGroupName() + ".");
             return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
         }
 
@@ -980,6 +1025,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
         auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
                 "CareGroup", group.getId().toString(), "Join request submitted via invite code");
 
+        String callerName = resolveUserName(callerId);
+        notifyMother(group, "Yêu cầu tham gia nhóm chăm sóc",
+                callerName + " đã gửi yêu cầu tham gia nhóm chăm sóc " + group.getGroupName() + ".");
+
         return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
     }
 
@@ -996,6 +1045,50 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
     private String normalizeCustomFamilyRelationshipRole(String customRole) {
         return customRole == null ? null : customRole.trim();
+    }
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) {
+            return "Thành viên gia đình";
+        }
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null && user.getName() != null && !user.getName().isBlank()) {
+            return user.getName().trim();
+        }
+        if (user != null && user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail().trim();
+        }
+        return "Thành viên gia đình";
+    }
+
+    private void notifyMother(CareGroup group, String title, String body) {
+        if (group == null || group.getOwnerUserId() == null) {
+            return;
+        }
+        try {
+            NotificationRecord record = NotificationRecord.builder()
+                    .userId(group.getOwnerUserId())
+                    .type(NotificationType.GROUP_INVITE)
+                    .title(title)
+                    .body(body)
+                    .referenceId(group.getId())
+                    .careGroupId(group.getId())
+                    .referenceType("CARE_GROUP")
+                    .status(NotificationRecordStatus.SENT)
+                    .channel("PUSH")
+                    .isRead(false)
+                    .attemptCount(1)
+                    .build();
+            notificationRecordRepository.save(record);
+
+            List<String> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(group.getOwnerUserId())
+                    .stream().map(t -> t.getToken()).collect(Collectors.toList());
+            if (!tokens.isEmpty()) {
+                fcmService.sendToTokens(tokens, title, body);
+            }
+        } catch (Exception e) {
+            log.warn("Notification logging or FCM push to mother failed (non-blocking): {}", e.getMessage());
+        }
     }
 
     /** Opens a new checklist VIEW epoch whenever a membership is accepted. */
@@ -1062,6 +1155,9 @@ public class CareGroupServiceImpl implements ICareGroupService {
             openChecklistAccessEpoch(member);
             auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
                     "CareGroup", groupId.toString(), "Join request approved for member: " + memberId);
+            String memberName = resolveUserName(member.getUserId());
+            notifyMother(group, "Thành viên đã tham gia nhóm",
+                    memberName + " đã trở thành thành viên của nhóm chăm sóc " + group.getGroupName() + ".");
         } else {
             member.setInviteStatus(InviteStatus.REJECTED);
             auditService.log(AuditAction.CARE_GROUP_INVITE_DECLINED, callerId,
@@ -1149,7 +1245,11 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 quickNotes && (request.getQuickNoteBloodPressure() != null
                         ? request.getQuickNoteBloodPressure() : previous.isQuickNoteBloodPressure()),
                 quickNotes && (request.getQuickNoteBloodGlucose() != null
-                        ? request.getQuickNoteBloodGlucose() : previous.isQuickNoteBloodGlucose())
+                        ? request.getQuickNoteBloodGlucose() : previous.isQuickNoteBloodGlucose()),
+                quickNotes && (request.getQuickNoteHeartRate() != null
+                        ? request.getQuickNoteHeartRate() : previous.isQuickNoteHeartRate()),
+                quickNotes && (request.getQuickNoteTemperature() != null
+                        ? request.getQuickNoteTemperature() : previous.isQuickNoteTemperature())
         );
         updated.copyAdditionalPermissionsFrom(previous);
 
@@ -1201,6 +1301,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .quickNoteFetalMovement(updated.isQuickNoteFetalMovement())
                 .quickNoteBloodPressure(updated.isQuickNoteBloodPressure())
                 .quickNoteBloodGlucose(updated.isQuickNoteBloodGlucose())
+                .quickNoteHeartRate(updated.isQuickNoteHeartRate())
+                .quickNoteTemperature(updated.isQuickNoteTemperature())
                 .updatedAt(saved.getUpdatedAt())
                 .build();
     }
@@ -1244,6 +1346,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .quickNoteFetalMovement(perm.isQuickNoteFetalMovement())
                 .quickNoteBloodPressure(perm.isQuickNoteBloodPressure())
                 .quickNoteBloodGlucose(perm.isQuickNoteBloodGlucose())
+                .quickNoteHeartRate(perm.isQuickNoteHeartRate())
+                .quickNoteTemperature(perm.isQuickNoteTemperature())
                 .updatedAt(member.getUpdatedAt())
                 .build();
     }

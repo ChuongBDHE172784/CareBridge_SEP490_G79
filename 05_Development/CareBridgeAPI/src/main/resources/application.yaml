@@ -259,6 +259,12 @@ ai:
     url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}
     request-timeout-ms: ${AI_TRIAGE_REQUEST_TIMEOUT_MS:15000}
     internal-api-key: ${AI_TRIAGE_INTERNAL_API_KEY:carebridge}
+  # The maternal RAG assistant lives in the same Python service as triage but runs
+  # on a much longer budget: it embeds the question, searches pgvector, then waits
+  # on a Gemini generation. 15s is right for a triage turn and far too short here.
+  maternal-rag:
+    enabled: ${AI_MATERNAL_RAG_ENABLED:true}
+    request-timeout-ms: ${AI_MATERNAL_RAG_REQUEST_TIMEOUT_MS:45000}
 
 management:
   endpoints:

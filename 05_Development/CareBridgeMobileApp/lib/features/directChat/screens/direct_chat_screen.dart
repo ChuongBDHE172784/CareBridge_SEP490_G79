@@ -65,6 +65,14 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   bool _syncingNewer = false;
   bool _pendingNewerSync = false;
   bool _expertAvailable = true;
+  // Buoi tu van co khung gio; het gio thi server dong cuoc tro chuyen va tu choi
+  // moi tin nhan moi. Man hinh doc lai trang thai do de an o soan thay vi de me go
+  // xong roi moi an loi.
+  bool _conversationOpen = true;
+
+  /// Con gui duoc tin nhan hay khong. Chuyen gia phai con nhan tu van, VA buoi tu
+  /// van phai chua het gio.
+  bool get _canWrite => _expertAvailable && _conversationOpen;
   String? _nextCursor;
   String? _previousCursor;
   bool _hasMoreOlder = false;
@@ -105,6 +113,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         _previousCursor = page.previousCursor;
         _hasMoreOlder = page.hasMoreOlder;
         _expertAvailable = conversation.expertAvailable;
+        _conversationOpen = conversation.status == 'ACTIVE';
         _loading = false;
       });
       _scheduleMarkReadIfNeeded();
@@ -258,7 +267,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     final body = _textController.text.trim();
     if ((body.isEmpty && _pendingAttachment == null) ||
         _sending ||
-        !_expertAvailable) {
+        !_canWrite) {
       return;
     }
 
@@ -322,7 +331,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _attachImage(ImageSource source) async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     try {
       final image = await ImagePicker().pickImage(
         source: source,
@@ -347,7 +356,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _attachDocument() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     try {
       final picked = await FilePicker.platform.pickFiles(withData: true);
       final file = picked?.files.single;
@@ -371,7 +380,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _shareCurrentLocation() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     setState(() => _sending = true);
     String? optimisticClientMessageId;
     try {
@@ -439,7 +448,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _openShareHealthMetrics() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     final result = await ShareHealthMetricsDialog.show(context);
     if (result == null || !mounted) return;
     final clientMessageId = _uuid.v4();
@@ -479,7 +488,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   }
 
   Future<void> _openShareChecklist() async {
-    if (_sending || !_expertAvailable) return;
+    if (_sending || !_canWrite) return;
     final result = await ShareChecklistDialog.show(context);
     if (result == null || !mounted) return;
     final clientMessageId = _uuid.v4();
@@ -667,12 +676,12 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           IconButton(
             tooltip: 'Gọi thoại',
             icon: const Icon(Icons.phone_rounded, color: _primary),
-            onPressed: _expertAvailable ? () => _placeCall('VOICE') : null,
+            onPressed: _canWrite ? () => _placeCall('VOICE') : null,
           ),
           IconButton(
             tooltip: 'Gọi video',
             icon: const Icon(Icons.videocam_rounded, color: _primary),
-            onPressed: _expertAvailable ? () => _placeCall('VIDEO') : null,
+            onPressed: _canWrite ? () => _placeCall('VIDEO') : null,
           ),
           const SizedBox(width: 4),
         ],
@@ -681,7 +690,37 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : Column(
               children: [
-                if (!_expertAvailable)
+                if (!_conversationOpen)
+                  Container(
+                    width: double.infinity,
+                    color: const Color(0xFFF1E6E0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.timer_off_outlined,
+                          color: Color(0xFF6B5B54),
+                          size: 20,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Buổi tư vấn đã kết thúc. Bạn vẫn xem lại được nội dung đã trao đổi.',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: Color(0xFF4A3F3A),
+                              fontSize: 13,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_conversationOpen && !_expertAvailable)
                   Container(
                     width: double.infinity,
                     color: const Color(0xFFFEF3C7),
@@ -751,7 +790,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                     ),
                   ),
                 ),
-                if (_expertAvailable) _buildInputRow(),
+                if (_canWrite) _buildInputRow(),
               ],
             ),
     );
@@ -867,173 +906,18 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    tooltip: 'Đính kèm tệp',
+                    tooltip: 'Đính kèm & Chia sẻ',
                     icon: const Icon(
-                      Icons.add_photo_alternate_rounded,
+                      Icons.add_rounded,
                       color: _primary,
+                      size: 24,
                     ),
-                    onPressed: _sending
+                    onPressed: _sending || !_canWrite
                         ? null
-                        : () => showModalBottomSheet<void>(
-                            context: context,
-                            backgroundColor: _surface,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(24),
-                              ),
-                            ),
-                            builder: (sheetContext) => SafeArea(
-                              child: Wrap(
-                                children: [
-                                  const Padding(
-                                    padding: EdgeInsets.all(16),
-                                    child: Text(
-                                      'Tệp đính kèm',
-                                      style: TextStyle(
-                                        fontFamily: 'Lexend',
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: _onSurface,
-                                      ),
-                                    ),
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(
-                                      Icons.photo_library_outlined,
-                                      color: _primary,
-                                    ),
-                                    title: const Text(
-                                      'Chọn từ thư viện',
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(sheetContext);
-                                      _attachImage(ImageSource.gallery);
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(
-                                      Icons.attach_file_rounded,
-                                      color: _primary,
-                                    ),
-                                    title: const Text(
-                                      'Chọn tài liệu',
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(sheetContext);
-                                      _attachDocument();
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(
-                                      Icons.camera_alt_outlined,
-                                      color: _primary,
-                                    ),
-                                    title: const Text(
-                                      'Chụp ảnh',
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(sheetContext);
-                                      _attachImage(ImageSource.camera);
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(
-                                      Icons.monitor_heart_outlined,
-                                      color: _primary,
-                                    ),
-                                    title: const Text(
-                                      'Chia sẻ chỉ số sức khỏe',
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
-                                    subtitle: const Text(
-                                      'Gửi số liệu huyết áp, đường huyết, BMI...',
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(sheetContext);
-                                      _openShareHealthMetrics();
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(
-                                      Icons.checklist_rtl_rounded,
-                                      color: _primary,
-                                    ),
-                                    title: const Text(
-                                      'Chia sẻ việc cần làm (Checklist)',
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
-                                    subtitle: const Text(
-                                      'Gửi tiến độ và các việc chăm sóc thai kỳ',
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(sheetContext);
-                                      _openShareChecklist();
-                                    },
-                                  ),
-                                  const SizedBox(height: 12),
-                                ],
-                              ),
-                            ),
-                          ),
+                        : _showAttachmentMenu,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: _surfaceContainerLow,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    tooltip: 'Chia sẻ chỉ số sức khỏe',
-                    icon: const Icon(
-                      Icons.monitor_heart_outlined,
-                      color: _primary,
-                    ),
-                    onPressed: _sending || !_expertAvailable
-                        ? null
-                        : _openShareHealthMetrics,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: _surfaceContainerLow,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    tooltip: 'Chia sẻ việc cần làm',
-                    icon: const Icon(
-                      Icons.checklist_rtl_rounded,
-                      color: _primary,
-                    ),
-                    onPressed: _sending || !_expertAvailable
-                        ? null
-                        : _openShareChecklist,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: _surfaceContainerLow,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    tooltip: 'Chia sẻ vị trí hiện tại',
-                    icon: const Icon(
-                      Icons.location_on_outlined,
-                      color: _primary,
-                    ),
-                    onPressed: _sending || !_expertAvailable
-                        ? null
-                        : _shareCurrentLocation,
-                  ),
-                ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -1098,6 +982,206 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       ),
     );
   }
+
+  void _showAttachmentMenu() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => Container(
+        decoration: const BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1A845143),
+              blurRadius: 24,
+              offset: Offset(0, -6),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag Handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: _outlineVariant.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.add_circle_outline_rounded,
+                      color: _primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Đính kèm & Chia sẻ',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Chọn nội dung muốn gửi cho chuyên gia',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1, color: _outlineVariant),
+              const SizedBox(height: 8),
+              // Options List
+              _buildAttachmentOption(
+                sheetContext: sheetContext,
+                icon: Icons.photo_library_outlined,
+                iconColor: const Color(0xFF0284C7),
+                title: 'Chọn từ thư viện',
+                subtitle: 'Gửi hình ảnh có sẵn trong thiết bị',
+                onTap: () => _attachImage(ImageSource.gallery),
+              ),
+              _buildAttachmentOption(
+                sheetContext: sheetContext,
+                icon: Icons.camera_alt_outlined,
+                iconColor: const Color(0xFF0D9488),
+                title: 'Chụp ảnh',
+                subtitle: 'Chụp ảnh mới bằng máy ảnh',
+                onTap: () => _attachImage(ImageSource.camera),
+              ),
+              _buildAttachmentOption(
+                sheetContext: sheetContext,
+                icon: Icons.attach_file_rounded,
+                iconColor: const Color(0xFFE65100),
+                title: 'Chọn tài liệu',
+                subtitle: 'Tệp PDF, Word, Excel...',
+                onTap: _attachDocument,
+              ),
+              _buildAttachmentOption(
+                sheetContext: sheetContext,
+                icon: Icons.monitor_heart_outlined,
+                iconColor: const Color(0xFFE11D48),
+                title: 'Chia sẻ chỉ số sức khỏe',
+                subtitle: 'Gửi số liệu huyết áp, đường huyết, BMI...',
+                onTap: _openShareHealthMetrics,
+              ),
+              _buildAttachmentOption(
+                sheetContext: sheetContext,
+                icon: Icons.checklist_rtl_rounded,
+                iconColor: const Color(0xFF16A34A),
+                title: 'Chia sẻ việc cần làm',
+                subtitle: 'Gửi tiến độ và các việc chăm sóc thai kỳ',
+                onTap: _openShareChecklist,
+              ),
+              _buildAttachmentOption(
+                sheetContext: sheetContext,
+                icon: Icons.location_on_outlined,
+                iconColor: const Color(0xFF7C3AED),
+                title: 'Chia sẻ vị trí hiện tại',
+                subtitle: 'Gửi tọa độ vị trí hiện tại của bạn',
+                onTap: _shareCurrentLocation,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentOption({
+    required BuildContext sheetContext,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          Navigator.pop(sheetContext);
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _outlineVariant,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _TimelineTile extends StatelessWidget {
@@ -1130,7 +1214,8 @@ class _TimelineTile extends StatelessWidget {
     final sending = item.sendStatus == ChatSendStatus.sending;
     final healthData = HealthMetricsShareData.parse(item.messageBody);
     final checklistData = ChecklistShareData.parse(item.messageBody);
-    final isRichCard = (healthData != null || checklistData != null) &&
+    final isRichCard =
+        (healthData != null || checklistData != null) &&
         item.recalledAt == null;
 
     return Align(

@@ -16,12 +16,10 @@ import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
-@Primary
 @Profile("!test")
 @RequiredArgsConstructor
 @Slf4j
@@ -52,6 +50,11 @@ public class GeminiRagServiceImpl implements RagService {
                     : contextRetriever.retrieveContext(request.getQuery(), request.getTopicId(), maxChunks);
         } catch (RuntimeException exception) {
             log.warn("RAG retrieval unavailable reason={}", exception.getClass().getSimpleName());
+            return buildFallbackResponse();
+        }
+
+        if (contextItems == null || contextItems.isEmpty()) {
+            log.info("RAG context is empty; returning safe fallback response without calling Gemini LLM.");
             return buildFallbackResponse();
         }
 

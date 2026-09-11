@@ -35,6 +35,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_01VerifiedContentBrowseandConsumption
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "ViewContentScreen" as UIViewContentScreen <<UI>>
@@ -153,12 +154,12 @@ The lifecycle below belongs to **The consumer-visible ContentItem as seen throug
 hide empty description
 [*] --> NotVisible
 
-NotVisible --> Visible : contentBecomesApproved() [status == APPROVED] / includeInBrowseResults()
-Visible --> NotVisible : contentLeavesApproved() [status != APPROVED] / excludeFromBrowseResults()
-Visible --> Visible : browseContent() [stage matches the reader] / returnStageFilteredList()
-Visible --> Opened : openContentDetail() [status == APPROVED] / returnFullArticle()
-Opened --> Visible : closeContentDetail() / returnToBrowseResults()
-Opened --> NotVisible : contentLeavesApproved() [status != APPROVED] / denySubsequentDetailReads()
+NotVisible --> Visible : contentBecomesApproved()\n[status == APPROVED]\n/ includeInBrowseResults()
+Visible --> NotVisible : contentLeavesApproved()\n[status != APPROVED]\n/ excludeFromBrowseResults()
+Visible --> Visible : browseContent()\n[stage matches the reader]\n/ returnStageFilteredList()
+Visible --> Opened : openContentDetail()\n[status == APPROVED]\n/ returnFullArticle()
+Opened --> Visible : closeContentDetail()\n/ returnToBrowseResults()
+Opened --> NotVisible : contentLeavesApproved()\n[status != APPROVED]\n/ denySubsequentDetailReads()
 
 Visible : ContentStatus = APPROVED
 NotVisible : DRAFT, PENDING_REVIEW, or ARCHIVED

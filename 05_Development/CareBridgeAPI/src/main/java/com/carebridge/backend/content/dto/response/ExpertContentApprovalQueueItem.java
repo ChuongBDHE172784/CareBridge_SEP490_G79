@@ -25,6 +25,12 @@ public class ExpertContentApprovalQueueItem {
     private Integer versionNo;
     private Long itemCount;
     private String summary;
+    /**
+     * Toan van bai viet. Truoc day hang doi chi tra ve tom tat, nen chuyen gia bam
+     * Duyet ma khong co cach nao doc noi dung minh dang duyet. Checklist khong co
+     * truong nay — no duoc duyet theo danh sach muc, khong phai theo bai viet.
+     */
+    private String body;
     private String sourceLabel;
     private Instant assignedAt;
     private Instant updatedAt;

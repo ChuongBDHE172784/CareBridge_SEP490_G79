@@ -27,6 +27,43 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle events."""
+    logger.info("Starting CareBridge AI Maternal RAG Service on port 8001...")
+    
+    # Initialize pgvector extension and create tables if needed
+    try:
+        from app.core.database import engine, Base
+        from sqlalchemy import text
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("PostgreSQL pgvector extension and tables verified.")
+    except Exception as e:
+        logger.warning(f"Database initialization notice ({e}), proceeding with available storage.")
+
+    # Check if knowledge base is empty and bootstrap if needed in background
+    try:
+        import asyncio
+        from app.core.database import AsyncSessionLocal
+        from app.models.db_models import MaternalKnowledgeChunk
+        from sqlalchemy import select, func
+
+        async def _check_and_bootstrap():
+            try:
+                async with AsyncSessionLocal() as session:
+                    count = await session.scalar(select(func.count(MaternalKnowledgeChunk.id)))
+                    logger.info(f"Active knowledge chunks in database: {count}")
+                    if not count or count == 0:
+                        logger.info("Knowledge base is empty. Initiating background document ingestion...")
+                        ingestion_svc = get_ingestion_service()
+                        res = await ingestion_svc.ingest_directory()
+                        logger.info(f"Auto-bootstrap completed: {res.total_chunks_created} chunks created from {res.total_files_processed} files.")
+            except Exception as ex:
+                logger.warning(f"Auto-bootstrap check notice: {ex}")
+
+        asyncio.create_task(_check_and_bootstrap())
+    except Exception as e:
+        logger.warning(f"Could not schedule auto-bootstrap: {e}")
+
     logger.info("CareBridge AI Maternal RAG Service ready on port 8001.")
     yield
     logger.info("Shutting down CareBridge AI Maternal RAG Service.")

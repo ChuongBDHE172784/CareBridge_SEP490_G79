@@ -45,6 +45,7 @@ This design-level UML follows the current source declarations: fields become att
 ```plantuml
 @startuml ClassDiagram_01MotherJourneyOnboardingLifecycleandRecommendations
 skinparam classAttributeIconSize 0
+skinparam wrapWidth 250
 hide empty members
 
 class "JourneySetupScreen" as UIJourneySetupScreen <<UI>>
@@ -483,19 +484,19 @@ The lifecycle below belongs to **MotherJourney.status, with the owner-scoped Rec
 hide empty description
 [*] --> NoJourney
 
-NoJourney --> ActiveJourney : completeOnboarding() / createMotherJourney(ACTIVE)
-ActiveJourney --> CompletedJourney : recordPregnancyOutcome() [current journey is ACTIVE] / setStatus(COMPLETED)
-CompletedJourney --> ActiveJourney : startNextJourney() / createMotherJourney(ACTIVE)
-CompletedJourney --> ArchivedJourney : archiveJourney() / setStatus(ARCHIVED)
+NoJourney --> ActiveJourney : completeOnboarding()\n/ createMotherJourney(ACTIVE)
+ActiveJourney --> CompletedJourney : recordPregnancyOutcome()\n[current journey is ACTIVE]\n/ setStatus(COMPLETED)
+CompletedJourney --> ActiveJourney : startNextJourney()\n/ createMotherJourney(ACTIVE)
+CompletedJourney --> ArchivedJourney : archiveJourney()\n/ setStatus(ARCHIVED)
 
 state ActiveJourney {
   [*] --> ProfileNotStarted
-  ProfileNotStarted --> ProfileActive : submitRecommendationProfile() / setRecommendationProfileStatus(ACTIVE)
-  ProfileNotStarted --> ProfileDeclined : declineRecommendationProfile() / setRecommendationProfileStatus(DECLINED)
-  ProfileActive --> ProfileReviewRequired : journeyContextChanges() / setRecommendationProfileStatus(REVIEW_REQUIRED)
-  ProfileReviewRequired --> ProfileActive : reconfirmRecommendationProfile() / setRecommendationProfileStatus(ACTIVE)
-  ProfileActive --> ProfileRevoked : revokeRecommendationProfile() / clearStoredProfileJson()
-  ProfileReviewRequired --> ProfileRevoked : revokeRecommendationProfile() / clearStoredProfileJson()
+  ProfileNotStarted --> ProfileActive : submitRecommendationProfile()\n/ setRecommendationProfileStatus(ACTIVE)
+  ProfileNotStarted --> ProfileDeclined : declineRecommendationProfile()\n/ setRecommendationProfileStatus(DECLINED)
+  ProfileActive --> ProfileReviewRequired : journeyContextChanges()\n/ setRecommendationProfileStatus(REVIEW_REQUIRED)
+  ProfileReviewRequired --> ProfileActive : reconfirmRecommendationProfile()\n/ setRecommendationProfileStatus(ACTIVE)
+  ProfileActive --> ProfileRevoked : revokeRecommendationProfile()\n/ clearStoredProfileJson()
+  ProfileReviewRequired --> ProfileRevoked : revokeRecommendationProfile()\n/ clearStoredProfileJson()
 }
 
 ActiveJourney : JourneyStatus = ACTIVE

@@ -4,6 +4,7 @@ import './ChatPanel.css';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { conversationSignalHub } from '../../../shared/integrations/firebaseRealtime/conversationSignalHub';
 import * as directChatApi from '../services/directChatApi';
+import type { DirectConversation } from '../models/directConversation';
 import { mergeTimelineItems, optimisticMessage, type TimelineItem } from '../models/timelineItem';
 import { useDirectCall } from '../calls/directCallContext';
 import LocationMessageBubble from './LocationMessageBubble';
@@ -188,11 +189,17 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const navigate = useNavigate();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { initiate } = useDirectCall();
+  const [conversation, setConversation] = useState<DirectConversation | null>(null);
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [expertAvailable, setExpertAvailable] = useState(true);
+  // Buổi tư vấn có khung giờ; hết giờ thì server đóng cuộc trò chuyện và từ chối mọi
+  // tin nhắn mới. Đọc lại trạng thái đó để ẩn ô soạn, thay vì để người dùng gõ xong
+  // mới nhận lỗi.
+  const [conversationOpen, setConversationOpen] = useState(true);
+  const canWrite = expertAvailable && conversationOpen;
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
@@ -272,11 +279,13 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
           directChatApi.getTimeline(conversationId),
         ]);
         if (cancelled) return;
+        setConversation(conversation);
         setItems(page.items);
         nextCursorRef.current = page.nextCursor;
         previousCursorRef.current = page.previousCursor;
         setHasMoreOlder(page.hasMoreOlder);
         setExpertAvailable(conversation.expertAvailable);
+        setConversationOpen(conversation.status === 'ACTIVE');
         if (pendingNewerSyncRef.current) {
           pendingNewerSyncRef.current = false;
           queueMicrotask(() => void syncNewer());
@@ -356,7 +365,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   }, [pendingAttachment]);
 
   const handleSelectFile = (file: File, kind: 'IMAGE' | 'DOCUMENT') => {
-    if (sending || !expertAvailable || !currentUserId) return;
+    if (sending || !canWrite || !currentUserId) return;
     const image = kind === 'IMAGE';
     const sizeLimit = image ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
     if (file.size > sizeLimit) {
@@ -372,7 +381,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
   const handleSend = async () => {
     const body = draft.trim();
-    if ((!body && !pendingAttachment) || sending || !expertAvailable || !currentUserId) return;
+    if ((!body && !pendingAttachment) || sending || !canWrite || !currentUserId) return;
 
     const attachment = pendingAttachment;
     const clientMessageId = crypto.randomUUID();
@@ -463,6 +472,13 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     );
   }
 
+  const isMotherCounterpart =
+    conversation?.counterpartRole === 'MOTHER' ||
+    (!conversation?.counterpartRole && currentUserId === conversation?.expertUserId);
+  const displayName =
+    conversation?.counterpartDisplayName || (isMotherCounterpart ? 'Mẹ bầu CareBridge' : 'Chuyên gia tư vấn');
+  const initial = (displayName || (isMotherCounterpart ? 'M' : 'E'))[0]?.toUpperCase() || 'M';
+
   return (
     <div className="flex flex-col space-y-5">
       {/* Top Header Bar */}
@@ -476,14 +492,18 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
             <span className="material-symbols-outlined text-xl">arrow_back</span>
           </button>
           
-          <div className="w-11 h-11 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
-            M
+          <div className="w-11 h-11 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-base shrink-0 shadow-sm overflow-hidden">
+            {conversation?.counterpartAvatarUrl ? (
+              <img src={conversation.counterpartAvatarUrl} alt={displayName} className="w-full h-full object-cover" />
+            ) : (
+              initial
+            )}
           </div>
 
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold text-on-surface m-0 leading-tight">
-                Tư vấn Mẹ bầu CareBridge
+                {displayName}
               </h1>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -498,7 +518,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
         <div className="flex items-center gap-2.5 self-start md:self-auto">
           <button
-            disabled={!expertAvailable}
+            disabled={!canWrite}
             onClick={() => handleCall('VOICE')}
             className="flex items-center gap-2 py-2.5 px-5 rounded-full border border-outline-variant bg-surface text-primary text-[13px] font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
@@ -506,7 +526,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
             Gọi thoại
           </button>
           <button
-            disabled={!expertAvailable}
+            disabled={!canWrite}
             onClick={() => handleCall('VIDEO')}
             className="flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary border-0 text-[13px] font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
           >
@@ -518,7 +538,14 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
 
       {/* Main Chat Box Container */}
       <div className="bg-surface rounded-2xl shadow-md border border-outline-variant/60 flex flex-col h-[calc(100vh-220px)] overflow-hidden">
-        {!expertAvailable && (
+        {!conversationOpen && (
+          <div className="bg-surface-container-low border-b border-outline-variant text-on-surface-variant px-4 py-3 text-xs flex items-center gap-2 shrink-0 font-medium">
+            <span className="material-symbols-outlined text-lg text-outline">timer_off</span>
+            Buổi tư vấn đã kết thúc. Bạn vẫn xem lại được nội dung đã trao đổi.
+          </div>
+        )}
+
+        {conversationOpen && !expertAvailable && (
           <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-3 text-xs flex items-center gap-2 shrink-0 font-medium">
             <span className="material-symbols-outlined text-lg text-amber-700">warning</span>
             Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.
@@ -661,7 +688,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
         </div>
 
         {/* Input Bar */}
-        {expertAvailable && (
+        {canWrite && (
           <div className="bg-surface border-t border-outline-variant/60 shrink-0">
             {pendingAttachment && (
               <div className="px-4 py-2.5 flex items-center justify-between bg-surface-container-low/90 border-b border-outline-variant/40">

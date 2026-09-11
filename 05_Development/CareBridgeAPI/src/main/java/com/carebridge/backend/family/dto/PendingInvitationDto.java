@@ -14,4 +14,5 @@ public class PendingInvitationDto {
     private String groupName;
     private String memberRole;
     private Instant invitedAt;
+    private Instant inviteExpiresAt;
 }

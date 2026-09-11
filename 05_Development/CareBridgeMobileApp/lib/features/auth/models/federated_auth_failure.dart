@@ -88,6 +88,9 @@ class FederatedAuthFailure {
     }
 
     if (error is FirebaseAuthException) {
+      if (error.message?.toLowerCase().contains('blocked') == true) {
+        return configuration;
+      }
       switch (error.code) {
         case 'popup-closed-by-user':
         case 'cancelled-popup-request':

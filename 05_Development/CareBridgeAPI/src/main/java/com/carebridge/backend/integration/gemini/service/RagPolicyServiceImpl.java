@@ -27,8 +27,12 @@ public class RagPolicyServiceImpl implements RagPolicyService {
     public RagAnswerResponse generateAnswer(RagAnswerRequest request, RagAudienceContext context) {
         RagSafetyResult safety = safetyFilter.check(request.getQuery());
         if (safety.isRedFlag()) {
+            // A red flag is the one case where the assistant is certain the mother
+            // needs a clinician, so it says so instead of leaving the client to
+            // infer it from prose it never parses.
             return RagAnswerResponse.builder().answer(safety.getEmergencyGuidance())
                     .disclaimer(DISCLAIMER).sources(List.of()).fallback(true)
+                    .hasCriticalWarning(true).needExpertConsultation(true)
                     .generatedAt(LocalDateTime.now()).build();
         }
         RagExecutionContext executionContext;

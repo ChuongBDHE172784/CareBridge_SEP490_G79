@@ -58,6 +58,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private final SpecialtyRepository specialtyRepository;
 	private final CareFacilityRepository careFacilityRepository;
 	private final ProfessionalSpecialtyRepository professionalSpecialtyRepository;
+	private final com.carebridge.backend.expertavailability.repository.ExpertAvailabilityRepository expertAvailabilityRepository;
 
 	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl, email, phone from the same users row,
 	// 1 lookup, for every response that uses ExpertProfileResponse/ExpertProfileDetailResponse.
@@ -238,7 +239,24 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		Map<UUID, User> usersById = userIds.isEmpty() ? Map.of()
 				: userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> u));
 		return expertProfileMapper.toDirectoryResponse(
-				result, usersById, expertProfileRepository.findApprovedSpecialties());
+				result, usersById, expertProfileRepository.findApprovedSpecialties(),
+				resolveAvailabilityStates(userIds));
+	}
+
+	/**
+	 * Ba trạng thái hiển thị của danh sách, tính một lần cho cả trang thay vì hỏi từng
+	 * chuyên gia. Truy vấn chỉ trả về người CÓ lịch phía trước, nên ai không có mặt
+	 * trong kết quả là chưa xếp lịch — đó cũng là mặc định phía mapper.
+	 */
+	private Map<UUID, String> resolveAvailabilityStates(Set<UUID> expertUserIds) {
+		if (expertUserIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<UUID, String> states = new java.util.HashMap<>();
+		for (Object[] row : expertAvailabilityRepository.findUpcomingScheduleState(expertUserIds)) {
+			states.put((UUID) row[0], Boolean.TRUE.equals(row[1]) ? "OPEN" : "BUSY");
+		}
+		return states;
 	}
 
 	private static String blankToNull(String s) {

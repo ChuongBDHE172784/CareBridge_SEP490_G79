@@ -48,6 +48,9 @@ export default function ConversationListPage() {
 
         {conversations.map((c) => {
           const isMother = c.counterpartRole === 'MOTHER';
+          const displayName = c.counterpartDisplayName || (isMother ? 'Mẹ bầu CareBridge' : 'Chuyên gia tư vấn');
+          const initial = (displayName || (isMother ? 'M' : 'E'))[0]?.toUpperCase() || 'M';
+
           return (
             <div
               key={c.conversationId}
@@ -55,21 +58,25 @@ export default function ConversationListPage() {
               className="bg-surface rounded-2xl p-5 shadow-md flex items-center justify-between hover:shadow-lg transition-shadow cursor-pointer"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary-container text-primary font-bold text-sm flex items-center justify-center shrink-0">
-                  {isMother ? 'M' : 'E'}
+                <div className="w-12 h-12 rounded-full bg-primary-container text-primary font-bold text-sm flex items-center justify-center shrink-0 overflow-hidden">
+                  {c.counterpartAvatarUrl ? (
+                    <img src={c.counterpartAvatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    initial
+                  )}
                 </div>
 
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-bold text-base text-on-surface m-0">
-                      {isMother ? 'Mẹ bầu CareBridge' : 'Chuyên gia tư vấn'}
+                      {displayName}
                     </h3>
                     <span className="py-0.5 px-3 rounded-full text-xs font-semibold bg-[#E6F4EA] text-[#137333]">
                       Đang mở
                     </span>
                   </div>
                   <p className="text-xs text-outline m-0">
-                    {!c.expertAvailable ? 'Chuyên gia hiện tạm vắng' : 'Sẵn sàng nhắn tin tư vấn trực tiếp'}
+                    {c.lastMessagePreview || (!c.expertAvailable ? 'Chuyên gia hiện tạm vắng' : 'Sẵn sàng nhắn tin tư vấn trực tiếp')}
                   </p>
                 </div>
               </div>

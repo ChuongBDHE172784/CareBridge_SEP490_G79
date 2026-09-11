@@ -302,6 +302,10 @@ class GoogleIdTokenAcquirer {
     );
     final googleUser = await GoogleSignIn.instance.authenticate();
     final googleAuth = googleUser.authentication;
+    debugPrint(
+      'Google Sign-In native result: email=${googleUser.email}, '
+      'idTokenLength=${googleAuth.idToken?.length}',
+    );
     final credential = firebase.GoogleAuthProvider.credential(
       idToken: googleAuth.idToken,
     );
@@ -380,6 +384,13 @@ class AuthService {
       return await federatedWithIdToken(idToken);
     } catch (error) {
       final exception = FederatedSignInException.from(error);
+      if (error is firebase.FirebaseAuthException) {
+        debugPrint(
+          'FirebaseAuthException: code="${error.code}", message="${error.message}", credential=${error.credential}',
+        );
+      } else {
+        debugPrint('Federated Google sign-in raw error: $error');
+      }
       debugPrint(
         'Federated Google sign-in failed: '
         'category=${exception.failure.kind.name}, cause=${error.runtimeType}',

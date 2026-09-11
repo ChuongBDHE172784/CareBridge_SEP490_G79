@@ -121,12 +121,14 @@ class PendingInvitation {
   final String groupName;
   final String memberRole;
   final DateTime? invitedAt;
+  final DateTime? inviteExpiresAt;
 
   const PendingInvitation({
     required this.groupId,
     required this.groupName,
     required this.memberRole,
     this.invitedAt,
+    this.inviteExpiresAt,
   });
 
   factory PendingInvitation.fromJson(Map<String, dynamic> json) {
@@ -136,6 +138,9 @@ class PendingInvitation {
       memberRole: json['memberRole'] as String? ?? 'MEMBER',
       invitedAt: json['invitedAt'] != null
           ? DateTime.parse(json['invitedAt'] as String)
+          : null,
+      inviteExpiresAt: json['inviteExpiresAt'] != null
+          ? DateTime.parse(json['inviteExpiresAt'] as String)
           : null,
     );
   }

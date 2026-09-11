@@ -29,4 +29,51 @@ public interface DirectConversationRepository extends JpaRepository<DirectConver
     @Query("UPDATE DirectConversation c SET c.lastActivityAt = :timestamp WHERE c.id = :conversationId")
     void touchActivity(@Param("conversationId") UUID conversationId, @Param("timestamp") Instant timestamp);
 
+    /**
+     * Buổi tư vấn của cuộc trò chuyện này đã hết giờ chưa.
+     *
+     * <p>Chat mở ra khi chuyên gia nhận yêu cầu và trước đây không có gì đóng lại, nên
+     * một khung giờ trôi qua từ lâu vẫn nhắn tiếp được. Mẹ đặt khung giờ nào thì nói
+     * chuyện trong khung giờ đó.
+     *
+     * <p>Suy ra lúc đọc chứ không lưu vào cột status: cột đó mang
+     * {@code CHECK (status = 'ACTIVE')} nên không nhận được giá trị nào khác, và nới
+     * constraint là đổi schema. Suy ra cũng không có độ trễ như quét định kỳ.
+     *
+     * <p>Yêu cầu không chọn khung giờ thì không bao giờ hết giờ — không có hạn thì
+     * không có gì để hết.
+     */
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM expert_consultation_requests r_ended
+                 WHERE r_ended.direct_conversation_id = :conversationId
+                   AND r_ended.status = 'ACCEPTED'
+                   AND r_ended.preferred_window_end IS NOT NULL
+                   AND r_ended.preferred_window_end < CURRENT_TIMESTAMP
+            ) AND NOT EXISTS (
+                SELECT 1 FROM expert_consultation_requests r_active
+                 WHERE r_active.direct_conversation_id = :conversationId
+                   AND r_active.status = 'ACCEPTED'
+                   AND (r_active.preferred_window_end IS NULL OR r_active.preferred_window_end >= CURRENT_TIMESTAMP)
+            )
+            """, nativeQuery = true)
+    boolean isConsultationWindowEnded(@Param("conversationId") UUID conversationId);
+
+    /** Cùng câu hỏi cho cả danh sách hội thoại, một truy vấn thay vì hỏi từng cái. */
+    @Query(value = """
+            SELECT DISTINCT r_ended.direct_conversation_id FROM expert_consultation_requests r_ended
+             WHERE r_ended.direct_conversation_id IN (:conversationIds)
+               AND r_ended.status = 'ACCEPTED'
+               AND r_ended.preferred_window_end IS NOT NULL
+               AND r_ended.preferred_window_end < CURRENT_TIMESTAMP
+               AND NOT EXISTS (
+                   SELECT 1 FROM expert_consultation_requests r_active
+                    WHERE r_active.direct_conversation_id = r_ended.direct_conversation_id
+                      AND r_active.status = 'ACCEPTED'
+                      AND (r_active.preferred_window_end IS NULL OR r_active.preferred_window_end >= CURRENT_TIMESTAMP)
+               )
+            """, nativeQuery = true)
+    List<UUID> findIdsWithEndedConsultationWindow(
+            @Param("conversationIds") java.util.Collection<UUID> conversationIds);
+
 }

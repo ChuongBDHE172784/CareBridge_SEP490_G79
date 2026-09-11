@@ -33,6 +33,19 @@ public class ExpertProfileResponse {
 	private ExpertType expertType;
 	private boolean contracted;
 	private boolean isConsultationEligible;
+	/**
+	 * Tình trạng nhận tư vấn, do backend quyết định để mọi client hiển thị giống nhau:
+	 *
+	 * <ul>
+	 *   <li>{@code OPEN} — còn ca trống chưa ai giữ chỗ.</li>
+	 *   <li>{@code BUSY} — có lịch phía trước nhưng đã kín.</li>
+	 *   <li>{@code NO_SCHEDULE} — chưa xếp lịch nào sắp tới.</li>
+	 * </ul>
+	 *
+	 * <p>Cả ba đều nằm trong danh sách; nhãn nói rõ khác biệt thay vì để mẹ bấm vào rồi
+	 * mới biết không đặt được.
+	 */
+	private String availabilityState;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;
 	private BigDecimal ratingAvg;

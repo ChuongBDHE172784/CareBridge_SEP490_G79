@@ -173,18 +173,26 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
   }
 
   Widget _buildHeader() {
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       child: Column(
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
-              ),
-            ],
-          ),
+          if (canPop)
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
+                ),
+              ],
+            )
+          else
+            const SizedBox(height: 12),
           // App logo area
           Container(
             width: 56,

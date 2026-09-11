@@ -27,6 +27,9 @@ import '../../healthRecords/screens/fetal_movement_tracker_screen.dart';
 import '../../healthRecords/screens/epds_screen.dart';
 import '../../recommendation/models/recommendation_model.dart';
 import '../../recommendation/services/recommendation_service.dart';
+import '../../safety/models/safety_config_model.dart';
+import '../../safety/services/safety_service.dart';
+import '../../safety/services/safety_foreground_service.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
 /// Main home screen showing journey status card, next appointment alert,
@@ -41,6 +44,9 @@ class MotherHomeScreen extends StatefulWidget {
     this.reminderLoader,
     this.recommendationService,
     this.recommendationLoader,
+    this.safetyService,
+    this.safetyConfigLoader,
+    this.safetyCoordinator,
   });
 
   final String? recoveryNotice;
@@ -49,6 +55,9 @@ class MotherHomeScreen extends StatefulWidget {
   final Future<List<Reminder>> Function()? reminderLoader;
   final RecommendationService? recommendationService;
   final Future<RecommendationContentResponse> Function()? recommendationLoader;
+  final SafetyService? safetyService;
+  final Future<SafetyConfig> Function()? safetyConfigLoader;
+  final SafetyForegroundServiceCoordinator? safetyCoordinator;
 
   @override
   State<MotherHomeScreen> createState() => _MotherHomeScreenState();
@@ -77,6 +86,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   final _journeyService = JourneyService();
   late final TodayTaskService _todayTaskService;
   late final RecommendationService _recommendationService;
+  late final SafetyService _safetyService;
+  late final SafetyForegroundServiceCoordinator _foregroundCoordinator;
   final TodayTasksPanelController _todayTasksController =
       TodayTasksPanelController();
   StreamSubscription<void>? _checklistAssignmentRefreshSubscription;
@@ -92,6 +103,9 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   String? _recommendationError;
   String? _observedAccountId;
   String? _userAvatarUrl;
+  SafetyConfig? _safetyConfig;
+  bool _safetyLoaded = false;
+  int _safetyLoadGeneration = 0;
 
   @override
   void initState() {
@@ -99,6 +113,9 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     _todayTaskService = widget.todayTaskService ?? TodayTaskService.instance;
     _recommendationService =
         widget.recommendationService ?? RecommendationService();
+    _safetyService = widget.safetyService ?? SafetyService();
+    _foregroundCoordinator =
+        widget.safetyCoordinator ?? SafetyForegroundServiceCoordinator.instance;
     _observedAccountId = AuthState.instance.userId;
     AuthState.instance.addListener(_onAccountChanged);
     RecommendationService.profileChangeRevision.addListener(
@@ -197,6 +214,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   /// thông qua JourneyService.getDashboard() -> Gọi API `GET /api/v1/journeys/me/dashboard`
   Future<void> _load() async {
     unawaited(_loadRecommendations());
+    unawaited(_loadSafetyStatus());
     final todayRefresh = _todayTasksController.refresh();
     final generation = ++_loadGeneration;
     final isInitialLoad = _dashboard == null;
@@ -328,6 +346,56 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     });
   }
 
+  Future<void> _loadSafetyStatus() async {
+    final generation = ++_safetyLoadGeneration;
+    final accountId = AuthState.instance.userId;
+    final hasInjectedLoader = widget.safetyConfigLoader != null;
+    if (!hasInjectedLoader && accountId == null) {
+      if (mounted && generation == _safetyLoadGeneration) {
+        setState(() {
+          _safetyLoaded = true;
+          _safetyConfig = null;
+        });
+      }
+      return;
+    }
+    try {
+      final config = await (widget.safetyConfigLoader?.call() ??
+          _safetyService.getConfig());
+      if (_foregroundCoordinator.isSupported &&
+          AuthState.instance.isAuthenticated) {
+        await _foregroundCoordinator.reconcile();
+      }
+      if (mounted && generation == _safetyLoadGeneration) {
+        setState(() {
+          _safetyConfig = config;
+          _safetyLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted && generation == _safetyLoadGeneration) {
+        setState(() {
+          _safetyLoaded = true;
+        });
+      }
+    }
+  }
+
+  bool get _isSafetyMonitoringActive {
+    if (!_safetyLoaded) return true;
+    final config = _safetyConfig;
+    if (config == null || !config.fallDetectionEnabled) {
+      return false;
+    }
+    if (_foregroundCoordinator.isSupported && !_foregroundCoordinator.isRunning) {
+      return false;
+    }
+    return true;
+  }
+
+  bool get _showSafetyMonitoringReminder =>
+      !_loading && _safetyLoaded && !_isSafetyMonitoringActive;
+
   Future<List<Reminder>> _loadReminders() async {
     if (widget.reminderLoader != null) {
       return widget.reminderLoader!();
@@ -396,6 +464,10 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     const SizedBox(height: 26),
                   ],
                   _buildTasksSection(),
+                  if (_showSafetyMonitoringReminder) ...[
+                    const SizedBox(height: 20),
+                    _buildSafetyMonitoringReminder(),
+                  ],
                   const SizedBox(height: 26),
                   _buildRecommendationSection(),
                   const SizedBox(height: 12),
@@ -1242,6 +1314,170 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       ],
     ),
   );
+
+  Widget _buildSafetyMonitoringReminder() {
+    return Semantics(
+      container: true,
+      label: 'Lời nhắc kích hoạt giám sát an toàn cảm biến IMU phát hiện ngã',
+      child: Container(
+        key: const Key('mother-home-safety-reminder-card'),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: _surfaceContainerHighest.withValues(alpha: 0.9),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _primary.withValues(alpha: 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () async {
+              await context.push('/safety');
+              if (mounted) await _loadSafetyStatus();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: _surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _surfaceContainerHighest),
+                        ),
+                        child: const Icon(
+                          Icons.health_and_safety_outlined,
+                          color: _primary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'Giám sát an toàn',
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: _onSurface,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFEAE4),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: _primaryContainer.withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFBA1A1A),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      const Text(
+                                        'Chưa bật',
+                                        style: TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: _primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Kích hoạt cảm biến IMU và phát hiện ngã để CareBridge kịp thời nhận diện sự cố bất thường và gửi cảnh báo khẩn cấp bảo vệ mẹ.',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                color: _onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      key: const Key('mother-home-enable-safety-button'),
+                      onPressed: () async {
+                        await context.push('/safety');
+                        if (mounted) await _loadSafetyStatus();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      icon: const Icon(Icons.shield_outlined, size: 16),
+                      label: const Text(
+                        'Bật giám sát an toàn',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // ignore: unused_element, legacy lifecycle-week heading retained for compatibility.
   Widget _buildContentSection() {

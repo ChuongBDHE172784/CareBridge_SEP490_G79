@@ -5,9 +5,30 @@ import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
 import 'package:untitled/features/journey/services/journey_service.dart';
+import 'package:untitled/features/healthRecords/models/health_metric_model.dart';
+import 'package:untitled/features/healthRecords/services/health_metric_service.dart';
 import 'package:untitled/features/recommendation/models/recommendation_model.dart';
 import 'package:untitled/features/recommendation/screens/recommendation_profile_screen.dart';
 import 'package:untitled/features/recommendation/services/recommendation_service.dart';
+
+class _FakeHealthMetricService extends HealthMetricService {
+  _FakeHealthMetricService({required this.bmiPoints});
+  final List<MetricDataPoint> bmiPoints;
+
+  @override
+  Future<MetricTrend> getMetricTrend({
+    required String journeyId,
+    required String metricType,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    return MetricTrend(
+      metricType: metricType,
+      unit: 'kg/m²',
+      dataPoints: bmiPoints,
+    );
+  }
+}
 
 class _FakeJourneyService extends JourneyService {
   @override
@@ -265,6 +286,41 @@ void main() {
     );
   });
 
+  testWidgets(
+    'direct DOB entry with DD-MM-YYYY format patches account and pre-fills in DD-MM-YYYY',
+    (tester) async {
+      final service = _FakeRecommendationService();
+      service.dateOfBirth = '1996-05-15';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RecommendationProfileScreen(
+            service: service,
+            journeyService: _FakeJourneyService(),
+            now: () => DateTime(2026, 8, 3),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Đồng ý và tiếp tục'));
+      await tester.pumpAndSettle();
+
+      // Pre-filled ISO 1996-05-15 should display as 15-05-1996
+      expect(find.text('15-05-1996'), findsOneWidget);
+
+      // Enter new date in DD-MM-YYYY
+      await tester.enterText(
+        find.byKey(const Key('recommendation-dob-field')),
+        '25-12-1998',
+      );
+      await tester.tap(find.byKey(const Key('recommendation-continue-button')));
+      await tester.pumpAndSettle();
+
+      expect(service.events, contains('patch-dob'));
+      expect(service.dateOfBirth, '1998-12-25');
+      expect((service.lastDraft?['age'] as Map?)?['state'], 'KNOWN');
+    },
+  );
+
   testWidgets('BMI derives stage context and measurement date automatically', (
     tester,
   ) async {
@@ -396,4 +452,53 @@ void main() {
     expect(sexual?['codes'], ['STI_RISK']);
     expect(service.lastDraft?['sti'], {'state': 'KNOWN', 'status': 'AT_RISK'});
   });
+
+  testWidgets(
+    'BMI question pre-fills weight and height from health metric trend when profile BMI is unknown',
+    (tester) async {
+      final service = _FakeRecommendationService();
+      final healthMetricService = _FakeHealthMetricService(
+        bmiPoints: [
+          MetricDataPoint(
+            metricId: 'bmi-sync-1',
+            measuredAt: DateTime(2026, 7, 20),
+            valueNumeric: 21.48,
+            valueSecondary: 160.0,
+            sourceType: SourceType.manual,
+            context: const {
+              'weightKg': 55.0,
+              'heightCm': 160.0,
+            },
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RecommendationProfileScreen(
+            service: service,
+            journeyService: _FakeJourneyService(),
+            healthMetricService: healthMetricService,
+            now: () => DateTime(2026, 8, 3),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Đồng ý và tiếp tục'));
+      await tester.pumpAndSettle();
+      // Skip DOB question
+      await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+      await tester.pumpAndSettle();
+
+      // Now on BMI question: verify pre-filled text
+      final heightField = tester.widget<TextField>(
+        find.byKey(const Key('recommendation-height-field')),
+      );
+      final weightField = tester.widget<TextField>(
+        find.byKey(const Key('recommendation-weight-field')),
+      );
+      expect(heightField.controller?.text, '160.0');
+      expect(weightField.controller?.text, '55.0');
+    },
+  );
 }

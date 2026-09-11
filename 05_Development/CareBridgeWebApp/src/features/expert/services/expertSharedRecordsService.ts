@@ -39,6 +39,7 @@ export interface ChecklistItemShareData {
   origin?: 'SYSTEM' | 'USER' | 'EXPERT';
   createdBy?: 'SYSTEM' | 'USER' | 'EXPERT';
   isExpertCustom?: boolean;
+  replacesText?: string;
   doctorNote?: string;
   sourceUrl?: string;
   supportFunction?: string;
@@ -53,6 +54,7 @@ export interface ChecklistShareData {
   totalCount: number;
   progressPercent: number;
   note?: string;
+  removedItems?: string[];
   historyItems?: ChecklistItemShareData[];
   currentItems?: ChecklistItemShareData[];
   futureItems?: ChecklistItemShareData[];
@@ -62,6 +64,7 @@ export interface ChecklistShareData {
 export interface SharedRecordEntry {
   id: string;
   conversationId: string;
+  conversationStatus?: string;
   motherUserId: string;
   motherName: string;
   motherAvatar?: string;
@@ -231,36 +234,39 @@ export function parseChecklistShare(messageBody?: string): ChecklistShareData | 
   try {
     const jsonStr = messageBody.replace(CHECKLIST_SHARE_TAG, '').trim();
     const parsed = JSON.parse(jsonStr) as ChecklistShareData;
-    const historyList = (parsed.historyItems || []).map((h) => {
-      const isExp = h.isExpertCustom || h.origin === 'EXPERT' || h.createdBy === 'EXPERT';
-      const originCat = getTaskOriginCategory(h);
-      return {
-        ...h,
-        origin: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-        createdBy: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-        isExpertCustom: isExp,
-      };
-    });
-    const futureList = (parsed.futureItems || []).map((f) => {
-      const isExp = f.isExpertCustom || f.origin === 'EXPERT' || f.createdBy === 'EXPERT';
-      const originCat = getTaskOriginCategory(f);
-      return {
-        ...f,
-        origin: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-        createdBy: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-        isExpertCustom: isExp,
-      };
-    });
-    let currentList = (parsed.currentItems || parsed.items || []).map((c) => {
-      const isExp = c.isExpertCustom || c.origin === 'EXPERT' || c.createdBy === 'EXPERT';
-      const originCat = getTaskOriginCategory(c);
-      return {
-        ...c,
-        origin: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-        createdBy: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-        isExpertCustom: isExp,
-      };
-    });
+    const historyList = (parsed.historyItems || [])
+      .filter((h) => getTaskOriginCategory(h) !== 'USER')
+      .map((h) => {
+        const isExp = h.isExpertCustom || h.origin === 'EXPERT' || h.createdBy === 'EXPERT';
+        return {
+          ...h,
+          origin: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+          createdBy: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+          isExpertCustom: isExp,
+        };
+      });
+    const futureList = (parsed.futureItems || [])
+      .filter((f) => getTaskOriginCategory(f) !== 'USER')
+      .map((f) => {
+        const isExp = f.isExpertCustom || f.origin === 'EXPERT' || f.createdBy === 'EXPERT';
+        return {
+          ...f,
+          origin: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+          createdBy: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+          isExpertCustom: isExp,
+        };
+      });
+    let currentList = (parsed.currentItems || parsed.items || [])
+      .filter((c) => getTaskOriginCategory(c) !== 'USER')
+      .map((c) => {
+        const isExp = c.isExpertCustom || c.origin === 'EXPERT' || c.createdBy === 'EXPERT';
+        return {
+          ...c,
+          origin: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+          createdBy: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+          isExpertCustom: isExp,
+        };
+      });
 
     // Eliminate duplicate / history items from currentItems
     const historyTextSet = new Set(historyList.map((h) => h.text.trim().toLowerCase()));
@@ -440,18 +446,19 @@ export async function syncLiveChecklist(
         }
 
         // Update currentItems with live task status
-        const updatedCurrent = (checklistData.currentItems || checklistData.items || []).map((item) => {
-          const key = item.text.trim().toLowerCase();
-          const isExp = item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT';
-          const originCat = getTaskOriginCategory(item);
-          return {
-            ...item,
-            completed: taskStatusMap.has(key) ? taskStatusMap.get(key)! : item.completed,
-            origin: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-            createdBy: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-            isExpertCustom: isExp,
-          };
-        });
+        const updatedCurrent = (checklistData.currentItems || checklistData.items || [])
+          .filter((item) => getTaskOriginCategory(item) !== 'USER')
+          .map((item) => {
+            const key = item.text.trim().toLowerCase();
+            const isExp = item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT';
+            return {
+              ...item,
+              completed: taskStatusMap.has(key) ? taskStatusMap.get(key)! : item.completed,
+              origin: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+              createdBy: (isExp ? 'EXPERT' : 'SYSTEM') as 'SYSTEM' | 'USER' | 'EXPERT',
+              isExpertCustom: isExp,
+            };
+          });
 
         const historyList = checklistData.historyItems || [];
         const futureList = checklistData.futureItems || [];
@@ -523,6 +530,7 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
           records.push({
             id: item.messageId || item.clientMessageId || `rec-${Date.now()}`,
             conversationId: conversation.conversationId,
+            conversationStatus: conversation.conversationStatus,
             motherUserId: counterpartId,
             motherName: motherDisplayName,
             createdAt: item.createdAt || new Date().toISOString(),
@@ -540,6 +548,7 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
           records.push({
             id: item.messageId || item.clientMessageId || `rec-${Date.now()}`,
             conversationId: conversation.conversationId,
+            conversationStatus: conversation.conversationStatus,
             motherUserId: counterpartId,
             motherName: motherDisplayName,
             createdAt: item.createdAt || new Date().toISOString(),
@@ -684,19 +693,12 @@ export async function editChecklistItemInSharedRecord(
   doctorNote?: string,
   originalItemText?: string
 ): Promise<ChecklistShareData> {
-  const itemToSave: ChecklistItemShareData = {
-    ...updatedItem,
-    origin: 'EXPERT',
-    createdBy: 'EXPERT',
-    isExpertCustom: true,
-    doctorNote: doctorNote || updatedItem.doctorNote,
-  };
-
   const updated: ChecklistShareData = {
     ...currentChecklist,
     currentItems: [...(currentChecklist.currentItems || currentChecklist.items || [])],
     historyItems: [...(currentChecklist.historyItems || [])],
     futureItems: [...(currentChecklist.futureItems || [])],
+    removedItems: [...(currentChecklist.removedItems || [])],
   };
 
   const targetList =
@@ -713,6 +715,22 @@ export async function editChecklistItemInSharedRecord(
     );
     if (foundIdx >= 0) targetIdx = foundIdx;
   }
+
+  const existingItem = targetIdx >= 0 && targetIdx < targetList.length ? targetList[targetIdx] : undefined;
+  const originalText = originalItemText || existingItem?.text;
+  const isRenamed =
+    originalText && originalText.trim().toLowerCase() !== updatedItem.text.trim().toLowerCase();
+  const replacesText =
+    updatedItem.replacesText || (isRenamed ? originalText.trim() : existingItem?.replacesText || undefined);
+
+  const itemToSave: ChecklistItemShareData = {
+    ...updatedItem,
+    origin: 'EXPERT',
+    createdBy: 'EXPERT',
+    isExpertCustom: true,
+    replacesText,
+    doctorNote: doctorNote || updatedItem.doctorNote,
+  };
 
   if (targetIdx >= 0 && targetIdx < targetList.length) {
     targetList[targetIdx] = itemToSave;
@@ -731,8 +749,22 @@ export async function deleteChecklistItemFromSharedRecord(
   doctorNote?: string,
   itemText?: string
 ): Promise<ChecklistShareData> {
+  const targetListOriginal =
+    targetGroup === 'CURRENT'
+      ? currentChecklist.currentItems || currentChecklist.items || []
+      : targetGroup === 'FUTURE'
+      ? currentChecklist.futureItems || []
+      : currentChecklist.historyItems || [];
+
+  const textToDelete = itemText || targetListOriginal[itemIndex]?.text;
+  const removedItems = [...(currentChecklist.removedItems || [])];
+  if (textToDelete && !removedItems.includes(textToDelete.trim())) {
+    removedItems.push(textToDelete.trim());
+  }
+
   const updated: ChecklistShareData = {
     ...currentChecklist,
+    removedItems,
     currentItems: [...(currentChecklist.currentItems || currentChecklist.items || [])],
     historyItems: [...(currentChecklist.historyItems || [])],
     futureItems: [...(currentChecklist.futureItems || [])],
@@ -746,9 +778,9 @@ export async function deleteChecklistItemFromSharedRecord(
       : updated.historyItems!;
 
   let targetIdx = itemIndex;
-  if (itemText) {
+  if (textToDelete) {
     const foundIdx = targetList.findIndex(
-      (i) => i.text.trim().toLowerCase() === itemText.trim().toLowerCase()
+      (i) => i.text.trim().toLowerCase() === textToDelete.trim().toLowerCase()
     );
     if (foundIdx >= 0) targetIdx = foundIdx;
   }

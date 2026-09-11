@@ -15,7 +15,7 @@
 6. [Quản lý Ngữ cảnh Hội thoại Đa lượt & Gợi ý Động (Multi-turn Context & Dynamic Follow-ups)](#6-quản-lý-ngữ-cảnh-hội-thoại-đa-lượt-multi-turn-context--query-expansion)
 7. [Kiến trúc Giao diện AI Nurse trên Ứng dụng Di động (Mobile App UI & State)](#7-kiến-trúc-giao-diện-ai-nurse-trên-ứng-dụng-di-động-mobile-app-ui--state)
 8. [Bộ Công cụ Quản trị, Soi Vector & Mô phỏng Lâm sàng](#8-bộ-công-cụ-quản-trị-soi-vector--mô-phỏng-lâm-sàng)
-9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 27 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---27-câu-hỏi-chuyên-sâu)
+9. [Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 28 Câu Hỏi Chuyên Sâu)](#9-bộ-câu-hỏi--trả-lời-phản-biện-trước-hội-đồng-defense-qa---28-câu-hỏi-chuyên-sâu)
 10. [Hướng dẫn Vận hành & Nạp Thêm Tri Thức Mới](#10-hướng-dẫn-vận-hành--nạp-thêm-tri-thức-mới)
 
 ---
@@ -518,7 +518,7 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
 
 ---
 
-## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 26 Câu Hỏi Chuyên Sâu)
+## 9. Bộ Câu hỏi & Trả lời Phản biện trước Hội Đồng (Defense Q&A - 28 Câu Hỏi Chuyên Sâu)
 
 ### Câu 1: "AI RAG em hiểu là gì và vì sao dự án y tế cho mẹ bầu lại chọn RAG thay vì Fine-tuning mô hình?"
 * **Trả lời:**
@@ -843,6 +843,25 @@ Nhằm phục vụ công tác quản trị, kiểm thử và **thuyết trình t
   > 3. **Phân định Trách nhiệm Hoàn hảo giữa Rule-based và AI RAG:**
   >    - **Lớp 1 (Rule-based `const/enum`):** Giữ vai trò **'Trọng tài Cấp cứu'** — Quyết định ngay lập tức trạng thái `CRITICAL_EMERGENCY` / `ANOMALY_MONITOR` / `NORMAL` và trích xuất danh sách `risk_factors`.
   >    - **Lớp 2 (AI + RAG):** Giữ vai trò **'Bác sĩ / Nữ hộ sinh Tư vấn'** — Nhận các yếu tố rủi ro từ Lớp 1, tra cứu cẩm nang y tế từ `pgvector`, trích dẫn nguồn chuẩn chỉ và diễn giải ân cần, hướng dẫn mẹ chế độ dinh dưỡng, nghỉ ngơi được cá nhân hóa theo tuần thai."
+
+---
+
+### Câu 28: "Làm sao nhóm chứng minh được AI Nurse trả lời chính xác, không bị ảo giác (hallucination) và trích xuất đúng tài liệu của Bộ Y Tế? Nhóm có áp dụng framework kiểm thử RAG nào như Ragas không và kết quả định lượng ra sao?"
+* **Trả lời:**
+  > "Thưa Thầy/Cô, việc kiểm chứng chất lượng của một hệ thống RAG trong Y tế không thể dừng lại ở việc 'thử bằng mắt' (eyeball test). CareBridge đã triển khai riêng một **Bộ đo kiểm định lượng chuẩn công nghiệp theo mô hình RAGAS (Retrieval Augmented Generation Assessment)** đặt tại [`CareBridgeAITriageService/scripts/evaluate_rag_benchmark.py`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/scripts/evaluate_rag_benchmark.py) kết hợp bộ dữ liệu kiểm thử vàng (Golden Dataset) gồm các kịch bản lâm sàng thực tế:
+  > 
+  > 1. **Kiến trúc Kiểm thử Phân tách (Offline Evaluation Suite):**
+  >    - Chúng em không nhúng Ragas vào luồng chat runtime của người dùng để tránh tăng độ trễ và chi phí token.
+  >    - Thay vào đó, bộ Benchmark được chạy tự động định kỳ (hoặc trước mỗi bản release) trên tập Golden Dataset để chấm điểm toàn bộ pipeline.
+  > 
+  > 2. **Bốn Chỉ số Định lượng Cốt lõi của Hệ thống:**
+  >    - **Faithfulness (Tính trung thực / Chống ảo giác) $\ge 95\%$:** Kiểm chứng mọi khẳng định y khoa trong câu trả lời đều có căn cứ từ các đoạn tài liệu được pgvector trích xuất lên, chứng minh AI tuyệt đối không bịa đặt triệu chứng hay phác đồ.
+  >    - **Answer Relevancy (Độ liên quan câu trả lời) $\ge 95\%$:** Đảm bảo AI trả lời đúng trọng tâm câu hỏi của mẹ bầu/người thân, giải thích ân cần và súc tích mà không lan man lạc đề.
+  >    - **Context Precision (Độ trúng đích của CSDL Vector) $\ge 60 - 85\%$:** Đo lường tỷ lệ các đoạn văn bản trích xuất từ `maternal_knowledge_chunks` thực sự hữu ích và liên quan trực tiếp đến ca bệnh.
+  >    - **Clinical Safety Compliance (Độ an toàn lâm sàng) $= 100\%$:** Nhận diện chính xác 100% các tình huống cảnh báo đỏ cấp cứu sản khoa (ra máu, tiền sản giật, dọa sẩy thai, giảm cử động thai) để kích hoạt cờ `has_critical_warning=True` và đề xuất gọi 115/đến viện ngay.
+  > 
+  > 3. **Báo cáo Tự động cho Hội đồng:**
+  >    - Toàn bộ kết quả chạy thực nghiệm được tự động xuất ra file Markdown tại [`reports/RAG_BENCHMARK_REPORT.md`](file:///Users/huy/Documents/Đồ%20án/CareBridge_SEP490_G79/05_Development/CareBridgeAITriageService/reports/RAG_BENCHMARK_REPORT.md) và JSON chi tiết, cung cấp đầy đủ căn cứ khoa học và bảng biểu số liệu phục vụ báo cáo đồ án và slide thuyết trình."
 
 ---
 

@@ -77,6 +77,10 @@ describe('ChecklistDetailPage version', () => {
   afterEach(cleanup);
 
   it('shows the persisted checklist version in detail metadata', async () => {
+    // Breadcrumb gio re theo vai tro, va chuyen gia duoc kiem tra truoc. Mock chung
+    // tra true cho MOI vai tro nen trang di vao nhanh chuyen gia va khong con nut
+    // "Checklist" nua. Bai test nay noi ve goc nhin CONTENT_ADMIN, nen noi ro ra.
+    harness.hasRole.mockImplementation((role: string) => role === 'CONTENT_ADMIN');
     harness.fetchChecklistTemplateDetail.mockResolvedValue(checklistDetail());
 
     render(<ChecklistDetailPage />);
