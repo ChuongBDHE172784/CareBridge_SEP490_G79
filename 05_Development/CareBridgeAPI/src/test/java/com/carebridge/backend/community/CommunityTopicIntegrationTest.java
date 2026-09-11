@@ -20,6 +20,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -131,6 +132,25 @@ class CommunityTopicIntegrationTest extends AbstractPostgresIntegrationTest {
     // database (inverted hierarchy + FOLLOW rows already in community_interactions), and the
     // one canonical migration must preserve both the existing topic ids and the follow rows.
     @Test
+    @Disabled("""
+            Pins .target("20260727010000"), a migration that no longer exists: the \
+            timestamp chain was consolidated into V1__baseline_production_schema.sql \
+            (dad0e345c / 924fa60c8), so Flyway now fails with "No migration with a \
+            target version 20260727010000 could be found".
+
+            It cannot be re-anchored. The test builds a synthetic legacy schema and \
+            migrates onto it, but V1 issues CREATE TABLE without IF NOT EXISTS and \
+            stops at 'relation "community_interactions" already exists'; V1 assumes an \
+            empty database. Skipping V1 by baselining at "1" would make the test \
+            vacuous, because only V1 touches community_topics and \
+            community_interactions — V2..V11 never reference either table, so it would \
+            assert preservation across migrations that cannot disturb the data.
+
+            Kept rather than deleted because it documents the guarantee it was written \
+            for: migrating a legacy database must preserve FOLLOW rows and existing \
+            topic ids. Re-enable with a fixture built for the consolidated baseline if \
+            that path is ever exercised again.
+            """)
     void hierarchyInversion_preservesFollowRowsAndExistingTopicIds() throws Exception {
         String database = "community_topic_v2_" + UUID.randomUUID().toString().replace("-", "");
         try (Connection admin = DriverManager.getConnection(
