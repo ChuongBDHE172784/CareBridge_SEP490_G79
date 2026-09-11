@@ -38,7 +38,13 @@ class ConsultationRequestNotificationWriter {
                     (id, user_id, type, title, body, reference_id, reference_type,
                      status, attempt_count, created_at, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
-                ON CONFLICT (id) DO NOTHING
+                -- No arbiter: naming (id) makes the primary key the only suppressed
+                -- conflict, so a concurrent duplicate still aborts on the partial index
+                -- uq_notification_records_consultation_request
+                -- (user_id, reference_id, metadata->>'eventType') and the exception
+                -- escapes insertIfAbsent. A bare DO NOTHING covers every unique index,
+                -- which is what "insert if absent" means here.
+                ON CONFLICT DO NOTHING
                 """,
                 candidate.getId(),
                 candidate.getUserId(),

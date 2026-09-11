@@ -25,7 +25,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class TrackAsiaService {
 
-    @Value("${TRACKASIA_API_KEY}")
+    // Read the configured property rather than the raw environment variable.
+    // application.yaml maps it to ${TRACKASIA_API_KEY:} so production still picks the
+    // key up from the environment, while an unset key leaves this blank instead of
+    // failing placeholder resolution — a defaultless ${TRACKASIA_API_KEY} broke bean
+    // construction, and with it every full ApplicationContext, anywhere the variable
+    // was absent (CI has no .env). TrackAsiaClient already reads the key this way.
+    @Value("${carebridge.trackasia.api-key:}")
     private String apiKey;
 
     // maps.trackasia.vn does not exist. It resolved only because the ISP answers

@@ -187,9 +187,14 @@ class EmergencyTriageLinkPostgresIntegrationTest
         SmsFallbackPort sms = mock(SmsFallbackPort.class);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         AuditService audit = mock(AuditService.class);
+        // notification_records.care_group_id is a foreign key, so a random UUID here
+        // makes the delivery the test is exercising abort on
+        // fk_notification_records_care_group. Seed the groups these recipients belong to.
+        UUID careGroupOne = seedCareGroup(ownerId, "Restart group one");
+        UUID careGroupTwo = seedCareGroup(ownerId, "Restart group two");
         when(familyMembers.getFamilyAlertRecipients(ownerId)).thenReturn(List.of(
-                new AlertRecipientEndpoint(recipientOne, deviceOne, UUID.randomUUID(), "restart-token-1"),
-                new AlertRecipientEndpoint(recipientTwo, deviceTwo, UUID.randomUUID(), "restart-token-2")));
+                new AlertRecipientEndpoint(recipientOne, deviceOne, careGroupOne, "restart-token-1"),
+                new AlertRecipientEndpoint(recipientTwo, deviceTwo, careGroupTwo, "restart-token-2")));
         when(fcm.send(eq("restart-token-1"), any()))
                 .thenReturn(FcmDeliveryResult.success("fcm-one", 1));
         when(fcm.send(eq("restart-token-2"), any()))
@@ -262,6 +267,15 @@ class EmergencyTriageLinkPostgresIntegrationTest
                 .contains(sessionId);
     }
 
+    private UUID seedCareGroup(UUID ownerUserId, String groupName) {
+        UUID careGroupId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO care_groups(care_group_id,owner_user_id,group_name,status,created_at,updated_at)
+                VALUES (?, ?, ?, 'ACTIVE', now(), now())
+                """, careGroupId, ownerUserId, groupName);
+        return careGroupId;
+    }
+
     private void seedRetryCandidate(UUID userId, UUID eventId, Instant createdAt) {
         jdbcTemplate.update("""
                 INSERT INTO users(
@@ -274,8 +288,9 @@ class EmergencyTriageLinkPostgresIntegrationTest
         jdbcTemplate.update("""
                 INSERT INTO safety_events(
                     safety_event_id,user_id,detected_at,event_type,status,record_type,
+                    alert_successful_recipient_count,alert_failed_recipient_count,
                     created_at,updated_at)
-                VALUES (?, ?, ?, 'MANUAL', 'ACTIVE', 'EMERGENCY_SESSION', ?, ?)
+                VALUES (?, ?, ?, 'MANUAL', 'ACTIVE', 'EMERGENCY_SESSION', 0, 0, ?, ?)
                 """, eventId, userId, Timestamp.from(createdAt), Timestamp.from(createdAt),
                 Timestamp.from(createdAt));
     }
