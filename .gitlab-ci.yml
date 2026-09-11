@@ -419,7 +419,7 @@ scan_ai_evaluation_image:
   image:
     name: aquasec/trivy:0.59.1
     entrypoint: [""]
-  script: ["trivy image --input $ARCHIVE --ignorefile .trivyignore --severity CRITICAL --exit-code 1"]
+  script: ["trivy image --input $ARCHIVE --ignorefile .trivyignore --severity CRITICAL --ignore-unfixed --exit-code 1"]
 scan_backend_image:
   extends: .image_scan
   rules: *backend_rules

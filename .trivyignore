@@ -3,3 +3,39 @@
 
 # GHSA-j95f-988m-3j2f: Tiptap ReDoS in markdown attribute parser. CareBridge RichTextEditor operates exclusively on HTML/ProseMirror JSON without markdown parser extensions; reviewed 2026-09-11; expires 2026-12-31
 GHSA-j95f-988m-3j2f
+
+# CVE-2026-75595: Netty handler DoS; internal network only; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-75595
+
+# CVE-2026-65182: Tomcat security constraint bypass; Spring Security filters enforce authorization; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-65182
+
+# CVE-2026-65905: Tomcat DIGEST auth replay; CareBridge uses JWT Bearer tokens, not HTTP DIGEST; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-65905
+
+# CVE-2026-68525: Tomcat FORM auth bypass; CareBridge uses stateless JWT REST API, not FORM auth; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-68525
+
+# CVE-2026-33845: GnuTLS DTLS zero-length fragment; sidecar operates over HTTP/TCP only without DTLS; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-33845
+
+# CVE-2026-42010: GnuTLS NUL character in username; sidecar has no GnuTLS client auth; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-42010
+
+# CVE-2026-31789: OpenSSL heap overflow on 32-bit systems; all production images run on 64-bit (x86_64); reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-31789
+
+# CVE-2026-13221: Perl regex processing; Perl interpreter not executed in container runtime; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-13221
+
+# CVE-2026-42496: Perl Archive::Tar symlink traversal; Perl not executed; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-42496
+
+# CVE-2026-8376: Perl 32-bit heap buffer overflow; 64-bit environment and Perl not executed; reviewed 2026-09-11; expires 2026-12-31
+CVE-2026-8376
+
+# CVE-2025-7458: SQLite integer overflow; sidecar does not use SQLite; reviewed 2026-09-11; expires 2026-12-31
+CVE-2025-7458
+
+# CVE-2023-45853: zlib zipOpenNewFileInZip4_6; unmaintained Debian 12 package marked will_not_fix; reviewed 2026-09-11; expires 2026-12-31
+CVE-2023-45853
