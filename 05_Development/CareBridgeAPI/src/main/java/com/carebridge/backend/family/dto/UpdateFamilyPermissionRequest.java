@@ -22,12 +22,15 @@ public class UpdateFamilyPermissionRequest {
     private Boolean quickNoteFetalMovement;
     private Boolean quickNoteBloodPressure;
     private Boolean quickNoteBloodGlucose;
+    private Boolean quickNoteHeartRate;
+    private Boolean quickNoteTemperature;
 
     public boolean hasAtLeastOneField() {
         return calendar != null || logs != null || alerts != null || records != null
                 || checklistView != null || checklistComplete != null
                 || quickNotes != null || quickNoteWeight != null || quickNoteHydration != null
                 || quickNoteEpds != null || quickNoteFetalMovement != null
-                || quickNoteBloodPressure != null || quickNoteBloodGlucose != null;
+                || quickNoteBloodPressure != null || quickNoteBloodGlucose != null
+                || quickNoteHeartRate != null || quickNoteTemperature != null;
     }
 }

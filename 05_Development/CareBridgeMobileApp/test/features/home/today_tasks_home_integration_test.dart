@@ -139,7 +139,7 @@ void main() {
     expect(find.byType(TodayTasksPanel), findsOneWidget);
     expect(
       find.byKey(const Key('family-home-checklist-history-button')),
-      findsOneWidget,
+      findsNothing,
     );
   });
 

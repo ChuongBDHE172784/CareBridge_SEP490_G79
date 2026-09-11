@@ -21,6 +21,7 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
   bool _isLoading = false;
   bool _checkingStatus = true;
   _InvitationStatus _status = _InvitationStatus.pending;
+  late String _groupName = widget.invitation.groupName;
 
   @override
   void initState() {
@@ -34,7 +35,16 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
       final isStillPending =
           invitations.any((inv) => inv.groupId == widget.invitation.groupId);
 
-      if (!isStillPending) {
+      if (isStillPending) {
+        final match = invitations.firstWhere(
+          (inv) => inv.groupId == widget.invitation.groupId,
+        );
+        if (match.groupName.trim().isNotEmpty && mounted) {
+          setState(() {
+            _groupName = match.groupName;
+          });
+        }
+      } else {
         final myGroups = await _service.listMyGroups();
         final isMember = myGroups.any((g) => g.id == widget.invitation.groupId);
         if (mounted) {
@@ -89,7 +99,7 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
       MaterialPageRoute(
         builder: (_) => RejectInvitationConfirmationScreen(
           groupId: widget.invitation.groupId,
-          groupName: widget.invitation.groupName,
+          groupName: _groupName,
         ),
       ),
     );
@@ -98,6 +108,31 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
         _status = _InvitationStatus.declined;
       });
     }
+  }
+
+  String _formatExpirationText() {
+    final expiresAt = widget.invitation.inviteExpiresAt;
+    if (expiresAt != null) {
+      final diff = expiresAt.difference(DateTime.now());
+      if (diff.isNegative) return 'Đã hết hạn';
+      if (diff.inDays >= 1) return 'Hết hạn sau ${diff.inDays} ngày';
+      if (diff.inHours >= 1) return 'Hết hạn sau ${diff.inHours} giờ';
+      return 'Sắp hết hạn';
+    }
+    final invitedAt = widget.invitation.invitedAt;
+    if (invitedAt != null) {
+      final daysPassed = DateTime.now().difference(invitedAt).inDays;
+      final remaining = 7 - daysPassed;
+      if (remaining > 1) return 'Hết hạn sau $remaining ngày';
+      if (remaining == 1) {
+        final hoursPassed = DateTime.now().difference(invitedAt).inHours;
+        final remainingHours = (7 * 24) - hoursPassed;
+        if (remainingHours > 0) return 'Hết hạn sau $remainingHours giờ';
+        return 'Sắp hết hạn';
+      }
+      if (remaining <= 0) return 'Đã hết hạn';
+    }
+    return 'Hết hạn sau 7 ngày';
   }
 
   String _formatInvitationText(String groupName) {
@@ -185,7 +220,7 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        _formatInvitationText(widget.invitation.groupName),
+                        _formatInvitationText(_groupName),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 16,
@@ -235,18 +270,18 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                       else if (_status != _InvitationStatus.pending)
                         _buildStatusCard()
                       else
-                        const Row(
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.schedule,
                               size: 16,
                               color: Color(0xFF524440),
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
-                              'Hết hạn sau 48 giờ',
-                              style: TextStyle(
+                              _formatExpirationText(),
+                              style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF524440),

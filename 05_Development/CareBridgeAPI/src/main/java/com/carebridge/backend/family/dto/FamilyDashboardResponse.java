@@ -61,7 +61,9 @@ public record FamilyDashboardResponse(
             boolean quickNoteEpds,
             boolean quickNoteFetalMovement,
             boolean quickNoteBloodPressure,
-            boolean quickNoteBloodGlucose) {
+            boolean quickNoteBloodGlucose,
+            boolean quickNoteHeartRate,
+            boolean quickNoteTemperature) {
     }
 
     public record Member(

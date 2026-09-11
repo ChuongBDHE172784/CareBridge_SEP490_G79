@@ -35,6 +35,8 @@ public class FamilyPermission {
     private boolean quickNoteFetalMovement;
     private boolean quickNoteBloodPressure;
     private boolean quickNoteBloodGlucose;
+    private boolean quickNoteHeartRate;
+    private boolean quickNoteTemperature;
 
     @JsonIgnore
     private final Map<String, Object> additionalPermissions = new LinkedHashMap<>();
@@ -85,6 +87,28 @@ public class FamilyPermission {
             boolean quickNoteFetalMovement,
             boolean quickNoteBloodPressure,
             boolean quickNoteBloodGlucose) {
+        this(calendar, logs, alerts, records, checklistView, checklistComplete,
+                quickNotes, quickNoteWeight, quickNoteHydration, quickNoteEpds,
+                quickNoteFetalMovement, quickNoteBloodPressure, quickNoteBloodGlucose,
+                false, false);
+    }
+
+    public FamilyPermission(
+            boolean calendar,
+            boolean logs,
+            boolean alerts,
+            boolean records,
+            boolean checklistView,
+            boolean checklistComplete,
+            boolean quickNotes,
+            boolean quickNoteWeight,
+            boolean quickNoteHydration,
+            boolean quickNoteEpds,
+            boolean quickNoteFetalMovement,
+            boolean quickNoteBloodPressure,
+            boolean quickNoteBloodGlucose,
+            boolean quickNoteHeartRate,
+            boolean quickNoteTemperature) {
         this.calendar = calendar;
         this.logs = logs;
         this.alerts = alerts;
@@ -98,6 +122,8 @@ public class FamilyPermission {
         this.quickNoteFetalMovement = quickNoteFetalMovement;
         this.quickNoteBloodPressure = quickNoteBloodPressure;
         this.quickNoteBloodGlucose = quickNoteBloodGlucose;
+        this.quickNoteHeartRate = quickNoteHeartRate;
+        this.quickNoteTemperature = quickNoteTemperature;
     }
 
     @JsonAnySetter
@@ -119,7 +145,8 @@ public class FamilyPermission {
     public static FamilyPermission defaults() {
         return new FamilyPermission(
                 false, false, false, false, false, false,
-                false, false, false, false, false, false, false);
+                false, false, false, false, false, false, false,
+                false, false);
     }
 
     public static FamilyPermission fromJson(String json) {
@@ -143,7 +170,9 @@ public class FamilyPermission {
                     || hasNonBooleanPermission(root, "quickNoteEpds")
                     || hasNonBooleanPermission(root, "quickNoteFetalMovement")
                     || hasNonBooleanPermission(root, "quickNoteBloodPressure")
-                    || hasNonBooleanPermission(root, "quickNoteBloodGlucose")) {
+                    || hasNonBooleanPermission(root, "quickNoteBloodGlucose")
+                    || hasNonBooleanPermission(root, "quickNoteHeartRate")
+                    || hasNonBooleanPermission(root, "quickNoteTemperature")) {
                 return defaults();
             }
             return MAPPER.treeToValue(root, FamilyPermission.class);
@@ -164,7 +193,8 @@ public class FamilyPermission {
                     + "\"CHECKLIST_VIEW\":false,\"CHECKLIST_COMPLETE\":false,"
                     + "\"quickNotes\":false,\"quickNoteWeight\":false,\"quickNoteHydration\":false,"
                     + "\"quickNoteEpds\":false,\"quickNoteFetalMovement\":false,"
-                    + "\"quickNoteBloodPressure\":false,\"quickNoteBloodGlucose\":false}";
+                    + "\"quickNoteBloodPressure\":false,\"quickNoteBloodGlucose\":false,"
+                    + "\"quickNoteHeartRate\":false,\"quickNoteTemperature\":false}";
         }
     }
 }

@@ -108,6 +108,8 @@ public class FamilyQuickNoteService {
             case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC ->
                     PermissionFlag.QUICK_NOTE_BLOOD_PRESSURE;
             case BLOOD_GLUCOSE -> PermissionFlag.QUICK_NOTE_BLOOD_GLUCOSE;
+            case MATERNAL_HEART_RATE -> PermissionFlag.QUICK_NOTE_HEART_RATE;
+            case TEMPERATURE -> PermissionFlag.QUICK_NOTE_TEMPERATURE;
             default -> throw new BusinessException(
                     HttpStatus.BAD_REQUEST,
                     "FAM-066",
@@ -177,6 +179,8 @@ public class FamilyQuickNoteService {
             case FETAL_MOVEMENT_COUNT, FETAL_MOVEMENT_SESSION -> "FETAL_MOVEMENT_SESSION";
             case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC -> "BLOOD_PRESSURE";
             case BLOOD_GLUCOSE -> "BLOOD_GLUCOSE";
+            case MATERNAL_HEART_RATE -> "MATERNAL_HEART_RATE";
+            case TEMPERATURE -> "TEMPERATURE";
             default -> throw new BusinessException(
                     HttpStatus.BAD_REQUEST, "FAM-066",
                     "Only shared health metric types can be accessed through this endpoint.");
@@ -200,6 +204,8 @@ public class FamilyQuickNoteService {
             case FETAL_MOVEMENT_SESSION -> "count";
             case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC -> "mmHg";
             case BLOOD_GLUCOSE -> "mg/dL";
+            case MATERNAL_HEART_RATE -> "bpm";
+            case TEMPERATURE -> "°C";
             default -> "";
         };
     }

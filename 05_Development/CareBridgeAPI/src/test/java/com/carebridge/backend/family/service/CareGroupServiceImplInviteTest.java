@@ -8,6 +8,7 @@ import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareGroupMember;
 import com.carebridge.backend.family.entity.CareGroupStatus;
+import com.carebridge.backend.family.entity.GroupMemberRole;
 import com.carebridge.backend.family.entity.InviteChannel;
 import com.carebridge.backend.family.entity.InviteStatus;
 import com.carebridge.backend.family.event.FamilyMemberInvited;
@@ -486,5 +487,64 @@ class CareGroupServiceImplInviteTest {
                 anyString(),
                 anyString(),
                 anyString());
+    }
+
+    @Test
+    void inviteFamilyMember_pendingSelfJoinRequest_autoApproves() {
+        stubActiveGroup();
+        stubOwnerCheck(true);
+        stubPendingCount(0);
+        stubInviteePhone(true);
+        when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.ACCEPTED)).thenReturn(false);
+
+        CareGroupMember selfJoin = CareGroupMember.builder()
+                .id(UUID.randomUUID())
+                .careGroupId(GROUP_ID)
+                .userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER)
+                .inviteStatus(InviteStatus.PENDING)
+                .inviteToken(null)
+                .build();
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.of(selfJoin));
+        when(memberRepository.save(any(CareGroupMember.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        InviteFamilyMemberResponse res = service.inviteFamilyMember(
+                GROUP_ID, new InviteFamilyMemberRequest(InviteChannel.PHONE, PHONE), OWNER_ID);
+
+        assertThat(res).isNotNull();
+        assertThat(selfJoin.getInviteStatus()).isEqualTo(InviteStatus.ACCEPTED);
+        assertThat(selfJoin.getJoinedAt()).isNotNull();
+        verify(memberRepository).save(selfJoin);
+    }
+
+    @Test
+    void inviteFamilyMember_revokedExistingRow_reusesRowAndActivatesToPending() {
+        stubActiveGroup();
+        stubOwnerCheck(true);
+        stubPendingCount(0);
+        stubInviteePhone(true);
+        stubNoDuplicatePending();
+        when(tokenGenerator.generate()).thenReturn(TOKEN);
+
+        CareGroupMember revokedRow = CareGroupMember.builder()
+                .id(UUID.randomUUID())
+                .careGroupId(GROUP_ID)
+                .userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER)
+                .inviteStatus(InviteStatus.REVOKED)
+                .build();
+        when(memberRepository.findAllByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID))
+                .thenReturn(new java.util.ArrayList<>(List.of(revokedRow)));
+        when(memberRepository.save(any(CareGroupMember.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        InviteFamilyMemberResponse res = service.inviteFamilyMember(
+                GROUP_ID, new InviteFamilyMemberRequest(InviteChannel.PHONE, PHONE), OWNER_ID);
+
+        assertThat(res).isNotNull();
+        assertThat(revokedRow.getInviteStatus()).isEqualTo(InviteStatus.PENDING);
+        assertThat(revokedRow.getInviteToken()).isEqualTo(TOKEN);
+        verify(memberRepository).save(revokedRow);
     }
 }

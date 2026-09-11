@@ -17,6 +17,7 @@ class ChecklistTaskDetailScreen extends StatefulWidget {
     this.reminderScheduleService,
     this.directChatService,
     this.showSupportFunction = true,
+    this.showQuickReminder = true,
   });
 
   final TodayTask task;
@@ -24,6 +25,7 @@ class ChecklistTaskDetailScreen extends StatefulWidget {
   final ReminderScheduleService? reminderScheduleService;
   final DirectChatService? directChatService;
   final bool showSupportFunction;
+  final bool showQuickReminder;
 
   @override
   State<ChecklistTaskDetailScreen> createState() =>
@@ -216,12 +218,13 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            key: const Key('task-detail-quick-reminder-action'),
-            icon: const Icon(Icons.alarm_add_rounded),
-            tooltip: 'Thêm lịch nhắc nhanh',
-            onPressed: _openQuickReminderSheet,
-          ),
+          if (widget.showQuickReminder)
+            IconButton(
+              key: const Key('task-detail-quick-reminder-action'),
+              icon: const Icon(Icons.alarm_add_rounded),
+              tooltip: 'Thêm lịch nhắc nhanh',
+              onPressed: _openQuickReminderSheet,
+            ),
         ],
       ),
       body: SafeArea(
@@ -247,10 +250,12 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
                 onOpen: _openSupportFunction,
               ),
             ],
-            const SizedBox(height: 20),
-            _QuickReminderCard(
-              onAddReminder: _openQuickReminderSheet,
-            ),
+            if (widget.showQuickReminder) ...[
+              const SizedBox(height: 20),
+              _QuickReminderCard(
+                onAddReminder: _openQuickReminderSheet,
+              ),
+            ],
           ],
         ),
       ),

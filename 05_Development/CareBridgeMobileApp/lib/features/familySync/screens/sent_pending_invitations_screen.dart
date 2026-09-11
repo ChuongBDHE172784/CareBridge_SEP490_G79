@@ -343,7 +343,7 @@ class _SentPendingInvitationsScreenState
           const SizedBox(height: 8),
           _buildInfoRow(
             Icons.hourglass_empty,
-            'Hết hạn: Trong vòng 48h',
+            'Hết hạn: Trong vòng 7 ngày',
             const Color(0xFF6E5A52),
             const Color(0xFF524440),
           ),

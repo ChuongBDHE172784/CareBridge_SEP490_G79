@@ -501,6 +501,10 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
 
   List<TodayTask> _checklistOnly(List<TodayTask> tasks) => tasks
       .where((task) {
+        if (widget.audience == TodayTasksAudience.family &&
+            task.origin != TodayTaskOrigin.systemTemplate) {
+          return false;
+        }
         if (task.origin == TodayTaskOrigin.systemTemplate &&
             _suppressedSystemTaskTitles.contains(
               task.title.trim().toLowerCase(),
@@ -525,6 +529,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final isFamily = widget.audience == TodayTasksAudience.family;
     final activeTabIndex = _activeSourceTabIndex;
     final sourceGroupedTasks = widget.layout == TodayTasksLayout.sourceGroups
         ? _sourceGroupedTasks
@@ -532,16 +537,20 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     final checklistCount = _snapshot == null
         ? 0
         : _checklistOnly(_snapshot!.sections.all.toList()).length;
-    final hasVisibleTasks = widget.layout == TodayTasksLayout.sourceGroups
-        ? sourceGroupedTasks.isNotEmpty
-        : checklistCount > 0 || _snapshot?.sequence != null;
-
     final systemTasks = sourceGroupedTasks
         .where((task) => task.origin == TodayTaskOrigin.systemTemplate)
         .toList(growable: false);
-    final userTasks = sourceGroupedTasks
-        .where((task) => task.origin != TodayTaskOrigin.systemTemplate)
-        .toList(growable: false);
+    final userTasks = isFamily
+        ? const <TodayTask>[]
+        : sourceGroupedTasks
+            .where((task) => task.origin != TodayTaskOrigin.systemTemplate)
+            .toList(growable: false);
+    final hasVisibleTasks = widget.layout == TodayTasksLayout.sourceGroups
+        ? (isFamily ? systemTasks.isNotEmpty : sourceGroupedTasks.isNotEmpty)
+        : (checklistCount > 0 ||
+            (widget.audience == TodayTasksAudience.mother &&
+                _snapshot?.sequence != null));
+
     final postpartumTasks = systemTasks
         .where((task) => task.stage == TodayChecklistStage.postpartum)
         .toList(growable: false);
@@ -569,8 +578,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
 
     return Semantics(
       container: true,
-      label: widget.audience == TodayTasksAudience.family
-          ? 'Việc cần làm của gia đình'
+      label: isFamily
+          ? 'Việc cần làm của mẹ'
           : 'Việc cần làm của tôi',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -587,10 +596,10 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               children: [
                 const _RoundIcon(icon: Icons.today_rounded),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Việc cần làm',
-                    style: TextStyle(
+                    isFamily ? 'Việc cần làm của mẹ' : 'Việc cần làm',
+                    style: const TextStyle(
                       fontFamily: 'Quicksand',
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -625,15 +634,16 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
             if (!hasVisibleTasks)
               const _EmptyState()
             else if (widget.layout == TodayTasksLayout.sourceGroups) ...[
-              _SourceTabBar(
-                selectedIndex: activeTabIndex,
-                systemCount: systemTasks.length,
-                userCount: userTasks.length,
-                onTabSelected: (index) {
-                  setState(() => _selectedSourceTabIndex = index);
-                },
-              ),
-              if (activeTabIndex == 0) ...[
+              if (!isFamily)
+                _SourceTabBar(
+                  selectedIndex: activeTabIndex,
+                  systemCount: systemTasks.length,
+                  userCount: userTasks.length,
+                  onTabSelected: (index) {
+                    setState(() => _selectedSourceTabIndex = index);
+                  },
+                ),
+              if (isFamily || activeTabIndex == 0) ...[
                 if (systemTasks.isNotEmpty)
                   Column(
                     key: const Key('today-system-tasks'),
@@ -649,10 +659,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                           onOpen: _openDetail,
                           onAction: _act,
                           onDelete: _delete,
-                          allowDelete:
-                              widget.audience == TodayTasksAudience.mother,
-                          allowAction:
-                              widget.audience == TodayTasksAudience.mother,
+                          allowDelete: false,
+                          allowAction: false,
                         ),
                       if (babyCareTasks.isNotEmpty)
                         Column(
@@ -676,10 +684,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                               onOpen: _openDetail,
                               onAction: _act,
                               onDelete: _delete,
-                              allowDelete:
-                                  widget.audience == TodayTasksAudience.mother,
-                              allowAction:
-                                  widget.audience == TodayTasksAudience.mother,
+                              allowDelete: false,
+                              allowAction: false,
                             );
                           }).toList(growable: false),
                         ),
@@ -693,10 +699,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                           onOpen: _openDetail,
                           onAction: _act,
                           onDelete: _delete,
-                          allowDelete:
-                              widget.audience == TodayTasksAudience.mother,
-                          allowAction:
-                              widget.audience == TodayTasksAudience.mother,
+                          allowDelete: false,
+                          allowAction: false,
                           showTitle:
                               postpartumTasks.isNotEmpty || babyCareTasks.isNotEmpty,
                         ),
@@ -708,7 +712,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     message:
                         'Chưa có gợi ý nào từ lộ trình CareBridge cho hôm nay.',
                   ),
-              ] else ...[
+              ] else if (!isFamily) ...[
                 if (userTasks.isNotEmpty)
                   _Section(
                     key: const Key('today-user-tasks'),
@@ -724,11 +728,9 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     showTitle: false,
                   )
                 else
-                  _EmptyTabState(
+                  const _EmptyTabState(
                     icon: Icons.playlist_add_check_rounded,
-                    message: widget.audience == TodayTasksAudience.family
-                        ? 'Chưa có việc cá nhân nào được chia sẻ.'
-                        : 'Bạn chưa tạo công việc cá nhân nào.',
+                    message: 'Bạn chưa tạo công việc cá nhân nào.',
                   ),
               ],
             ] else ...[

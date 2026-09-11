@@ -404,6 +404,8 @@ class FamilyHomePermission {
     this.quickNoteFetalMovement = false,
     this.quickNoteBloodPressure = false,
     this.quickNoteBloodGlucose = false,
+    this.quickNoteHeartRate = false,
+    this.quickNoteTemperature = false,
   });
 
   final bool calendar;
@@ -418,6 +420,8 @@ class FamilyHomePermission {
   final bool quickNoteFetalMovement;
   final bool quickNoteBloodPressure;
   final bool quickNoteBloodGlucose;
+  final bool quickNoteHeartRate;
+  final bool quickNoteTemperature;
 
   int get sharedHealthMetricCount {
     if (!quickNotes) return 0;
@@ -428,6 +432,8 @@ class FamilyHomePermission {
       quickNoteHydration,
       quickNoteEpds,
       quickNoteBloodGlucose,
+      quickNoteHeartRate,
+      quickNoteTemperature,
     ].where((shared) => shared).length;
   }
 
@@ -445,6 +451,8 @@ class FamilyHomePermission {
       quickNoteFetalMovement: json['quickNoteFetalMovement'] as bool? ?? false,
       quickNoteBloodPressure: json['quickNoteBloodPressure'] as bool? ?? false,
       quickNoteBloodGlucose: json['quickNoteBloodGlucose'] as bool? ?? false,
+      quickNoteHeartRate: json['quickNoteHeartRate'] as bool? ?? false,
+      quickNoteTemperature: json['quickNoteTemperature'] as bool? ?? false,
     );
   }
 }

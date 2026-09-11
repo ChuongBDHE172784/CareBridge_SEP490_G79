@@ -59,7 +59,11 @@ public class FamilyNotificationService {
                     "Lời mời tham gia nhóm",
                     "Bạn vừa nhận được lời mời tham gia nhóm gia đình: " + groupName,
                     payload.careGroupId(),
-                    "CARE_GROUP"
+                    "CARE_GROUP",
+                    java.util.Map.of(
+                            "groupId", payload.careGroupId().toString(),
+                            "groupName", groupName
+                    )
             );
 
             notificationService.send(request);

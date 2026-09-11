@@ -637,6 +637,31 @@ void main() {
     expect(addReminderButton, findsOneWidget);
   });
 
+  testWidgets('hides quick reminder action and card when showQuickReminder is false', (
+    tester,
+  ) async {
+    final task = _task();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChecklistTaskDetailScreen(
+          task: task,
+          showQuickReminder: false,
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const Key('task-detail-quick-reminder-action')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('task-detail-add-quick-reminder-button')),
+      findsNothing,
+    );
+    expect(find.text('Lịch nhắc nhở'), findsNothing);
+  });
+
   testWidgets(
     'tapping quick reminder opens ReminderScheduleEditor pre-filled with task title',
     (tester) async {

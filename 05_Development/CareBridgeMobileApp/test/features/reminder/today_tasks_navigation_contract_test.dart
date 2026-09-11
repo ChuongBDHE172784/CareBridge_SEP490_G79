@@ -52,7 +52,7 @@ void main() {
     expect(mother, contains('TodayTasksAudience.mother'));
     expect(family, contains('TodayTasksPanel('));
     expect(family, contains('TodayTasksAudience.family'));
-    expect(family, contains('AddUserChecklistTaskButton('));
+    expect(family, isNot(contains('AddUserChecklistTaskButton(')));
     expect(family, contains('careGroupId: _selectedCareGroupId'));
   });
 
@@ -65,6 +65,7 @@ void main() {
     expect(router, contains('ChecklistTaskDetailScreen('));
     expect(router, contains('task: task,'));
     expect(router, contains("showSupportFunction: audience != 'family',"));
+    expect(router, contains("showQuickReminder: audience != 'family',"));
   });
 
   test('only the canonical Family Home implementation remains', () {

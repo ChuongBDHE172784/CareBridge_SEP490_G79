@@ -326,6 +326,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
                             .groupName(group != null ? group.getGroupName() : null)
                             .memberRole(member.getMemberRole() != null ? member.getMemberRole().name() : null)
                             .invitedAt(member.getCreatedAt())
+                            .inviteExpiresAt(member.getInviteExpiresAt())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -514,6 +515,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
     }
 
     @Override
+    @Transactional
     public LeaveCareGroupResponse leaveCareGroup(UUID groupId, UUID callerId) {
         CareGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
@@ -531,8 +533,16 @@ public class CareGroupServiceImpl implements ICareGroupService {
         }
 
         int reassigned = taskRepository.reassignIncompleteTasks(groupId, callerId, group.getOwnerUserId());
-        own.setInviteStatus(InviteStatus.REVOKED);
-        memberRepository.save(own);
+        List<CareGroupMember> allRows = memberRepository.findAllByCareGroupIdAndUserId(groupId, callerId);
+        if (!allRows.isEmpty()) {
+            for (CareGroupMember m : allRows) {
+                m.setInviteStatus(InviteStatus.REVOKED);
+            }
+            memberRepository.saveAll(allRows);
+        } else {
+            own.setInviteStatus(InviteStatus.REVOKED);
+            memberRepository.save(own);
+        }
         Instant leftAt = Instant.now();
 
         auditService.log(AuditAction.CARE_GROUP_MEMBER_LEFT, callerId,
@@ -716,26 +726,66 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
                         "Thành viên này đã tồn tại trong nhóm.");
             }
+            String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
+                    ? invitee.getPhone()
+                    : trimmedInput;
+
+            // Check if user has an existing self-join request (inviteToken == null) waiting for Mother
+            Optional<CareGroupMember> pendingSelfJoin = memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                    groupId, invitee.getId(), InviteStatus.PENDING);
+            if (pendingSelfJoin.isPresent() && pendingSelfJoin.get().getInviteToken() == null) {
+                CareGroupMember m = pendingSelfJoin.get();
+                m.setInviteStatus(InviteStatus.ACCEPTED);
+                Instant now = Instant.now();
+                m.setJoinedAt(now);
+                openChecklistAccessEpoch(m);
+                CareGroupMember saved = memberRepository.save(m);
+                auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
+                        "CareGroup", groupId.toString(), "Auto-approved join request via Mother invite");
+                String memberName = resolveUserName(m.getUserId());
+                notifyMother(group, "Thành viên đã tham gia nhóm",
+                        memberName + " đã trở thành thành viên của nhóm chăm sóc " + group.getGroupName() + ".");
+                return InviteFamilyMemberResponse.builder()
+                        .careGroupMemberId(saved.getId())
+                        .channel(InviteChannel.PHONE)
+                        .inviteToken(null)
+                        .inviteExpiresAt(null)
+                        .invitedPhone(targetPhone)
+                        .build();
+            }
+
             // Check 2: Pending invite already exists for this person
             if (memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, invitee.getId(), InviteStatus.PENDING)) {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
                         "Lời mời cho người này đang chờ xử lý.");
             }
 
-            String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
-                    ? invitee.getPhone()
-                    : trimmedInput;
-
-            CareGroupMember member = CareGroupMember.builder()
-                    .careGroupId(groupId)
-                    .userId(invitee.getId())
-                    .memberRole(GroupMemberRole.MEMBER)
-                    .inviteStatus(InviteStatus.PENDING)
-                    .inviteChannel(InviteChannel.PHONE)
-                    .inviteToken(rawToken)
-                    .inviteExpiresAt(expiresAt)
-                    .invitedPhone(targetPhone)
-                    .build();
+            List<CareGroupMember> oldRows = memberRepository.findAllByCareGroupIdAndUserId(groupId, invitee.getId());
+            CareGroupMember member;
+            if (!oldRows.isEmpty()) {
+                member = oldRows.get(0);
+                if (oldRows.size() > 1) {
+                    memberRepository.deleteAll(oldRows.subList(1, oldRows.size()));
+                }
+                member.setMemberRole(GroupMemberRole.MEMBER);
+                member.setInviteStatus(InviteStatus.PENDING);
+                member.setInviteChannel(InviteChannel.PHONE);
+                member.setInviteToken(rawToken);
+                member.setInviteExpiresAt(expiresAt);
+                member.setInvitedPhone(targetPhone);
+                member.setJoinedAt(null);
+            } else {
+                member = CareGroupMember.builder()
+                        .careGroupId(groupId)
+                        .userId(invitee.getId())
+                        .memberRole(GroupMemberRole.MEMBER)
+                        .inviteStatus(InviteStatus.PENDING)
+                        .inviteChannel(InviteChannel.PHONE)
+                        .inviteToken(rawToken)
+                        .inviteExpiresAt(expiresAt)
+                        .invitedPhone(targetPhone)
+                        .build();
+            }
             CareGroupMember saved = memberRepository.save(member);
 
             auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
@@ -910,15 +960,42 @@ public class CareGroupServiceImpl implements ICareGroupService {
             throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Bạn đã là thành viên của nhóm này.");
         }
 
-        // 2. If caller already has a PENDING join request
+        // 2. If caller already has a PENDING invite or join request
         if (memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, callerId, InviteStatus.PENDING)) {
-            throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt.");
+            Optional<CareGroupMember> pendingInvite = memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                    groupId, callerId, InviteStatus.PENDING);
+            if (pendingInvite.isPresent() && pendingInvite.get().getInviteToken() != null) {
+                CareGroupMember m = pendingInvite.get();
+                // Mother invited this user! Entering group code accepts the invitation!
+                Instant now = Instant.now();
+                m.setInviteStatus(InviteStatus.ACCEPTED);
+                m.setJoinedAt(now);
+                m.setFamilyRelationshipRole(familyRelationshipRole.trim().toUpperCase());
+                m.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
+                openChecklistAccessEpoch(m);
+                memberRepository.save(m);
+
+                auditService.log(AuditAction.CARE_GROUP_INVITATION_ACCEPTED, callerId,
+                        "CareGroupMember", m.getId().toString(), "Invitation accepted via group code");
+                String callerName = resolveUserName(callerId);
+                notifyMother(group, "Lời mời đã được chấp nhận",
+                        callerName + " đã chấp nhận lời mời tham gia nhóm chăm sóc " + group.getGroupName() + ".");
+
+                return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
+            } else {
+                // Self-join request already pending Mother's approval
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-007",
+                        "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt.");
+            }
         }
 
         // 3. If user had an inactive row (REJECTED / REVOKED / EXPIRED), re-activate to PENDING
         java.util.List<CareGroupMember> oldRows = memberRepository.findAllByCareGroupIdAndUserId(groupId, callerId);
         if (!oldRows.isEmpty()) {
             CareGroupMember existing = oldRows.get(0);
+            if (oldRows.size() > 1) {
+                memberRepository.deleteAll(oldRows.subList(1, oldRows.size()));
+            }
             existing.setInviteStatus(InviteStatus.PENDING);
             existing.setInviteToken(null);
             existing.setInviteExpiresAt(null);
@@ -1168,7 +1245,11 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 quickNotes && (request.getQuickNoteBloodPressure() != null
                         ? request.getQuickNoteBloodPressure() : previous.isQuickNoteBloodPressure()),
                 quickNotes && (request.getQuickNoteBloodGlucose() != null
-                        ? request.getQuickNoteBloodGlucose() : previous.isQuickNoteBloodGlucose())
+                        ? request.getQuickNoteBloodGlucose() : previous.isQuickNoteBloodGlucose()),
+                quickNotes && (request.getQuickNoteHeartRate() != null
+                        ? request.getQuickNoteHeartRate() : previous.isQuickNoteHeartRate()),
+                quickNotes && (request.getQuickNoteTemperature() != null
+                        ? request.getQuickNoteTemperature() : previous.isQuickNoteTemperature())
         );
         updated.copyAdditionalPermissionsFrom(previous);
 
@@ -1220,6 +1301,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .quickNoteFetalMovement(updated.isQuickNoteFetalMovement())
                 .quickNoteBloodPressure(updated.isQuickNoteBloodPressure())
                 .quickNoteBloodGlucose(updated.isQuickNoteBloodGlucose())
+                .quickNoteHeartRate(updated.isQuickNoteHeartRate())
+                .quickNoteTemperature(updated.isQuickNoteTemperature())
                 .updatedAt(saved.getUpdatedAt())
                 .build();
     }
@@ -1263,6 +1346,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .quickNoteFetalMovement(perm.isQuickNoteFetalMovement())
                 .quickNoteBloodPressure(perm.isQuickNoteBloodPressure())
                 .quickNoteBloodGlucose(perm.isQuickNoteBloodGlucose())
+                .quickNoteHeartRate(perm.isQuickNoteHeartRate())
+                .quickNoteTemperature(perm.isQuickNoteTemperature())
                 .updatedAt(member.getUpdatedAt())
                 .build();
     }

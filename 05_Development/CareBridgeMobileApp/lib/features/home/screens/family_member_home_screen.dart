@@ -25,7 +25,6 @@ import '../../notification/screens/notification_detail_screen.dart';
 import '../../notification/services/notification_service.dart';
 import '../../recommendation/models/recommendation_model.dart';
 import '../../recommendation/services/recommendation_service.dart';
-import '../../checklist/widgets/add_user_checklist_task_button.dart';
 import '../../reminder/services/today_task_service.dart';
 import '../../reminder/widgets/today_tasks_panel.dart';
 
@@ -154,7 +153,10 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     final generation = ++_loadGeneration;
     final previousCareGroupId = _selectedCareGroupId;
     final todayRefresh = _todayTasksController.refresh();
-    final recommendationRefresh = _loadRecommendations();
+    Future<void>? recommendationRefresh;
+    if (_selectedCareGroupId != null) {
+      recommendationRefresh = _loadRecommendations(careGroupId: _selectedCareGroupId);
+    }
     String? currentAccountId;
     try {
       currentAccountId = AuthState.instance.userId;
@@ -184,9 +186,16 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         _selectedCareGroupId = snapshot.selectedCareGroupId;
         _loading = false;
       });
-      if (previousCareGroupId != snapshot.selectedCareGroupId &&
-          snapshot.selectedCareGroupId != null) {
-        unawaited(_loadRecommendations(careGroupId: snapshot.selectedCareGroupId));
+      if (snapshot.selectedCareGroupId != null) {
+        if (previousCareGroupId != snapshot.selectedCareGroupId || recommendationRefresh == null) {
+          recommendationRefresh = _loadRecommendations(careGroupId: snapshot.selectedCareGroupId);
+        }
+      } else {
+        setState(() {
+          _recommendations = null;
+          _recommendationLoading = false;
+          _recommendationError = null;
+        });
       }
     } catch (error) {
       if (!mounted || generation != _loadGeneration) return;
@@ -213,7 +222,10 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         }
       });
     } finally {
-      await Future.wait([todayRefresh, recommendationRefresh]);
+      await Future.wait([
+        todayRefresh,
+        if (recommendationRefresh != null) recommendationRefresh,
+      ]);
     }
   }
 
@@ -260,11 +272,8 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                     _buildNoGroup()
                   else ...[
                     const SizedBox(height: 28),
-                    if (_snapshot!.groups.length > 1) ...[
-                      _buildFollowingGroups(_snapshot!),
-                      const SizedBox(height: 20),
+                    if (_snapshot!.groups.length > 1)
                       _buildGroupSelector(_snapshot!),
-                    ],
                     const SizedBox(height: 24),
                     _buildGlobalAggregate(_snapshot!.globalAggregate),
                     if (_loading)
@@ -291,36 +300,6 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                         layout: TodayTasksLayout.sourceGroups,
                         careGroupId: _selectedCareGroupId,
                         controller: _todayTasksController,
-                        headingAction: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              key: const Key(
-                                'family-home-checklist-history-button',
-                              ),
-                              tooltip: 'Lịch sử checklist',
-                              onPressed: () {
-                                final groupId = _selectedCareGroupId;
-                                if (groupId == null) return;
-                                context.push(
-                                  '/checklists/history?careGroupId=$groupId',
-                                );
-                              },
-                              icon: const Icon(Icons.history_rounded),
-                              color: _primary,
-                            ),
-                            if (_selectedCareGroupId != null &&
-                                _snapshot!
-                                        .selectedGroupDetail
-                                        ?.permissionScope
-                                        .checklistView ==
-                                    true)
-                              AddUserChecklistTaskButton(
-                                careGroupId: _selectedCareGroupId,
-                                onCreated: _todayTasksController.refresh,
-                              ),
-                          ],
-                        ),
                       )
                     else
                       const _EmptyCard(
@@ -575,40 +554,6 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   }
 
   Widget _buildGroupSelector(FamilyHomeSnapshot snapshot) {
-    return _DashboardCard(
-      child: DropdownButtonFormField<String>(
-        key: const Key('family-dashboard-group-selector'),
-        initialValue: snapshot.selectedCareGroupId,
-        isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: 'Đang xem tình trạng của',
-          prefixIcon: Icon(Icons.switch_account_outlined),
-          border: InputBorder.none,
-        ),
-        items: snapshot.groups
-            .map(
-              (group) => DropdownMenuItem(
-                value: group.id,
-                child: Text(group.name, overflow: TextOverflow.ellipsis),
-              ),
-            )
-            .toList(growable: false),
-        onChanged: _loading
-            ? null
-            : (value) {
-                if (value == null) return;
-                final changed = value != _selectedCareGroupId;
-                setState(() {
-                  _selectedCareGroupId = value;
-                  _checklistGroupExplicitlySelected = true;
-                });
-                if (changed) _load();
-              },
-      ),
-    );
-  }
-
-  Widget _buildFollowingGroups(FamilyHomeSnapshot snapshot) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -622,46 +567,35 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 54,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: snapshot.groups
-                  .map((group) {
-                    final selected = group.id == snapshot.selectedCareGroupId;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        key: Key('family-dashboard-group-chip-${group.id}'),
-                        label: Text(group.name),
-                        selected: selected,
-                        avatar: Icon(
-                          selected
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border,
-                          size: 17,
-                          color: selected ? Colors.white : _primary,
-                        ),
-                        selectedColor: _primary,
-                        labelStyle: TextStyle(
-                          color: selected ? Colors.white : _onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        onSelected: _loading || selected
-                            ? null
-                            : (_) {
-                                setState(() {
-                                  _selectedCareGroupId = group.id;
-                                  _checklistGroupExplicitlySelected = true;
-                                });
-                                _load();
-                              },
-                      ),
-                    );
-                  })
-                  .toList(growable: false),
+        _DashboardCard(
+          child: DropdownButtonFormField<String>(
+            key: const Key('family-dashboard-group-selector'),
+            initialValue: snapshot.selectedCareGroupId,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Đang xem tình trạng của',
+              prefixIcon: Icon(Icons.switch_account_outlined),
+              border: InputBorder.none,
             ),
+            items: snapshot.groups
+                .map(
+                  (group) => DropdownMenuItem(
+                    value: group.id,
+                    child: Text(group.name, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: _loading
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    final changed = value != _selectedCareGroupId;
+                    setState(() {
+                      _selectedCareGroupId = value;
+                      _checklistGroupExplicitlySelected = true;
+                    });
+                    if (changed) _load();
+                  },
           ),
         ),
       ],
@@ -1016,6 +950,20 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           icon: Icons.bloodtype_outlined,
           tint: Color(0xFFE9F3E7),
         ),
+      if (permission.quickNoteHeartRate)
+        const _FamilyQuickNoteType(
+          metricType: 'MATERNAL_HEART_RATE',
+          label: 'Nhịp tim mẹ',
+          icon: Icons.favorite_border_rounded,
+          tint: Color(0xFFFFECEB),
+        ),
+      if (permission.quickNoteTemperature)
+        const _FamilyQuickNoteType(
+          metricType: 'TEMPERATURE',
+          label: 'Nhiệt độ',
+          icon: Icons.thermostat_outlined,
+          tint: Color(0xFFFFF3E0),
+        ),
     ];
   }
 
@@ -1344,23 +1292,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
               color: _onSurface,
             ),
           ),
-          if (response.profileStatus ==
-                  RecommendationProfileStatus.reviewRequired ||
-              response.profileStatus ==
-                  RecommendationProfileStatus.reconsentRequired) ...[
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                key: const Key('family-home-recommendation-review-profile'),
-                onPressed: () => context.push(
-                  '/recommendation-profile',
-                  extra: response.stage,
-                ),
-                child: const Text('Xem lại hồ sơ cá nhân hóa'),
-              ),
-            ),
-          ],
+
           if (_recommendationLoading) ...[
             const SizedBox(height: 8),
             const LinearProgressIndicator(

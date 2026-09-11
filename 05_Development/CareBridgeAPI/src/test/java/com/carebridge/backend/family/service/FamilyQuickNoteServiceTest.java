@@ -136,6 +136,48 @@ class FamilyQuickNoteServiceTest {
     }
 
     @Test
+    void allowedMaternalHeartRateHistoryReturnsBpmUnit() {
+        allow(PermissionFlag.QUICK_NOTE_HEART_RATE);
+        when(journeyRepository.findCanonical(motherId)).thenReturn(Optional.of(
+                MotherJourney.builder().id(journeyId).ownerUserId(motherId)
+                        .careSubjectId(careSubjectId).build()));
+        var observation = observation("MATERNAL_HEART_RATE", "78", from.plusSeconds(60), null, Map.of());
+        observation.setUnit("bpm");
+        when(observationRepository.findTrend(
+                        careSubjectId, "MATERNAL_HEART_RATE", MetricStatus.ACTIVE, from, to))
+                .thenReturn(List.of(observation));
+
+        var response = service.getHistory(
+                groupId, familyId, MetricType.MATERNAL_HEART_RATE, from, to);
+
+        assertThat(response.getMetricType()).isEqualTo("MATERNAL_HEART_RATE");
+        assertThat(response.getUnit()).isEqualTo("bpm");
+        assertThat(response.getDataPoints()).singleElement()
+                .satisfies(point -> assertThat(point.getValueNumeric()).isEqualByComparingTo("78"));
+    }
+
+    @Test
+    void allowedTemperatureHistoryReturnsCelsiusUnit() {
+        allow(PermissionFlag.QUICK_NOTE_TEMPERATURE);
+        when(journeyRepository.findCanonical(motherId)).thenReturn(Optional.of(
+                MotherJourney.builder().id(journeyId).ownerUserId(motherId)
+                        .careSubjectId(careSubjectId).build()));
+        var observation = observation("TEMPERATURE", "36.8", from.plusSeconds(60), null, Map.of());
+        observation.setUnit("°C");
+        when(observationRepository.findTrend(
+                        careSubjectId, "TEMPERATURE", MetricStatus.ACTIVE, from, to))
+                .thenReturn(List.of(observation));
+
+        var response = service.getHistory(
+                groupId, familyId, MetricType.TEMPERATURE, from, to);
+
+        assertThat(response.getMetricType()).isEqualTo("TEMPERATURE");
+        assertThat(response.getUnit()).isEqualTo("°C");
+        assertThat(response.getDataPoints()).singleElement()
+                .satisfies(point -> assertThat(point.getValueNumeric()).isEqualByComparingTo("36.8"));
+    }
+
+    @Test
     void archivedGroupCannotReadHealthHistory() {
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(CareGroup.builder()
                 .id(groupId).ownerUserId(motherId).groupName("Gia đình")

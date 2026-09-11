@@ -19,7 +19,9 @@ public enum PermissionFlag {
     QUICK_NOTE_EPDS("quickNoteEpds"),
     QUICK_NOTE_FETAL_MOVEMENT("quickNoteFetalMovement"),
     QUICK_NOTE_BLOOD_PRESSURE("quickNoteBloodPressure"),
-    QUICK_NOTE_BLOOD_GLUCOSE("quickNoteBloodGlucose");
+    QUICK_NOTE_BLOOD_GLUCOSE("quickNoteBloodGlucose"),
+    QUICK_NOTE_HEART_RATE("quickNoteHeartRate"),
+    QUICK_NOTE_TEMPERATURE("quickNoteTemperature");
 
     private final String jsonKey;
 

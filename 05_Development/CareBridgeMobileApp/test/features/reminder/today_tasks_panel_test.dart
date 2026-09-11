@@ -238,7 +238,7 @@ void main() {
     expect(postPath, '/api/v1/checklists/sequences/advance');
   });
 
-  testWidgets('family audience does not offer user-created deletion', (
+  testWidgets('family audience does not show user-created personal tasks', (
     tester,
   ) async {
     final envelope = {
@@ -276,7 +276,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Family visible personal task'), findsOneWidget);
+    expect(find.text('Family visible personal task'), findsNothing);
     expect(
       find.byKey(const Key('delete-task-family-user-created')),
       findsNothing,
@@ -1077,61 +1077,7 @@ void main() {
   });
 
   testWidgets(
-    'family audience shows adaptive empty message when no personal tasks are shared',
-    (tester) async {
-      final envelope = {
-        'asOf': '2026-08-03T01:00:00Z',
-        'zoneId': 'Asia/Ho_Chi_Minh',
-        'horizonDays': 7,
-        'sections': {
-          'overdue': <Map<String, dynamic>>[],
-          'today': [
-            {
-              'taskKind': 'CHECKLIST',
-              'taskId': 'sys-1',
-              'title': 'Hệ thống CareBridge',
-              'origin': 'SYSTEM_TEMPLATE',
-              'targetSubject': 'MOTHER',
-              'status': 'PENDING',
-              'timeBucket': 'TODAY',
-              'allowedActions': ['COMPLETE'],
-            },
-          ],
-          'upcoming': <Map<String, dynamic>>[],
-          'unscheduled': <Map<String, dynamic>>[],
-        },
-        'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
-        'correlationId': 'family-empty-user-tab',
-      };
-
-      await tester.pumpWidget(
-        _wrap(
-          TodayTasksPanel(
-            service: _service(() async => {'data': envelope}),
-            audience: TodayTasksAudience.family,
-            layout: TodayTasksLayout.sourceGroups,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap on "Việc cá nhân" tab
-      await tester.tap(find.text('Việc cá nhân'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Chưa có việc cá nhân nào được chia sẻ.'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Bạn chưa tạo công việc cá nhân nào.'),
-        findsNothing,
-      );
-    },
-  );
-
-  testWidgets(
-    'family audience renders shared mother personal tasks in user tasks tab',
+    'family audience does not show Việc cá nhân tab or personal tasks, only shows CareBridge suggestions',
     (tester) async {
       final envelope = {
         'asOf': '2026-08-03T01:00:00Z',
@@ -1169,21 +1115,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap on "Việc cá nhân" tab
-      await tester.tap(find.text('Việc cá nhân'));
-      await tester.pumpAndSettle();
+      // Heading is "Việc cần làm của mẹ"
+      expect(find.text('Việc cần làm của mẹ'), findsOneWidget);
 
-      expect(find.text('Mua sữa bầu cho Mẹ'), findsOneWidget);
-      // Family cannot delete mother's personal task
-      expect(
-        find.byKey(const Key('delete-task-mother-personal-1')),
-        findsNothing,
-      );
+      // No "Việc cá nhân" tab or text
+      expect(find.text('Việc cá nhân'), findsNothing);
+      expect(find.text('Mua sữa bầu cho Mẹ'), findsNothing);
     },
   );
 
   testWidgets(
-    'family audience displays mother system tasks in Gợi ý CareBridge tab and synchronizes completed status without allowing ticking',
+    'family audience displays mother system tasks in Gợi ý CareBridge and synchronizes completed status without allowing ticking',
     (tester) async {
       final envelope = {
         'asOf': '2026-08-03T01:00:00Z',
@@ -1232,8 +1174,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tab 0: "Gợi ý CareBridge"
-      expect(find.text('Gợi ý CareBridge'), findsWidgets);
+      // System task is visible
       expect(find.text('Uống vitamin và canxi'), findsOneWidget);
 
       // Status icon for completed task shows checkmark
@@ -1245,19 +1186,9 @@ void main() {
         findsNothing,
       );
 
-      // Tap on Tab 1: "Việc cá nhân"
-      await tester.tap(find.text('Việc cá nhân'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Mua đồ chuẩn bị đi sinh'), findsOneWidget);
-      // Status icon for pending task shows unchecked circle
-      expect(find.byIcon(Icons.radio_button_unchecked_rounded), findsOneWidget);
-
-      // Status control is read-only (no button key task-status-mother-personal-pending)
-      expect(
-        find.byKey(const Key('task-status-mother-personal-pending')),
-        findsNothing,
-      );
+      // Personal tasks are not displayed for family audience
+      expect(find.text('Việc cá nhân'), findsNothing);
+      expect(find.text('Mua đồ chuẩn bị đi sinh'), findsNothing);
     },
   );
 

@@ -391,6 +391,43 @@ void main() {
 
       expect(find.text('Gợi ý dành riêng cho tuần 12'), findsOneWidget);
       expect(find.text('Dinh dưỡng thai kỳ tuần 12'), findsOneWidget);
+      expect(find.text('Xem lại hồ sơ cá nhân hóa'), findsNothing);
+      expect(find.byKey(const Key('family-home-recommendation-review-profile')), findsNothing);
+    });
+
+    testWidgets('never displays review-profile link for family role even if status is reviewRequired', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FamilyMemberHomeScreen(
+            dashboardLoader: ({selectedCareGroupId}) async => _snapshot(
+              selectedId: 'group-a',
+              groups: [_group('group-a', 'Nhóm A')],
+              detail: _detail('group-a'),
+            ),
+            recommendationLoader: () async => RecommendationContentResponse.fromJson({
+              'stage': 'PREGNANCY',
+              'pregnancyWeek': 14,
+              'weekEligibilityMode': 'BOUNDED_AND_STAGE_WIDE',
+              'profileStatus': 'REVIEW_REQUIRED',
+              'selectionMode': 'FALLBACK_ONLY',
+              'coverageStatus': 'COMPLETE',
+              'fallbackUsed': true,
+              'items': [],
+            }),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Gợi ý dành riêng cho tuần 14'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gợi ý dành riêng cho tuần 14'), findsOneWidget);
+      expect(find.text('Xem lại hồ sơ cá nhân hóa'), findsNothing);
+      expect(find.byKey(const Key('family-home-recommendation-review-profile')), findsNothing);
     });
   });
 }
