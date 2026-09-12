@@ -60,6 +60,8 @@ class PhoneVerificationFailure implements Exception {
       'session-expired' => 'Mã xác thực đã hết hạn. Vui lòng gửi lại mã mới.',
       'network-request-failed' =>
         'Không thể kết nối dịch vụ xác thực. Vui lòng kiểm tra mạng.',
+      'app-not-authorized' =>
+        'Ứng dụng chưa được cấp quyền SMS Firebase. Vui lòng thêm SHA-256 hoặc số test vào Firebase Console.',
       _ => 'Không thể xác thực số điện thoại. Vui lòng thử lại.',
     };
   }

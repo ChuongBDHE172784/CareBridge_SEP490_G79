@@ -24,7 +24,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Tài khoản đã tồn tại'), findsOneWidget);
+    expect(
+      find.text('Email hoặc số điện thoại này đã được đăng ký tài khoản.'),
+      findsOneWidget,
+    );
     expect(
       find.text('Thông tin không hợp lệ. Vui lòng kiểm tra lại.'),
       findsNothing,

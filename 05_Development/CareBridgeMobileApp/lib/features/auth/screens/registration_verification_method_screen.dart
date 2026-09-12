@@ -109,7 +109,7 @@ class _RegistrationVerificationMethodScreenState
     if (error.errorCode == 'AUTH_ACCOUNT_EXISTS' || error.statusCode == 409) {
       return (_draft?.isExpert ?? false)
           ? 'Email này đã được đăng ký.'
-          : 'Tài khoản đã tồn tại';
+          : 'Email hoặc số điện thoại này đã được đăng ký tài khoản.';
     }
     if (error.statusCode == 400) {
       return 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.';
