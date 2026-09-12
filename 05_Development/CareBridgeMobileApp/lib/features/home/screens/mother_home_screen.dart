@@ -464,10 +464,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     const SizedBox(height: 26),
                   ],
                   _buildTasksSection(),
-                  if (_showSafetyMonitoringReminder) ...[
-                    const SizedBox(height: 20),
-                    _buildSafetyMonitoringReminder(),
-                  ],
                   const SizedBox(height: 26),
                   _buildRecommendationSection(),
                   const SizedBox(height: 12),
@@ -1292,6 +1288,9 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     audience: TodayTasksAudience.mother,
     layout: TodayTasksLayout.sourceGroups,
     controller: _todayTasksController,
+    belowHeading: _showSafetyMonitoringReminder
+        ? _buildSafetyMonitoringReminder()
+        : null,
     headingAction: Row(
       mainAxisSize: MainAxisSize.min,
       children: [

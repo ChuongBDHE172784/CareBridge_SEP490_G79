@@ -82,13 +82,18 @@ void main() {
       );
       expect(find.text('Bật giám sát an toàn'), findsOneWidget);
 
-      // Verify position: below Today Tasks ('Việc cần làm')
+      // Verify position: below Today Tasks heading ('Việc cần làm') and above task content
       final todayTasksTop = tester.getTopLeft(find.text('Việc cần làm')).dy;
       final reminderTop =
           tester.getTopLeft(
             find.byKey(const Key('mother-home-safety-reminder-card')),
           ).dy;
       expect(todayTasksTop, lessThan(reminderTop));
+      if (find.byKey(const Key('today-empty')).evaluate().isNotEmpty) {
+        final emptyTop =
+            tester.getTopLeft(find.byKey(const Key('today-empty'))).dy;
+        expect(reminderTop, lessThan(emptyTop));
+      }
     },
   );
 

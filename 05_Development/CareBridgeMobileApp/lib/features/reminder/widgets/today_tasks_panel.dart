@@ -53,6 +53,7 @@ class TodayTasksPanel extends StatefulWidget {
     this.showHeading = true,
     this.controller,
     this.headingAction,
+    this.belowHeading,
   });
 
   final TodayTaskService? service;
@@ -63,6 +64,7 @@ class TodayTasksPanel extends StatefulWidget {
   final bool showHeading;
   final TodayTasksPanelController? controller;
   final Widget? headingAction;
+  final Widget? belowHeading;
 
   @override
   State<TodayTasksPanel> createState() => _TodayTasksPanelState();
@@ -614,6 +616,10 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               ],
             ),
             const SizedBox(height: 16),
+            if (widget.belowHeading != null) ...[
+              widget.belowHeading!,
+              const SizedBox(height: 16),
+            ],
           ],
           if (_loading)
             const _LoadingState()
