@@ -47,6 +47,8 @@ class _ManageFamilyPermissionScreenState
   bool _quickNoteHydration = false;
   bool _quickNoteEpds = false;
   bool _quickNoteBloodGlucose = false;
+  bool _quickNoteHeartRate = false;
+  bool _quickNoteTemperature = false;
 
   List<bool> get _values => [
     _calendar,
@@ -60,6 +62,8 @@ class _ManageFamilyPermissionScreenState
     _quickNoteHydration,
     _quickNoteEpds,
     _quickNoteBloodGlucose,
+    _quickNoteHeartRate,
+    _quickNoteTemperature,
   ];
 
   bool get _isDirty {
@@ -79,6 +83,8 @@ class _ManageFamilyPermissionScreenState
     _quickNoteHydration,
     _quickNoteEpds,
     _quickNoteBloodGlucose,
+    _quickNoteHeartRate,
+    _quickNoteTemperature,
   ].where((value) => value).length;
 
   @override
@@ -126,6 +132,8 @@ class _ManageFamilyPermissionScreenState
     _quickNoteHydration = permission.quickNoteHydration;
     _quickNoteEpds = permission.quickNoteEpds;
     _quickNoteBloodGlucose = permission.quickNoteBloodGlucose;
+    _quickNoteHeartRate = permission.quickNoteHeartRate;
+    _quickNoteTemperature = permission.quickNoteTemperature;
   }
 
   Future<void> _saveChanges() async {
@@ -150,6 +158,8 @@ class _ManageFamilyPermissionScreenState
         quickNoteHydration: _quickNoteHydration,
         quickNoteEpds: _quickNoteEpds,
         quickNoteBloodGlucose: _quickNoteBloodGlucose,
+        quickNoteHeartRate: _quickNoteHeartRate,
+        quickNoteTemperature: _quickNoteTemperature,
       );
       if (!mounted) return;
       setState(() {
@@ -450,7 +460,7 @@ class _ManageFamilyPermissionScreenState
               icon: Icons.monitor_heart_outlined,
               title: 'Chỉ số sức khỏe',
               subtitle: _quickNotes
-                  ? '$_sharedMetricCount/6 chỉ số đang chia sẻ'
+                  ? '$_sharedMetricCount/8 chỉ số đang chia sẻ'
                   : 'Thành viên không xem được chỉ số nào',
               trailing: Switch.adaptive(
                 key: const Key('health-metrics-parent-switch'),
@@ -465,7 +475,7 @@ class _ManageFamilyPermissionScreenState
                 children: [
                   TextButton(
                     key: const Key('health-metrics-select-all'),
-                    onPressed: _isSaving || _sharedMetricCount == 6
+                    onPressed: _isSaving || _sharedMetricCount == 8
                         ? null
                         : () => _setAllMetrics(true),
                     child: const Text('Chọn tất cả'),
@@ -518,6 +528,20 @@ class _ManageFamilyPermissionScreenState
                 value: _quickNoteBloodGlucose,
                 onChanged: (value) =>
                     setState(() => _quickNoteBloodGlucose = value),
+              ),
+              _metricRow(
+                title: 'Nhịp tim mẹ',
+                icon: Icons.monitor_heart_outlined,
+                value: _quickNoteHeartRate,
+                onChanged: (value) =>
+                    setState(() => _quickNoteHeartRate = value),
+              ),
+              _metricRow(
+                title: 'Nhiệt độ',
+                icon: Icons.thermostat_outlined,
+                value: _quickNoteTemperature,
+                onChanged: (value) =>
+                    setState(() => _quickNoteTemperature = value),
                 divider: false,
               ),
             ],
@@ -548,6 +572,8 @@ class _ManageFamilyPermissionScreenState
     _quickNoteHydration = value;
     _quickNoteEpds = value;
     _quickNoteBloodGlucose = value;
+    _quickNoteHeartRate = value;
+    _quickNoteTemperature = value;
   }
 
   Widget _permissionRow({

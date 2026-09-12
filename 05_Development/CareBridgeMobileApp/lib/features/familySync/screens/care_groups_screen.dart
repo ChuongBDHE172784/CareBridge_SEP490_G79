@@ -147,6 +147,7 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
       appBar: AppBar(
         backgroundColor: _canvas,
         surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.black),
         title: const Text(
           'Nhóm chăm sóc',
           style: TextStyle(

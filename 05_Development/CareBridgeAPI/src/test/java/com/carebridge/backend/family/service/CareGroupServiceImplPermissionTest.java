@@ -212,13 +212,14 @@ class CareGroupServiceImplPermissionTest {
     }
 
     @Test
-    void updateFamilyPermission_turningParentOffClearsAllSixHealthMetricPermissions() {
+    void updateFamilyPermission_turningParentOffClearsAllEightHealthMetricPermissions() {
         stubActiveGroup();
         stubOwnerAuthorized();
         CareGroupMember member = stubAcceptedMember(
                 "{\"quickNotes\":true,\"quickNoteWeight\":true,\"quickNoteHydration\":true,"
                         + "\"quickNoteEpds\":true,\"quickNoteFetalMovement\":true,"
-                        + "\"quickNoteBloodPressure\":true,\"quickNoteBloodGlucose\":true}");
+                        + "\"quickNoteBloodPressure\":true,\"quickNoteBloodGlucose\":true,"
+                        + "\"quickNoteHeartRate\":true,\"quickNoteTemperature\":true}");
         stubSaveMember(member);
         stubDeviceToken(MEMBER_USER_ID);
         UpdateFamilyPermissionRequest request = new UpdateFamilyPermissionRequest();
@@ -234,6 +235,31 @@ class CareGroupServiceImplPermissionTest {
         assertThat(result.isQuickNoteFetalMovement()).isFalse();
         assertThat(result.isQuickNoteBloodPressure()).isFalse();
         assertThat(result.isQuickNoteBloodGlucose()).isFalse();
+        assertThat(result.isQuickNoteHeartRate()).isFalse();
+        assertThat(result.isQuickNoteTemperature()).isFalse();
+    }
+
+    @Test
+    void updateFamilyPermission_supportsHeartRateAndTemperatureWithoutLosingUnknownKeys() {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(
+                "{\"quickNotes\":true,\"quickNoteWeight\":true,\"futurePermission\":true}");
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+        UpdateFamilyPermissionRequest request = new UpdateFamilyPermissionRequest();
+        request.setQuickNoteHeartRate(true);
+        request.setQuickNoteTemperature(true);
+
+        FamilyPermissionResponse result = service.updateFamilyPermission(
+                GROUP_ID, MEMBER_ID, request, OWNER_ID);
+
+        assertThat(result.isQuickNoteHeartRate()).isTrue();
+        assertThat(result.isQuickNoteTemperature()).isTrue();
+        assertThat(member.getPermissionJson())
+                .contains("\"quickNoteHeartRate\":true")
+                .contains("\"quickNoteTemperature\":true")
+                .contains("\"futurePermission\":true");
     }
 
     // ── TC-003: Member views own permission grant ─────────────────────────────

@@ -323,10 +323,12 @@ public class RecommendationService implements RecommendationConsentCleanup {
         }
 
         // (2) Truy vấn hành trình thai kỳ chính thức (MotherJourney) của người mẹ (kèm kiểm tra quyền CareGroup nếu có)
-        MotherJourney journey = canonical(ownerUserId, careGroupId, true);
+        MotherJourney journey = canonical(ownerUserId, careGroupId, careGroupId == null);
+        UUID targetMotherId = journey.getOwnerUserId();
+        boolean isOwner = ownerUserId.equals(targetMotherId);
 
-        // (3) Đánh giá trạng thái đồng ý chia sẻ dữ liệu nhạy cảm (ConsentGrant) có còn ACTIVE và đúng hạn hay không
-        ConsentAssessment assessment = assessConsent(journey, ownerUserId, Instant.now(clock));
+        // (3) Đánh giá trạng thái đồng ý chia sẻ dữ liệu nhạy cảm (ConsentGrant) của người mẹ (chế độ read-only nếu caller là người thân)
+        ConsentAssessment assessment = assessConsent(journey, targetMotherId, Instant.now(clock), !isOwner);
 
         // (4) Phân giải ngữ cảnh y khoa: tính toán giai đoạn thai kỳ (Stage) và tuần thai (Pregnancy Week)
         RecommendationContext context;
@@ -344,8 +346,8 @@ public class RecommendationService implements RecommendationConsentCleanup {
         if (enabled
                 && journey.getRecommendationProfileStatus() == RecommendationProfileStatus.ACTIVE
                 && assessment.active()) {
-            // (1) Trích xuất các tín hiệu y tế từ hồ sơ đã lưu (ví dụ: rec-high-bmi, rec-gestational-diabetes...)
-            signals.addAll(resolveStoredSignals(journey, ownerUserId));
+            // (1) Trích xuất các tín hiệu y tế từ hồ sơ đã lưu của người mẹ
+            signals.addAll(resolveStoredSignals(journey, targetMotherId));
             // (2) Bổ sung các tín hiệu về sở thích hỗ trợ & phong cách sống của người mẹ
             signals.addAll(resolveSupportPreferenceSignals(journey));
         }
@@ -725,6 +727,10 @@ public class RecommendationService implements RecommendationConsentCleanup {
      * Nếu consent hết hạn hoặc bị thu hồi, tự động chuyển trạng thái hồ sơ về RECONSENT_REQUIRED hoặc REVOKED.
      */
     private ConsentAssessment assessConsent(MotherJourney journey, UUID ownerUserId, Instant now) {
+        return assessConsent(journey, ownerUserId, now, false);
+    }
+
+    private ConsentAssessment assessConsent(MotherJourney journey, UUID ownerUserId, Instant now, boolean readOnly) {
         List<ConsentGrant> latestRows = consentGrantRepository.findLatestRecommendationGrant(
                 ownerUserId, CONSENT_SCOPE, PageRequest.of(0, 1));
         ConsentGrant latest = latestRows.isEmpty() ? null : latestRows.get(0);
@@ -734,7 +740,8 @@ public class RecommendationService implements RecommendationConsentCleanup {
                 && latest.getExpiryAt() != null
                 && latest.getExpiryAt().isAfter(now)
                 && "ACTIVE".equalsIgnoreCase(latest.getStatus());
-        if ((journey.getRecommendationProfileStatus() == RecommendationProfileStatus.ACTIVE
+        if (!readOnly
+                && (journey.getRecommendationProfileStatus() == RecommendationProfileStatus.ACTIVE
                 || journey.getRecommendationProfileStatus() == RecommendationProfileStatus.REVIEW_REQUIRED)
                 && !consentValid) {
                 RecommendationProfileStatus next = latest != null && latest.getRevokedAt() != null

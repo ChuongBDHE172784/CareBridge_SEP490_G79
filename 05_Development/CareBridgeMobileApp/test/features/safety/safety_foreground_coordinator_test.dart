@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/privacy/models/privacy_model.dart';
 import 'package:untitled/features/safety/models/safety_config_model.dart';
 import 'package:untitled/features/safety/models/imu_diagnostics_model.dart';
@@ -102,6 +103,36 @@ void main() {
   );
 
   test(
+    'does not start location monitoring when Android location permission is not granted',
+    () async {
+      final gateway = _FakeForegroundGateway();
+      const locationEnabledConfig = SafetyConfig(
+        fallDetectionEnabled: true,
+        sensitivityLevel: 'MEDIUM',
+        emergencyAutoAlert: true,
+        locationSharingEnabled: true,
+        sensorPermissionGranted: true,
+      );
+      final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+        gateway: gateway,
+        isAuthenticated: () => true,
+        hasLocationPermission: () async => false,
+        platformAndroid: true,
+        loadConfig: () async => locationEnabledConfig,
+        loadConsents: () async => [
+          consent('SENSOR_DATA', 'CREATE'),
+          consent('LOCATION', 'SHARE'),
+        ],
+      );
+
+      await coordinator.reconcile();
+
+      expect(gateway.starts, 1);
+      expect(gateway.locationSharingAllowed, isFalse);
+    },
+  );
+
+  test(
     'does not start location monitoring without explicit config opt-in',
     () async {
       final gateway = _FakeForegroundGateway();
@@ -153,6 +184,37 @@ void main() {
     await coordinator.reconcile();
 
     expect(gateway.stops, 1);
+  });
+
+  test('does not start for non-mother users', () async {
+    final gateway = _FakeForegroundGateway()..running = true;
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: gateway,
+      isAuthenticated: () => true,
+      isMother: () => false,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+    );
+
+    await coordinator.reconcile();
+
+    expect(gateway.starts, isZero);
+    expect(gateway.stops, 1);
+  });
+
+  test('gracefully stops on 403 forbidden without throwing unhandled error', () async {
+    final gateway = _FakeForegroundGateway()..running = true;
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: gateway,
+      isAuthenticated: () => true,
+      loadConfig: () async => throw ApiException(403, 'Access Denied'),
+      loadConsents: () async => const [],
+    );
+
+    await coordinator.reconcile();
+
+    expect(gateway.stops, 1);
+    expect(coordinator.isRunning, isFalse);
   });
 
   test('does not start on an unsupported platform', () async {

@@ -314,20 +314,26 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                     ),
                     const SizedBox(height: 2),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.verified_rounded,
-                          size: 14,
-                          color: Color(0xFF10B981),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.verified_rounded,
+                            size: 14,
+                            color: Color(0xFF10B981),
+                          ),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Chuyên gia Hệ thống & Chuyên gia Y tế Cộng đồng, đều đã kiểm duyệt chứng chỉ',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: _onSurfaceVariant.withValues(alpha: 0.9),
+                        Expanded(
+                          child: Text(
+                            'Chuyên gia Hệ thống & Chuyên gia Y tế Cộng đồng, đều đã kiểm duyệt chứng chỉ',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: _onSurfaceVariant.withValues(alpha: 0.9),
+                            ),
                           ),
                         ),
                       ],

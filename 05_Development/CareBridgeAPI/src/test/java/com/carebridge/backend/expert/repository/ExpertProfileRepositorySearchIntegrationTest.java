@@ -1,5 +1,6 @@
 package com.carebridge.backend.expert.repository;
 
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.expert.entity.ExpertProfile;
@@ -35,7 +36,7 @@ class ExpertProfileRepositorySearchIntegrationTest extends AbstractPostgresInteg
                         + "'San khoa', 'Bac si CKI', 'BV Tu Du', 'APPROVED', 'ACTIVE', "
                         + "true, false, now(), now())",
                 EXPERT_USER_ID, EXPERT_USER_ID,
-                "09" + String.valueOf(System.nanoTime()).substring(0, 8));
+                CanonicalUserFixture.uniquePhone("09"));
     }
 
     @Test

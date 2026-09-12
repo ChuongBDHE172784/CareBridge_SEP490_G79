@@ -78,6 +78,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .body(request.body())
                 .referenceId(request.referenceId())
                 .referenceType(request.referenceType())
+                .metadata(request.metadata())
                 .status(NotificationRecordStatus.SENT)
                 .attemptCount(1)
                 .build();

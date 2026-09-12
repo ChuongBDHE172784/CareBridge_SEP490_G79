@@ -51,6 +51,10 @@ public class AdminContentController {
     private final ContentService contentService;
 
     @GetMapping("/checklists")
+    // The class-level rule admits EXPERT so experts can read content for review, but
+    // the admin checklist catalogue is not theirs to list — narrow it here rather than
+    // at the class, which would also close the content reads EXPERT legitimately uses.
+    @PreAuthorize("hasAnyRole('CONTENT_ADMIN','SYSTEM_ADMIN')")
     public ResponseEntity<PaginatedResponse<AdminChecklistTemplateResponse>> getChecklists(
             @RequestParam(required = false) ContentStage stage,
             @RequestParam(required = false) ChecklistTemplateStatus status,

@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ class HealthObservationRepositoryIntegrationTest extends AbstractPostgresIntegra
 
     @Autowired private HealthObservationRepository repository;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @PersistenceContext private EntityManager entityManager;
 
     @Test
     void familySummaryQueriesUseCanonicalActiveSubjectScopedObservationsAndInclusiveBounds() {
@@ -48,6 +51,10 @@ class HealthObservationRepositoryIntegrationTest extends AbstractPostgresIntegra
                 observation(otherSubjectId, "WEIGHT", "88", from.plusSeconds(240), "ACTIVE"),
                 legacySource));
         repository.flush();
+        // Detach the just-written rows so the queries below actually read Postgres
+        // instead of returning the managed instances from the first-level cache.
+        // value_numeric is numeric(10,2), so a real read carries scale 2.
+        entityManager.clear();
 
         var latest = repository.findLatestByMetricCodes(
                 subjectId, List.of("WEIGHT", "HYDRATION"), MetricStatus.ACTIVE);

@@ -32,7 +32,7 @@ void main() {
         'canonicalLmp': '2026-02-18',
       }).toJourneyDashboard();
 
-      expect(journey.displayPregnancyWeek, 24);
+      expect(journey.displayPregnancyWeek, 25);
       expect(journey.displaySourceWeekNumber, 25);
       expect(journey.plan, 2);
       expect(journey.datingBasis, 'LMP');
@@ -64,7 +64,7 @@ void main() {
       expect(quarantined.calculatedDaysUntilDue, isNull);
     });
 
-    test('six health permissions default to deny and parse explicitly', () {
+    test('eight health permissions default to deny and parse explicitly', () {
       final legacy = FamilyHomePermission.fromJson({
         'calendar': true,
         'logs': false,
@@ -85,11 +85,15 @@ void main() {
         'quickNoteHydration': true,
         'quickNoteEpds': true,
         'quickNoteBloodGlucose': true,
+        'quickNoteHeartRate': true,
+        'quickNoteTemperature': true,
       });
 
-      expect(permission.sharedHealthMetricCount, 6);
+      expect(permission.sharedHealthMetricCount, 8);
       expect(permission.quickNoteBloodPressure, isTrue);
       expect(permission.quickNoteBloodGlucose, isTrue);
+      expect(permission.quickNoteHeartRate, isTrue);
+      expect(permission.quickNoteTemperature, isTrue);
     });
 
     test('parses group-scoped real health metric projection', () {

@@ -363,6 +363,7 @@ final GoRouter appRouter = GoRouter(
         return ChecklistTaskDetailScreen(
           task: task,
           showSupportFunction: audience != 'family',
+          showQuickReminder: audience != 'family',
         );
       },
     ),

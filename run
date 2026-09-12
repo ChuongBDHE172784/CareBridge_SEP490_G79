@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# CareBridge Service Runner CLI
+# Usage:
+#   ./run all       - Chạy tất cả 4 services
+#   ./run api       - Chạy riêng Backend CareBridgeAPI (8080)
+#   ./run ai        - Chạy riêng CareBridgeAITriageService (8001)
+#   ./run sidecar   - Chạy riêng Exercise Sidecar Docker (8002)
+#   ./run web       - Chạy riêng Frontend CareBridgeWebApp (5173)
+#   ./run status    - Kiểm tra trạng thái các port và process
+#   ./run logs [svc]- Theo dõi log thời gian thực
+# ==============================================================================
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMAND="${1:-all}"
+
+case "$COMMAND" in
+  all|"")
+    exec "$PROJECT_ROOT/run-all.sh"
+    ;;
+  api)
+    "$PROJECT_ROOT/stop-all.sh" api >/dev/null 2>&1 || true
+    mkdir -p "$PROJECT_ROOT/logs"
+    echo "Starting CareBridgeAPI..."
+    (
+      cd "$PROJECT_ROOT/05_Development/CareBridgeAPI"
+      [ -f .env ] && set -a && source .env && set +a
+      exec ./mvnw spring-boot:run
+    ) > "$PROJECT_ROOT/logs/carebridge_api.log" 2>&1 &
+    PID=$!
+    echo "$PID" > "$PROJECT_ROOT/logs/carebridge_api.pid"
+    echo "✓ CareBridgeAPI started on http://localhost:8080 (PID: $PID)"
+    echo "  Log: logs/carebridge_api.log"
+    ;;
+  ai)
+    "$PROJECT_ROOT/stop-all.sh" ai >/dev/null 2>&1 || true
+    mkdir -p "$PROJECT_ROOT/logs"
+    echo "Starting CareBridgeAITriageService..."
+    (
+      cd "$PROJECT_ROOT/05_Development/CareBridgeAITriageService"
+      [ -f .env ] && set -a && source .env && set +a
+      if [ -f "./venv/bin/uvicorn" ]; then
+        exec ./venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+      else
+        exec uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+      fi
+    ) > "$PROJECT_ROOT/logs/carebridge_ai_triage.log" 2>&1 &
+    PID=$!
+    echo "$PID" > "$PROJECT_ROOT/logs/carebridge_ai_triage.pid"
+    echo "✓ CareBridgeAITriageService started on http://localhost:8001 (PID: $PID)"
+    echo "  Log: logs/carebridge_ai_triage.log"
+    ;;
+  sidecar|docker)
+    "$PROJECT_ROOT/stop-all.sh" sidecar >/dev/null 2>&1 || true
+    mkdir -p "$PROJECT_ROOT/logs"
+    if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+      echo "⚠️ Docker daemon is not running. Please launch Docker Desktop."
+      exit 1
+    fi
+    echo "Starting exercise_correction_sidecar..."
+    (
+      cd "$PROJECT_ROOT/05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar"
+      docker rm -f exercise-correction >/dev/null 2>&1 || true
+      docker build -t exercise-correction . && docker run --rm --name exercise-correction -p 8002:8002 exercise-correction
+    ) > "$PROJECT_ROOT/logs/exercise_correction.log" 2>&1 &
+    PID=$!
+    echo "$PID" > "$PROJECT_ROOT/logs/exercise_correction.pid"
+    echo "✓ exercise_correction_sidecar started on http://localhost:8002 (PID: $PID)"
+    echo "  Log: logs/exercise_correction.log"
+    ;;
+  web|webapp)
+    "$PROJECT_ROOT/stop-all.sh" web >/dev/null 2>&1 || true
+    mkdir -p "$PROJECT_ROOT/logs"
+    echo "Starting CareBridgeWebApp..."
+    (
+      cd "$PROJECT_ROOT/05_Development/CareBridgeWebApp"
+      exec npm run dev
+    ) > "$PROJECT_ROOT/logs/carebridge_webapp.log" 2>&1 &
+    PID=$!
+    echo "$PID" > "$PROJECT_ROOT/logs/carebridge_webapp.pid"
+    echo "✓ CareBridgeWebApp started on http://localhost:5173 (PID: $PID)"
+    echo "  Log: logs/carebridge_webapp.log"
+    ;;
+  status)
+    echo "--- CareBridge Services Status ---"
+    for item in 8080:CareBridgeAPI 8001:CareBridgeAITriage 8002:ExerciseSidecar 5173:CareBridgeWebApp; do
+      p="${item%%:*}"
+      name="${item##*:}"
+      pids=$(lsof -ti :"$p" 2>/dev/null)
+      if [ -n "$pids" ]; then
+        printf "  ✓ %-22s: RUNNING on port %-5s (PID: %s)\n" "$name" "$p" "$pids"
+      else
+        printf "  ✗ %-22s: STOPPED (port %s)\n" "$name" "$p"
+      fi
+    done
+    ;;
+  logs)
+    target="${2:-all}"
+    case "$target" in
+      api) exec tail -f "$PROJECT_ROOT/logs/carebridge_api.log" ;;
+      ai) exec tail -f "$PROJECT_ROOT/logs/carebridge_ai_triage.log" ;;
+      sidecar) exec tail -f "$PROJECT_ROOT/logs/exercise_correction.log" ;;
+      web) exec tail -f "$PROJECT_ROOT/logs/carebridge_webapp.log" ;;
+      all|*) exec tail -f "$PROJECT_ROOT/logs/"*.log ;;
+    esac
+    ;;
+  help|-h|--help)
+    echo "Usage: ./run [all|api|ai|sidecar|web|status|logs]"
+    ;;
+  *)
+    echo "Unknown command: $COMMAND"
+    echo "Usage: ./run [all|api|ai|sidecar|web|status|logs]"
+    exit 1
+    ;;
+esac

@@ -9,39 +9,44 @@ import 'package:untitled/features/familySync/services/care_group_service.dart';
 
 void main() {
   group('Mother health sharing permissions', () {
-    test('parses two new metric flags with deny-by-default semantics', () {
+    test('permission model parses current contract and defaults safely', () {
       final legacy = FamilyPermission.fromJson({
         'memberId': 'member-1',
         'careGroupId': 'group-1',
-        'calendar': false,
-        'logs': false,
+        'calendar': true,
+        'logs': true,
         'alerts': false,
-        'records': false,
-        'updatedAt': '2026-08-03T00:00:00Z',
+        'records': true,
       });
       final current = FamilyPermission.fromJson({
         'memberId': 'member-1',
         'careGroupId': 'group-1',
-        'calendar': false,
-        'logs': false,
+        'calendar': true,
+        'logs': true,
         'alerts': false,
-        'records': false,
+        'records': true,
         'checklistView': true,
         'checklistComplete': false,
         'quickNoteBloodPressure': true,
         'quickNoteBloodGlucose': true,
+        'quickNoteHeartRate': true,
+        'quickNoteTemperature': true,
         'updatedAt': '2026-08-03T00:00:00Z',
       });
 
       expect(legacy.quickNoteBloodPressure, isFalse);
       expect(legacy.quickNoteBloodGlucose, isFalse);
+      expect(legacy.quickNoteHeartRate, isFalse);
+      expect(legacy.quickNoteTemperature, isFalse);
       expect(current.quickNoteBloodPressure, isTrue);
       expect(current.quickNoteBloodGlucose, isTrue);
+      expect(current.quickNoteHeartRate, isTrue);
+      expect(current.quickNoteTemperature, isTrue);
       expect(current.checklistView, isTrue);
       expect(current.checklistComplete, isFalse);
     });
 
-    testWidgets('shows six real metric permissions and saves select all', (
+    testWidgets('shows eight real metric permissions and saves select all', (
       tester,
     ) async {
       final service = _FakeCareGroupService(permission: _permission());
@@ -66,6 +71,8 @@ void main() {
         'Nước',
         'Sàng lọc EPDS',
         'Đường huyết',
+        'Nhịp tim mẹ',
+        'Nhiệt độ',
       ]) {
         expect(find.text(label), findsOneWidget);
       }
@@ -80,7 +87,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('health-metrics-select-all')));
       await tester.pump();
-      expect(find.text('6/6 chỉ số đang chia sẻ'), findsOneWidget);
+      expect(find.text('8/8 chỉ số đang chia sẻ'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('permission-save-button')));
       await tester.pumpAndSettle();
@@ -92,6 +99,8 @@ void main() {
       expect(service.lastUpdate?['quickNoteHydration'], isTrue);
       expect(service.lastUpdate?['quickNoteEpds'], isTrue);
       expect(service.lastUpdate?['quickNoteBloodGlucose'], isTrue);
+      expect(service.lastUpdate?['quickNoteHeartRate'], isTrue);
+      expect(service.lastUpdate?['quickNoteTemperature'], isTrue);
       expect(service.lastUpdate?['checklistView'], isFalse);
       expect(service.lastUpdate?['checklistComplete'], isFalse);
     });
@@ -434,6 +443,8 @@ class _FakeCareGroupService extends CareGroupService {
     bool? quickNoteFetalMovement,
     bool? quickNoteBloodPressure,
     bool? quickNoteBloodGlucose,
+    bool? quickNoteHeartRate,
+    bool? quickNoteTemperature,
   }) async {
     updateCalls += 1;
     lastUpdate = {
@@ -446,6 +457,8 @@ class _FakeCareGroupService extends CareGroupService {
       'quickNoteFetalMovement': quickNoteFetalMovement,
       'quickNoteBloodPressure': quickNoteBloodPressure,
       'quickNoteBloodGlucose': quickNoteBloodGlucose,
+      'quickNoteHeartRate': quickNoteHeartRate,
+      'quickNoteTemperature': quickNoteTemperature,
     };
     if (failSaves-- > 0) throw Exception('private server detail');
     return FamilyPermission(
@@ -467,6 +480,10 @@ class _FakeCareGroupService extends CareGroupService {
           quickNoteBloodPressure ?? permission.quickNoteBloodPressure,
       quickNoteBloodGlucose:
           quickNoteBloodGlucose ?? permission.quickNoteBloodGlucose,
+      quickNoteHeartRate:
+          quickNoteHeartRate ?? permission.quickNoteHeartRate,
+      quickNoteTemperature:
+          quickNoteTemperature ?? permission.quickNoteTemperature,
       updatedAt: DateTime(2026, 8, 3),
     );
   }

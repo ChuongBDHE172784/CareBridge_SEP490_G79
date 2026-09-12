@@ -1,5 +1,7 @@
 package com.carebridge.backend.directchat.integration;
 
+import com.carebridge.backend.directchat.service.FindOrCreateConversationResult;
+import com.carebridge.backend.directchat.service.IDirectConversationService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,6 +49,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
+    @Autowired private IDirectConversationService directConversationService;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private DirectConversationRepository conversationRepository;
     @Autowired private DirectMessageRepository messageRepository;
@@ -82,11 +85,16 @@ class DirectChatIntegrationTest extends AbstractPostgresIntegrationTest {
     @Test
     @WithMockUser(username = "d1000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void fullLifecycle_findOrCreate_sendMessage_timeline_callLifecycle() throws Exception {
-        // Step 1 — find-or-create
-        mockMvc.perform(post("/api/v1/direct-conversations/expert/" + expertProfileId).with(csrf()))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.motherUserId").value(MOTHER_ID.toString()))
-                .andExpect(jsonPath("$.data.expertAvailable").value(true));
+        // Step 1 — find-or-create. c82be043d removed the POST
+        // /api/v1/direct-conversations/expert/{id} route this step used to call, so the
+        // request now 404s at routing. The behaviour itself was not removed: findOrCreate
+        // is still the service entry point, reached from the consultation-request flow.
+        // Drive it directly so the rest of the lifecycle below keeps its coverage.
+        FindOrCreateConversationResult created =
+                directConversationService.findOrCreate(MOTHER_ID, expertProfileId);
+        assertThat(created.created()).isTrue();
+        assertThat(created.conversation().getMotherUserId()).isEqualTo(MOTHER_ID);
+        assertThat(created.conversation().isExpertAvailable()).isTrue();
         assertThat(conversationRepository.findByMotherUserIdAndExpertUserId(MOTHER_ID, EXPERT_USER_ID)).isPresent();
         UUID conversationId = conversationRepository
                 .findByMotherUserIdAndExpertUserId(MOTHER_ID, EXPERT_USER_ID).orElseThrow().getId();
