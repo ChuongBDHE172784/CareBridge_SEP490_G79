@@ -67,8 +67,6 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _secondary = Color(0xFF6E5A52);
   static const _onSurface = Color(0xFF3D2E28);
   static const _onSurfaceVariant = Color(0xFF7A655C);
   static const _outlineVariant = Color(0xFFF0E4DD);
@@ -99,6 +97,16 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   bool _continuationAcknowledgementFailed = false;
   _Tab _activeTab = _Tab.growth;
   String _selectedGrowthMetric = 'Cân nặng';
+  int _selectedGrowthPeriodMonths = 6;
+
+  static const _growthPeriodOptions = [
+    (1, '1 tháng'),
+    (3, '3 tháng'),
+    (6, '6 tháng'),
+    (12, '12 tháng'),
+    (24, '24 tháng'),
+    (0, 'Tất cả'),
+  ];
 
   double get _horizontalPadding => widget.embedded ? 0 : 24;
 
@@ -1480,22 +1488,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _secondaryContainer.withAlpha(77),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '1 tháng qua',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: _secondary,
-                  ),
-                ),
-              ),
+              _buildPeriodDropdown(),
             ],
           ),
           const SizedBox(height: 14),
@@ -1581,6 +1574,127 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
         );
       }).toList(),
     );
+  }
+
+  Widget _buildPeriodDropdown() {
+    return Builder(
+      builder: (btnContext) {
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: const Key('baby-growth-period-menu'),
+            borderRadius: BorderRadius.circular(99),
+            onTap: () async {
+              final box = btnContext.findRenderObject() as RenderBox?;
+              final overlay =
+                  Overlay.of(btnContext).context.findRenderObject() as RenderBox?;
+              if (box == null || overlay == null) return;
+              final position = RelativeRect.fromRect(
+                Rect.fromPoints(
+                  box.localToGlobal(Offset.zero, ancestor: overlay),
+                  box.localToGlobal(
+                    box.size.bottomRight(Offset.zero),
+                    ancestor: overlay,
+                  ),
+                ),
+                Offset.zero & overlay.size,
+              );
+              final result = await showMenu<int>(
+                context: btnContext,
+                position: position,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: Colors.white,
+                elevation: 6,
+                items: _growthPeriodOptions.map((opt) {
+                  final isSelected = _selectedGrowthPeriodMonths == opt.$1;
+                  return PopupMenuItem<int>(
+                    value: opt.$1,
+                    child: Row(
+                      children: [
+                        Icon(
+                          isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
+                          size: 16,
+                          color: isSelected
+                              ? const Color(0xFF845143)
+                              : const Color(0xFFA89890),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          opt.$1 == 0 ? opt.$2 : '${opt.$2} qua',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? const Color(0xFF845143)
+                                : const Color(0xFF3D2E28),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+              if (result != null && mounted) {
+                setState(() => _selectedGrowthPeriodMonths = result);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF4EE),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: const Color(0xFFE8DDD6)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 12,
+                    color: Color(0xFF845143),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    _selectedGrowthPeriodMonths == 0
+                        ? 'Tất cả'
+                        : '$_selectedGrowthPeriodMonths tháng qua',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF845143),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: Color(0xFF845143),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<GrowthMeasurement> _getGrowthMeasurementsForPeriod() {
+    if (_selectedGrowthPeriodMonths <= 0) {
+      return _growthMeasurements;
+    }
+    final now = DateTime.now();
+    final cutoff = now.subtract(Duration(days: _selectedGrowthPeriodMonths * 30));
+    return _growthMeasurements.where((m) {
+      return m.measuredAt.isAfter(cutoff) || m.measuredAt.isAtSameMomentAs(cutoff);
+    }).toList();
   }
 
   Widget _buildGrowthSummaryStats() {
@@ -1733,15 +1847,19 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
     final extractor = _valueExtractorForMetric(_selectedGrowthMetric);
     final unit = _unitForMetric(_selectedGrowthMetric);
-    final measurements = _growthMeasurements
+    final periodMeasurements = _getGrowthMeasurementsForPeriod();
+    final measurements = periodMeasurements
         .where((measurement) => extractor(measurement) != null)
         .toList(growable: false);
     if (measurements.isEmpty) {
+      final periodText = _selectedGrowthPeriodMonths == 0
+          ? ''
+          : ' trong $_selectedGrowthPeriodMonths tháng qua';
       return _EmptyGrowthChart(
         label: switch (_selectedGrowthMetric) {
-          'Chiều cao' => 'Chưa có dữ liệu chiều cao.',
-          'Vòng đầu' => 'Chưa có dữ liệu vòng đầu.',
-          _ => 'Chưa có dữ liệu cân nặng.',
+          'Chiều cao' => 'Chưa có dữ liệu chiều cao$periodText.',
+          'Vòng đầu' => 'Chưa có dữ liệu vòng đầu$periodText.',
+          _ => 'Chưa có dữ liệu cân nặng$periodText.',
         },
       );
     }
@@ -1767,8 +1885,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${values.first.toStringAsFixed(1)} $unit – '
-            '${values.last.toStringAsFixed(1)} $unit',
+            measurements.length == 1
+                ? '${values.first.toStringAsFixed(1)} $unit'
+                : '${values.first.toStringAsFixed(1)} $unit – '
+                    '${values.last.toStringAsFixed(1)} $unit',
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 12,

@@ -92,5 +92,36 @@ void main() {
 
     expect(find.text('Xu hướng cân nặng'), findsOneWidget);
     expect(find.text('3.2 kg – 4.5 kg'), findsOneWidget);
+
+    // Test dropdown menu in header
+    expect(find.byKey(const Key('baby-growth-period-menu')), findsOneWidget);
+    expect(find.text('6 tháng qua'), findsOneWidget);
+
+    // Open dropdown and select "24 tháng qua"
+    await tester.tap(find.byKey(const Key('baby-growth-period-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('24 tháng qua'), findsOneWidget);
+    await tester.tap(find.text('24 tháng qua'));
+    await tester.pumpAndSettle();
+    expect(find.text('24 tháng qua'), findsOneWidget);
+    expect(find.text('3.2 kg – 4.5 kg'), findsOneWidget);
+
+    // Open dropdown and select "1 tháng qua" (older data filtered out)
+    await tester.tap(find.byKey(const Key('baby-growth-period-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('1 tháng qua'), findsOneWidget);
+    await tester.tap(find.text('1 tháng qua'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 tháng qua'), findsOneWidget);
+    expect(find.text('Chưa có dữ liệu cân nặng trong 1 tháng qua.'), findsOneWidget);
+
+    // Open dropdown and select "Tất cả"
+    await tester.tap(find.byKey(const Key('baby-growth-period-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tất cả'), findsOneWidget);
+    await tester.tap(find.text('Tất cả'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tất cả'), findsOneWidget);
+    expect(find.text('3.2 kg – 4.5 kg'), findsOneWidget);
   });
 }
