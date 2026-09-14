@@ -98,6 +98,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   bool _continuationAcknowledged = false;
   bool _continuationAcknowledgementFailed = false;
   _Tab _activeTab = _Tab.growth;
+  String _selectedGrowthMetric = 'Cân nặng';
 
   double get _horizontalPadding => widget.embedded ? 0 : 24;
 
@@ -1438,6 +1439,12 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   }
 
   Widget _buildGrowthTab() {
+    final title = switch (_selectedGrowthMetric) {
+      'Chiều cao' => 'Xu hướng chiều cao',
+      'Vòng đầu' => 'Xu hướng vòng đầu',
+      _ => 'Xu hướng cân nặng',
+    };
+
     return Container(
       key: const Key('baby-care-growth'),
       padding: const EdgeInsets.all(20),
@@ -1459,15 +1466,20 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Xu hướng cân nặng',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: _onSurface,
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -1486,7 +1498,9 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          _buildGrowthMetricSelector(),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -1496,21 +1510,213 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
               label: const Text('Mở lịch sử đo lường'),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _buildTrendChart(),
-          const SizedBox(height: 12),
-          const Text(
-            'Dữ liệu đo lường được hiển thị theo nguồn đã ghi nhận.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: _secondary,
-            ),
-          ),
+          const SizedBox(height: 14),
+          _buildGrowthSummaryStats(),
         ],
       ),
     );
+  }
+
+  Widget _buildGrowthMetricSelector() {
+    const tabs = [
+      ('Cân nặng', Icons.monitor_weight_outlined),
+      ('Chiều cao', Icons.straighten_rounded),
+      ('Vòng đầu', Icons.face_rounded),
+    ];
+
+    return Row(
+      children: tabs.map((t) {
+        final isSelected = _selectedGrowthMetric == t.$1;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => _selectedGrowthMetric = t.$1),
+                borderRadius: BorderRadius.circular(99),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF845143) : const Color(0xFFFAF4EE),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF845143)
+                          : const Color(0xFFE8DDD6),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        t.$2,
+                        size: 15,
+                        color: isSelected ? Colors.white : const Color(0xFF7A655C),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          t.$1,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? Colors.white : const Color(0xFF524440),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildGrowthSummaryStats() {
+    final weightList = _growthMeasurements.where((m) => m.weightKg != null).toList();
+    final latestWeight = weightList.isNotEmpty ? weightList.last.weightKg : null;
+
+    final heightList = _growthMeasurements.where((m) => m.heightCm != null).toList();
+    final latestHeight = heightList.isNotEmpty ? heightList.last.heightCm : null;
+
+    final headList = _growthMeasurements.where((m) => m.headCircumferenceCm != null).toList();
+    final latestHead = headList.isNotEmpty ? headList.last.headCircumferenceCm : null;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _buildMetricStatCard(
+            label: 'Cân nặng',
+            value: latestWeight != null ? '${latestWeight.toStringAsFixed(1)} kg' : '--',
+            icon: Icons.monitor_weight_outlined,
+            isSelected: _selectedGrowthMetric == 'Cân nặng',
+            accentColor: const Color(0xFFC98C7B),
+            onTap: () => setState(() => _selectedGrowthMetric = 'Cân nặng'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMetricStatCard(
+            label: 'Chiều cao',
+            value: latestHeight != null ? '${latestHeight.toStringAsFixed(1)} cm' : '--',
+            icon: Icons.straighten_rounded,
+            isSelected: _selectedGrowthMetric == 'Chiều cao',
+            accentColor: const Color(0xFF5B8E7D),
+            onTap: () => setState(() => _selectedGrowthMetric = 'Chiều cao'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMetricStatCard(
+            label: 'Vòng đầu',
+            value: latestHead != null ? '${latestHead.toStringAsFixed(1)} cm' : '--',
+            icon: Icons.face_rounded,
+            isSelected: _selectedGrowthMetric == 'Vòng đầu',
+            accentColor: const Color(0xFFD48B47),
+            onTap: () => setState(() => _selectedGrowthMetric = 'Vòng đầu'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricStatCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required bool isSelected,
+    required Color accentColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? accentColor.withValues(alpha: 0.1) : const Color(0xFFFAF7F5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? accentColor : const Color(0xFFF0E4DD),
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: isSelected ? accentColor : const Color(0xFF845143)),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? accentColor : const Color(0xFF3D2E28),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? accentColor : const Color(0xFF7A655C),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  double? Function(GrowthMeasurement) _valueExtractorForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => (m) => m.heightCm,
+      'Vòng đầu' => (m) => m.headCircumferenceCm,
+      _ => (m) => m.weightKg,
+    };
+  }
+
+  String _unitForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => 'cm',
+      'Vòng đầu' => 'cm',
+      _ => 'kg',
+    };
+  }
+
+  Color _colorForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => const Color(0xFF5B8E7D),
+      'Vòng đầu' => const Color(0xFFD48B47),
+      _ => const Color(0xFFC98C7B),
+    };
+  }
+
+  Color _dotColorForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => const Color(0xFF2C5E4E),
+      'Vòng đầu' => const Color(0xFF9E5C25),
+      _ => const Color(0xFF845143),
+    };
   }
 
   Widget _buildTrendChart() {
@@ -1525,30 +1731,44 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       );
     }
 
+    final extractor = _valueExtractorForMetric(_selectedGrowthMetric);
+    final unit = _unitForMetric(_selectedGrowthMetric);
     final measurements = _growthMeasurements
-        .where((measurement) => measurement.weightKg != null)
+        .where((measurement) => extractor(measurement) != null)
         .toList(growable: false);
     if (measurements.isEmpty) {
-      return const _EmptyGrowthChart();
+      return _EmptyGrowthChart(
+        label: switch (_selectedGrowthMetric) {
+          'Chiều cao' => 'Chưa có dữ liệu chiều cao.',
+          'Vòng đầu' => 'Chưa có dữ liệu vòng đầu.',
+          _ => 'Chưa có dữ liệu cân nặng.',
+        },
+      );
     }
-    final weights = measurements
-        .map((measurement) => measurement.weightKg!)
+    final values = measurements
+        .map((measurement) => extractor(measurement)!)
         .toList(growable: false);
     return SizedBox(
-      key: ValueKey('growth-chart-points-${weights.length}'),
+      key: ValueKey('growth-chart-points-${values.length}'),
       height: 160,
       child: Column(
         children: [
           Expanded(
             child: CustomPaint(
-              painter: _TrendChartPainter(measurements),
+              painter: _TrendChartPainter(
+                measurements: measurements,
+                valueExtractor: extractor,
+                unit: unit,
+                accentColor: _colorForMetric(_selectedGrowthMetric),
+                dotColor: _dotColorForMetric(_selectedGrowthMetric),
+              ),
               size: Size.infinite,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            '${weights.first.toStringAsFixed(1)} kg – '
-            '${weights.last.toStringAsFixed(1)} kg',
+            '${values.first.toStringAsFixed(1)} $unit – '
+            '${values.last.toStringAsFixed(1)} $unit',
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 12,
@@ -1758,17 +1978,21 @@ class _GrowthChartLoading extends StatelessWidget {
 }
 
 class _EmptyGrowthChart extends StatelessWidget {
-  const _EmptyGrowthChart();
+  final String label;
+
+  const _EmptyGrowthChart({
+    this.label = 'Chưa có dữ liệu cân nặng.',
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      key: Key('baby-growth-empty'),
+    return SizedBox(
+      key: const Key('baby-growth-empty'),
       height: 120,
       child: Center(
         child: Text(
-          'Chưa có dữ liệu cân nặng.',
-          style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF6E5A52)),
+          label,
+          style: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF6E5A52)),
         ),
       ),
     );
@@ -1838,16 +2062,26 @@ class _TabChip extends StatelessWidget {
   }
 }
 
-// Simple line chart painter for weight trend
+// Simple line chart painter for growth metrics (weight, height, head circumference)
 class _TrendChartPainter extends CustomPainter {
   final List<GrowthMeasurement> measurements;
+  final double? Function(GrowthMeasurement) valueExtractor;
+  final String unit;
+  final Color accentColor;
+  final Color dotColor;
 
-  const _TrendChartPainter(this.measurements);
+  const _TrendChartPainter({
+    required this.measurements,
+    required this.valueExtractor,
+    this.unit = 'kg',
+    this.accentColor = const Color(0xFFC98C7B),
+    this.dotColor = const Color(0xFF845143),
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = const Color(0xFFC98C7B)
+      ..color = accentColor
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -1857,22 +2091,25 @@ class _TrendChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFFC98C7B).withAlpha(51),
-          const Color(0xFFC98C7B).withAlpha(0),
+          accentColor.withAlpha(51),
+          accentColor.withAlpha(0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.fill;
 
-    final weights = measurements
-        .map((measurement) => measurement.weightKg!)
+    final values = measurements
+        .map((measurement) => valueExtractor(measurement))
+        .whereType<double>()
         .toList(growable: false);
-    final minWeight = weights.reduce((a, b) => a < b ? a : b);
-    final maxWeight = weights.reduce((a, b) => a > b ? a : b);
-    final centerWeight = (minWeight + maxWeight) / 2;
-    final displayRange = (maxWeight - minWeight)
+    if (values.isEmpty) return;
+
+    final minVal = values.reduce((a, b) => a < b ? a : b);
+    final maxVal = values.reduce((a, b) => a > b ? a : b);
+    final centerVal = (minVal + maxVal) / 2;
+    final displayRange = (maxVal - minVal)
         .clamp(1.0, double.infinity)
         .toDouble();
-    final displayMin = centerWeight - displayRange / 2;
+    final displayMin = centerVal - displayRange / 2;
     final firstTime = measurements.first.measuredAt.millisecondsSinceEpoch;
     final lastTime = measurements.last.measuredAt.millisecondsSinceEpoch;
     final timeRange = lastTime - firstTime;
@@ -1883,7 +2120,7 @@ class _TrendChartPainter extends CustomPainter {
                 (measurements[index].measuredAt.millisecondsSinceEpoch -
                     firstTime) /
                 timeRange;
-      final normalized = (weights[index] - displayMin) / displayRange;
+      final normalized = (values[index] - displayMin) / displayRange;
       return Offset(x, size.height * (0.9 - normalized * 0.7));
     });
 
@@ -1916,25 +2153,25 @@ class _TrendChartPainter extends CustomPainter {
     canvas.drawPath(path, linePaint);
 
     // Draw dots and value labels
-    final dotPaint = Paint()
-      ..color = const Color(0xFF845143)
+    final pDotPaint = Paint()
+      ..color = dotColor
       ..style = PaintingStyle.fill;
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     for (var i = 0; i < points.length; i++) {
       final p = points[i];
-      final weight = weights[i];
-      canvas.drawCircle(p, p == points.last ? 5 : 3, dotPaint);
+      final val = values[i];
+      canvas.drawCircle(p, p == points.last ? 5 : 3, pDotPaint);
 
       final valStr =
-          '${weight % 1 == 0 ? weight.toInt() : weight.toStringAsFixed(1)} kg';
+          '${val % 1 == 0 ? val.toInt() : val.toStringAsFixed(1)} $unit';
       textPainter.text = TextSpan(
         text: valStr,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Lexend',
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF845143),
+          color: dotColor,
         ),
       );
       textPainter.layout();
@@ -1961,7 +2198,7 @@ class _TrendChartPainter extends CustomPainter {
       canvas.drawRRect(
         bgRRect,
         Paint()
-          ..color = const Color(0xFFC98C7B).withValues(alpha: 0.4)
+          ..color = accentColor.withValues(alpha: 0.4)
           ..strokeWidth = 1
           ..style = PaintingStyle.stroke,
       );
@@ -1972,9 +2209,15 @@ class _TrendChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TrendChartPainter oldDelegate) {
-    if (measurements.length != oldDelegate.measurements.length) return true;
+    if (measurements.length != oldDelegate.measurements.length ||
+        unit != oldDelegate.unit ||
+        accentColor != oldDelegate.accentColor ||
+        dotColor != oldDelegate.dotColor) {
+      return true;
+    }
     for (var i = 0; i < measurements.length; i++) {
-      if (measurements[i].weightKg != oldDelegate.measurements[i].weightKg ||
+      if (valueExtractor(measurements[i]) !=
+              oldDelegate.valueExtractor(oldDelegate.measurements[i]) ||
           measurements[i].measuredAt !=
               oldDelegate.measurements[i].measuredAt) {
         return true;

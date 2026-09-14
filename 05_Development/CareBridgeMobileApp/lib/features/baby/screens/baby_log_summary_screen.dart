@@ -24,8 +24,7 @@ class BabyLogSummaryScreen extends StatefulWidget {
 
 const _primary = Color(0xFF845143);
 const _primaryContainer = Color(0xFFC98C7B);
-const _canvas = Color(0xFFFFF8F6);
-const _surface = Color(0xFFF2EAE4);
+const _canvas = Color(0xFFFEF8F4);
 const _onSurface = Color(0xFF271812);
 const _onSurfaceVariant = Color(0xFF524440);
 
@@ -219,6 +218,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
         backgroundColor: _canvas,
         elevation: 0,
         scrolledUnderElevation: 0,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
           onPressed: () => Navigator.of(context).pop(),
@@ -227,8 +227,8 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
           'Nhật ký của bé',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
             color: _onSurface,
           ),
         ),
@@ -245,6 +245,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
         backgroundColor: _primary,
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
+        elevation: 3,
         child: const Icon(Icons.add_rounded),
       ),
     );
@@ -252,81 +253,97 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: _surface,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _primaryContainer.withAlpha(80),
-                    width: 2,
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFF0EAE6)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0A000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F1EE),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFE8DDD6),
+                      width: 1.5,
+                    ),
                   ),
-                ),
-                child: const Icon(
-                  Icons.child_care_rounded,
-                  color: _primaryContainer,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _selectedBaby?.nickname ?? 'Bé yêu',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: _onSurface,
-                      ),
-                    ),
-                    Text(
-                      _selectedBaby?.ageLabel ?? '',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        color: _onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_babies.length > 1)
-                PopupMenuButton<BabyProfile>(
-                  icon: const Icon(
-                    Icons.expand_more_rounded,
+                  child: const Icon(
+                    Icons.child_care_rounded,
                     color: _primary,
+                    size: 26,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedBaby?.nickname ?? 'Bé yêu',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: _onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _selectedBaby?.ageLabel ?? '',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                  color: Colors.white,
-                  onSelected: _switchBaby,
-                  itemBuilder: (_) => _babies
-                      .map(
-                        (b) => PopupMenuItem(
-                          value: b,
-                          child: Text(
-                            b.nickname,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 14,
-                              color: _onSurface,
+                ),
+                if (_babies.length > 1)
+                  PopupMenuButton<BabyProfile>(
+                    icon: const Icon(
+                      Icons.expand_more_rounded,
+                      color: _primary,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    color: Colors.white,
+                    onSelected: _switchBaby,
+                    itemBuilder: (_) => _babies
+                        .map(
+                          (b) => PopupMenuItem(
+                            value: b,
+                            child: Text(
+                              b.nickname,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 14,
+                                color: _onSurface,
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
-            ],
+                        )
+                        .toList(),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           _buildPeriodToggle(),
@@ -337,10 +354,12 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Widget _buildPeriodToggle() {
     return Container(
-      height: 40,
+      height: 42,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(50),
+        color: const Color(0xFFFAF4EE),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: const Color(0xFFE8DDD6)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -351,10 +370,10 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             onTap: () => _switchPeriod(apiVal),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? _primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(50),
+                borderRadius: BorderRadius.circular(99),
               ),
               child: Text(
                 p,
@@ -483,11 +502,12 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
           BoxShadow(
-            color: _primary.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -508,18 +528,21 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             children: [
               Text(
                 item.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
                   color: _onSurface,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 item.label,
                 style: const TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 11,
+                  fontSize: 12,
                   color: _onSurfaceVariant,
                 ),
               ),
@@ -537,29 +560,48 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             .toList() ??
         const <MapEntry<String, LogTypeSummary>>[];
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
           BoxShadow(
-            color: _primary.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tần suất theo loại nhật ký',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: _onSurface,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F1EE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.bar_chart_rounded,
+                  size: 20,
+                  color: _primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Tần suất theo loại nhật ký',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: _onSurface,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           if (entries.isEmpty)
@@ -571,7 +613,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
                   key: Key('baby-log-chart-empty'),
                   style: TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 12,
+                    fontSize: 13,
                     color: _onSurfaceVariant,
                   ),
                 ),
@@ -604,7 +646,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 10,
+                          fontSize: 11,
                           color: _onSurfaceVariant,
                         ),
                       ),
@@ -620,35 +662,73 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Widget _buildRecentEvents() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
           BoxShadow(
-            color: _primary.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nhật ký gần đây',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: _onSurface,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F1EE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.history_rounded,
+                  size: 20,
+                  color: _primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Nhật ký gần đây',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+              if (_logs.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF4EE),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '${_logs.length} bản ghi',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (_logs.isEmpty)
             const Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: 20),
                 child: Text(
                   'Chưa có nhật ký nào.',
                   style: TextStyle(
@@ -691,32 +771,32 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       if (log.note?.trim().isNotEmpty == true) log.note!.trim(),
     ].join(' · ');
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Material(
         color: Colors.transparent,
         child: ListTile(
           key: ValueKey('baby-log-${log.id}'),
-          contentPadding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           onTap: () => _openLog(log),
           leading: Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: _surface,
-              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFFF7F1EE),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               _logTypeIcon(log.logType),
-              color: _primaryContainer,
-              size: 18,
+              color: _primary,
+              size: 20,
             ),
           ),
           title: Text(
             log.displayTypeLabel,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: _onSurface,
             ),
@@ -727,11 +807,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 11,
+              fontSize: 12,
               color: _onSurfaceVariant,
             ),
           ),
-          trailing: const Icon(Icons.chevron_right_rounded, color: _primary),
+          trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFB0A5A0)),
         ),
       ),
     );
@@ -764,23 +844,25 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Widget _buildDisclaimer() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _surface,
+        color: const Color(0xFFFAF7F5),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE7E1DD)),
       ),
       child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 16, color: _onSurfaceVariant),
-          SizedBox(width: 8),
+          Icon(Icons.info_outline_rounded, size: 18, color: _primary),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Dữ liệu được tổng hợp từ nhật ký của người chăm sóc. Thông tin mang tính quan sát, không thay thế tư vấn chuyên môn.',
+              'Dữ liệu được tổng hợp từ nhật ký của người chăm sóc. Thông tin mang tính quan sát, không thay thế tư vấn chuyên môn y tế.',
               style: TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 11,
+                fontSize: 12,
                 color: _onSurfaceVariant,
-                height: 1.5,
+                height: 1.4,
               ),
             ),
           ),

@@ -31,10 +31,6 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   static const _canvas = Color(0xFFFEF8F4);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _textHeading = Color(0xFF2D2A28);
-  static const _surfaceContainerLow = Color(0xFFF9F2EE);
-  static const _surfaceVariant = Color(0xFFE7E1DD);
-  static const _errorContainer = Color(0xFFFFDAD6);
-  static const _onErrorContainer = Color(0xFF93000A);
   static const _error = Color(0xFFBA1A1A);
 
   final _service = VaccinationService();
@@ -78,16 +74,6 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
         });
       }
     }
-  }
-
-  Future<void> _reschedule() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Dời lịch mũi tiêm từ hồ sơ chưa được hỗ trợ. Bạn có thể tạo nhắc tiêm riêng.',
-        ),
-      ),
-    );
   }
 
   Future<void> _edit() async {
@@ -166,6 +152,25 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _canvas,
+      appBar: AppBar(
+        backgroundColor: _canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: _textHeading),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Chi tiết tiêm chủng',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: _textHeading,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: _loading
             ? const Center(
@@ -207,24 +212,121 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   Widget _buildContent(VaccinationRecord r) {
     final note = r.note?.trim().isNotEmpty == true ? r.note : r.postponeReason;
     return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
       child: Column(
         children: [
-          _buildAppBar(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-            child: Column(
+          _buildHeader(r),
+          const SizedBox(height: 20),
+          _buildScheduleCard(r),
+          const SizedBox(height: 16),
+          _buildFacilityCard(r),
+          if (note?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 16),
+            _buildNoteCard(note!),
+          ],
+          const SizedBox(height: 32),
+          _buildActions(r),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(VaccinationRecord r) {
+    final statusColor = switch (r.status) {
+      VaccinationStatus.completed => const Color(0xFF2E7D32),
+      VaccinationStatus.scheduled => const Color(0xFFE65100),
+      VaccinationStatus.overdue => _error,
+      _ => _primary,
+    };
+    final statusBg = switch (r.status) {
+      VaccinationStatus.completed => const Color(0xFFE8F5E9),
+      VaccinationStatus.scheduled => const Color(0xFFFFF3E0),
+      VaccinationStatus.overdue => const Color(0xFFFFEBEE),
+      _ => const Color(0xFFF2EAE4),
+    };
+    final statusIcon = switch (r.status) {
+      VaccinationStatus.completed => Icons.check_circle_rounded,
+      VaccinationStatus.scheduled => Icons.schedule_rounded,
+      VaccinationStatus.overdue => Icons.error_outline_rounded,
+      _ => Icons.info_outline_rounded,
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F1EE),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFE8DDD6), width: 1.5),
+            ),
+            child: const Icon(
+              Icons.vaccines_rounded,
+              size: 36,
+              color: _primary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            r.vaccineName,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _textHeading,
+            ),
+          ),
+          if (r.doseNumber != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Mũi tiêm số ${r.doseNumber}',
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: _onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusBg,
+              borderRadius: BorderRadius.circular(99),
+              border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildHeader(r),
-                const SizedBox(height: 24),
-                _buildScheduleCard(r),
-                const SizedBox(height: 16),
-                _buildFacilityCard(r),
-                if (note?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: 16),
-                  _buildNoteCard(note!),
-                ],
-                const SizedBox(height: 32),
-                _buildActions(r),
+                Icon(statusIcon, size: 16, color: statusColor),
+                const SizedBox(width: 6),
+                Text(
+                  r.status.displayLabel,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
               ],
             ),
           ),
@@ -233,126 +335,81 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     );
   }
 
-  Widget _buildAppBar() {
-    return Container(
-      height: 64,
-      color: _canvas,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      alignment: Alignment.centerLeft,
-      child: IconButton(
-        onPressed: () => Navigator.pop(context),
-        icon: const Icon(Icons.arrow_back, color: _primary),
-      ),
-    );
-  }
-
-  Widget _buildHeader(VaccinationRecord r) {
-    return Column(
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: _primaryContainer,
-          ),
-          child: const Icon(Icons.vaccines, size: 32, color: Colors.white),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          r.vaccineName,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: _textHeading,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: _primaryContainer.withAlpha(26),
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, size: 16, color: _primary),
-              const SizedBox(width: 6),
-              Text(
-                r.status.displayLabel,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _primary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildScheduleCard(VaccinationRecord r) {
     return _InfoCard(
-      icon: Icons.calendar_month,
-      title: 'Lịch trình',
+      icon: Icons.calendar_month_rounded,
+      title: 'Lịch trình tiêm',
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ngày dự kiến',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                    color: _onSurfaceVariant,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF7F5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE7E1DD)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'NGÀY DỰ KIẾN',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: _onSurfaceVariant,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  r.plannedDateLabel,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _textHeading,
+                  const SizedBox(height: 6),
+                  Text(
+                    r.plannedDateLabel,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _textHeading,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ngày tiêm thực tế',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                    color: _onSurfaceVariant,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF7F5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE7E1DD)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'NGÀY TIÊM THỰC TẾ',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: _onSurfaceVariant,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  r.actualDateLabel,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _textHeading,
+                  const SizedBox(height: 6),
+                  Text(
+                    r.actualDateLabel,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _textHeading,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -362,60 +419,82 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
 
   Widget _buildFacilityCard(VaccinationRecord r) {
     return _InfoCard(
-      icon: Icons.local_hospital,
-      title: 'Cơ sở y tế',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            r.facilityName ?? '—',
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: _textHeading,
-            ),
-          ),
-          if (r.facilityAddress != null) ...[
-            const SizedBox(height: 8),
+      icon: Icons.local_hospital_rounded,
+      title: 'Cơ sở tiêm chủng',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF7F5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE7E1DD)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(
-                  Icons.location_on,
-                  size: 18,
-                  color: _onSurfaceVariant,
+                  Icons.store_rounded,
+                  size: 20,
+                  color: _primary,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    r.facilityAddress!,
+                    r.facilityName ?? 'Chưa ghi nhận cơ sở',
                     style: const TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 14,
-                      color: _onSurfaceVariant,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _textHeading,
                     ),
                   ),
                 ),
               ],
             ),
+            if (r.facilityAddress != null && r.facilityAddress!.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 18,
+                    color: _onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      r.facilityAddress!,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        color: _onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 
-
   Widget _buildNoteCard(String note) {
     return _InfoCard(
-      icon: Icons.edit_note,
+      icon: Icons.edit_note_rounded,
       title: 'Ghi chú',
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFFFAF7F5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE7E1DD)),
         ),
         child: Text(
           note,
@@ -435,109 +514,82 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
         r.status != VaccinationStatus.deleted &&
         r.status != VaccinationStatus.unknown;
     final canDelete = canEdit;
-    final canPostpone =
-        r.status != VaccinationStatus.completed &&
-        r.status != VaccinationStatus.deleted &&
-        r.status != VaccinationStatus.unknown;
     return Column(
       children: [
         // Primary: Cập nhật thông tin
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: FilledButton.icon(
-            onPressed: canEdit ? _edit : null,
-            style: FilledButton.styleFrom(
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
-              shape: const StadiumBorder(),
-              elevation: 2,
+        ElevatedButton.icon(
+          onPressed: canEdit ? _edit : null,
+          icon: const Icon(Icons.edit_outlined, size: 20),
+          label: const Text(
+            'Cập nhật thông tin',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
             ),
-            icon: const Icon(Icons.edit, size: 20),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primary,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: _primary.withValues(alpha: 0.6),
+            minimumSize: const Size.fromHeight(52),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 2,
+            shadowColor: const Color(0x33845143),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Secondary: Nhắc mũi tiếp theo
+        OutlinedButton.icon(
+          onPressed:
+              r.status == VaccinationStatus.deleted ||
+                  r.status == VaccinationStatus.unknown
+              ? null
+              : _createReminder,
+          icon: const Icon(Icons.notifications_active_outlined, size: 20),
+          label: const Text(
+            'Nhắc mũi tiếp theo',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _primary,
+            side: const BorderSide(color: _primaryContainer),
+            minimumSize: const Size.fromHeight(50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+        if (canDelete) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _delete,
+            icon: const Icon(Icons.delete_outline, size: 20, color: _error),
             label: const Text(
-              'Cập nhật thông tin',
+              'Xóa hồ sơ tiêm chủng',
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: OutlinedButton.icon(
-            onPressed:
-                r.status == VaccinationStatus.deleted ||
-                    r.status == VaccinationStatus.unknown
-                ? null
-                : _createReminder,
-            icon: const Icon(Icons.notifications_active_outlined),
-            label: const Text(
-              'Nhắc mũi tiếp theo',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontWeight: FontWeight.w600,
+                color: _error,
               ),
             ),
             style: OutlinedButton.styleFrom(
-              foregroundColor: _primary,
-              side: const BorderSide(color: _primaryContainer),
-              shape: const StadiumBorder(),
+              foregroundColor: _error,
+              side: BorderSide(color: _error.withValues(alpha: 0.3)),
+              minimumSize: const Size.fromHeight(50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Secondary row: Dời lịch + Xóa hồ sơ
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: canPostpone ? _reschedule : null,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _textHeading,
-                    side: BorderSide(color: _surfaceVariant, width: 2),
-                    shape: const StadiumBorder(),
-                  ),
-                  child: const Text(
-                    'Dời lịch',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: FilledButton(
-                  onPressed: canDelete ? _delete : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _errorContainer,
-                    foregroundColor: _onErrorContainer,
-                    shape: const StadiumBorder(),
-                  ),
-                  child: const Text(
-                    'Xóa hồ sơ',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+        ],
       ],
     );
   }
@@ -566,15 +618,16 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFFC98C7B).withAlpha(20),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -583,20 +636,30 @@ class _InfoCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: const Color(0xFF845143)),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2D2A28),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F1EE),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 22, color: const Color(0xFF845143)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1D1B19),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           child,
         ],
       ),
