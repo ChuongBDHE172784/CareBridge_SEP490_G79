@@ -666,7 +666,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                           onAction: _act,
                           onDelete: _delete,
                           allowDelete: false,
-                          allowAction: false,
+                          allowAction: widget.audience == TodayTasksAudience.mother,
                         ),
                       if (babyCareTasks.isNotEmpty)
                         Column(
@@ -691,7 +691,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                               onAction: _act,
                               onDelete: _delete,
                               allowDelete: false,
-                              allowAction: false,
+                              allowAction: widget.audience == TodayTasksAudience.mother,
                             );
                           }).toList(growable: false),
                         ),
@@ -706,7 +706,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                           onAction: _act,
                           onDelete: _delete,
                           allowDelete: false,
-                          allowAction: false,
+                          allowAction: widget.audience == TodayTasksAudience.mother,
                           showTitle:
                               postpartumTasks.isNotEmpty || babyCareTasks.isNotEmpty,
                         ),
@@ -1556,9 +1556,13 @@ class _TaskStatusControl extends StatelessWidget {
       color: isCompleted ? const Color(0xFFC98C7B) : const Color(0xFFBFAAA0),
     );
     if (action == null) {
-      return Semantics(
-        label: task.statusLabel,
-        child: SizedBox.square(dimension: 48, child: Center(child: statusIcon)),
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {},
+        child: Semantics(
+          label: task.statusLabel,
+          child: SizedBox.square(dimension: 48, child: Center(child: statusIcon)),
+        ),
       );
     }
 

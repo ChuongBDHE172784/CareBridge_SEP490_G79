@@ -154,7 +154,7 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
                         candidate.targetSubject(), candidate.origin(), candidate.status(), bucket,
                         candidate.allowedActions(), candidate.dueAt(), candidate.reminderType(),
                         candidate.description(), candidate.supportFunction(), candidate.cadence(),
-                        candidate.stage(), candidate.sourceUrl());
+                        candidate.stage(), candidate.sourceUrl(), candidate.reviewer());
                 unique.putIfAbsent(candidate.taskKind() + ":" + candidate.taskId(), item);
         }
 

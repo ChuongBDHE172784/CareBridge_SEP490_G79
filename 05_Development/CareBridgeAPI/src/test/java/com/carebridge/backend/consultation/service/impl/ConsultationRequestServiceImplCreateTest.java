@@ -105,6 +105,31 @@ class ConsultationRequestServiceImplCreateTest {
     }
 
     @Test
+    void createsNewPendingRequestEvenWhenAnotherRequestIsOpen() {
+        CreateConsultationRequestRequest request = request(UUID.randomUUID(), "Pediatrics");
+        ConsultationRequest created = pending(request, UUID.randomUUID());
+        ExpertProfile expert = eligibleExpert();
+        when(repository.findByRequesterUserIdAndClientRequestId(
+                        MOTHER_ID, request.getClientRequestId()))
+                .thenReturn(Optional.empty(), Optional.empty());
+        when(expertProfileRepository.findByIdForUpdate(EXPERT_PROFILE_ID))
+                .thenReturn(Optional.of(expert));
+        User account = eligibleExpertAccount();
+        when(userRepository.findByIdForUpdate(EXPERT_USER_ID))
+                .thenReturn(Optional.of(account));
+        when(writer.insertIfAbsent(any()))
+                .thenReturn(new ConsultationRequestWriter.InsertResult(created.getId(), true));
+        when(repository.findById(created.getId())).thenReturn(Optional.of(created));
+
+        CreateConsultationRequestResult result = service.create(request, MOTHER_ID);
+
+        assertThat(result.created()).isTrue();
+        assertThat(result.response().getId()).isEqualTo(created.getId());
+        verify(writer).insertIfAbsent(any());
+        verify(eventPublisher).publishEvent(any(ConsultationRequestDomainEvent.class));
+    }
+
+    @Test
     void returnsExistingSamePayloadBeforeExpertLockEvenAfterTrustLoss() {
         UUID key = UUID.randomUUID();
         CreateConsultationRequestRequest request = request(key, "Nutrition");

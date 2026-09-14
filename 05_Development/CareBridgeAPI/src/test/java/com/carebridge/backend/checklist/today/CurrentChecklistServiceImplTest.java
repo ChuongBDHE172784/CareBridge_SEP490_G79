@@ -80,4 +80,59 @@ class CurrentChecklistServiceImplTest {
             SecurityContextHolder.clearContext();
         }
     }
+
+    @Test
+    void mapsReviewerToCurrentChecklistTaskResponse() {
+        UnifiedTodayTaskService unifiedTodayTaskService = mock(UnifiedTodayTaskService.class);
+        var reviewer = com.carebridge.backend.content.dto.response.ExpertReviewerResponse.builder()
+                .expertId(UUID.randomUUID())
+                .name("BS Đỗ Hải Long")
+                .professionalTitle("BS.CKII")
+                .specialty("Sản khoa")
+                .workplace("Bệnh viện Từ Dũ")
+                .build();
+        var taskItem = new com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse(
+                TaskKind.CHECKLIST,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Khám tiền sản",
+                null,
+                com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE,
+                "PENDING",
+                com.carebridge.backend.checklist.today.model.TaskTimeBucket.TODAY,
+                Set.of(),
+                Instant.now(),
+                null,
+                "Mô tả khám",
+                null,
+                null,
+                null,
+                "https://example.com/source.pdf",
+                reviewer);
+
+        TodayTasksResponse response = new TodayTasksResponse(
+                Instant.parse("2026-08-05T01:00:00Z"),
+                ZONE,
+                7,
+                new TodayTaskSections(List.of(), List.of(taskItem), List.of(), List.of()),
+                new TodayTaskCounts(0, 1, 0, 0),
+                CORRELATION,
+                null);
+        when(unifiedTodayTaskService.getTodayTasks(
+                ACTOR, DATE, ZONE, Set.of(TaskKind.CHECKLIST), true)).thenReturn(response);
+
+        var result = new CurrentChecklistServiceImpl(unifiedTodayTaskService)
+                .getCurrentTasks(ACTOR, DATE, ZONE);
+
+        assertThat(result.sections().today()).hasSize(1);
+        var mappedTask = result.sections().today().get(0);
+        assertThat(mappedTask.reviewer()).isEqualTo(reviewer);
+        assertThat(mappedTask.sourceUrl()).isEqualTo("https://example.com/source.pdf");
+    }
 }

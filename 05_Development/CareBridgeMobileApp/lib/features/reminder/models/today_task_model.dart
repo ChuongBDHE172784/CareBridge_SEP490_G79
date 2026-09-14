@@ -1,3 +1,4 @@
+import '../../community/models/expert_reviewer_model.dart';
 import 'reminder_model.dart';
 import 'today_task_support_function.dart';
 
@@ -289,6 +290,7 @@ class TodayTask {
   final TodayChecklistStage stage;
   final String? sourceUrl;
   final Set<TodayTaskAction> allowedActions;
+  final ExpertReviewer? reviewer;
 
   const TodayTask({
     required this.id,
@@ -318,6 +320,7 @@ class TodayTask {
     this.stage = TodayChecklistStage.unknown,
     this.sourceUrl,
     required this.allowedActions,
+    this.reviewer,
   });
 
   bool get isReminder => kind == TodayTaskKind.reminder;
@@ -430,6 +433,11 @@ class TodayTask {
       stage: TodayChecklistStageApi.fromApi(json['stage']?.toString()),
       sourceUrl: (json['sourceUrl'] ?? json['source_url']) as String?,
       allowedActions: actions,
+      reviewer: json['reviewer'] is Map
+          ? ExpertReviewer.fromJson(
+              Map<String, dynamic>.from(json['reviewer'] as Map),
+            )
+          : null,
     );
   }
 

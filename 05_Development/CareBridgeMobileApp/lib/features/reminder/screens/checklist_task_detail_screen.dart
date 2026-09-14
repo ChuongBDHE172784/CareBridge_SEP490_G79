@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../community/widgets/expert_review_disclaimer_card.dart';
 import '../../directChat/services/direct_chat_service.dart';
 import '../models/today_task_model.dart';
 import '../services/expert_checklist_sync.dart';
@@ -239,6 +240,10 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
             ),
             const SizedBox(height: 20),
             _DetailSection(description: _description),
+            const SizedBox(height: 20),
+            const MedicalContentDisclaimerBanner(contentType: 'mục checklist'),
+            const SizedBox(height: 16),
+            ExpertReviewerCard(reviewer: task.reviewer),
             if (task.sourceUrl?.trim().isNotEmpty == true) ...[
               const SizedBox(height: 20),
               _SourceReferenceCard(sourceUrl: task.sourceUrl!.trim()),
@@ -250,13 +255,7 @@ class _ChecklistTaskDetailScreenState extends State<ChecklistTaskDetailScreen> {
                 onOpen: _openSupportFunction,
               ),
             ],
-            if (widget.showQuickReminder) ...[
-              const SizedBox(height: 20),
-              _QuickReminderCard(
-                onAddReminder: _openQuickReminderSheet,
-              ),
             ],
-          ],
         ),
       ),
       bottomNavigationBar: statusAction == null
@@ -703,104 +702,6 @@ class _SourceReferenceCard extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickReminderCard extends StatelessWidget {
-  const _QuickReminderCard({required this.onAddReminder});
-
-  final VoidCallback onAddReminder;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _ChecklistTaskDetailScreenState._surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _ChecklistTaskDetailScreenState._border),
-        boxShadow: [
-          BoxShadow(
-            color: _ChecklistTaskDetailScreenState._text.withValues(alpha: .04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFEEE8),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.alarm_add_rounded,
-                  size: 20,
-                  color: _ChecklistTaskDetailScreenState._primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Lịch nhắc nhở',
-                  style: TextStyle(
-                    fontFamily: 'Quicksand',
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: _ChecklistTaskDetailScreenState._text,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Cài đặt giờ nhắc nhở để không bỏ lỡ việc cần làm này.',
-            style: TextStyle(
-              fontFamily: 'Quicksand',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: _ChecklistTaskDetailScreenState._muted,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: OutlinedButton.icon(
-              key: const Key('task-detail-add-quick-reminder-button'),
-              onPressed: onAddReminder,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _ChecklistTaskDetailScreenState._primary,
-                side: const BorderSide(
-                  color: _ChecklistTaskDetailScreenState._primary,
-                  width: 1.2,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: const Icon(Icons.alarm_add_rounded, size: 20),
-              label: const Text(
-                'Thêm lịch nhắc nhanh',
-                style: TextStyle(
-                  fontFamily: 'Quicksand',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
               ),
             ),
           ),

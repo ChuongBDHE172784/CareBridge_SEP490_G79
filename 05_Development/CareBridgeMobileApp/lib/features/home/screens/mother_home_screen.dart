@@ -303,7 +303,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       // (3) Gọi Service gửi HTTP GET /api/v1/recommendations/content
       final response =
           await (widget.recommendationLoader?.call() ??
-              _recommendationService.getContent(limit: 3));
+              _recommendationService.getContent(limit: 10));
       if (!mounted || generation != _recommendationLoadGeneration) return;
       if (accountId != null && accountId != AuthState.instance.userId) return;
 

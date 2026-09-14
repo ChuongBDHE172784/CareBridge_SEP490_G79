@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:untitled/features/community/models/expert_reviewer_model.dart';
 import 'package:untitled/features/directChat/models/timeline_item.dart';
 import 'package:untitled/features/directChat/models/timeline_page.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
@@ -34,6 +35,7 @@ TodayTask _task({
   String careContextType = 'BABY',
   String careContextId = 'baby-1',
   String? sourceUrl,
+  ExpertReviewer? reviewer,
 }) {
   final action = completed ? TodayTaskAction.reopen : TodayTaskAction.complete;
   return TodayTask.fromJson({
@@ -42,6 +44,7 @@ TodayTask _task({
     'title': title,
     'description': ?description,
     if (supportFunction != null) 'supportFunction': supportFunction.apiValue,
+    if (reviewer != null) 'reviewer': reviewer.toJson(),
     'careGroupId': 'group-1',
     'careContextType': careContextType,
     'careContextId': careContextId,
@@ -144,6 +147,18 @@ Future<void> _openDetail(
 }
 
 void main() {
+  setUp(() {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.physicalSize = const Size(1080, 2400);
+    binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
+  });
+
+  tearDown(() {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.resetPhysicalSize();
+    binding.platformDispatcher.views.first.resetDevicePixelRatio();
+  });
+
   testWidgets('renders title, detailed content, source, target and status metadata', (
     tester,
   ) async {
@@ -613,7 +628,7 @@ void main() {
     },
   );
 
-  testWidgets('renders quick reminder action in app bar and in list', (
+  testWidgets('renders quick reminder action in app bar when enabled, no card in body', (
     tester,
   ) async {
     final task = _task();
@@ -626,18 +641,14 @@ void main() {
       find.byKey(const Key('task-detail-quick-reminder-action')),
       findsOneWidget,
     );
-
-    final addReminderButton = find.byKey(
-      const Key('task-detail-add-quick-reminder-button'),
+    expect(find.text('Lịch nhắc nhở'), findsNothing);
+    expect(
+      find.byKey(const Key('task-detail-add-quick-reminder-button')),
+      findsNothing,
     );
-    await tester.ensureVisible(addReminderButton);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Lịch nhắc nhở'), findsOneWidget);
-    expect(addReminderButton, findsOneWidget);
   });
 
-  testWidgets('hides quick reminder action and card when showQuickReminder is false', (
+  testWidgets('hides quick reminder action when showQuickReminder is false', (
     tester,
   ) async {
     final task = _task();
@@ -653,10 +664,6 @@ void main() {
 
     expect(
       find.byKey(const Key('task-detail-quick-reminder-action')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const Key('task-detail-add-quick-reminder-button')),
       findsNothing,
     );
     expect(find.text('Lịch nhắc nhở'), findsNothing);
@@ -725,12 +732,9 @@ void main() {
         ),
       );
 
-      final addReminderButton = find.byKey(
-        const Key('task-detail-add-quick-reminder-button'),
+      await tester.tap(
+        find.byKey(const Key('task-detail-quick-reminder-action')),
       );
-      await tester.ensureVisible(addReminderButton);
-      await tester.pumpAndSettle();
-      await tester.tap(addReminderButton);
       await tester.pumpAndSettle();
 
       expect(find.text('Tạo lịch nhắc nhanh'), findsOneWidget);
@@ -805,6 +809,33 @@ void main() {
       expect(find.text('Đã tạo lịch nhắc cho việc này.'), findsOneWidget);
     },
   );
+
+  testWidgets('renders real expert reviewer data when task.reviewer is present', (
+    tester,
+  ) async {
+    final reviewer = ExpertReviewer(
+      expertId: 'c241c07e-6b78-455a-8cd5-fddefca73574',
+      name: 'BS Trần Thị Thu Nga',
+      professionalTitle: 'Bác sĩ',
+      specialty: 'Sản khoa',
+      workplace: 'Bệnh viện Từ Dũ',
+      bio: 'Tư vấn sức khỏe thai kỳ, chuẩn bị sinh và phục hồi sau sinh.',
+      verificationStatus: 'Đã kiểm duyệt nội dung',
+      approvedAt: DateTime(2026, 9, 14),
+    );
+
+    final task = _task(reviewer: reviewer);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ChecklistTaskDetailScreen(task: task)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bác sĩ'), findsOneWidget);
+    expect(find.text('BS Trần Thị Thu Nga'), findsOneWidget);
+    expect(find.text('Đã kiểm duyệt nội dung'), findsOneWidget);
+    expect(find.textContaining('Tư vấn sức khỏe thai kỳ'), findsOneWidget);
+  });
 }
 
 
