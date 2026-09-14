@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/api_client.dart';
 import '../models/federated_auth_failure.dart';
 import '../models/registration_draft.dart';
 import '../services/auth_service.dart';
@@ -128,6 +129,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _confirmPasswordError = null;
     });
 
+    final authService = widget.authService ?? AuthService.instance;
+    try {
+      await authService.checkRegistrationAvailability(
+        email: email,
+        phone: phone,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      final message = (error.errorCode == 'AUTH_ACCOUNT_EXISTS' || error.statusCode == 409)
+          ? (error.displayMessage.isNotEmpty
+              ? error.displayMessage
+              : 'Email hoặc số điện thoại này đã được đăng ký tài khoản.')
+          : (error.displayMessage.isNotEmpty
+              ? error.displayMessage
+              : 'Có lỗi xảy ra khi kiểm tra thông tin.');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = message;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage =
+            'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.';
+      });
+      return;
+    }
+
     final draft = RegistrationDraft(
       name: name,
       email: email,
@@ -136,11 +167,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       role: widget.isExpert ? 'EXPERT' : null,
     );
     RegistrationDraftStore.set(draft);
+    if (!mounted) return;
     try {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => RegistrationVerificationMethodScreen(
-            authService: widget.authService ?? AuthService.instance,
+            authService: authService,
           ),
         ),
       );
@@ -443,7 +475,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _openPhoneVerificationFromSmsButton() {
+  Future<void> _openPhoneVerificationFromSmsButton() async {
     final name = _nameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     final rawPhone = _phoneCtrl.text.trim();
@@ -462,6 +494,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    final authService = widget.authService ?? AuthService.instance;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await authService.checkRegistrationAvailability(phone: phone);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      final message = (error.errorCode == 'AUTH_ACCOUNT_EXISTS' || error.statusCode == 409)
+          ? (error.displayMessage.isNotEmpty
+              ? error.displayMessage
+              : 'Số điện thoại này đã được đăng ký tài khoản.')
+          : (error.displayMessage.isNotEmpty
+              ? error.displayMessage
+              : 'Có lỗi xảy ra khi kiểm tra thông tin.');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = message;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage =
+            'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.';
+      });
+      return;
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+
     final draft = RegistrationDraft(
       name: name.isNotEmpty ? name : 'Người dùng CareBridge',
       email: email,
@@ -472,11 +540,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     RegistrationDraftStore.set(draft);
 
     setState(() => _errorMessage = null);
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PhoneVerificationScreen.registration(
           phoneNumber: phone,
-          authService: widget.authService ?? AuthService.instance,
+          authService: authService,
         ),
       ),
     );

@@ -128,7 +128,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       final response =
           await (widget.recommendationLoader?.call() ??
               _recommendationService.getContent(
-                limit: 3,
+                limit: 10,
                 careGroupId: targetGroupId,
               ));
       if (!mounted || generation != _recommendationLoadGeneration) return;

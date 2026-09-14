@@ -824,7 +824,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
             ? null
             : () async {
                 final result = await Navigator.of(context).push(
-                  MaterialPageRoute<PregnancyOutcomeResult>(
+                  MaterialPageRoute<dynamic>(
                     builder: (_) => PregnancyOutcomeScreen(
                       journeyId: dashboard.journeyId!,
                       journeyVersion: dashboard.version!,
@@ -833,18 +833,25 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                   ),
                 );
                 if (result != null && mounted) {
-                  if (widget.loadData) await _load();
-                  if (shouldOpenLiveBirthAddBaby(
-                        previousOutcome: dashboard.pregnancyOutcome,
-                        result: result,
-                      ) &&
-                      mounted) {
-                    await context.push(
-                      '/babies/add',
-                      extra: const AddBabyRouteArgs(
-                        entryPoint: AddBabyEntryPoint.liveBirthTransition,
-                      ),
-                    );
+                  if (result is AddBabyRouteArgs) {
+                    await context.push('/babies/add', extra: result);
+                    if (widget.loadData && mounted) await _load();
+                    return;
+                  }
+                  if (result is PregnancyOutcomeResult) {
+                    if (widget.loadData) await _load();
+                    if (shouldOpenLiveBirthAddBaby(
+                          previousOutcome: dashboard.pregnancyOutcome,
+                          result: result,
+                        ) &&
+                        mounted) {
+                      await context.push(
+                        '/babies/add',
+                        extra: const AddBabyRouteArgs(
+                          entryPoint: AddBabyEntryPoint.liveBirthTransition,
+                        ),
+                      );
+                    }
                   }
                 }
               },

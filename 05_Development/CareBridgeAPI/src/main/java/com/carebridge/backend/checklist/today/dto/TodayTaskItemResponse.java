@@ -10,6 +10,7 @@ import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.model.TaskTimeBucket;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.reminder.entity.ReminderType;
+import com.carebridge.backend.content.dto.response.ExpertReviewerResponse;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -36,10 +37,41 @@ public record TodayTaskItemResponse(
         ChecklistSupportFunction supportFunction,
         TaskCadence cadence,
         ContentStage stage,
-        String sourceUrl) {
+        String sourceUrl,
+        ExpertReviewerResponse reviewer) {
 
     public TodayTaskItemResponse {
         cadence = cadence == null ? TaskCadence.ONCE : cadence;
+    }
+
+    /** Compatibility constructor for response consumers before reviewer was exposed. */
+    public TodayTaskItemResponse(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String careGroupLabel,
+            String careContextLabel,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            TaskTimeBucket timeBucket,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            ReminderType type,
+            String description,
+            ChecklistSupportFunction supportFunction,
+            TaskCadence cadence,
+            ContentStage stage,
+            String sourceUrl) {
+        this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
+                careContextId, careGroupLabel, careContextLabel, title, targetSubject,
+                origin, status, timeBucket, allowedActions, dueAt, type, description,
+                supportFunction, cadence, stage, sourceUrl, null);
     }
 
     /** Compatibility constructor for response consumers before sourceUrl was exposed. */

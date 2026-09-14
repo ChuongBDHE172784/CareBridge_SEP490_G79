@@ -1,4 +1,5 @@
 import '../../../core/constants/content_stages.dart';
+import 'expert_reviewer_model.dart';
 
 enum ContentBrowseMode { generic, lifecycle, family }
 
@@ -125,17 +126,27 @@ class ContentSource {
   final String? url;
   final String? publisher;
 
-  const ContentSource({
-    required this.title,
-    this.url,
-    this.publisher,
-  });
+  const ContentSource({required this.title, this.url, this.publisher});
 
   factory ContentSource.fromJson(Map<String, dynamic> json) => ContentSource(
-        title: json['title'] as String? ?? '',
-        url: json['url'] as String?,
-        publisher: json['publisher'] as String?,
-      );
+    title: json['title'] as String? ?? '',
+    url: json['url'] as String?,
+    publisher: json['publisher'] as String?,
+  );
+}
+
+class ContentTag {
+  final String id;
+  final String name;
+  final String slug;
+
+  const ContentTag({required this.id, required this.name, this.slug = ''});
+
+  factory ContentTag.fromJson(Map<String, dynamic> json) => ContentTag(
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    slug: json['slug'] as String? ?? '',
+  );
 }
 
 class ContentDetail {
@@ -145,10 +156,13 @@ class ContentDetail {
   final String body;
   final String stage;
   final String topicId;
+  final String? topicName;
+  final List<ContentTag> tags;
   final int version;
   final String? publishedAt;
   final String? sourceLabel;
   final List<ContentSource>? sources;
+  final ExpertReviewer? reviewer;
 
   ContentDetail({
     required this.id,
@@ -157,10 +171,13 @@ class ContentDetail {
     required this.body,
     required this.stage,
     required this.topicId,
+    this.topicName,
+    this.tags = const [],
     required this.version,
     this.publishedAt,
     this.sourceLabel,
     this.sources,
+    this.reviewer,
   });
 
   factory ContentDetail.fromJson(Map<String, dynamic> json) => ContentDetail(
@@ -170,14 +187,26 @@ class ContentDetail {
     body: json['body'] as String? ?? '',
     stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
     topicId: json['topicId'] as String? ?? '',
+    topicName: json['topicName'] as String?,
+    tags: json['tags'] is List
+        ? (json['tags'] as List)
+              .whereType<Map>()
+              .map((e) => ContentTag.fromJson(Map<String, dynamic>.from(e)))
+              .toList(growable: false)
+        : const [],
     version: json['version'] as int? ?? 1,
     publishedAt: json['publishedAt'] as String?,
     sourceLabel: json['sourceLabel'] as String?,
     sources: json['sources'] is List
         ? (json['sources'] as List)
-            .whereType<Map>()
-            .map((e) => ContentSource.fromJson(Map<String, dynamic>.from(e)))
-            .toList(growable: false)
+              .whereType<Map>()
+              .map((e) => ContentSource.fromJson(Map<String, dynamic>.from(e)))
+              .toList(growable: false)
+        : null,
+    reviewer: json['reviewer'] is Map
+        ? ExpertReviewer.fromJson(
+            Map<String, dynamic>.from(json['reviewer'] as Map),
+          )
         : null,
   );
 

@@ -18,6 +18,7 @@ import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
 import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
+import com.carebridge.backend.security.dto.request.CheckRegistrationRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
@@ -109,6 +110,29 @@ public class AuthServiceImpl implements AuthService {
             return MessageDigest.isEqual(bytes1, bytes2);
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    @Override
+    public void checkRegistrationAvailability(CheckRegistrationRequest request) {
+        String email = request.getEmail() == null ? null : request.getEmail().trim().toLowerCase(Locale.ROOT);
+        String phone = normalizePhone(request.getPhone());
+
+        if ((email == null || email.isBlank()) && (phone == null || phone.isBlank())) {
+            throw new ValidationException("Email or phone is required");
+        }
+
+        boolean emailExists = email != null && !email.isBlank()
+                && (userRepository.existsByEmail(email)
+                || userRepository.findByEmailIgnoreCase(email).isPresent());
+        boolean phoneExists = phone != null && !phone.isBlank() && userRepository.existsByPhone(phone);
+
+        if (emailExists && phoneExists) {
+            throw new AccountAlreadyExistsException("Email và số điện thoại này đã được đăng ký tài khoản.");
+        } else if (emailExists) {
+            throw new AccountAlreadyExistsException("Email này đã được đăng ký tài khoản.");
+        } else if (phoneExists) {
+            throw new AccountAlreadyExistsException("Số điện thoại này đã được đăng ký tài khoản.");
         }
     }
 

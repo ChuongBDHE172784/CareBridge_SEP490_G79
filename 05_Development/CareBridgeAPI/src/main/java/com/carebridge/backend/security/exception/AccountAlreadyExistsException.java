@@ -14,4 +14,12 @@ public class AccountAlreadyExistsException extends BusinessException {
     public AccountAlreadyExistsException() {
         super(HttpStatus.CONFLICT, ERROR_CODE, "Account already exists");
     }
+
+    public AccountAlreadyExistsException(String message) {
+        super(HttpStatus.CONFLICT, ERROR_CODE, message);
+    }
+
+    public AccountAlreadyExistsException(String code, String message) {
+        super(HttpStatus.CONFLICT, code, message);
+    }
 }

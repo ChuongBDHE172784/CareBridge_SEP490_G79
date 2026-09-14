@@ -4,6 +4,7 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/constants/content_stages.dart';
 import '../models/content_model.dart';
 import '../services/content_service.dart';
+import '../widgets/expert_review_disclaimer_card.dart';
 import '../widgets/verified_content_body.dart';
 
 /// CB-181 — View Verified Content Detail (UC-225)
@@ -286,6 +287,71 @@ class _VerifiedContentDetailScreenState
                       ),
                     ),
                   ),
+                if (content.topicName != null &&
+                    content.topicName!.trim().isNotEmpty)
+                  Container(
+                    key: const Key('content-detail-topic'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(
+                        color: _primary.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.folder_outlined,
+                          size: 13,
+                          color: _primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          content.topicName!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                for (final tag in content.tags)
+                  Container(
+                    key: Key(
+                      'content-detail-tag-${tag.id.isNotEmpty ? tag.id : tag.name}',
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(color: const Color(0xFFEADBCE)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.tag, size: 13, color: _primary),
+                        const SizedBox(width: 3),
+                        Text(
+                          tag.name,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 14),
@@ -311,8 +377,13 @@ class _VerifiedContentDetailScreenState
             const SizedBox(height: 16),
             // Rich text is sanitized by the backend before this renderer receives it.
             VerifiedContentBody(html: content.body, color: _onSurface),
+            const SizedBox(height: 24),
+            const MedicalContentDisclaimerBanner(contentType: 'bài viết'),
+            const SizedBox(height: 16),
+            ExpertReviewerCard(reviewer: content.reviewer),
             if ((content.sources != null && content.sources!.isNotEmpty) ||
-                (content.sourceLabel != null && content.sourceLabel!.isNotEmpty)) ...[
+                (content.sourceLabel != null &&
+                    content.sourceLabel!.isNotEmpty)) ...[
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(14),
@@ -326,7 +397,11 @@ class _VerifiedContentDetailScreenState
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.verified_outlined, size: 18, color: _primary),
+                        Icon(
+                          Icons.verified_outlined,
+                          size: 18,
+                          color: _primary,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'NGUỒN THAM KHẢO / KIỂM DUYỆT',
@@ -350,7 +425,11 @@ class _VerifiedContentDetailScreenState
                               if (src.title.isNotEmpty)
                                 Row(
                                   children: [
-                                    const Icon(Icons.person_outline, size: 16, color: _outline),
+                                    const Icon(
+                                      Icons.person_outline,
+                                      size: 16,
+                                      color: _outline,
+                                    ),
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
@@ -364,11 +443,16 @@ class _VerifiedContentDetailScreenState
                                     ),
                                   ],
                                 ),
-                              if (src.publisher != null && src.publisher!.isNotEmpty) ...[
+                              if (src.publisher != null &&
+                                  src.publisher!.isNotEmpty) ...[
                                 const SizedBox(height: 2),
                                 Row(
                                   children: [
-                                    const Icon(Icons.domain_outlined, size: 16, color: _outline),
+                                    const Icon(
+                                      Icons.domain_outlined,
+                                      size: 16,
+                                      color: _outline,
+                                    ),
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
@@ -392,13 +476,21 @@ class _VerifiedContentDetailScreenState
                                         : 'https://$rawUrl';
                                     final uri = Uri.tryParse(urlString);
                                     if (uri != null) {
-                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                      await launchUrl(
+                                        uri,
+                                        mode: LaunchMode.externalApplication,
+                                      );
                                     }
                                   },
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      const Icon(Icons.link_outlined, size: 16, color: _primary),
+                                      const Icon(
+                                        Icons.link_outlined,
+                                        size: 16,
+                                        color: _primary,
+                                      ),
                                       const SizedBox(width: 4),
                                       Expanded(
                                         child: Text.rich(
@@ -418,7 +510,8 @@ class _VerifiedContentDetailScreenState
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                   color: _primary,
-                                                  decoration: TextDecoration.underline,
+                                                  decoration:
+                                                      TextDecoration.underline,
                                                 ),
                                               ),
                                             ],
@@ -433,10 +526,15 @@ class _VerifiedContentDetailScreenState
                           ),
                         );
                       })
-                    else if (content.sourceLabel != null && content.sourceLabel!.isNotEmpty)
+                    else if (content.sourceLabel != null &&
+                        content.sourceLabel!.isNotEmpty)
                       Row(
                         children: [
-                          const Icon(Icons.menu_book_outlined, size: 16, color: _outline),
+                          const Icon(
+                            Icons.menu_book_outlined,
+                            size: 16,
+                            color: _outline,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -454,33 +552,7 @@ class _VerifiedContentDetailScreenState
                 ),
               ),
             ],
-            const SizedBox(height: 20),
-            // Disclaimer
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBE6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, size: 20, color: Color(0xFFB89A00)),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Nội dung mang tính chất tham khảo. Nếu dấu hiệu nặng lên, hãy liên hệ '
-                      'cơ sở y tế phù hợp ngay lập tức.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF6D5B00),
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),

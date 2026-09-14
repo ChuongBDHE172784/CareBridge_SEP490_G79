@@ -199,5 +199,54 @@ void main() {
       expect(find.text('Account B current detail body'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('renders topic and tag pills at top of detail card', (
+      tester,
+    ) async {
+      final service = ContentService(
+        getRequest: (_) async => {
+          'data': {
+            'id': 'detail-with-tags',
+            'type': 'ARTICLE',
+            'title': 'Thai kỳ và dinh dưỡng',
+            'body': 'Nội dung chi tiết bài viết',
+            'stage': 'PREGNANCY',
+            'topicId': 'topic-nutrition',
+            'topicName': 'Dinh dưỡng thai kỳ',
+            'tags': [
+              {
+                'id': 'tag-1',
+                'name': 'Bổ sung Axit Folic',
+                'slug': 'rec-nutrition-folic-acid',
+              },
+              {
+                'id': 'tag-2',
+                'name': 'Uống đủ nước',
+                'slug': 'rec-nutrition-water',
+              },
+            ],
+            'version': 1,
+          },
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VerifiedContentDetailScreen(
+            contentId: 'detail-with-tags',
+            contentService: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nguồn tin cậy'), findsOneWidget);
+      expect(find.text('Dinh dưỡng thai kỳ'), findsOneWidget);
+      expect(find.text('Bổ sung Axit Folic'), findsOneWidget);
+      expect(find.text('Uống đủ nước'), findsOneWidget);
+      expect(find.byKey(const Key('content-detail-topic')), findsOneWidget);
+      expect(find.byKey(const Key('content-detail-tag-tag-1')), findsOneWidget);
+      expect(find.byKey(const Key('content-detail-tag-tag-2')), findsOneWidget);
+    });
   });
 }

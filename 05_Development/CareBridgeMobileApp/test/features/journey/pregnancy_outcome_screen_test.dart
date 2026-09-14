@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/baby/screens/add_baby_screen.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
 import 'package:untitled/features/journey/screens/pregnancy_outcome_screen.dart';
 import 'package:untitled/features/journey/services/pregnancy_outcome_draft_store.dart';
@@ -144,26 +145,59 @@ void main() {
     expect(submitted?.correction, isFalse);
   });
 
-  testWidgets('live birth requires a date before submit', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(800, 1400));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PregnancyOutcomeScreen(
-          journeyId: 'journey-1',
-          journeyVersion: 3,
-          submitOutcome: (_) => throw StateError('must not submit'),
+  testWidgets(
+    'live birth does not update outcome directly and delegates to add-baby screen',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      RecordPregnancyOutcomeRequest? submitted;
+      AddBabyRouteArgs? navigatedArgs;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PregnancyOutcomeScreen(
+            journeyId: 'journey-1',
+            journeyVersion: 3,
+            onNavigateToAddBaby: (args) => navigatedArgs = args,
+            submitOutcome: (request) async {
+              submitted = request;
+              return const PregnancyOutcomeResult(
+                evidenceId: 'evidence-1',
+                journeyId: 'journey-1',
+                outcomeType: PregnancyOutcome.liveBirth,
+                journeyType: 'POSTPARTUM',
+                journeyVersion: 4,
+                revisionNumber: 1,
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('Em bé đã chào đời'));
-    await tester.pump();
-    await tester.tap(find.text('Tiếp tục'));
-    await tester.pump();
+      await tester.tap(find.text('Em bé đã chào đời'));
+      await tester.pump();
 
-    expect(find.text('Vui lòng chọn ngày'), findsOneWidget);
-  });
+      // Date picker button must NOT be displayed
+      expect(find.text('Chọn ngày'), findsNothing);
+      expect(find.byIcon(Icons.calendar_month_rounded), findsNothing);
+
+      await tester.tap(find.text('Tiếp tục'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Xác nhận cập nhật'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Xác nhận'));
+      await tester.pumpAndSettle();
+
+      // Must NOT submit outcome directly from this screen
+      expect(submitted, isNull);
+      // Success screen must NOT be shown here
+      expect(find.text('Đã cập nhật hành trình'), findsNothing);
+      // Must delegate to add baby with transition args
+      expect(navigatedArgs, isNotNull);
+      expect(navigatedArgs!.entryPoint, AddBabyEntryPoint.liveBirthTransition);
+      expect(navigatedArgs!.journeyId, 'journey-1');
+      expect(navigatedArgs!.journeyVersion, 3);
+    },
+  );
 
   testWidgets('restores only the same-account draft and clears it on success', (
     tester,

@@ -7,60 +7,103 @@ import 'package:untitled/features/auth/screens/registration_verification_method_
 import 'package:untitled/features/auth/services/auth_service.dart';
 
 void main() {
-  testWidgets('duplicate account code shows the specific Vietnamese message', (
-    tester,
-  ) async {
-    final service = _authService((_, _) async {
-      throw ApiException(
-        409,
-        '{"error":"AUTH_ACCOUNT_EXISTS",'
-        '"message":"sensitive backend details"}',
+  testWidgets(
+    'duplicate account code shows error directly on RegisterScreen and blocks OTP navigation',
+    (tester) async {
+      final requests = <String>[];
+      final service = _authService((path, _) async {
+        requests.add(path);
+        throw ApiException(
+          409,
+          '{"error":"AUTH_ACCOUNT_EXISTS",'
+          '"message":"Email này đã được đăng ký tài khoản."}',
+        );
+      });
+
+      await _pumpAndSubmit(tester, service);
+
+      expect(requests, ['/api/v1/auth/check-registration']);
+      // Still on RegisterScreen, never pushed RegistrationVerificationMethodScreen
+      expect(find.byType(RegisterScreen), findsOneWidget);
+      expect(find.byType(RegistrationVerificationMethodScreen), findsNothing);
+
+      expect(
+        find.text('Email này đã được đăng ký tài khoản.'),
+        findsOneWidget,
       );
-    });
+    },
+  );
 
-    await _pumpAndSubmit(tester, service);
-    await tester.tap(
-      find.byKey(const Key('registration-verification-continue')),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'duplicate phone error shows phone-specific message on RegisterScreen',
+    (tester) async {
+      final service = _authService((path, _) async {
+        throw ApiException(
+          409,
+          '{"error":"AUTH_ACCOUNT_EXISTS",'
+          '"message":"Số điện thoại này đã được đăng ký tài khoản."}',
+        );
+      });
 
-    expect(
-      find.text('Email hoặc số điện thoại này đã được đăng ký tài khoản.'),
-      findsOneWidget,
-    );
-    expect(
-      find.text('Thông tin không hợp lệ. Vui lòng kiểm tra lại.'),
-      findsNothing,
-    );
-    expect(find.text('sensitive backend details'), findsNothing);
-  });
+      await _pumpAndSubmit(tester, service);
 
-  testWidgets('uncoded validation error keeps safe generic guidance', (
+      expect(find.byType(RegisterScreen), findsOneWidget);
+      expect(find.byType(RegistrationVerificationMethodScreen), findsNothing);
+      expect(
+        find.text('Số điện thoại này đã được đăng ký tài khoản.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'duplicate email and phone shows composite message on RegisterScreen',
+    (tester) async {
+      final service = _authService((path, _) async {
+        throw ApiException(
+          409,
+          '{"error":"AUTH_ACCOUNT_EXISTS",'
+          '"message":"Email và số điện thoại này đã được đăng ký tài khoản."}',
+        );
+      });
+
+      await _pumpAndSubmit(tester, service);
+
+      expect(find.byType(RegisterScreen), findsOneWidget);
+      expect(find.byType(RegistrationVerificationMethodScreen), findsNothing);
+      expect(
+        find.text('Email và số điện thoại này đã được đăng ký tài khoản.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('uncoded validation error displays on RegisterScreen', (
     tester,
   ) async {
     final service = _authService((_, _) async {
-      throw ApiException(400, '{"message":"internal validation detail"}');
+      throw ApiException(400, '{"message":"Thông tin không hợp lệ. Vui lòng kiểm tra lại."}');
     });
 
     await _pumpAndSubmit(tester, service);
-    await tester.tap(
-      find.byKey(const Key('registration-verification-continue')),
-    );
-    await tester.pumpAndSettle();
 
+    expect(find.byType(RegisterScreen), findsOneWidget);
+    expect(find.byType(RegistrationVerificationMethodScreen), findsNothing);
     expect(
       find.text('Thông tin không hợp lệ. Vui lòng kiểm tra lại.'),
       findsOneWidget,
     );
-    expect(find.text('internal validation detail'), findsNothing);
   });
 
-  testWidgets('successful registration still opens OTP verification', (
+  testWidgets('successful registration checks availability then opens OTP verification', (
     tester,
   ) async {
     final requests = <({String path, Map<String, dynamic> body})>[];
     final service = _authService((path, body) async {
       requests.add((path: path, body: Map.of(body)));
+      if (path == '/api/v1/auth/check-registration') {
+        return {'data': {'message': 'Available'}};
+      }
       return {
         'data': {'message': 'OTP sent', 'expiresIn': 300, 'userId': 'user-1'},
       };
@@ -68,17 +111,23 @@ void main() {
 
     await _pumpAndSubmit(tester, service);
 
+    expect(requests, hasLength(1));
+    expect(requests.first.path, '/api/v1/auth/check-registration');
+    expect(requests.first.body, {
+      'email': 'mother@example.com',
+      'phone': '+84912345678',
+    });
+
     expect(find.byType(RegistrationVerificationMethodScreen), findsOneWidget);
-    expect(requests, isEmpty);
 
     await tester.tap(
       find.byKey(const Key('registration-verification-continue')),
     );
     await tester.pumpAndSettle();
 
-    expect(requests, hasLength(1));
-    expect(requests.single.path, '/api/v1/auth/register');
-    expect(requests.single.body, {
+    expect(requests, hasLength(2));
+    expect(requests[1].path, '/api/v1/auth/register');
+    expect(requests[1].body, {
       'name': 'Mother Test',
       'password': 'Password@123',
       'verificationMethod': 'EMAIL',

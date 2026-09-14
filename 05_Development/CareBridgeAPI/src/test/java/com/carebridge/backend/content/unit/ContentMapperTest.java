@@ -23,10 +23,14 @@ import com.carebridge.backend.checklist.model.ChecklistWeekBoundaryRule;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.ViewContentDetailTestFactory;
 import com.carebridge.backend.recommendation.RecommendationConstants;
+import com.carebridge.backend.community.entity.CommunityTopic;
+import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 // CNT82-TC-003
 class ContentMapperTest {
@@ -124,6 +128,49 @@ class ContentMapperTest {
         assertThat(detail.getEligibleToWeek()).isNull();
         assertThat(detail.getRecommendationPriority()).isNull();
         assertThat(list.getTagIds()).containsExactly(ordinaryId);
+    }
+
+    @Test
+    void toDetailResponse_shouldResolveTopicNameAndTags() {
+        CommunityTopicRepository repo = Mockito.mock(CommunityTopicRepository.class);
+        ContentMapper mapper = new ContentMapper(repo);
+
+        UUID topicId = UUID.randomUUID();
+        UUID tagId1 = UUID.randomUUID();
+        UUID tagId2 = UUID.randomUUID();
+
+        CommunityTopic topic = CommunityTopic.builder()
+                .id(topicId)
+                .name("Dinh dưỡng thai kỳ")
+                .slug("dinh-duong-thai-ky")
+                .build();
+        CommunityTopic tag1 = CommunityTopic.builder()
+                .id(tagId1)
+                .name("Bổ sung Axit Folic")
+                .slug("rec-nutrition-folic-acid")
+                .isHidden(false)
+                .build();
+        CommunityTopic tag2 = CommunityTopic.builder()
+                .id(tagId2)
+                .name("Tag ẩn")
+                .slug("hidden-tag")
+                .isHidden(true)
+                .build();
+
+        Mockito.when(repo.findById(topicId)).thenReturn(Optional.of(topic));
+        Mockito.when(repo.findAllById(List.of(tagId1, tagId2))).thenReturn(List.of(tag1, tag2));
+
+        ContentItem item = makeContentItem(ContentStatus.APPROVED, ContentStage.PREGNANCY, ContentType.ARTICLE);
+        item.setTopicId(topicId);
+        item.setTagIds(List.of(tagId1, tagId2));
+
+        ContentDetailResponse response = mapper.toDetailResponse(item);
+
+        assertThat(response.getTopicName()).isEqualTo("Dinh dưỡng thai kỳ");
+        assertThat(response.getTags()).hasSize(1);
+        assertThat(response.getTags().get(0).id()).isEqualTo(tagId1);
+        assertThat(response.getTags().get(0).name()).isEqualTo("Bổ sung Axit Folic");
+        assertThat(response.getTags().get(0).slug()).isEqualTo("rec-nutrition-folic-acid");
     }
 
     @Test

@@ -43,6 +43,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.carebridge.backend.content.dto.response.ExpertReviewerResponse;
+import com.carebridge.backend.content.service.ExpertReviewerResolver;
+
 @Component
 public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -54,12 +57,13 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     private final ChecklistTemplateRepository templateRepository;
     private final ChecklistCurrentScopePolicy currentScopePolicy;
     private final ChecklistItemRepository itemRepository;
+    private final ExpertReviewerResolver reviewerResolver;
 
     public ChecklistTodayTaskProvider(
             ChecklistInstanceRepository instanceRepository,
             ChecklistTaskInstanceRepository taskRepository,
             UnifiedTaskAccessPolicy accessPolicy) {
-        this(instanceRepository, taskRepository, accessPolicy, null, null, null, null);
+        this(instanceRepository, taskRepository, accessPolicy, null, null, null, null, null);
     }
 
     public ChecklistTodayTaskProvider(
@@ -69,7 +73,7 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             ChecklistSequenceResolver sequenceResolver,
             ChecklistTemplateRepository templateRepository) {
         this(instanceRepository, taskRepository, accessPolicy, sequenceResolver,
-                templateRepository, null, null);
+                templateRepository, null, null, null);
     }
 
     public ChecklistTodayTaskProvider(
@@ -80,7 +84,19 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             ChecklistTemplateRepository templateRepository,
             ChecklistCurrentScopePolicy currentScopePolicy) {
         this(instanceRepository, taskRepository, accessPolicy, sequenceResolver,
-                templateRepository, currentScopePolicy, null);
+                templateRepository, currentScopePolicy, null, null);
+    }
+
+    public ChecklistTodayTaskProvider(
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistSequenceResolver sequenceResolver,
+            ChecklistTemplateRepository templateRepository,
+            ChecklistCurrentScopePolicy currentScopePolicy,
+            ChecklistItemRepository itemRepository) {
+        this(instanceRepository, taskRepository, accessPolicy, sequenceResolver,
+                templateRepository, currentScopePolicy, itemRepository, null);
     }
 
     @Autowired
@@ -91,7 +107,8 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             ChecklistSequenceResolver sequenceResolver,
             ChecklistTemplateRepository templateRepository,
             ChecklistCurrentScopePolicy currentScopePolicy,
-            ChecklistItemRepository itemRepository) {
+            ChecklistItemRepository itemRepository,
+            @Autowired(required = false) ExpertReviewerResolver reviewerResolver) {
         this.instanceRepository = instanceRepository;
         this.taskRepository = taskRepository;
         this.accessPolicy = accessPolicy;
@@ -99,6 +116,7 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         this.templateRepository = templateRepository;
         this.currentScopePolicy = currentScopePolicy;
         this.itemRepository = itemRepository;
+        this.reviewerResolver = reviewerResolver;
     }
 
     @Override
@@ -173,6 +191,13 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         for (var authorized : authorizedInstances) {
             ChecklistInstance instance = authorized.instance();
             ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+            ExpertReviewerResponse reviewer = null;
+            if (reviewerResolver != null && template != null) {
+                reviewer = reviewerResolver.resolve(
+                        template.getApprovedBy(),
+                        template.getAssignedExpertId(),
+                        template.getApprovedAt());
+            }
             for (var task : tasksByInstanceId.getOrDefault(instance.getId(), List.of())) {
                 if (task.getStatus() == ChecklistTaskStatus.CANCELLED) {
                     continue;
@@ -197,7 +222,7 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
                         task.getTitleSnapshot(), task.getTargetSubject(), instance.getOrigin(),
                         task.getStatus().name(), actions, task.getDueAt(), terminalAt(task), null,
                         task.getDescriptionSnapshot(), task.getSupportFunction(), cadence(template),
-                        template == null ? null : template.getStage(), sourceUrl));
+                        template == null ? null : template.getStage(), sourceUrl, reviewer));
             }
         }
         return List.copyOf(result);

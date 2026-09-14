@@ -25,7 +25,7 @@ class ShareChecklistDialog extends StatefulWidget {
   State<ShareChecklistDialog> createState() => _ShareChecklistDialogState();
 }
 
-class _SelectableItem {
+class _ChecklistShareItem {
   final String id;
   final String text;
   final bool completed;
@@ -34,9 +34,8 @@ class _SelectableItem {
   final String section; // 'HISTORY', 'CURRENT', 'FUTURE'
   final String origin; // 'SYSTEM' | 'USER' | 'EXPERT'
   final String createdBy;
-  bool isSelected;
 
-  _SelectableItem({
+  _ChecklistShareItem({
     required this.id,
     required this.text,
     required this.completed,
@@ -45,7 +44,6 @@ class _SelectableItem {
     required this.section,
     this.origin = 'SYSTEM',
     this.createdBy = 'SYSTEM',
-    this.isSelected = true,
   });
 
   bool get isExpertCustom => origin == 'EXPERT' || createdBy == 'EXPERT';
@@ -69,18 +67,20 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
   final TextEditingController _noteController = TextEditingController();
   late TabController _tabController;
   bool _loading = true;
+  String _stage = 'PRE_PREGNANCY';
+  String _stageLabel = 'Chuẩn bị mang thai';
   int? _gestationalWeek;
   String? _journeyId;
   String _statusFilter = 'ALL'; // ALL, COMPLETED, PENDING
 
-  List<_SelectableItem> _historyItems = [];
-  List<_SelectableItem> _currentItems = [];
-  List<_SelectableItem> _futureItems = [];
+  List<_ChecklistShareItem> _historyItems = [];
+  List<_ChecklistShareItem> _currentItems = [];
+  List<_ChecklistShareItem> _futureItems = [];
 
   @override
   void initState() {
     super.initState();
-    // Mặc định pop-up hiển thị tab "Hiện tại" (initialIndex: 1)
+    // Mặc định hiển thị tab "Hiện tại" (initialIndex: 1)
     _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
     _loadAllChecklistData();
   }
@@ -93,66 +93,93 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
   }
 
   Future<void> _loadAllChecklistData() async {
+    int currentWk = 1;
     try {
       final dashboard = await JourneyService().getDashboard();
-      _gestationalWeek = dashboard.effectivePregnancyWeek ??
-          dashboard.completedGestationalWeek ??
-          24;
       _journeyId = dashboard.journeyId;
+      final rawStage = (dashboard.journeyType ?? '').toUpperCase();
+      if (dashboard.isPrePregnancy || rawStage == 'PRE_PREGNANCY') {
+        _stage = 'PRE_PREGNANCY';
+        _stageLabel = 'Chuẩn bị mang thai';
+        _gestationalWeek = null;
+        currentWk = 1;
+      } else if (dashboard.isPostpartum || rawStage == 'POSTPARTUM') {
+        _stage = 'POSTPARTUM';
+        _stageLabel = 'Sau sinh';
+        _gestationalWeek = null;
+        currentWk = 1;
+      } else {
+        _stage = 'PREGNANCY';
+        _gestationalWeek = dashboard.effectivePregnancyWeek ??
+            dashboard.completedGestationalWeek ??
+            12;
+        _stageLabel = 'Tuần thai thứ $_gestationalWeek';
+        currentWk = _gestationalWeek ?? 12;
+      }
     } catch (_) {
-      _gestationalWeek = 24;
+      _stage = 'PRE_PREGNANCY';
+      _stageLabel = 'Chuẩn bị mang thai';
+      _gestationalWeek = null;
+      currentWk = 1;
     }
-
-    final currentWk = _gestationalWeek ?? 24;
 
     // 1. Load categorized roadmap tasks for history and future (Gợi ý CareBridge / System templates)
     try {
       final categorized = await ChecklistRoadmapService.instance
-          .loadCategorizedTasks(currentWeek: currentWk);
+          .loadCategorizedTasks(currentWeek: currentWk, stage: _stage);
 
       final hist = categorized['history'] ?? [];
       final curr = categorized['current'] ?? [];
       final fut = categorized['future'] ?? [];
 
       _historyItems = hist
-          .map((t) => _SelectableItem(
+          .map((t) => _ChecklistShareItem(
                 id: t.id,
                 text: t.title,
                 completed: true,
                 category: t.category,
-                timeLabel: 'Tuần ${t.dueWeek ?? (currentWk - 4)}',
+                timeLabel: _stage == 'PRE_PREGNANCY'
+                    ? 'Đã chuẩn bị'
+                    : (_stage == 'POSTPARTUM'
+                        ? 'Đã thực hiện'
+                        : 'Tuần ${t.dueWeek ?? (currentWk - 4)}'),
                 section: 'HISTORY',
                 origin: 'SYSTEM',
                 createdBy: 'SYSTEM',
-                isSelected: false,
               ))
           .toList();
 
       _currentItems = curr
-          .map((t) => _SelectableItem(
+          .map((t) => _ChecklistShareItem(
                 id: t.id,
                 text: t.title,
                 completed: t.completed,
                 category: t.category,
-                timeLabel: 'Tuần $currentWk (Hiện tại)',
+                timeLabel: _stage == 'PRE_PREGNANCY'
+                    ? 'Chuẩn bị mang thai'
+                    : (_stage == 'POSTPARTUM'
+                        ? 'Sau sinh'
+                        : 'Tuần $currentWk (Hiện tại)'),
                 section: 'CURRENT',
                 origin: 'SYSTEM',
                 createdBy: 'SYSTEM',
-                isSelected: true,
               ))
           .toList();
 
       _futureItems = fut
-          .map((t) => _SelectableItem(
+          .map((t) => _ChecklistShareItem(
                 id: t.id,
                 text: t.title,
                 completed: false,
                 category: t.category,
-                timeLabel: 'Tuần ${t.dueWeek ?? (currentWk + 4)} (Tương lai)',
+                timeLabel: _stage == 'PRE_PREGNANCY'
+                    ? 'Kế hoạch tiếp theo'
+                    : (_stage == 'POSTPARTUM'
+                        ? 'Kế hoạch tiếp theo'
+                        : 'Tuần ${t.dueWeek ?? (currentWk + 4)} (Tương lai)'),
                 section: 'FUTURE',
                 origin: 'SYSTEM',
                 createdBy: 'SYSTEM',
-                isSelected: false,
               ))
           .toList();
     } catch (_) {}
@@ -173,7 +200,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
           for (final c in _currentItems) c.text.trim().toLowerCase(): c
         };
 
-        final updatedCurrent = <_SelectableItem>[];
+        final updatedCurrent = <_ChecklistShareItem>[];
         for (final t in liveTasks) {
           final key = t.title.trim().toLowerCase();
           final existing = existingMap[key];
@@ -185,7 +212,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
           // Loại bỏ tuyệt đối việc cá nhân khi chia sẻ cho chuyên gia
           if (isPersonalTask) continue;
 
-          updatedCurrent.add(_SelectableItem(
+          updatedCurrent.add(_ChecklistShareItem(
             id: t.id,
             text: t.title,
             completed: t.isCompleted,
@@ -194,7 +221,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
             section: 'CURRENT',
             origin: 'SYSTEM',
             createdBy: 'SYSTEM',
-            isSelected: existing?.isSelected ?? true,
           ));
         }
 
@@ -210,7 +236,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
     } catch (_) {}
 
     // 3. Synchronize with UserChecklistService: chỉ cập nhật trạng thái completed cho việc thuộc lộ trình
-    // Tuyệt đối không thêm việc cá nhân của mẹ ngoài roadmap vào danh sách chia sẻ cho chuyên gia
     try {
       final serverItems = await UserChecklistService.instance.listItems();
       if (serverItems.isNotEmpty) {
@@ -219,7 +244,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
           final idx = _currentItems.indexWhere((c) => c.text.trim().toLowerCase() == key);
           if (idx >= 0 && roadmapTitleSet.contains(key)) {
             final cur = _currentItems[idx];
-            _currentItems[idx] = _SelectableItem(
+            _currentItems[idx] = _ChecklistShareItem(
               id: si.itemId,
               text: cur.text,
               completed: si.completed,
@@ -228,7 +253,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               section: cur.section,
               origin: cur.origin,
               createdBy: cur.createdBy,
-              isSelected: cur.isSelected,
             );
           }
         }
@@ -257,53 +281,41 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
     }
   }
 
-  void _selectAllTabs(bool select) {
-    setState(() {
-      for (final i in _historyItems) {
-        i.isSelected = select;
-      }
-      for (final i in _currentItems) {
-        i.isSelected = select;
-      }
-      for (final i in _futureItems) {
-        i.isSelected = select;
-      }
-    });
-  }
-
   void _onConfirm() {
-    final selectedHist = _historyItems.where((i) => i.isSelected).toList();
-    final selectedCurr = _currentItems.where((i) => i.isSelected).toList();
-    final selectedFut = _futureItems.where((i) => i.isSelected).toList();
+    final totalCount =
+        _historyItems.length + _currentItems.length + _futureItems.length;
 
-    final totalSelected =
-        selectedHist.length + selectedCurr.length + selectedFut.length;
-
-    if (totalSelected == 0) {
+    if (totalCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ít nhất 1 việc để chia sẻ')),
+        const SnackBar(content: Text('Không có việc cần làm nào để chia sẻ')),
       );
       return;
     }
 
-    final completedCount = selectedHist.where((i) => i.completed).length +
-        selectedCurr.where((i) => i.completed).length +
-        selectedFut.where((i) => i.completed).length;
+    final completedCount = _historyItems.where((i) => i.completed).length +
+        _currentItems.where((i) => i.completed).length +
+        _futureItems.where((i) => i.completed).length;
     final percent =
-        totalSelected > 0 ? ((completedCount / totalSelected) * 100).round() : 0;
+        totalCount > 0 ? ((completedCount / totalCount) * 100).round() : 0;
 
     final shareData = ChecklistShareData(
-      title: 'Danh sách việc cần làm (Checklist)',
+      title: _stage == 'PRE_PREGNANCY'
+          ? 'Lộ trình chuẩn bị mang thai'
+          : (_stage == 'POSTPARTUM'
+              ? 'Lộ trình chăm sóc sau sinh'
+              : 'Danh sách việc cần làm (Checklist)'),
       gestationalWeek: _gestationalWeek,
+      stage: _stage,
+      stageLabel: _stageLabel,
       journeyId: _journeyId,
       isLiveSync: true,
       completedCount: completedCount,
-      totalCount: totalSelected,
+      totalCount: totalCount,
       progressPercent: percent,
       note: _noteController.text.trim().isEmpty
           ? null
           : _noteController.text.trim(),
-      historyItems: selectedHist
+      historyItems: _historyItems
           .map((i) => ChecklistItemShareData(
                 text: i.text,
                 completed: i.completed,
@@ -315,7 +327,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                 doctorNote: i.doctorNote,
               ))
           .toList(),
-      currentItems: selectedCurr
+      currentItems: _currentItems
           .map((i) => ChecklistItemShareData(
                 text: i.text,
                 completed: i.completed,
@@ -327,7 +339,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                 doctorNote: i.doctorNote,
               ))
           .toList(),
-      futureItems: selectedFut
+      futureItems: _futureItems
           .map((i) => ChecklistItemShareData(
                 text: i.text,
                 completed: i.completed,
@@ -344,7 +356,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
     Navigator.of(context).pop(shareData);
   }
 
-  List<_SelectableItem> _filterItems(List<_SelectableItem> items) {
+  List<_ChecklistShareItem> _filterItems(List<_ChecklistShareItem> items) {
     return items.where((i) {
       // Filter by completion status
       if (_statusFilter == 'COMPLETED' && !i.completed) return false;
@@ -362,12 +374,8 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
 
     final allItemsList = [..._historyItems, ..._currentItems, ..._futureItems];
     final totalAllItems = allItemsList.length;
-
-    final selectedItemsList = allItemsList.where((i) => i.isSelected).toList();
-    final totalSelected = selectedItemsList.length;
-
-    final selectedCompleted = selectedItemsList.where((i) => i.completed).length;
-    final selectedPending = totalSelected - selectedCompleted;
+    final totalCompleted = allItemsList.where((i) => i.completed).length;
+    final totalPending = totalAllItems - totalCompleted;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -456,8 +464,8 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                         ),
                         Text(
                           _gestationalWeek != null
-                              ? 'Mặc định tuần thai $_gestationalWeek (Hiện tại) · Đồng bộ trạng thái thực'
-                              : 'Gửi danh sách việc đã làm và chưa làm cho chuyên gia',
+                              ? 'Mặc định gửi toàn bộ lộ trình cho chuyên gia · Tuần thai $_gestationalWeek'
+                              : 'Mặc định gửi toàn bộ lộ trình cho chuyên gia · $_stageLabel',
                           style: const TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 11,
@@ -499,71 +507,43 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               ),
               const SizedBox(height: 8),
 
-              // Filter: Trạng thái hoàn thành
-              Row(
-                children: [
-                  _buildStatusChip('ALL', 'Tất cả ($totalAllItems)'),
-                  const SizedBox(width: 6),
-                  _buildStatusChip('COMPLETED', 'Đã xong ($selectedCompleted)'),
-                  const SizedBox(width: 6),
-                  _buildStatusChip('PENDING', 'Chờ làm ($selectedPending)'),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Quick Selective Action Bar
+              // Scope Info Bar (Mặc định toàn bộ)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF7F2F0),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE8D5CE)),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Đã chọn: $totalSelected việc',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: _primary,
+                    const Icon(Icons.all_inclusive_rounded, size: 16, color: _primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Mặc định gửi toàn bộ $totalAllItems việc (Đã xong: $totalCompleted, Chờ làm: $totalPending)',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _primary,
+                        ),
                       ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton(
-                          onPressed: () => _selectAllTabs(false),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'Bỏ chọn hết',
-                            style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _textMuted),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        TextButton(
-                          onPressed: () => _selectAllTabs(true),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            backgroundColor: _primary.withValues(alpha: 0.1),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: const Text(
-                            'Chọn tất cả',
-                            style: TextStyle(fontFamily: 'Lexend', fontSize: 11, fontWeight: FontWeight.bold, color: _primary),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 8),
+
+              // Filter: Trạng thái xem trước
+              Row(
+                children: [
+                  _buildStatusChip('ALL', 'Tất cả ($totalAllItems)'),
+                  const SizedBox(width: 6),
+                  _buildStatusChip('COMPLETED', 'Đã xong ($totalCompleted)'),
+                  const SizedBox(width: 6),
+                  _buildStatusChip('PENDING', 'Chờ làm ($totalPending)'),
+                ],
               ),
               const SizedBox(height: 6),
 
@@ -593,9 +573,9 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildChecklistSelectionList(_filterItems(_historyItems), 'Chưa có lịch sử checklist nào.'),
-                      _buildChecklistSelectionList(_filterItems(_currentItems), 'Không có việc nào trong tuần này.'),
-                      _buildChecklistSelectionList(_filterItems(_futureItems), 'Chưa có lộ trình tương lai.'),
+                      _buildChecklistPreviewList(_filterItems(_historyItems), 'Chưa có lịch sử việc cần làm nào.'),
+                      _buildChecklistPreviewList(_filterItems(_currentItems), 'Không có việc nào trong tuần này.'),
+                      _buildChecklistPreviewList(_filterItems(_futureItems), 'Chưa có lộ trình tương lai.'),
                     ],
                   ),
                 ),
@@ -633,12 +613,13 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               ),
               const SizedBox(height: 12),
 
-              // Send button
+              // Send button: Gửi toàn bộ
               FilledButton.icon(
-                onPressed: _onConfirm,
+                key: const Key('share-all-checklist-btn'),
+                onPressed: _loading ? null : _onConfirm,
                 icon: const Icon(Icons.send_rounded, size: 18),
                 label: Text(
-                  'Chia sẻ $totalSelected việc',
+                  'Chia sẻ toàn bộ việc cần làm ($totalAllItems việc)',
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.bold,
@@ -688,7 +669,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
     );
   }
 
-  Widget _buildChecklistSelectionList(List<_SelectableItem> items, String emptyMessage) {
+  Widget _buildChecklistPreviewList(List<_ChecklistShareItem> items, String emptyMessage) {
     if (items.isEmpty) {
       return Center(
         child: Text(
@@ -711,56 +692,58 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
         separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFECE4E1)),
         itemBuilder: (ctx, idx) {
           final item = items[idx];
-          return CheckboxListTile(
-            value: item.isSelected,
-            activeColor: _primary,
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-            title: Row(
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  item.completed
-                      ? Icons.check_circle_rounded
-                      : Icons.radio_button_unchecked_rounded,
-                  size: 16,
-                  color: item.completed
-                      ? const Color(0xFF2E7D32)
-                      : const Color(0xFFC98C7B),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(
+                    item.completed
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 18,
+                    color: item.completed
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFFC98C7B),
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
                               item.text,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                                 color: item.completed
                                     ? const Color(0xFF5A4E4B)
                                     : _textDark,
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: item.completed
                                   ? const Color(0xFFE8F5E9)
                                   : const Color(0xFFFFF3E0),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               item.completed ? 'Đã xong' : 'Chờ làm',
                               style: TextStyle(
                                 fontFamily: 'Lexend',
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: item.completed
                                     ? const Color(0xFF2E7D32)
@@ -770,13 +753,13 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
                           // Badge phân loại Gợi ý CareBridge vs Bác sĩ chỉ định
                           if (item.isExpertCustom || item.origin == 'EXPERT')
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFCCFBF1),
@@ -802,7 +785,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                             )
                           else
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE0F2FE),
@@ -831,7 +814,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                               '${item.timeLabel} · ${item.category}',
                               style: const TextStyle(
                                 fontFamily: 'Lexend',
-                                fontSize: 10,
+                                fontSize: 11,
                                 color: Color(0xFF9E8E8A),
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -844,11 +827,6 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                 ),
               ],
             ),
-            onChanged: (val) {
-              setState(() {
-                item.isSelected = val ?? false;
-              });
-            },
           );
         },
       ),

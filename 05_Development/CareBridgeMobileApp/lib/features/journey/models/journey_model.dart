@@ -6,14 +6,18 @@ class JourneyDashboard {
   final String?
   status; // ACTIVE_PREGNANCY | ACTIVE_POSTPARTUM | BABY_CARE | NO_JOURNEY
   final int? pregnancyWeek;
+
   /// Zero-based completed gestational week retained for legacy dashboard clients.
   /// This is deliberately distinct from [sourceWeekNumber], which is the
   /// one-based week used to select the checklist plan.
   final int? completedGestationalWeek;
+
   /// Remainder days (0 to 6) in the current completed gestational week.
   final int? completedGestationalDays;
+
   /// One-based source week returned by the server for checklist selection.
   final int? sourceWeekNumber;
+
   /// Server-selected WHO checklist plan for [sourceWeekNumber].
   final int? plan;
   final int? trimester;
@@ -24,8 +28,10 @@ class JourneyDashboard {
   final int? version;
   final String? dateSource;
   final String? dateConfidence;
+
   /// Canonical dating authority: LMP or EDD.
   final String? datingBasis;
+
   /// Non-null when the server quarantined dating data pending confirmation.
   final String? datingQuarantineReason;
   final DateTime? canonicalLmp;
@@ -128,9 +134,11 @@ class JourneyDashboard {
     // Prefer sourceWeekNumber if available (1-based), then server-supplied pregnancyWeek (1-based)
     if (sourceWeekNumber != null) return sourceWeekNumber;
     if (pregnancyWeek != null) return pregnancyWeek;
-    if (isPregnancy && datingBasis == null &&
+    if (isPregnancy &&
+        datingBasis == null &&
         (completedGestationalWeek == null || sourceWeekNumber == null) &&
-        plan == null && (lastMenstrualDate != null || estimatedDueDate != null)) {
+        plan == null &&
+        (lastMenstrualDate != null || estimatedDueDate != null)) {
       // The server intentionally omitted a dating authority for this
       // pregnancy. Raw dates are not sufficient to select a clinical week.
       return null;
@@ -138,7 +146,9 @@ class JourneyDashboard {
     // When any V2 dating metadata is present, a missing source week means the
     // server has not resolved dating; legacy date-only payloads may still use
     // the compatibility calculation below.
-    if ((datingBasis != null || completedGestationalWeek != null || plan != null) &&
+    if ((datingBasis != null ||
+            completedGestationalWeek != null ||
+            plan != null) &&
         sourceWeekNumber == null) {
       return null;
     }
@@ -224,8 +234,10 @@ class JourneyDashboard {
       journeyType: json['journeyType'] as String?,
       status: json['status'] as String?,
       pregnancyWeek: json['pregnancyWeek'] as int?,
-      completedGestationalWeek: (json['completedGestationalWeek'] as num?)?.toInt(),
-      completedGestationalDays: (json['completedGestationalDays'] as num?)?.toInt(),
+      completedGestationalWeek: (json['completedGestationalWeek'] as num?)
+          ?.toInt(),
+      completedGestationalDays: (json['completedGestationalDays'] as num?)
+          ?.toInt(),
       sourceWeekNumber: (json['sourceWeekNumber'] as num?)?.toInt(),
       plan: (json['plan'] as num?)?.toInt(),
       trimester: json['trimester'] as int?,
@@ -242,18 +254,19 @@ class JourneyDashboard {
       version: (json['version'] as num?)?.toInt(),
       dateSource: json['dateSource'] as String?,
       dateConfidence: json['dateConfidence'] as String?,
-      datingBasis:
-          (json['datingBasis'] ?? json['gestationalDatingBasis'])?.toString(),
+      datingBasis: (json['datingBasis'] ?? json['gestationalDatingBasis'])
+          ?.toString(),
       datingQuarantineReason:
           (json['datingQuarantineReason'] ??
                   json['gestationalDatingQuarantineReasonCode'] ??
                   json['gestationalDatingQuarantineReason'])
               ?.toString(),
       canonicalLmp: _parseDate(json['canonicalLmp']),
-      gestationalDatingRevision:
-          (json['gestationalDatingRevision'] as num?)?.toInt(),
-      gestationalDatingEffectiveAt:
-          _parseDateTime(json['gestationalDatingEffectiveAt']),
+      gestationalDatingRevision: (json['gestationalDatingRevision'] as num?)
+          ?.toInt(),
+      gestationalDatingEffectiveAt: _parseDateTime(
+        json['gestationalDatingEffectiveAt'],
+      ),
       pregnancyOutcome: json['pregnancyOutcome'] == null
           ? null
           : PregnancyOutcome.fromApiValue(json['pregnancyOutcome'] as String),
@@ -402,13 +415,13 @@ class CreateJourneyResponse {
       version: (json['version'] as num?)?.toInt(),
       dateSource: json['dateSource'] as String?,
       dateConfidence: json['dateConfidence'] as String?,
-      datingBasis:
-          (json['datingBasis'] ?? json['gestationalDatingBasis'])?.toString(),
+      datingBasis: (json['datingBasis'] ?? json['gestationalDatingBasis'])
+          ?.toString(),
       canonicalLmp: json['canonicalLmp']?.toString(),
-      completedGestationalWeek:
-          (json['completedGestationalWeek'] as num?)?.toInt(),
-      completedGestationalDays:
-          (json['completedGestationalDays'] as num?)?.toInt(),
+      completedGestationalWeek: (json['completedGestationalWeek'] as num?)
+          ?.toInt(),
+      completedGestationalDays: (json['completedGestationalDays'] as num?)
+          ?.toInt(),
       sourceWeekNumber: (json['sourceWeekNumber'] as num?)?.toInt(),
       plan: (json['plan'] as num?)?.toInt(),
       datingQuarantineReason:
@@ -629,7 +642,7 @@ enum PregnancyOutcome {
     PregnancyOutcome.pregnancyLoss => 'Thai kỳ đã kết thúc',
   };
 
-  bool get requiresDate => this == PregnancyOutcome.liveBirth;
+  bool get requiresDate => false;
 
   bool get transitionsToPostpartum =>
       this == PregnancyOutcome.liveBirth ||
