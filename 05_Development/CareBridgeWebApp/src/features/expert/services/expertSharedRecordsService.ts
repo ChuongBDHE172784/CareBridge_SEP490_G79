@@ -47,6 +47,8 @@ export interface ChecklistItemShareData {
 
 export interface ChecklistShareData {
   title: string;
+  stage?: string;
+  stageLabel?: string;
   gestationalWeek?: number;
   journeyId?: string;
   isLiveSync?: boolean;
@@ -234,8 +236,13 @@ export function parseChecklistShare(messageBody?: string): ChecklistShareData | 
   try {
     const jsonStr = messageBody.replace(CHECKLIST_SHARE_TAG, '').trim();
     const parsed = JSON.parse(jsonStr) as ChecklistShareData;
+    const removedSet = new Set((parsed.removedItems || []).map((r) => r.trim().toLowerCase()));
+
+    const isNonPersonalNotRemoved = (item: ChecklistItemShareData) =>
+      getTaskOriginCategory(item) !== 'USER' && !removedSet.has(item.text.trim().toLowerCase());
+
     const historyList = (parsed.historyItems || [])
-      .filter((h) => getTaskOriginCategory(h) !== 'USER')
+      .filter(isNonPersonalNotRemoved)
       .map((h) => {
         const isExp = h.isExpertCustom || h.origin === 'EXPERT' || h.createdBy === 'EXPERT';
         return {
@@ -246,7 +253,7 @@ export function parseChecklistShare(messageBody?: string): ChecklistShareData | 
         };
       });
     const futureList = (parsed.futureItems || [])
-      .filter((f) => getTaskOriginCategory(f) !== 'USER')
+      .filter(isNonPersonalNotRemoved)
       .map((f) => {
         const isExp = f.isExpertCustom || f.origin === 'EXPERT' || f.createdBy === 'EXPERT';
         return {
@@ -257,7 +264,7 @@ export function parseChecklistShare(messageBody?: string): ChecklistShareData | 
         };
       });
     let currentList = (parsed.currentItems || parsed.items || [])
-      .filter((c) => getTaskOriginCategory(c) !== 'USER')
+      .filter(isNonPersonalNotRemoved)
       .map((c) => {
         const isExp = c.isExpertCustom || c.origin === 'EXPERT' || c.createdBy === 'EXPERT';
         return {
@@ -287,10 +294,28 @@ export function parseChecklistShare(messageBody?: string): ChecklistShareData | 
     parsed.items = currentList;
 
     const allItems = [...historyList, ...currentList, ...futureList];
-    parsed.totalCount = allItems.length > 0 ? allItems.length : parsed.totalCount;
-    parsed.completedCount = allItems.filter((i) => i.completed).length;
+    const calculatedCompleted = allItems.filter((i) => i.completed).length;
+    if (!parsed.totalCount || parsed.totalCount < allItems.length) {
+      parsed.totalCount = allItems.length;
+    }
+    if (parsed.completedCount === undefined || parsed.completedCount === null) {
+      parsed.completedCount = calculatedCompleted;
+    }
     parsed.progressPercent =
       parsed.totalCount > 0 ? Math.round((parsed.completedCount / parsed.totalCount) * 100) : 0;
+
+    const rawStage = parsed.stage;
+    const rawWeek = parsed.gestationalWeek;
+    parsed.stage = rawStage || (rawWeek ? 'PREGNANCY' : 'PRE_PREGNANCY');
+    parsed.stageLabel =
+      parsed.stageLabel ||
+      (parsed.stage === 'PRE_PREGNANCY'
+        ? 'Chuẩn bị mang thai'
+        : parsed.stage === 'POSTPARTUM'
+        ? 'Sau sinh'
+        : rawWeek
+        ? `Tuần thai ${rawWeek}`
+        : 'Chuẩn bị mang thai');
 
     return parsed;
   } catch {
@@ -569,40 +594,113 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
   }
 }
 
+export function serializeChecklistShare(data: ChecklistShareData): string {
+  const serializeItem = (i: ChecklistItemShareData, compact = false): Record<string, any> => {
+    const res: Record<string, any> = {
+      text: i.text.trim(),
+      completed: !!i.completed,
+    };
+    if (!compact && i.category) res.category = i.category;
+    if (!compact && i.timeLabel) res.timeLabel = i.timeLabel;
+    if (i.origin && i.origin !== 'SYSTEM') res.origin = i.origin;
+    if (i.createdBy && i.createdBy !== 'SYSTEM') res.createdBy = i.createdBy;
+    if (i.isExpertCustom) res.isExpertCustom = true;
+    if (i.replacesText) res.replacesText = i.replacesText;
+    if (i.doctorNote) res.doctorNote = i.doctorNote;
+    if (i.sourceUrl) res.sourceUrl = i.sourceUrl;
+    if (i.supportFunction) res.supportFunction = i.supportFunction;
+    return res;
+  };
+
+  const isImportant = (i: ChecklistItemShareData) =>
+    Boolean(i.isExpertCustom || i.origin === 'EXPERT' || i.createdBy === 'EXPERT' || i.doctorNote || i.replacesText);
+
+  const buildPayload = (compact: boolean, maxNonImportant?: number) => {
+    let h = data.historyItems || [];
+    let c = data.currentItems || data.items || [];
+    let f = data.futureItems || [];
+
+    if (maxNonImportant !== undefined) {
+      const filterGroup = (list: ChecklistItemShareData[], takeLimit: number) => {
+        const important = list.filter(isImportant);
+        const nonImportant = list.filter((item) => !isImportant(item)).slice(0, takeLimit);
+        return [...important, ...nonImportant];
+      };
+      c = filterGroup(c, maxNonImportant);
+      const rem = Math.max(0, maxNonImportant - c.filter((i) => !isImportant(i)).length);
+      h = filterGroup(h, Math.floor(rem / 2));
+      f = filterGroup(f, Math.floor(rem / 2));
+    }
+
+    return {
+      title: data.title,
+      ...(data.gestationalWeek ? { gestationalWeek: data.gestationalWeek } : {}),
+      ...(data.stage ? { stage: data.stage } : {}),
+      ...(data.stageLabel ? { stageLabel: data.stageLabel } : {}),
+      journeyId: data.journeyId,
+      isLiveSync: data.isLiveSync ?? true,
+      completedCount: data.completedCount,
+      totalCount: data.totalCount,
+      progressPercent: data.progressPercent,
+      note: data.note,
+      ...(data.removedItems && data.removedItems.length > 0 ? { removedItems: data.removedItems } : {}),
+      historyItems: h.map((i) => serializeItem(i, compact)),
+      currentItems: c.map((i) => serializeItem(i, compact)),
+      futureItems: f.map((i) => serializeItem(i, compact)),
+    };
+  };
+
+  // 1. Standard unindented JSON
+  let encoded = `${CHECKLIST_SHARE_TAG}\n${JSON.stringify(buildPayload(false))}`;
+  if (encoded.length <= 1950) return encoded;
+
+  // 2. Compact mode (omit non-essential metadata on system roadmap items)
+  encoded = `${CHECKLIST_SHARE_TAG}\n${JSON.stringify(buildPayload(true))}`;
+  if (encoded.length <= 1950) return encoded;
+
+  // 3. Fallback: Cap non-important snapshot items while strictly keeping 100% of expert instructions
+  for (let max = 25; max >= 5; max -= 5) {
+    encoded = `${CHECKLIST_SHARE_TAG}\n${JSON.stringify(buildPayload(true, max))}`;
+    if (encoded.length <= 1950) return encoded;
+  }
+
+  return encoded;
+}
+
 export async function savePersonalizedChecklist(
   conversationId: string,
   updatedChecklist: ChecklistShareData,
   doctorActionNote?: string
 ): Promise<ChecklistShareData> {
-  const historyList = (updatedChecklist.historyItems || []).map((h) => {
-    const isExp = h.isExpertCustom || h.origin === 'EXPERT' || h.createdBy === 'EXPERT';
-    const originCat = getTaskOriginCategory(h);
+  const removedSet = new Set((updatedChecklist.removedItems || []).map((r) => r.trim().toLowerCase()));
+
+  const mapItem = (item: ChecklistItemShareData): ChecklistItemShareData => {
+    const isExp = item.isExpertCustom || item.origin === 'EXPERT' || item.createdBy === 'EXPERT';
+    const originCat = getTaskOriginCategory(item);
     return {
-      ...h,
+      ...item,
       origin: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
       createdBy: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
       isExpertCustom: isExp,
     };
-  });
-  const futureList = (updatedChecklist.futureItems || []).map((f) => {
-    const isExp = f.isExpertCustom || f.origin === 'EXPERT' || f.createdBy === 'EXPERT';
-    const originCat = getTaskOriginCategory(f);
-    return {
-      ...f,
-      origin: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-      createdBy: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-      isExpertCustom: isExp,
-    };
-  });
-  let currentList = (updatedChecklist.currentItems || updatedChecklist.items || []).map((c) => {
-    const isExp = c.isExpertCustom || c.origin === 'EXPERT' || c.createdBy === 'EXPERT';
-    const originCat = getTaskOriginCategory(c);
-    return {
-      ...c,
-      origin: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-      createdBy: (originCat === 'CAREBRIDGE' ? (isExp ? 'EXPERT' : 'SYSTEM') : 'USER') as 'SYSTEM' | 'USER' | 'EXPERT',
-      isExpertCustom: isExp,
-    };
+  };
+
+  let historyList = (updatedChecklist.historyItems || []).map(mapItem);
+  let futureList = (updatedChecklist.futureItems || []).map(mapItem);
+  let currentList = (updatedChecklist.currentItems || updatedChecklist.items || []).map(mapItem);
+
+  if (removedSet.size > 0) {
+    historyList = historyList.filter((h) => !removedSet.has(h.text.trim().toLowerCase()));
+    currentList = currentList.filter((c) => !removedSet.has(c.text.trim().toLowerCase()));
+    futureList = futureList.filter((f) => !removedSet.has(f.text.trim().toLowerCase()));
+  }
+
+  const seenHistory = new Set<string>();
+  historyList = historyList.filter((h) => {
+    const key = h.text.trim().toLowerCase();
+    if (seenHistory.has(key)) return false;
+    seenHistory.add(key);
+    return true;
   });
 
   const historyTextSet = new Set(historyList.map((h) => h.text.trim().toLowerCase()));
@@ -613,6 +711,14 @@ export async function savePersonalizedChecklist(
     const key = c.text.trim().toLowerCase();
     if (seenCurrent.has(key)) return false;
     seenCurrent.add(key);
+    return true;
+  });
+
+  const seenFuture = new Set<string>();
+  futureList = futureList.filter((f) => {
+    const key = f.text.trim().toLowerCase();
+    if (seenFuture.has(key) || historyTextSet.has(key) || seenCurrent.has(key)) return false;
+    seenFuture.add(key);
     return true;
   });
 
@@ -634,7 +740,7 @@ export async function savePersonalizedChecklist(
     note: doctorActionNote || updatedChecklist.note,
   };
 
-  const messageBody = `${CHECKLIST_SHARE_TAG}\n${JSON.stringify(payload, null, 2)}`;
+  const messageBody = serializeChecklistShare(payload);
   const clientMessageId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -666,8 +772,13 @@ export async function addChecklistItemToSharedRecord(
     doctorNote: doctorNote || newItem.doctorNote,
   };
 
+  const removedItems = (currentChecklist.removedItems || []).filter(
+    (r) => r.trim().toLowerCase() !== itemToSave.text.trim().toLowerCase()
+  );
+
   const updated: ChecklistShareData = {
     ...currentChecklist,
+    removedItems,
     currentItems: [...(currentChecklist.currentItems || currentChecklist.items || [])],
     historyItems: [...(currentChecklist.historyItems || [])],
     futureItems: [...(currentChecklist.futureItems || [])],
@@ -693,12 +804,14 @@ export async function editChecklistItemInSharedRecord(
   doctorNote?: string,
   originalItemText?: string
 ): Promise<ChecklistShareData> {
+  const removedItems = [...(currentChecklist.removedItems || [])];
+
   const updated: ChecklistShareData = {
     ...currentChecklist,
+    removedItems,
     currentItems: [...(currentChecklist.currentItems || currentChecklist.items || [])],
     historyItems: [...(currentChecklist.historyItems || [])],
     futureItems: [...(currentChecklist.futureItems || [])],
-    removedItems: [...(currentChecklist.removedItems || [])],
   };
 
   const targetList =
@@ -720,6 +833,12 @@ export async function editChecklistItemInSharedRecord(
   const originalText = originalItemText || existingItem?.text;
   const isRenamed =
     originalText && originalText.trim().toLowerCase() !== updatedItem.text.trim().toLowerCase();
+
+  if (isRenamed && originalText && !removedItems.includes(originalText.trim())) {
+    removedItems.push(originalText.trim());
+    updated.removedItems = removedItems;
+  }
+
   const replacesText =
     updatedItem.replacesText || (isRenamed ? originalText.trim() : existingItem?.replacesText || undefined);
 

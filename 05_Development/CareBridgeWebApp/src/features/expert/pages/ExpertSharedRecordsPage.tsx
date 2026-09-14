@@ -25,6 +25,7 @@ export interface MotherSummaryCardData {
   motherPhone?: string;
   lastActiveAt: string;
   gestationalWeek?: number;
+  stageLabel?: string;
   overallAlertLevel: 'CRITICAL' | 'WARNING' | 'NORMAL';
   latestHealthRecord?: SharedRecordEntry;
   latestChecklistRecord?: SharedRecordEntry;
@@ -236,6 +237,15 @@ export default function ExpertSharedRecordsPage() {
           motherPhone: record.motherPhone,
           lastActiveAt: record.createdAt,
           gestationalWeek: record.healthData?.gestationalWeek || record.checklistData?.gestationalWeek,
+          stageLabel:
+            record.checklistData?.stageLabel ||
+            (record.checklistData?.stage === 'PRE_PREGNANCY'
+              ? 'Chuẩn bị mang thai'
+              : record.checklistData?.stage === 'POSTPARTUM'
+              ? 'Sau sinh'
+              : record.checklistData?.gestationalWeek
+              ? `Tuần thai ${record.checklistData.gestationalWeek}`
+              : undefined),
           overallAlertLevel: 'NORMAL',
           allHealthRecords: [],
           allChecklistRecords: [],
@@ -252,10 +262,13 @@ export default function ExpertSharedRecordsPage() {
         }
       }
 
-      // Update gestational week
+      // Update gestational week and stage label
       const gw = record.healthData?.gestationalWeek || record.checklistData?.gestationalWeek;
       if (gw && (!existing.gestationalWeek || gw > existing.gestationalWeek)) {
         existing.gestationalWeek = gw;
+      }
+      if (record.checklistData?.stageLabel) {
+        existing.stageLabel = record.checklistData.stageLabel;
       }
 
       // Collect records
@@ -611,7 +624,7 @@ export default function ExpertSharedRecordsPage() {
                         </div>
                         <p className="text-xs text-on-surface-variant m-0 mt-0.5">
                           {[
-                            card.gestationalWeek ? `Tuần thai ${card.gestationalWeek}` : null,
+                            card.stageLabel || (card.gestationalWeek ? `Tuần thai ${card.gestationalWeek}` : 'Chuẩn bị mang thai'),
                             `Cập nhật gần nhất: ${new Date(card.lastActiveAt).toLocaleDateString('vi-VN', {
                               day: '2-digit',
                               month: '2-digit',
@@ -1217,9 +1230,11 @@ export default function ExpertSharedRecordsPage() {
                     Hồ sơ Checklist: {selectedChecklistModal.motherName}
                   </h3>
                   <p className="text-xs text-on-surface-variant m-0 mt-0.5">
-                    {selectedChecklistModal.data.gestationalWeek
+                    {selectedChecklistModal.data.stageLabel
+                      ? `${selectedChecklistModal.data.stageLabel} · `
+                      : selectedChecklistModal.data.gestationalWeek
                       ? `Tuần thai ${selectedChecklistModal.data.gestationalWeek} · `
-                      : ''}
+                      : 'Chuẩn bị mang thai · '}
                     Tiến độ: {selectedChecklistModal.data.completedCount}/{selectedChecklistModal.data.totalCount} việc (
                     {selectedChecklistModal.data.progressPercent}%)
                   </p>
