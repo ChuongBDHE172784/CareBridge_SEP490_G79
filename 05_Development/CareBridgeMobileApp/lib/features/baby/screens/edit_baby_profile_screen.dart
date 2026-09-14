@@ -147,21 +147,6 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'CareBridge',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: _primary,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close_rounded, color: _onSurfaceVariant),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -608,57 +593,33 @@ class _EditBabyProfileScreenState extends State<EditBabyProfileScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton(
-          onPressed: _isSaving ? null : _save,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primary,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: _surfaceContainer,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: const StadiumBorder(),
-            elevation: 0,
-          ),
-          child: _isSaving
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text(
-                  'Lưu hồ sơ',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: _onSurfaceVariant,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: _surfaceContainer,
-            side: BorderSide.none,
-            shape: const StadiumBorder(),
-          ),
-          child: const Text(
-            'Hủy bỏ',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+    return ElevatedButton(
+      onPressed: _isSaving ? null : _save,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _primary,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: _surfaceContainer,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: const StadiumBorder(),
+        elevation: 0,
+      ),
+      child: _isSaving
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          : const Text(
+              'Lưu hồ sơ',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ),
-      ],
     );
   }
 

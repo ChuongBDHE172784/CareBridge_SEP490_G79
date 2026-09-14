@@ -275,24 +275,34 @@ class LogTypeSummary {
   }
 }
 
+String formatSleepMinutes(int totalMinutes) {
+  if (totalMinutes <= 0) return '0 phút';
+  final h = totalMinutes ~/ 60;
+  final m = totalMinutes % 60;
+  if (h > 0 && m > 0) return '$h giờ $m phút';
+  if (h > 0) return '$h giờ';
+  return '$m phút';
+}
+
 String formatSleepDuration(LogTypeSummary? summary) {
   if (summary == null) return '—';
   if (summary.count == 0) return '0h';
 
   final quantity = summary.totalQuantity;
-  final unit = summary.unit?.trim().toLowerCase();
-  if (quantity == null || unit == null || unit.isEmpty) return '—';
+  if (quantity == null) return '—';
 
-  final hours = switch (unit) {
-    'h' || 'hr' || 'hrs' || 'hour' || 'hours' || 'giờ' || 'gio' => quantity,
-    'm' || 'min' || 'mins' || 'minute' || 'minutes' || 'phút' || 'phut' => quantity / 60,
-    _ => null,
+  final unit = summary.unit?.trim().toLowerCase();
+  final int totalMinutes = switch (unit) {
+    'h' || 'hr' || 'hrs' || 'hour' || 'hours' || 'giờ' || 'gio' => (quantity * 60).round(),
+    _ => quantity.round(),
   };
-  if (hours == null) return '—';
-  final value = hours == hours.roundToDouble()
-      ? hours.toStringAsFixed(0)
-      : hours.toStringAsFixed(1);
-  return '${value}h';
+
+  final h = totalMinutes ~/ 60;
+  final m = totalMinutes % 60;
+  if (h > 0 && m > 0) return '${h}h ${m}p';
+  if (h > 0) return '${h}h';
+  if (m > 0) return '${m}p';
+  return '0h';
 }
 
 class BabyLogSummaryResponse {

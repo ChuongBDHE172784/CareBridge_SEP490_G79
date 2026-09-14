@@ -219,8 +219,6 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
                 _buildScheduleCard(r),
                 const SizedBox(height: 16),
                 _buildFacilityCard(r),
-                const SizedBox(height: 16),
-                _buildChildCard(r),
                 if (note?.trim().isNotEmpty == true) ...[
                   const SizedBox(height: 16),
                   _buildNoteCard(note!),
@@ -240,35 +238,10 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
       height: 64,
       color: _canvas,
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _primary),
-          ),
-          const Expanded(
-            child: Text(
-              'CareBridge',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: _primary,
-              ),
-            ),
-          ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _surfaceVariant,
-            ),
-            child: const Icon(Icons.person, size: 20, color: _onSurfaceVariant),
-          ),
-          const SizedBox(width: 8),
-        ],
+      alignment: Alignment.centerLeft,
+      child: IconButton(
+        onPressed: () => Navigator.pop(context),
+        icon: const Icon(Icons.arrow_back, color: _primary),
       ),
     );
   }
@@ -432,49 +405,6 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     );
   }
 
-  Widget _buildChildCard(VaccinationRecord r) {
-    return _InfoCard(
-      icon: Icons.child_care,
-      title: 'Hồ sơ trẻ em',
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _surfaceVariant,
-            ),
-            child: const Icon(Icons.face, size: 28, color: _onSurfaceVariant),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                r.childName ?? '—',
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _textHeading,
-                ),
-              ),
-              if (r.childBirthLabel.isNotEmpty)
-                Text(
-                  r.childBirthLabel,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    color: _onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildNoteCard(String note) {
     return _InfoCard(

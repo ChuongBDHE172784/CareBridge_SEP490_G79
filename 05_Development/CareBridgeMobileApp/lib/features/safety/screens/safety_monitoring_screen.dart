@@ -1074,7 +1074,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                       Icon(Icons.personal_injury_outlined, color: _tertiary),
                       SizedBox(width: 8),
                       Text(
-                        'Phát hiện ngã (Fall Detection)',
+                        'Phát hiện ngã',
                         style: TextStyle(fontSize: 14, color: _onSurface),
                       ),
                     ],

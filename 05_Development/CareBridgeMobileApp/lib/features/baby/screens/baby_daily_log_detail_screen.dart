@@ -379,6 +379,13 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
 
   String _formatQuantity(BabyDailyLog log) {
     if (log.quantity == null) return '-';
+    if (log.logType == LogType.sleep || log.rawLogType?.toUpperCase() == 'SLEEP') {
+      final unit = log.unit?.trim().toLowerCase();
+      final totalMin = (unit == 'giờ' || unit == 'h' || unit == 'hours' || unit == 'hour')
+          ? (log.quantity! * 60).round()
+          : log.quantity!.round();
+      return formatSleepMinutes(totalMin);
+    }
     final value = log.quantity!.toStringAsFixed(log.quantity! % 1 == 0 ? 0 : 1);
     final unit = log.unit?.trim();
     return unit == null || unit.isEmpty ? value : '$value $unit';

@@ -4,12 +4,46 @@ import '../services/safety_service.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_permission_service.dart';
 import '../../privacy/services/privacy_service.dart';
+import '../../familySync/models/care_group_model.dart';
+import '../../familySync/services/care_group_service.dart';
+import '../../familySync/screens/care_groups_screen.dart';
+
+/// Checks if at least one active care group has at least one family member
+/// (either memberCount > 1 or accepted member with non-OWNER role).
+bool careGroupsHaveAnyFamilyMember(List<CareGroup> groups) {
+  for (final group in groups) {
+    if (!group.isActive) continue;
+    if (group.members.isNotEmpty) {
+      final hasFamily = group.members.any(
+        (m) =>
+            m.inviteStatus.toUpperCase() == 'ACCEPTED' &&
+            m.memberRole.toUpperCase() != 'OWNER',
+      );
+      if (hasFamily || group.members.length > 1) return true;
+    }
+    if (group.memberCount > 1) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /// CB-129 — Enable Fall Detection Confirmation (UC-134)
 /// Consent + setup screen shown before activating fall detection.
 /// Submits PUT /api/v1/safety/config then POST /api/v1/safety/fall-detection/enable.
 class EnableFallDetectionScreen extends StatefulWidget {
-  const EnableFallDetectionScreen({super.key});
+  final CareGroupService? careGroupService;
+  final SafetyService? safetyService;
+  final SafetyPermissionService? permissionService;
+  final SafetyForegroundServiceCoordinator? foregroundCoordinator;
+
+  const EnableFallDetectionScreen({
+    super.key,
+    this.careGroupService,
+    this.safetyService,
+    this.permissionService,
+    this.foregroundCoordinator,
+  });
 
   @override
   State<EnableFallDetectionScreen> createState() =>
@@ -27,15 +61,19 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
   static const _outlineVariant = Color(0xFFD6C2BD);
   static const _error = Color(0xFFBA1A1A);
 
-  final _safetyService = SafetyService();
-  final _permissionService = SafetyPermissionService();
-  final _foregroundCoordinator = SafetyForegroundServiceCoordinator.instance;
+  late final _safetyService = widget.safetyService ?? SafetyService();
+  late final _permissionService =
+      widget.permissionService ?? SafetyPermissionService();
+  late final _foregroundCoordinator =
+      widget.foregroundCoordinator ??
+      SafetyForegroundServiceCoordinator.instance;
+  late final _careGroupService = widget.careGroupService ?? CareGroupService();
 
   // Persisted by SafetyConfigRequest.countdownSeconds.
   static const int _countdownSeconds = 30;
   bool _currentlyEnabled = false;
   bool _loadingConfig = true;
-  bool _autoFamilyAlert = true;
+  bool _autoFamilyAlert = false;
   bool _shareLocation = false;
   bool? _sensorPermissionGranted;
   bool? _locationPermissionGranted;
@@ -48,13 +86,23 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
     _loadConfig();
   }
 
+  Future<bool> _checkHasFamilyMember() async {
+    try {
+      final groups = await _careGroupService.listMyGroups();
+      return careGroupsHaveAnyFamilyMember(groups);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _loadConfig() async {
     try {
       final config = await _safetyService.getConfig();
+      final hasFamily = await _checkHasFamilyMember();
       if (mounted) {
         setState(() {
           _currentlyEnabled = config.fallDetectionEnabled;
-          _autoFamilyAlert = config.emergencyAutoAlert;
+          _autoFamilyAlert = config.emergencyAutoAlert && hasFamily;
           _shareLocation = config.locationSharingEnabled;
           if (_currentlyEnabled) {
             _consentChecked = true;
@@ -96,6 +144,120 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _onAutoFamilyAlertChanged(bool value) async {
+    if (!value) {
+      setState(() => _autoFamilyAlert = false);
+      return;
+    }
+
+    final hasFamily = await _checkHasFamilyMember();
+    if (!mounted) return;
+
+    if (!hasFamily) {
+      setState(() => _autoFamilyAlert = false);
+      await _showNoFamilyMemberDialog();
+    } else {
+      setState(() => _autoFamilyAlert = true);
+    }
+  }
+
+  Future<void> _showNoFamilyMemberDialog() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          backgroundColor: _surfaceContainerLowest,
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+          contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.group_off_outlined,
+                  color: _error,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Chưa có người thân',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Bạn chưa có người thân nào trong nhóm gia đình để nhận thông báo khẩn cấp khi phát hiện ngã.\n\nVui lòng thêm thành viên vào nhóm chăm sóc để bật tính năng này.',
+            style: TextStyle(
+              fontSize: 14,
+              color: _onSurfaceVariant,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('no-family-modal-cancel-button'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                'Để sau',
+                style: TextStyle(
+                  color: _onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            FilledButton(
+              key: const Key('no-family-modal-navigate-care-group-button'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        CareGroupsScreen(service: _careGroupService),
+                  ),
+                );
+                if (mounted) {
+                  final hasFamily = await _checkHasFamilyMember();
+                  if (hasFamily) {
+                    setState(() => _autoFamilyAlert = true);
+                  }
+                }
+              },
+              child: const Text(
+                'Nhóm chăm sóc',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _disable() async {
@@ -144,6 +306,15 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
         ),
       );
       return;
+    }
+    if (_autoFamilyAlert) {
+      final hasFamily = await _checkHasFamilyMember();
+      if (!mounted) return;
+      if (!hasFamily) {
+        setState(() => _autoFamilyAlert = false);
+        await _showNoFamilyMemberDialog();
+        return;
+      }
     }
     setState(() => _submitting = true);
     var configurationEnabled = false;
@@ -263,7 +434,9 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
             Expanded(
               child: _loadingConfig
                   ? const Center(
-                      child: CircularProgressIndicator(color: _primaryContainer),
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
                     )
                   : SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -397,7 +570,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
               ),
               const SizedBox(height: 8),
               _PermissionRow(
-                'Vị trí khi cảnh báo (tùy chọn)',
+                'Vị trí khi cảnh báo',
                 granted: _shareLocation ? _locationPermissionGranted : false,
                 optional: true,
               ),
@@ -488,24 +661,28 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                     ],
                   ),
                   Switch(
+                    key: const Key('auto-family-alert-switch'),
                     value: _autoFamilyAlert,
                     activeThumbColor: Colors.white,
                     activeTrackColor: _primary,
-                    onChanged: (v) => setState(() => _autoFamilyAlert = v),
+                    onChanged: _submitting ? null : _onAutoFamilyAlertChanged,
                   ),
                 ],
               ),
               const Divider(height: 24, color: _outlineVariant),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Chia sẻ vị trí khi có cảnh báo'),
-                subtitle: const Text(
-                  'Chỉ gửi khi bạn bật tùy chọn này, cấp quyền hệ điều hành và consent LOCATION/SHARE còn hiệu lực.',
+              Material(
+                color: Colors.transparent,
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Chia sẻ vị trí khi có cảnh báo'),
+                  subtitle: const Text(
+                    'Chỉ gửi khi bạn bật tùy chọn này, cấp quyền hệ điều hành và consent LOCATION/SHARE còn hiệu lực.',
+                  ),
+                  value: _shareLocation,
+                  onChanged: _submitting
+                      ? null
+                      : (value) => _onLocationSharingChanged(value),
                 ),
-                value: _shareLocation,
-                onChanged: _submitting
-                    ? null
-                    : (value) => _onLocationSharingChanged(value),
               ),
             ],
           ),

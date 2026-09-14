@@ -87,4 +87,50 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('detail:baby-1:log-1'), findsOneWidget);
   });
+
+  testWidgets('header renders back button in AppBar and baby profile in body with separation', (
+    tester,
+  ) async {
+    final baby = BabyProfile(
+      id: 'baby-1',
+      nickname: 'hh',
+      birthDate: DateTime.now().subtract(const Duration(days: 5)),
+      gender: BabyGender.unknown,
+      isActive: true,
+    );
+    final log = BabyDailyLog(
+      id: 'log-1',
+      babyId: baby.id,
+      logType: LogType.feeding,
+      startedAt: DateTime.now(),
+      quantity: 120,
+      unit: 'ml',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BabyLogSummaryScreen(
+          babyId: 'baby-1',
+          babyService: _FakeBabyService(baby),
+          logService: _FakeLogService(log),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final backButtonFinder = find.byIcon(Icons.arrow_back_rounded);
+    final avatarFinder = find.byIcon(Icons.child_care_rounded);
+    final nicknameFinder = find.text('hh');
+
+    expect(backButtonFinder, findsOneWidget);
+    expect(avatarFinder, findsOneWidget);
+    expect(nicknameFinder, findsOneWidget);
+    expect(find.text('Nhật ký của bé'), findsOneWidget);
+
+    final backBottom = tester.getBottomLeft(backButtonFinder).dy;
+    final avatarTop = tester.getTopLeft(avatarFinder).dy;
+
+    // Avatar must be positioned below the back button in the app bar
+    expect(avatarTop, greaterThan(backBottom));
+  });
 }

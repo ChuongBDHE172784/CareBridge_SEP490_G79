@@ -131,7 +131,7 @@ void main() {
 
     expect(find.byKey(const Key('baby-summary-real-data')), findsOneWidget);
     expect(find.text('8'), findsOneWidget);
-    expect(find.text('1.5h'), findsOneWidget);
+    expect(find.text('1h 30p'), findsOneWidget);
     expect(find.text('5'), findsOneWidget);
     expect(find.byKey(const ValueKey('growth-chart-points-2')), findsOneWidget);
     expect(find.text('3.6 kg – 4.1 kg'), findsOneWidget);
@@ -450,7 +450,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Vaccine thật'), findsWidgets);
-    expect(find.text('Bông'), findsWidgets);
+    expect(find.text('Hồ sơ trẻ em'), findsNothing);
     expect(find.text('Nguyễn Văn A'), findsNothing);
   });
 }

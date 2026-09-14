@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/baby_daily_log_model.dart';
@@ -214,9 +215,27 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _canvas,
+      appBar: AppBar(
+        backgroundColor: _canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Nhật ký của bé',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
+        ),
+      ),
       body: CustomScrollView(
         slivers: [
-          _buildHeader(),
+          SliverToBoxAdapter(child: _buildHeader()),
           SliverToBoxAdapter(child: _buildContent()),
         ],
       ),
@@ -232,99 +251,86 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   }
 
   Widget _buildHeader() {
-    return SliverAppBar(
-      pinned: true,
-      backgroundColor: _canvas,
-      elevation: 0,
-      expandedHeight: 160,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          color: _canvas,
-          padding: const EdgeInsets.fromLTRB(16, 56, 16, 0),
-          child: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Column(
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: _surface,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: _primaryContainer.withAlpha(80),
-                        width: 2,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.child_care_rounded,
-                      color: _primaryContainer,
-                      size: 26,
-                    ),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _primaryContainer.withAlpha(80),
+                    width: 2,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _selectedBaby?.nickname ?? 'Bé yêu',
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: _onSurface,
-                          ),
-                        ),
-                        Text(
-                          _selectedBaby?.ageLabel ?? '',
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                            color: _onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_babies.length > 1)
-                    PopupMenuButton<BabyProfile>(
-                      icon: const Icon(
-                        Icons.expand_more_rounded,
-                        color: _primary,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      color: Colors.white,
-                      onSelected: _switchBaby,
-                      itemBuilder: (_) => _babies
-                          .map(
-                            (b) => PopupMenuItem(
-                              value: b,
-                              child: Text(
-                                b.nickname,
-                                style: const TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 14,
-                                  color: _onSurface,
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                ],
+                ),
+                child: const Icon(
+                  Icons.child_care_rounded,
+                  color: _primaryContainer,
+                  size: 26,
+                ),
               ),
-              const SizedBox(height: 12),
-              _buildPeriodToggle(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _selectedBaby?.nickname ?? 'Bé yêu',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                      ),
+                    ),
+                    Text(
+                      _selectedBaby?.ageLabel ?? '',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_babies.length > 1)
+                PopupMenuButton<BabyProfile>(
+                  icon: const Icon(
+                    Icons.expand_more_rounded,
+                    color: _primary,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  color: Colors.white,
+                  onSelected: _switchBaby,
+                  itemBuilder: (_) => _babies
+                      .map(
+                        (b) => PopupMenuItem(
+                          value: b,
+                          child: Text(
+                            b.nickname,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 14,
+                              color: _onSurface,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
             ],
           ),
-        ),
+          const SizedBox(height: 16),
+          _buildPeriodToggle(),
+        ],
       ),
     );
   }
@@ -661,10 +667,24 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   }
 
   Widget _buildLogTile(BabyDailyLog log) {
-    final quantity = log.quantity == null
-        ? null
-        : '${log.quantity!.toStringAsFixed(log.quantity! % 1 == 0 ? 0 : 1)} ${log.unit ?? ''}'
+    final String? quantity;
+    if (log.quantity == null) {
+      quantity = null;
+    } else if (log.logType == LogType.sleep ||
+        log.rawLogType?.toUpperCase() == 'SLEEP') {
+      final unit = log.unit?.trim().toLowerCase();
+      final totalMin = (unit == 'giờ' ||
+              unit == 'h' ||
+              unit == 'hours' ||
+              unit == 'hour')
+          ? (log.quantity! * 60).round()
+          : log.quantity!.round();
+      quantity = formatSleepMinutes(totalMin);
+    } else {
+      quantity =
+          '${log.quantity!.toStringAsFixed(log.quantity! % 1 == 0 ? 0 : 1)} ${log.unit ?? ''}'
               .trim();
+    }
     final details = [
       _formatLogDate(log.startedAt ?? log.createdAt),
       if (quantity != null && quantity.isNotEmpty) quantity,
@@ -848,21 +868,20 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
   ];
 
   late final TextEditingController _quantityController;
-  late final TextEditingController _unitController;
   late final TextEditingController _noteController;
   late final TextEditingController _symptomDescriptionController;
   final _formKey = GlobalKey<FormState>();
   LogType _selectedType = LogType.feeding;
   String _selectedSymptom = 'Sốt';
   bool _saving = false;
+  int _sleepHours = 1;
+  int _sleepMinutes = 0;
+  int _diaperCount = 1;
 
   @override
   void initState() {
     super.initState();
     _quantityController = TextEditingController();
-    _unitController = TextEditingController(
-      text: fixedDisplayUnitFor(_selectedType) ?? 'ml',
-    );
     _noteController = TextEditingController();
     _symptomDescriptionController = TextEditingController();
   }
@@ -870,7 +889,6 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
   @override
   void dispose() {
     _quantityController.dispose();
-    _unitController.dispose();
     _noteController.dispose();
     _symptomDescriptionController.dispose();
     super.dispose();
@@ -880,12 +898,6 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
     if (next == null || _saving) return;
     setState(() {
       _selectedType = next;
-      final displayUnit = fixedDisplayUnitFor(next);
-      if (displayUnit != null) {
-        _unitController.text = displayUnit;
-      } else {
-        _unitController.clear();
-      }
       if (next == LogType.symptom) {
         _quantityController.clear();
       }
@@ -895,15 +907,11 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
   String _quantityLabelFor(LogType type) {
     switch (type) {
       case LogType.feeding:
-        return 'Lượng sữa / thức ăn (tuỳ chọn)';
-      case LogType.sleep:
-        return 'Thời gian ngủ (tuỳ chọn)';
-      case LogType.diaper:
-        return 'Số lần (tuỳ chọn)';
+        return 'Lượng sữa (ml)';
       case LogType.medicine:
-        return 'Liều lượng (tuỳ chọn)';
+        return 'Liều lượng';
       default:
-        return 'Số lượng (tuỳ chọn)';
+        return 'Số lượng';
     }
   }
 
@@ -924,10 +932,46 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
         } else {
           note = desc.isNotEmpty ? '$_selectedSymptom: $desc' : _selectedSymptom;
         }
+      } else if (_selectedType == LogType.sleep) {
+        final totalMinutes = _sleepHours * 60 + _sleepMinutes;
+        if (totalMinutes <= 0) {
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vui lòng chọn thời gian ngủ lớn hơn 0 phút.'),
+            ),
+          );
+          return;
+        }
+        qty = totalMinutes.toDouble();
+        unit = 'phút';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
+      } else if (_selectedType == LogType.diaper) {
+        qty = _diaperCount.toDouble();
+        unit = 'lần';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
+      } else if (_selectedType == LogType.feeding) {
+        final raw = _quantityController.text.trim();
+        qty = raw.isEmpty ? null : double.tryParse(raw);
+        unit = 'ml';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
+      } else if (_selectedType == LogType.medicine) {
+        final raw = _quantityController.text.trim();
+        qty = raw.isEmpty ? null : double.tryParse(raw);
+        unit = 'liều';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
       } else {
-        qty = double.tryParse(_quantityController.text);
-        final rawUnit = _unitController.text.trim();
-        unit = rawUnit.isEmpty ? null : rawUnit;
+        final raw = _quantityController.text.trim();
+        qty = raw.isEmpty ? null : double.tryParse(raw);
+        unit = null;
         note = _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim();
@@ -958,6 +1002,182 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
         );
       }
     }
+  }
+
+  Widget _buildSleepTimePicker() {
+    final displayTime = _sleepHours > 0
+        ? (_sleepMinutes > 0 ? '$_sleepHours giờ $_sleepMinutes phút' : '$_sleepHours giờ')
+        : '$_sleepMinutes phút';
+
+    return Container(
+      key: const Key('baby-log-sleep-picker'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withAlpha(50)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Thời gian ngủ:',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+              Text(
+                displayTime,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 120,
+            child: Row(
+              children: [
+                Expanded(
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: _sleepHours.clamp(0, 24),
+                    ),
+                    itemExtent: 36,
+                    selectionOverlay: Container(
+                      decoration: BoxDecoration(
+                        color: _primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onSelectedItemChanged: (index) {
+                      setState(() => _sleepHours = index);
+                    },
+                    children: List.generate(
+                      25,
+                      (i) => Center(
+                        child: Text(
+                          '$i giờ',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: _sleepMinutes.clamp(0, 59),
+                    ),
+                    itemExtent: 36,
+                    selectionOverlay: Container(
+                      decoration: BoxDecoration(
+                        color: _primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onSelectedItemChanged: (index) {
+                      setState(() => _sleepMinutes = index);
+                    },
+                    children: List.generate(
+                      60,
+                      (i) => Center(
+                        child: Text(
+                          '$i phút',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiaperCounter() {
+    return Container(
+      key: const Key('baby-log-diaper-counter'),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withAlpha(50)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Số lần thay tã',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton.filledTonal(
+                key: const Key('baby-log-diaper-minus'),
+                onPressed: _diaperCount > 1
+                    ? () => setState(() => _diaperCount--)
+                    : null,
+                icon: const Icon(Icons.remove, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: _primary.withAlpha(25),
+                  foregroundColor: _primary,
+                ),
+              ),
+              Container(
+                constraints: const BoxConstraints(minWidth: 44),
+                alignment: Alignment.center,
+                child: Text(
+                  '$_diaperCount',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+              IconButton.filled(
+                key: const Key('baby-log-diaper-plus'),
+                onPressed: () => setState(() => _diaperCount++),
+                icon: const Icon(Icons.add, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1017,7 +1237,7 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
                     .toList(),
                 onChanged: _onTypeChanged,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               if (isSymptom) ...[
                 DropdownButtonFormField<String>(
                   key: const Key('baby-log-symptom-select'),
@@ -1066,6 +1286,10 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
                     return null;
                   },
                 ),
+              ] else if (_selectedType == LogType.sleep) ...[
+                _buildSleepTimePicker(),
+              ] else if (_selectedType == LogType.diaper) ...[
+                _buildDiaperCounter(),
               ] else ...[
                 TextFormField(
                   key: const Key('baby-log-quantity'),
@@ -1087,24 +1311,15 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  key: const Key('baby-log-unit'),
-                  controller: _unitController,
-                  enabled: !_saving,
-                  decoration: const InputDecoration(
-                    labelText: 'Đơn vị',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  key: const Key('baby-log-note'),
-                  controller: _noteController,
-                  enabled: !_saving,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Ghi chú'),
-                ),
               ],
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('baby-log-note'),
+                controller: _noteController,
+                enabled: !_saving,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Ghi chú'),
+              ),
               const SizedBox(height: 16),
               FilledButton(
                 key: const Key('baby-log-save'),
