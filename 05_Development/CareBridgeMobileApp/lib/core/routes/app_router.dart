@@ -652,11 +652,15 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/babies/add',
       builder: (context, state) {
+        final extra = state.extra;
+        final args = extra is AddBabyRouteArgs ? extra : null;
         return AddBabyScreen(
           entryPoint: resolveAddBabyEntryPoint(
             extra: state.extra,
             legacyEntry: state.uri.queryParameters['entry'],
           ),
+          journeyId: args?.journeyId,
+          journeyVersion: args?.journeyVersion,
         );
       },
     ),

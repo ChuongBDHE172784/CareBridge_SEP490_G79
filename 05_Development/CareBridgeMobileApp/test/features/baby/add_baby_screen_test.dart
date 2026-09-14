@@ -254,12 +254,51 @@ void main() {
       'birthLengthCm': 49.0,
     });
   });
+
+  testWidgets(
+    'live-birth transition records pregnancy outcome with selected birth date',
+    (tester) async {
+      final service = _FakeBabyService((_) async => {'id': 'baby-1'});
+      DateTime? recordedBirthDate;
+      String? recordedJourneyId;
+      int? recordedJourneyVersion;
+      final router = _routerFor(
+        service: service,
+        journeyId: 'journey-test-1',
+        journeyVersion: 2,
+        recordOutcome:
+            ({
+              required journeyId,
+              required journeyVersion,
+              required birthDate,
+            }) async {
+              recordedJourneyId = journeyId;
+              recordedJourneyVersion = journeyVersion;
+              recordedBirthDate = birthDate;
+            },
+      );
+      addTearDown(router.dispose);
+
+      await _pumpValidLiveBirthForm(tester, router);
+      await tester.tap(find.byKey(const Key('add-baby-submit')));
+      await tester.pumpAndSettle();
+
+      expect(service.createCalls, 1);
+      expect(recordedJourneyId, 'journey-test-1');
+      expect(recordedJourneyVersion, 2);
+      expect(recordedBirthDate, isNotNull);
+      expect(find.text('journey'), findsOneWidget);
+    },
+  );
 }
 
 GoRouter _routerFor({
   required BabyService service,
   String? Function()? accountIdProvider,
   String? Function()? accessTokenProvider,
+  String? journeyId,
+  int? journeyVersion,
+  PregnancyOutcomeRecordCallback? recordOutcome,
 }) {
   return GoRouter(
     initialLocation: '/babies/add',
@@ -269,6 +308,9 @@ GoRouter _routerFor({
         builder: (_, _) => AddBabyScreen(
           entryPoint: AddBabyEntryPoint.liveBirthTransition,
           service: service,
+          journeyId: journeyId,
+          journeyVersion: journeyVersion,
+          recordOutcome: recordOutcome,
           accountIdProvider: accountIdProvider ?? () => 'account-a',
           accessTokenProvider: accessTokenProvider ?? () => 'token-a',
         ),

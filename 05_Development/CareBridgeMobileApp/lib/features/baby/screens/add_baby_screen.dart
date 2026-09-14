@@ -3,10 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import '../models/baby_model.dart';
 import '../services/baby_service.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
+import '../../journey/models/journey_model.dart';
+import '../../journey/services/journey_service.dart';
 
 /// Add Baby Profile screen — UC-31
 /// Collects nickname, birthDate, gender, birthWeightKg, birthLengthCm.
@@ -21,14 +24,31 @@ enum AddBabyEntryPoint {
 }
 
 class AddBabyRouteArgs {
-  const AddBabyRouteArgs({required this.entryPoint});
+  const AddBabyRouteArgs({
+    required this.entryPoint,
+    this.journeyId,
+    this.journeyVersion,
+  });
 
   final AddBabyEntryPoint entryPoint;
+  final String? journeyId;
+  final int? journeyVersion;
 }
+
+typedef PregnancyOutcomeRecordCallback =
+    Future<void> Function({
+      required String journeyId,
+      required int journeyVersion,
+      required DateTime birthDate,
+    });
 
 class AddBabyScreen extends StatefulWidget {
   final AddBabyEntryPoint entryPoint;
   final BabyService? service;
+  final JourneyService? journeyService;
+  final String? journeyId;
+  final int? journeyVersion;
+  final PregnancyOutcomeRecordCallback? recordOutcome;
   final String? Function()? accountIdProvider;
   final String? Function()? accessTokenProvider;
 
@@ -36,6 +56,10 @@ class AddBabyScreen extends StatefulWidget {
     super.key,
     this.entryPoint = AddBabyEntryPoint.profileList,
     this.service,
+    this.journeyService,
+    this.journeyId,
+    this.journeyVersion,
+    this.recordOutcome,
     this.accountIdProvider,
     this.accessTokenProvider,
   });
@@ -69,12 +93,14 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   String? _errorMsg;
 
   late final BabyService _service;
+  late final JourneyService _journeyService;
   late final String? _requestAccountId;
 
   @override
   void initState() {
     super.initState();
     _service = widget.service ?? BabyService();
+    _journeyService = widget.journeyService ?? JourneyService();
     _requestAccountId = _currentAccountId;
   }
 
@@ -189,6 +215,9 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       if (!mounted || !_isCurrentAccount) return;
 
       if (widget.entryPoint.returnsJourney) {
+        await _recordLiveBirthOutcome(_birthDate!);
+        if (!mounted || !_isCurrentAccount) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã tạo hồ sơ bé thành công.')),
         );
@@ -224,6 +253,46 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _recordLiveBirthOutcome(DateTime birthDate) async {
+    try {
+      if (widget.recordOutcome != null) {
+        await widget.recordOutcome!(
+          journeyId: widget.journeyId ?? '',
+          journeyVersion: widget.journeyVersion ?? 0,
+          birthDate: birthDate,
+        );
+        return;
+      }
+
+      String? journeyId = widget.journeyId;
+      int? journeyVersion = widget.journeyVersion;
+
+      if (journeyId == null || journeyVersion == null) {
+        final dashboard = await _journeyService.getDashboard();
+        journeyId = dashboard.journeyId;
+        journeyVersion = dashboard.version;
+      }
+
+      if (journeyId != null && journeyVersion != null) {
+        await _journeyService.recordPregnancyOutcome(
+          journeyId,
+          RecordPregnancyOutcomeRequest(
+            submissionId: const Uuid().v4(),
+            expectedJourneyVersion: journeyVersion,
+            outcomeType: PregnancyOutcome.liveBirth,
+            outcomeDate: birthDate,
+            source: 'SELF_REPORTED',
+            reason: 'MOTHER_OUTCOME_CONFIRMATION',
+            effectiveAt: DateTime.now().toUtc(),
+            correction: false,
+          ),
+        );
+      }
+    } catch (_) {
+      // Best-effort outcome recording; profile creation already succeeded.
     }
   }
 
@@ -500,9 +569,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
             final icon = g == BabyGender.male ? Icons.male : Icons.female;
             return Expanded(
               child: Padding(
-                padding: EdgeInsets.only(
-                  right: g == BabyGender.male ? 8 : 0,
-                ),
+                padding: EdgeInsets.only(right: g == BabyGender.male ? 8 : 0),
                 child: GestureDetector(
                   onTap: () => setState(() => _gender = g),
                   child: AnimatedContainer(
