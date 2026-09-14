@@ -98,11 +98,13 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
             clearReviewFeedback(item);
         }
 
-        // TDS §6.1: on APPROVE, set publishedAt if not already set — searchByFilters() orders by
-        // publishedAt DESC NULLS LAST, so a null value here would sink newly-approved content to the
-        // bottom of the public feed instead of surfacing it.
-        if (request.decision() == ContentDecision.APPROVE && item.getPublishedAt() == null) {
-            item.setPublishedAt(Instant.now());
+        // TDS §6.1: on APPROVE, set approvedBy, approvedAt, and publishedAt if not already set
+        if (request.decision() == ContentDecision.APPROVE) {
+            item.setApprovedBy(adminUserId);
+            item.setApprovedAt(decidedAt);
+            if (item.getPublishedAt() == null) {
+                item.setPublishedAt(decidedAt);
+            }
         }
 
         ContentItem saved = contentRepository.save(item);

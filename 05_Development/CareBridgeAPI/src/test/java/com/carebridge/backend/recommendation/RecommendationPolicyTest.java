@@ -36,6 +36,25 @@ class RecommendationPolicyTest {
     }
 
     @Test
+    void resolvesPregnancyWeekAsSourceWeekNumber() {
+        MotherJourney journey = MotherJourney.builder()
+                .journeyType(JourneyType.PREGNANCY)
+                .status(com.carebridge.backend.journey.entity.JourneyStatus.ACTIVE)
+                .gestationalDatingBasis(com.carebridge.backend.journey.entity.GestationalDatingBasis.LMP)
+                .gestationalDatingRevision(1L)
+                .gestationalDatingEffectiveAt(Instant.parse("2026-09-14T00:00:00Z"))
+                .lastMenstrualDate(LocalDate.of(2026, 9, 7))
+                .build();
+
+        RecommendationContext context = new RecommendationContextResolver(
+                Clock.fixed(Instant.parse("2026-09-14T00:00:00Z"), ZoneOffset.UTC))
+                .resolve(journey);
+
+        assertThat(context.weekState()).isEqualTo(RecommendationContext.WeekState.KNOWN);
+        assertThat(context.pregnancyWeek()).isEqualTo(2);
+    }
+
+    @Test
     void eligibilityRequiresApprovedArticleAndExactStage() {
         RecommendationEligibilityPolicy policy = new RecommendationEligibilityPolicy();
         RecommendationContext context = new RecommendationContext(

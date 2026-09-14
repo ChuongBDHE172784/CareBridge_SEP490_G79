@@ -342,9 +342,10 @@ public class RecommendationService implements RecommendationConsentCleanup {
         // [BƯỚC 3.1: Trích xuất tín hiệu cá nhân hóa (Signals)]
         // =========================================================================
         Set<String> signals = new LinkedHashSet<>();
-        // Chỉ kích hoạt cá nhân hóa khi: module bật (enabled), hồ sơ cá nhân hóa ACTIVE và quyền Consent còn hiệu lực
+        // Chỉ kích hoạt cá nhân hóa khi: module bật (enabled), hồ sơ cá nhân hóa ACTIVE hoặc REVIEW_REQUIRED và quyền Consent còn hiệu lực
         if (enabled
-                && journey.getRecommendationProfileStatus() == RecommendationProfileStatus.ACTIVE
+                && (journey.getRecommendationProfileStatus() == RecommendationProfileStatus.ACTIVE
+                    || journey.getRecommendationProfileStatus() == RecommendationProfileStatus.REVIEW_REQUIRED)
                 && assessment.active()) {
             // (1) Trích xuất các tín hiệu y tế từ hồ sơ đã lưu của người mẹ
             signals.addAll(resolveStoredSignals(journey, targetMotherId));
@@ -626,6 +627,27 @@ public class RecommendationService implements RecommendationConsentCleanup {
                     .put("policyVersion", RecommendationConstants.POLICY_VERSION)
                     .put("consentAccepted", true)
                     .set("profile", objectMapper.valueToTree(profile));
+
+            // Chuyển đổi ngữ cảnh cân nặng nếu mẹ đã lưu hồ sơ từ giai đoạn tiền mang thai (CURRENT_NON_PREGNANT)
+            // sang thai kỳ hoặc sau sinh, coi đó là cân nặng trước khi mang thai (PRE_PREGNANCY).
+            // Nếu mẹ chuyển từ thai kỳ (CURRENT_PREGNANCY) sang sau sinh, coi đó là cân nặng sau sinh (CURRENT_POSTPARTUM).
+            JsonNode profileNode = request.get("profile");
+            if (profileNode != null && profileNode.isObject()
+                    && (journey.getJourneyType() == JourneyType.PREGNANCY || journey.getJourneyType() == JourneyType.POSTPARTUM)) {
+                JsonNode bmiNode = profileNode.get("bmi");
+                if (bmiNode != null && bmiNode.isObject()) {
+                    JsonNode wcNode = bmiNode.get("weightContext");
+                    if (wcNode != null) {
+                        String currentWc = wcNode.asText();
+                        if ("CURRENT_NON_PREGNANT".equals(currentWc)) {
+                            ((com.fasterxml.jackson.databind.node.ObjectNode) bmiNode).put("weightContext", "PRE_PREGNANCY");
+                        } else if (journey.getJourneyType() == JourneyType.POSTPARTUM && "CURRENT_PREGNANCY".equals(currentWc)) {
+                            ((com.fasterxml.jackson.databind.node.ObjectNode) bmiNode).put("weightContext", "CURRENT_POSTPARTUM");
+                        }
+                    }
+                }
+            }
+
             User user = userRepository.findById(ownerUserId).orElseThrow();
             Set<String> signals = new LinkedHashSet<>(
                     validator.validateAccept(request, journey.getJourneyType(), user.getDateOfBirth()).signalSlugs());

@@ -38,10 +38,11 @@ class RecommendationJourneyTransitionListenerTest {
                 recommendationService);
 
         listener.onJourneyTransitioned(event(JourneyTransitionType.STAGE_CHANGED, JourneyType.PREGNANCY));
+        listener.onJourneyTransitioned(event(JourneyTransitionType.PREGNANCY_EPOCH_STARTED, JourneyType.PREGNANCY));
         listener.onJourneyTransitioned(event(JourneyTransitionType.OUTCOME_RECORDED, JourneyType.POSTPARTUM));
         listener.onJourneyTransitioned(event(JourneyTransitionType.OUTCOME_CORRECTED, JourneyType.POSTPARTUM));
 
-        verify(recommendationService, times(1))
+        verify(recommendationService, times(2))
                 .markStageReview(OWNER_ID, JOURNEY_ID, JourneyType.PREGNANCY);
         verify(recommendationService, times(2))
                 .markStageReview(OWNER_ID, JOURNEY_ID, JourneyType.POSTPARTUM);

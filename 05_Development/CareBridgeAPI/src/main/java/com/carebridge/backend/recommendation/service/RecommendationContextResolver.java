@@ -66,11 +66,12 @@ public class RecommendationContextResolver {
                     WeekEligibilityMode.STAGE_WIDE_ONLY_MISSING);
         }
         long days = ChronoUnit.DAYS.between(lmp, today);
-        int week = (int) Math.floorDiv(days, 7);
-        if (week < 0) {
+        if (days < 0) {
             return new RecommendationContext(stage, null, RecommendationContext.WeekState.OUT_OF_RANGE,
                     WeekEligibilityMode.STAGE_WIDE_ONLY_OUT_OF_RANGE);
         }
+        int completedWeek = (int) Math.floorDiv(days, 7);
+        int week = GestationalDatingResolver.sourceWeekNumber(completedWeek);
 
         // Trả về ngữ cảnh tuần thai đã xác định chính xác
         return new RecommendationContext(stage, week, RecommendationContext.WeekState.KNOWN,

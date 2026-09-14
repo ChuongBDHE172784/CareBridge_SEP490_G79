@@ -18,7 +18,8 @@ public class RecommendationJourneyTransitionListener {
         if (event == null) {
             return;
         }
-        boolean stageChanged = event.eventType() == com.carebridge.backend.journey.entity.JourneyTransitionType.STAGE_CHANGED;
+        boolean stageChanged = event.eventType() == com.carebridge.backend.journey.entity.JourneyTransitionType.STAGE_CHANGED
+                || event.eventType() == com.carebridge.backend.journey.entity.JourneyTransitionType.PREGNANCY_EPOCH_STARTED;
         boolean outcomeChangedStage = (event.eventType() == com.carebridge.backend.journey.entity.JourneyTransitionType.OUTCOME_RECORDED
                 || event.eventType() == com.carebridge.backend.journey.entity.JourneyTransitionType.OUTCOME_CORRECTED)
                 && event.journeyType() == com.carebridge.backend.journey.entity.JourneyType.POSTPARTUM;
