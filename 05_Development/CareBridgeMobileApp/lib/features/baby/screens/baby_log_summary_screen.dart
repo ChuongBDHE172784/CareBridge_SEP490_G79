@@ -39,8 +39,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   BabyProfile? _selectedBaby;
   String _period = '24h';
   bool _isLoading = true;
+  bool _isPeriodSwitching = false;
   String? _error;
   int _loadGeneration = 0;
+  final Map<String, BabyLogSummaryResponse> _summaryCache = {};
+  final Map<String, List<BabyDailyLog>> _logsCache = {};
 
   @override
   void initState() {
@@ -68,18 +71,21 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       if (summary.babyId != requestedBabyId) {
         throw const FormatException('Baby journal summary scope mismatch');
       }
+      final scopedLogs = _scopeLogs(
+        logs,
+        requestedBabyId,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[_period] = summary;
+      _logsCache[_period] = scopedLogs;
       setState(() {
         _babies = babies;
         _selectedBaby = babies
             .where((b) => b.id == requestedBabyId)
             .firstOrNull;
         _summary = summary;
-        _logs = _scopeLogs(
-          logs,
-          requestedBabyId,
-          fromDate: summary.fromDate,
-          toDate: summary.toDate,
-        );
+        _logs = scopedLogs;
       });
     } catch (_) {
       if (!mounted || generation != _loadGeneration) return;
@@ -93,6 +99,8 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Future<void> _switchBaby(BabyProfile baby) async {
     final generation = ++_loadGeneration;
+    _summaryCache.clear();
+    _logsCache.clear();
     setState(() {
       _selectedBaby = baby;
       _isLoading = true;
@@ -108,14 +116,17 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       if (summary.babyId != baby.id) {
         throw const FormatException('Baby journal summary scope mismatch');
       }
+      final scopedLogs = _scopeLogs(
+        results[1] as List<BabyDailyLog>,
+        baby.id,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[_period] = summary;
+      _logsCache[_period] = scopedLogs;
       setState(() {
         _summary = summary;
-        _logs = _scopeLogs(
-          results[1] as List<BabyDailyLog>,
-          baby.id,
-          fromDate: summary.fromDate,
-          toDate: summary.toDate,
-        );
+        _logs = scopedLogs;
       });
     } catch (_) {
       if (mounted && generation == _loadGeneration) {
@@ -131,9 +142,32 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   Future<void> _switchPeriod(String p) async {
     if (_period == p) return;
     final generation = ++_loadGeneration;
+
+    // Fast path: if cached, switch data instantly for 60fps responsiveness
+    final cachedSummary = _summaryCache[p];
+    final cachedLogs = _logsCache[p];
+
+    if (cachedSummary != null) {
+      setState(() {
+        _period = p;
+        _summary = cachedSummary;
+        if (cachedLogs != null) {
+          _logs = cachedLogs;
+        }
+        _isPeriodSwitching = false;
+        _error = null;
+      });
+      _silentRefreshPeriod(p, generation);
+      return;
+    }
+
+    // First-time load for period without destroying existing UI
     setState(() {
       _period = p;
-      _isLoading = true;
+      _isPeriodSwitching = true;
+      if (_summary == null) {
+        _isLoading = true;
+      }
       _error = null;
     });
     try {
@@ -147,23 +181,58 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       if (summary.babyId != id) {
         throw const FormatException('Baby journal summary scope mismatch');
       }
+      final scopedLogs = _scopeLogs(
+        results[1] as List<BabyDailyLog>,
+        id,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[p] = summary;
+      _logsCache[p] = scopedLogs;
       setState(() {
         _summary = summary;
-        _logs = _scopeLogs(
-          results[1] as List<BabyDailyLog>,
-          id,
-          fromDate: summary.fromDate,
-          toDate: summary.toDate,
-        );
+        _logs = scopedLogs;
       });
     } catch (_) {
       if (mounted && generation == _loadGeneration) {
-        setState(() => _error = 'Không thể tải dữ liệu.');
+        if (_summary == null) {
+          setState(() => _error = 'Không thể tải dữ liệu.');
+        }
       }
     } finally {
       if (mounted && generation == _loadGeneration) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _isPeriodSwitching = false;
+        });
       }
+    }
+  }
+
+  Future<void> _silentRefreshPeriod(String p, int generation) async {
+    try {
+      final id = _selectedBaby?.id ?? widget.babyId;
+      final results = await Future.wait([
+        _logService.getLogSummary(id, period: p),
+        _logService.getDailyLogs(id),
+      ]);
+      if (!mounted || generation != _loadGeneration || _period != p) return;
+      final summary = results[0] as BabyLogSummaryResponse;
+      if (summary.babyId != id) return;
+      final scopedLogs = _scopeLogs(
+        results[1] as List<BabyDailyLog>,
+        id,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[p] = summary;
+      _logsCache[p] = scopedLogs;
+      setState(() {
+        _summary = summary;
+        _logs = scopedLogs;
+      });
+    } catch (_) {
+      // Background refresh failure is safely ignored
     }
   }
 
@@ -171,7 +240,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
     final babyId = _selectedBaby?.id ?? widget.babyId;
     if (log.babyId != babyId) return;
     await context.push('/babies/$babyId/daily-logs/${log.id}');
-    if (mounted) await _loadData(babyId: babyId);
+    if (mounted) {
+      _summaryCache.clear();
+      _logsCache.clear();
+      await _loadData(babyId: babyId);
+    }
   }
 
   List<BabyDailyLog> _scopeLogs(
@@ -206,6 +279,8 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       ),
     );
     if (saved == true && mounted) {
+      _summaryCache.clear();
+      _logsCache.clear();
       await _loadData(babyId: _selectedBaby?.id ?? widget.babyId);
     }
   }
@@ -353,40 +428,93 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   }
 
   Widget _buildPeriodToggle() {
+    final is7d = _period == '7d';
     return Container(
-      height: 42,
+      width: 216,
+      height: 44,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFFFAF4EE),
         borderRadius: BorderRadius.circular(99),
         border: Border.all(color: const Color(0xFFE8DDD6)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: ['24h', '7 ngày'].map((p) {
-          final isSelected = _period == p || (_period == '7d' && p == '7 ngày');
-          final apiVal = p == '7 ngày' ? '7d' : p;
-          return GestureDetector(
-            onTap: () => _switchPeriod(apiVal),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? _primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text(
-                p,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : _onSurfaceVariant,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final pillWidth = constraints.maxWidth / 2;
+          return Stack(
+            children: [
+              AnimatedAlign(
+                alignment: is7d ? Alignment.centerRight : Alignment.centerLeft,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.fastOutSlowIn,
+                child: Container(
+                  width: pillWidth,
+                  height: constraints.maxHeight,
+                  decoration: BoxDecoration(
+                    color: _primary,
+                    borderRadius: BorderRadius.circular(99),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x40845143),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      key: const Key('baby-log-period-24h'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _switchPeriod('24h'),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight: !is7d ? FontWeight.bold : FontWeight.w500,
+                            color: !is7d ? Colors.white : _onSurfaceVariant,
+                          ),
+                          child: const Text('24h'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      key: const Key('baby-log-period-7d'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _switchPeriod('7d'),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight: is7d ? FontWeight.bold : FontWeight.w500,
+                            color: is7d ? Colors.white : _onSurfaceVariant,
+                          ),
+                          child: const Text('7 ngày'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           );
-        }).toList(),
+        },
       ),
     );
   }
@@ -431,19 +559,37 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
         ),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildBentoGrid(),
-          const SizedBox(height: 20),
-          _buildSimpleBarChart(),
-          const SizedBox(height: 20),
-          _buildRecentEvents(),
-          const SizedBox(height: 16),
-          _buildDisclaimer(),
-        ],
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: _isPeriodSwitching ? 0.6 : 1.0,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey('period-content-$_period-${_selectedBaby?.id ?? widget.babyId}'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildBentoGrid(),
+                const SizedBox(height: 20),
+                _buildSimpleBarChart(),
+                const SizedBox(height: 20),
+                _buildRecentEvents(),
+                const SizedBox(height: 16),
+                _buildDisclaimer(),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -9,6 +9,18 @@ class GrowthMeasurementService {
     return response['data'] as Map<String, dynamic>;
   }
 
+  /// All non-deleted measurements for [babyId], oldest first (GET growth-chart).
+  Future<List<GrowthMeasurement>> getGrowthChartMeasurements(
+    String babyId,
+  ) async {
+    final data = await getGrowthChart(babyId);
+    final content = data['measurements'] as List? ?? const [];
+    return content
+        .map((e) => GrowthMeasurement.fromJson(e as Map<String, dynamic>))
+        .toList()
+      ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+  }
+
   // UC-237: Fetch growth history
   Future<List<GrowthMeasurement>> getGrowthHistory(
     String babyId, {

@@ -20,7 +20,7 @@ public class GrowthChartController {
     private final IGrowthService growthService;
 
     @GetMapping("/{babyId}/growth-chart")
-    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<GrowthChartResponse>> getGrowthChart(
             @PathVariable UUID babyId,
             Principal principal) {

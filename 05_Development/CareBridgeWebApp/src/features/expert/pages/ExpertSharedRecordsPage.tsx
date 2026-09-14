@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ExpertChecklistFormModal } from '../components/ExpertChecklistFormModal';
+import { SharedBabyGrowthBubble } from '../../directChat/components/SharedBabyGrowthBubble';
 import {
   fetchExpertSharedRecords,
   editChecklistItemInSharedRecord,
@@ -12,7 +13,8 @@ import {
   type ChecklistItemShareData,
 } from '../services/expertSharedRecordsService';
 
-type TabType = 'ALL' | 'HEALTH_METRICS' | 'CHECKLIST';
+type TabType = 'ALL' | 'HEALTH_METRICS' | 'CHECKLIST' | 'BABY_GROWTH';
+type CardSubTab = 'HEALTH' | 'CHECKLIST' | 'BABY_GROWTH';
 type AlertFilterType = 'ALL' | 'CRITICAL' | 'WARNING' | 'NORMAL';
 type TimeRangeFilterType = 'ALL' | '7D' | '14D' | '30D' | '90D';
 
@@ -30,6 +32,8 @@ export interface MotherSummaryCardData {
   latestChecklistRecord?: SharedRecordEntry;
   allHealthRecords: SharedRecordEntry[];
   allChecklistRecords: SharedRecordEntry[];
+  latestBabyGrowthRecord?: SharedRecordEntry;
+  allBabyGrowthRecords: SharedRecordEntry[];
 }
 
 export default function ExpertSharedRecordsPage() {
@@ -42,7 +46,7 @@ export default function ExpertSharedRecordsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Track the active sub-tab for each mother card: 'HEALTH' or 'CHECKLIST'
-  const [cardTabMap, setCardTabMap] = useState<Record<string, 'HEALTH' | 'CHECKLIST'>>({});
+  const [cardTabMap, setCardTabMap] = useState<Record<string, CardSubTab>>({});
 
   // Modals for deep inspection
   const [selectedHealthModal, setSelectedHealthModal] = useState<{
@@ -239,6 +243,7 @@ export default function ExpertSharedRecordsPage() {
           overallAlertLevel: 'NORMAL',
           allHealthRecords: [],
           allChecklistRecords: [],
+          allBabyGrowthRecords: [],
         };
         map.set(key, existing);
       }
@@ -275,6 +280,14 @@ export default function ExpertSharedRecordsPage() {
         ) {
           existing.latestChecklistRecord = record;
         }
+      } else if (record.type === 'BABY_GROWTH') {
+        existing.allBabyGrowthRecords.push(record);
+        if (
+          !existing.latestBabyGrowthRecord ||
+          new Date(record.createdAt).getTime() > new Date(existing.latestBabyGrowthRecord.createdAt).getTime()
+        ) {
+          existing.latestBabyGrowthRecord = record;
+        }
       }
 
       // Determine overall alert level (CRITICAL > WARNING > NORMAL)
@@ -297,6 +310,7 @@ export default function ExpertSharedRecordsPage() {
       // Tab filter
       if (activeTab === 'HEALTH_METRICS' && !card.latestHealthRecord) return false;
       if (activeTab === 'CHECKLIST' && !card.latestChecklistRecord) return false;
+      if (activeTab === 'BABY_GROWTH' && !card.latestBabyGrowthRecord) return false;
 
       // Alert filter
       if (alertFilter !== 'ALL' && card.overallAlertLevel !== alertFilter) return false;
@@ -318,7 +332,11 @@ export default function ExpertSharedRecordsPage() {
         const phoneMatch = (card.motherPhone || '').includes(query);
         const healthNoteMatch = (card.latestHealthRecord?.healthData?.note || '').toLowerCase().includes(query);
         const checklistNoteMatch = (card.latestChecklistRecord?.checklistData?.note || '').toLowerCase().includes(query);
-        if (!nameMatch && !phoneMatch && !healthNoteMatch && !checklistNoteMatch) return false;
+        const babyGrowthMatch = [
+          card.latestBabyGrowthRecord?.babyGrowthData?.note,
+          card.latestBabyGrowthRecord?.babyGrowthData?.babyNickname,
+        ].some((value) => (value || '').toLowerCase().includes(query));
+        if (!nameMatch && !phoneMatch && !healthNoteMatch && !checklistNoteMatch && !babyGrowthMatch) return false;
       }
 
       return true;
@@ -396,11 +414,11 @@ export default function ExpertSharedRecordsPage() {
           <div className="flex items-center gap-2.5">
             <span className="material-symbols-outlined text-3xl text-primary">monitoring</span>
             <h1 className="text-2xl font-bold text-on-surface tracking-tight m-0">
-              Quản lý Chỉ số Sức khỏe & Checklist chia sẻ
+              Quản lý Chỉ số Sức khỏe, Checklist & Phát triển của bé
             </h1>
           </div>
           <p className="text-sm text-on-surface-variant mt-1 mb-0">
-            Theo dõi dữ liệu sinh hiệu và tiến độ checklist thai kỳ mới nhất của từng mẹ bầu
+            Theo dõi dữ liệu sinh hiệu, tiến độ checklist thai kỳ và biểu đồ tăng trưởng của bé mà các mẹ đã chia sẻ
           </p>
         </div>
 
@@ -507,6 +525,17 @@ export default function ExpertSharedRecordsPage() {
             >
               Có checklist ({motherCards.filter((c) => c.latestChecklistRecord).length})
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('BABY_GROWTH')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                activeTab === 'BABY_GROWTH'
+                  ? 'bg-surface text-primary shadow-xs'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              Tăng trưởng bé ({motherCards.filter((c) => c.latestBabyGrowthRecord).length})
+            </button>
           </div>
 
           {/* Right filters: Time range, Alert filter & Search */}
@@ -561,7 +590,7 @@ export default function ExpertSharedRecordsPage() {
           <span className="material-symbols-outlined text-5xl text-outline mb-2">folder_open</span>
           <h3 className="text-base font-bold text-on-surface m-0">Không tìm thấy hồ sơ mẹ bầu nào</h3>
           <p className="text-xs text-on-surface-variant mt-1">
-            Chưa có mẹ bầu nào chia sẻ chỉ số hoặc checklist theo tiêu chí tìm kiếm của bạn.
+            Chưa có mẹ nào chia sẻ chỉ số, checklist hoặc phát triển của bé theo tiêu chí tìm kiếm của bạn.
           </p>
         </div>
       ) : (
@@ -569,11 +598,21 @@ export default function ExpertSharedRecordsPage() {
           {filteredMotherCards.map((card) => {
             const cardKey = card.motherUserId || card.conversationId;
             // Default active sub-tab: if has health, default HEALTH; otherwise CHECKLIST
-            const currentSubTab =
-              cardTabMap[cardKey] || (card.latestHealthRecord ? 'HEALTH' : 'CHECKLIST');
+            const currentSubTab: CardSubTab =
+              cardTabMap[cardKey] ||
+              (activeTab === 'BABY_GROWTH'
+                ? 'BABY_GROWTH'
+                : card.latestHealthRecord
+                ? 'HEALTH'
+                : card.latestChecklistRecord
+                ? 'CHECKLIST'
+                : card.latestBabyGrowthRecord
+                ? 'BABY_GROWTH'
+                : 'CHECKLIST');
 
             const healthData = card.latestHealthRecord?.healthData;
             const checklistData = card.latestChecklistRecord?.checklistData;
+            const babyGrowthData = card.latestBabyGrowthRecord?.babyGrowthData;
 
             return (
               <div
@@ -697,11 +736,42 @@ export default function ExpertSharedRecordsPage() {
                           </span>
                         )}
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCardTabMap((prev) => ({
+                            ...prev,
+                            [cardKey]: 'BABY_GROWTH',
+                          }))
+                        }
+                        className={`px-3 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          currentSubTab === 'BABY_GROWTH'
+                            ? 'bg-surface text-primary shadow-xs'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-sm" aria-hidden="true">child_care</span>
+                        Phát triển bé
+                        {card.allBabyGrowthRecords.length > 0 && (
+                          <span
+                            className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                              currentSubTab === 'BABY_GROWTH'
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-surface-container-high text-on-surface-variant'
+                            }`}
+                          >
+                            {card.allBabyGrowthRecords.length}
+                          </span>
+                        )}
+                      </button>
                     </div>
 
                     <div className="text-[11px] text-on-surface-variant font-medium">
                       {currentSubTab === 'HEALTH'
                         ? healthData?.timeRangeLabel || 'Lần đo mới nhất'
+                        : currentSubTab === 'BABY_GROWTH'
+                        ? babyGrowthData?.babyNickname || ''
                         : checklistData
                         ? `Xong ${checklistData.completedCount}/${checklistData.totalCount}`
                         : ''}
@@ -1025,6 +1095,24 @@ export default function ExpertSharedRecordsPage() {
                           <div className="py-8 text-center text-xs text-on-surface-variant bg-surface-container-low/30 rounded-xl border border-dashed border-outline-variant/50">
                             <span className="material-symbols-outlined text-3xl text-outline mb-1">checklist</span>
                             <p className="m-0 font-medium">Chưa có checklist nào được gửi gần đây.</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* --- BABY GROWTH SUB-TAB CONTENT --- */}
+                    {currentSubTab === 'BABY_GROWTH' && (
+                      <>
+                        {babyGrowthData ? (
+                          <div className="flex justify-center">
+                            <SharedBabyGrowthBubble data={babyGrowthData} />
+                          </div>
+                        ) : (
+                          <div className="py-8 text-center text-xs text-on-surface-variant bg-surface-container-low/30 rounded-xl border border-dashed border-outline-variant/50">
+                            <span className="material-symbols-outlined text-3xl text-outline mb-1" aria-hidden="true">
+                              child_care
+                            </span>
+                            <p className="m-0 font-medium">Chưa có dữ liệu phát triển của bé nào được gửi.</p>
                           </div>
                         )}
                       </>

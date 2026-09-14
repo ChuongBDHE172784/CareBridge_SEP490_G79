@@ -1,6 +1,10 @@
 package com.carebridge.backend.carejourney.service;
 
+import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.carejourney.dto.GrowthDataPoint;
+import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
@@ -42,9 +46,99 @@ class GrowthServiceTest {
     @Mock private GrowthMeasurementStore growthMeasurementStore;
     @Mock private AuditService auditService;
     @Mock private BabyAccessPolicy babyAccessPolicy;
+    @Mock private ExpertProfileRepository expertProfileRepository;
     @InjectMocks private GrowthServiceImpl growthService;
 
     private static final UUID CAREGIVER_ID = UUID.fromString("00000000-0000-0000-0000-000000000242");
+    private static final UUID EXPERT_ID = UUID.fromString("00000000-0000-0000-0000-0000000000e1");
+    private static final UUID STRANGER_ID = UUID.fromString("00000000-0000-0000-0000-0000000000f1");
+
+    // SBG-TC-001: any ExpertProfile holder reads the full chart (UD-05, ADR-SBG-002)
+    @Test
+    void getGrowthChart_expertProfileHolder_readsAllMeasurementsAscWithoutAudit() {
+        BabyProfile baby = makeBaby();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canView(baby, EXPERT_ID)).thenReturn(false);
+        when(expertProfileRepository.findByUserId(EXPERT_ID)).thenReturn(Optional.of(new ExpertProfile()));
+        when(growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
+                .thenReturn(makeMeasurements());
+
+        GrowthChartResponse response = growthService.getGrowthChart(EXPERT_ID, BABY_ID);
+
+        assertThat(response.getBabyId()).isEqualTo(BABY_ID);
+        assertThat(response.getNickname()).isEqualTo("Growth Baby");
+        assertThat(response.getMeasurements())
+                .extracting(GrowthDataPoint::getMeasuredDate)
+                .containsExactly(LocalDate.of(2026, 2, 15), LocalDate.of(2026, 3, 15));
+        assertThat(response.getMeasurements())
+                .extracting(GrowthDataPoint::getAgeInDays)
+                .containsExactly(31, 59);
+        verify(growthMeasurementStore, never()).save(any());
+        verifyNoInteractions(auditService);
+    }
+
+    // SBG-TC-002: non-owner, non-member, non-expert is denied before any measurement query
+    @Test
+    void getGrowthChart_strangerWithoutExpertProfile_throwsBaby071() {
+        BabyProfile baby = makeBaby();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        when(babyAccessPolicy.canView(baby, STRANGER_ID)).thenReturn(false);
+        when(expertProfileRepository.findByUserId(STRANGER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> growthService.getGrowthChart(STRANGER_ID, BABY_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(be.getCode()).isEqualTo("BABY-071");
+                });
+        verifyNoInteractions(growthMeasurementStore, auditService);
+    }
+
+    // SBG-TC-003: expert profile must not unlock paginated history or writes (regression guard)
+    @Test
+    void expertProfileHolder_cannotReadHistoryOrWriteMeasurements() {
+        BabyProfile baby = makeBaby();
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
+        lenient().when(expertProfileRepository.findByUserId(EXPERT_ID)).thenReturn(Optional.of(new ExpertProfile()));
+        when(babyAccessPolicy.canView(baby, EXPERT_ID)).thenReturn(false);
+        when(babyAccessPolicy.canManageGrowth(baby, EXPERT_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> growthService.getGrowthMeasurementHistory(EXPERT_ID, BABY_ID, PageRequest.of(0, 20)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("BABY-071"));
+
+        AddGrowthMeasurementRequest request = new AddGrowthMeasurementRequest();
+        request.setMeasuredDate(LocalDate.of(2026, 7, 15));
+        request.setWeightKg(new BigDecimal("6.2"));
+        request.setSourceType("HOME");
+        assertThatThrownBy(() -> growthService.addGrowthMeasurement(EXPERT_ID, BABY_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(be.getCode()).isEqualTo("BABY-071");
+                });
+
+        verify(growthMeasurementStore, never()).save(any());
+        verify(auditService).log(eq(AuditAction.SECURITY_EVENT), eq(EXPERT_ID),
+                eq("GROWTH_MEASUREMENT_ACCESS_DENIED"), eq(BABY_ID.toString()), eq("Growth write permission denied"));
+    }
+
+    // SBG-TC-004: unknown baby is 404 for an expert, resolved before any access lookup
+    @Test
+    void getGrowthChart_expertUnknownBaby_throwsBaby070() {
+        when(babyProfileRepository.findById(NON_EXISTENT_BABY_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> growthService.getGrowthChart(EXPERT_ID, NON_EXISTENT_BABY_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(be.getCode()).isEqualTo("BABY-070");
+                });
+        verifyNoInteractions(expertProfileRepository, growthMeasurementStore, auditService);
+    }
 
     // GROWTH-TC-038-001: Happy path with measurements
     @Test

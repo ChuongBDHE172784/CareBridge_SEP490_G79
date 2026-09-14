@@ -17,6 +17,9 @@ import 'package:untitled/features/directChat/services/direct_chat_service.dart';
 import 'package:untitled/integrations/firebaseRealtime/conversation_event_signal.dart';
 import 'package:untitled/features/directChat/widgets/checklist_message_card.dart';
 import 'package:untitled/features/directChat/widgets/health_metrics_message_card.dart';
+import 'package:untitled/features/directChat/widgets/baby_growth_message_card.dart';
+
+import 'baby_growth_test_factory.dart';
 
 const _conversationId = 'conv-1';
 const _messageId = 'message-latest';
@@ -320,6 +323,63 @@ void main() {
     expect(find.byIcon(Icons.monitor_heart_outlined), findsWidgets);
   });
 
+  testWidgets(
+    'SBG-TC-012 offers baby growth sharing and renders growth cards for both sides',
+    (tester) async {
+      final body = makeShareData().serialize();
+      DirectChatService.instance = _ScriptedDirectChatService(
+        timelineItems: [
+          TimelineItem.fromJson({
+            'kind': 'MESSAGE',
+            'messageId': 'growth-counterpart',
+            'clientMessageId': 'growth-counterpart-client',
+            'senderUserId': 'expert-1',
+            'messageType': 'TEXT',
+            'messageBody': body,
+            'createdAt': '2026-09-14T08:00:00Z',
+          }),
+          TimelineItem.fromJson({
+            'kind': 'MESSAGE',
+            'messageId': 'growth-own',
+            'clientMessageId': 'growth-own-client',
+            'senderUserId': 'mother-1',
+            'messageType': 'TEXT',
+            'messageBody': body,
+            'createdAt': '2026-09-14T08:01:00Z',
+          }),
+          TimelineItem.fromJson({
+            'kind': 'MESSAGE',
+            'messageId': 'growth-recalled',
+            'clientMessageId': 'growth-recalled-client',
+            'senderUserId': 'mother-1',
+            'messageType': 'TEXT',
+            'messageBody': body,
+            'recalledAt': '2026-09-14T08:03:00Z',
+            'createdAt': '2026-09-14T08:02:00Z',
+          }),
+        ],
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DirectChatScreen(conversationId: _conversationId),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BabyGrowthMessageCard), findsNWidgets(2));
+      expect(
+        find.textContaining('[CAREBRIDGE_BABY_GROWTH_SHARE]'),
+        findsNothing,
+      );
+
+      await tester.tap(find.byTooltip('Đính kèm & Chia sẻ'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chia sẻ phát triển của bé'), findsOneWidget);
+    },
+  );
+
   testWidgets('renders shared checklist as an interactive progress card', (
     tester,
   ) async {
@@ -371,5 +431,39 @@ void main() {
     expect(find.text('Tiêm uốn ván mũi 1'), findsOneWidget);
     expect(find.text('Các việc em đã hoàn thành'), findsOneWidget);
     expect(find.byIcon(Icons.checklist_rtl_rounded), findsWidgets);
+  });
+
+  testWidgets('automatically scrolls down to the newest message upon accessing the chat', (
+    tester,
+  ) async {
+    final manyMessages = List.generate(
+      25,
+      (i) => TimelineItem.fromJson({
+        'kind': 'MESSAGE',
+        'messageId': 'msg-$i',
+        'clientMessageId': 'client-$i',
+        'senderUserId': i.isEven ? 'expert-1' : 'mother-1',
+        'messageType': 'TEXT',
+        'messageBody': 'Tin nhắn số $i trong cuộc trò chuyện',
+        'createdAt': DateTime.utc(2026, 1, 1, 0, i).toIso8601String(),
+      }),
+    );
+
+    DirectChatService.instance = _ScriptedDirectChatService(
+      timelineItems: manyMessages,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DirectChatScreen(conversationId: _conversationId),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The newest message (last index) must be visible on screen
+    expect(find.text('Tin nhắn số 24 trong cuộc trò chuyện'), findsOneWidget);
+
+    // Oldest message at index 0 should be scrolled off-screen above
+    expect(find.text('Tin nhắn số 0 trong cuộc trò chuyện'), findsNothing);
   });
 }

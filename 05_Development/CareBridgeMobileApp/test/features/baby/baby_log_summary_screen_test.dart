@@ -133,4 +133,52 @@ void main() {
     // Avatar must be positioned below the back button in the app bar
     expect(avatarTop, greaterThan(backBottom));
   });
+
+  testWidgets('period toggle smoothly switches between 24h and 7d and leverages caching', (
+    tester,
+  ) async {
+    final baby = BabyProfile(
+      id: 'baby-1',
+      nickname: 'Bé cưng',
+      birthDate: DateTime.now().subtract(const Duration(days: 10)),
+      gender: BabyGender.female,
+      isActive: true,
+    );
+    final log = BabyDailyLog(
+      id: 'log-1',
+      babyId: baby.id,
+      logType: LogType.feeding,
+      startedAt: DateTime.now(),
+      quantity: 150,
+      unit: 'ml',
+    );
+    final fakeLogService = _FakeLogService(log);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BabyLogSummaryScreen(
+          babyId: 'baby-1',
+          babyService: _FakeBabyService(baby),
+          logService: fakeLogService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('baby-log-period-24h')), findsOneWidget);
+    expect(find.byKey(const Key('baby-log-period-7d')), findsOneWidget);
+
+    // Tap 7 ngày
+    await tester.tap(find.byKey(const Key('baby-log-period-7d')));
+    await tester.pumpAndSettle();
+
+    // Verify content still renders cleanly
+    expect(find.text('Bú & Ăn'), findsOneWidget);
+
+    // Tap 24h (cached instant switch)
+    await tester.tap(find.byKey(const Key('baby-log-period-24h')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bú & Ăn'), findsOneWidget);
+  });
 }

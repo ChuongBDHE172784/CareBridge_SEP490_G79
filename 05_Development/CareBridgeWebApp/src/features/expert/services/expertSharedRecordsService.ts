@@ -70,9 +70,10 @@ export interface SharedRecordEntry {
   motherAvatar?: string;
   motherPhone?: string;
   createdAt: string;
-  type: 'HEALTH_METRICS' | 'CHECKLIST';
+  type: 'HEALTH_METRICS' | 'CHECKLIST' | 'BABY_GROWTH';
   healthData?: HealthMetricsShareData;
   checklistData?: ChecklistShareData;
+  babyGrowthData?: BabyGrowthShareData;
   alertLevel: 'CRITICAL' | 'WARNING' | 'NORMAL';
   status: 'REVIEWED' | 'PENDING_REVIEW';
   expertFeedback?: string;
@@ -80,6 +81,99 @@ export interface SharedRecordEntry {
 
 export const HEALTH_SHARE_TAG = '[CAREBRIDGE_HEALTH_SHARE]';
 export const CHECKLIST_SHARE_TAG = '[CAREBRIDGE_CHECKLIST_SHARE]';
+export const BABY_GROWTH_SHARE_TAG = '[CAREBRIDGE_BABY_GROWTH_SHARE]';
+
+export interface BabyGrowthLatestSnapshot {
+  measuredDate: string;
+  weightKg?: number | null;
+  heightCm?: number | null;
+  headCircumferenceCm?: number | null;
+}
+
+export interface BabyGrowthShareData {
+  title: string;
+  babyId: string;
+  babyNickname: string;
+  birthDate: string;
+  measurementCount: number;
+  latest?: BabyGrowthLatestSnapshot | null;
+  isLiveSync?: boolean;
+  note?: string | null;
+}
+
+export interface BabyGrowthPoint {
+  growthMeasurementId?: string;
+  measuredDate: string;
+  weightKg?: number | null;
+  heightCm?: number | null;
+  headCircumferenceCm?: number | null;
+  ageInDays?: number;
+}
+
+/**
+ * Growth shares carry only a reference (bodies are capped at 2000 chars);
+ * the full history is loaded live via GET /api/v1/babies/{babyId}/growth-chart.
+ */
+export function parseBabyGrowthShare(messageBody?: string): BabyGrowthShareData | null {
+  if (!messageBody || !messageBody.trim().startsWith(BABY_GROWTH_SHARE_TAG)) return null;
+  try {
+    const parsed = JSON.parse(messageBody.trim().slice(BABY_GROWTH_SHARE_TAG.length).trim()) as
+      | Partial<BabyGrowthShareData>
+      | null;
+    if (!parsed || typeof parsed.babyId !== 'string' || !parsed.babyId) return null;
+    return {
+      title: parsed.title || 'Phát triển của bé',
+      babyId: parsed.babyId,
+      babyNickname: parsed.babyNickname || 'Bé',
+      birthDate: parsed.birthDate || '',
+      measurementCount: typeof parsed.measurementCount === 'number' ? parsed.measurementCount : 0,
+      latest: parsed.latest ?? null,
+      isLiveSync: parsed.isLiveSync !== false,
+      note: parsed.note ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchBabyGrowthChart(babyId: string): Promise<BabyGrowthPoint[]> {
+  const res = await apiClient.get<{ data: { measurements?: BabyGrowthPoint[] } }>(
+    `/api/v1/babies/${babyId}/growth-chart`,
+  );
+  const points = res.data?.data?.measurements ?? [];
+  return [...points].sort((a, b) => a.measuredDate.localeCompare(b.measuredDate));
+}
+
+function parseIsoDateParts(value: string): { y: number; m: number; d: number } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  return { y: Number(match[1]), m: Number(match[2]), d: Number(match[3]) };
+}
+
+/** `dd/MM/yyyy` for an ISO `YYYY-MM-DD` date, without timezone shifts. */
+export function formatIsoDateVi(value: string): string {
+  const parts = parseIsoDateParts(value);
+  if (!parts) return value;
+  return `${String(parts.d).padStart(2, '0')}/${String(parts.m).padStart(2, '0')}/${parts.y}`;
+}
+
+/** Baby age at a date, mirroring the mobile `BabyProfile.ageLabel` rules (day-of-month ignored). */
+export function formatBabyAgeAt(birthDate: string, at: string): string {
+  const birth = parseIsoDateParts(birthDate);
+  const target = parseIsoDateParts(at);
+  if (!birth || !target) return '';
+  const months = (target.y - birth.y) * 12 + target.m - birth.m;
+  if (months < 1) {
+    const days = Math.round(
+      (Date.UTC(target.y, target.m - 1, target.d) - Date.UTC(birth.y, birth.m - 1, birth.d)) / 86_400_000,
+    );
+    return `${days} ngày tuổi`;
+  }
+  if (months < 12) return `${months} tháng tuổi`;
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  return rem === 0 ? `${years} tuổi` : `${years} tuổi ${rem} tháng`;
+}
 
 export function parseHealthMetricsShare(messageBody?: string): HealthMetricsShareData | null {
   if (!messageBody || !messageBody.trim().startsWith(HEALTH_SHARE_TAG)) return null;
@@ -510,6 +604,23 @@ export async function fetchExpertSharedRecords(): Promise<SharedRecordEntry[]> {
 
       for (const item of timeline.items) {
         if (item.kind !== 'MESSAGE' || item.recalledAt || !item.messageBody) continue;
+
+        const babyGrowthData = parseBabyGrowthShare(item.messageBody);
+        if (babyGrowthData) {
+          records.push({
+            id: item.messageId || item.clientMessageId || `rec-${Date.now()}`,
+            conversationId: conversation.conversationId,
+            conversationStatus: conversation.conversationStatus,
+            motherUserId: counterpartId,
+            motherName: motherDisplayName,
+            createdAt: item.createdAt || new Date().toISOString(),
+            type: 'BABY_GROWTH',
+            babyGrowthData,
+            alertLevel: 'NORMAL',
+            status: 'PENDING_REVIEW',
+          });
+          continue;
+        }
 
         const rawHealthData = parseHealthMetricsShare(item.messageBody);
         if (rawHealthData) {

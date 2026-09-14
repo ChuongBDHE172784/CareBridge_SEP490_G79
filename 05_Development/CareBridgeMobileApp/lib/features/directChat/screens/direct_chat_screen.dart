@@ -26,6 +26,8 @@ import '../widgets/checklist_message_card.dart';
 import '../widgets/health_metrics_message_card.dart';
 import '../widgets/share_checklist_dialog.dart';
 import '../widgets/share_health_metrics_dialog.dart';
+import '../widgets/baby_growth_message_card.dart';
+import '../widgets/share_baby_growth_dialog.dart';
 
 class DirectChatScreen extends StatefulWidget {
   final String conversationId;
@@ -62,6 +64,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   bool _sending = false;
   bool _loadingOlder = false;
   bool _initialLoadComplete = false;
+  bool _hasScrolledToBottomInitially = false;
   bool _syncingNewer = false;
   bool _pendingNewerSync = false;
   bool _expertAvailable = true;
@@ -83,6 +86,45 @@ class _DirectChatScreenState extends State<DirectChatScreen>
   Timer? _markReadRetry;
   String? _scheduledReadMessageId;
   String? _lastMarkedReadMessageId;
+
+  void _scrollToBottom({bool animated = false, int retryFrames = 3}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
+      if (animated) {
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scrollController.jumpTo(target);
+        if (retryFrames > 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _scrollController.hasClients) {
+              if (_scrollController.position.pixels <
+                  _scrollController.position.maxScrollExtent) {
+                _scrollToBottom(animated: false, retryFrames: retryFrames - 1);
+              } else {
+                _hasScrolledToBottomInitially = true;
+              }
+            }
+          });
+        } else {
+          _hasScrolledToBottomInitially = true;
+        }
+      }
+    });
+  }
+
+  void _scrollToBottomIfNearOrForced({bool force = false}) {
+    if (!mounted || !_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+    final current = _scrollController.position.pixels;
+    if (force || (max - current) <= 200) {
+      _scrollToBottom(animated: true);
+    }
+  }
 
   @override
   void initState() {
@@ -117,6 +159,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         _loading = false;
       });
       _scheduleMarkReadIfNeeded();
+      _scrollToBottom(animated: false);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -153,6 +196,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           _hasMoreOlder = page.hasMoreOlder;
         });
         _scheduleMarkReadIfNeeded();
+        _scrollToBottomIfNearOrForced();
         return;
       }
       var cursor = _nextCursor;
@@ -168,6 +212,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
             _nextCursor = page.nextCursor;
           });
           _scheduleMarkReadIfNeeded();
+          _scrollToBottomIfNearOrForced();
         }
         final next = page.nextCursor;
         if (!page.hasMoreNewer || next == null || next == cursor) break;
@@ -311,6 +356,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
           setState(() {
             _items = mergeTimelineItems(_items, [confirmed]);
           });
+          _scrollToBottom(animated: true);
         }
       } else {
         final optimistic = TimelineItem.optimisticMessage(
@@ -321,6 +367,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         setState(() {
           _items = mergeTimelineItems(_items, [optimistic]);
         });
+        _scrollToBottom(animated: true);
         await _sendWithClientId(clientMessageId, body);
       }
     } catch (e) {
@@ -417,6 +464,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       );
       if (mounted) {
         setState(() => _items = mergeTimelineItems(_items, [optimistic]));
+        _scrollToBottom(animated: true);
       }
       final confirmed = await DirectChatService.instance.sendMessage(
         widget.conversationId,
@@ -428,6 +476,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       );
       if (mounted) {
         setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+        _scrollToBottom(animated: true);
       }
     } catch (error) {
       if (mounted) {
@@ -463,6 +512,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       _items = mergeTimelineItems(_items, [optimistic]);
       _sending = true;
     });
+    _scrollToBottom(animated: true);
     try {
       final confirmed = await DirectChatService.instance.sendMessage(
         widget.conversationId,
@@ -472,6 +522,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       );
       if (mounted) {
         setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+        _scrollToBottom(animated: true);
       }
     } catch (e) {
       if (mounted) {
@@ -481,6 +532,48 @@ class _DirectChatScreenState extends State<DirectChatScreen>
               .toList(growable: false);
         });
         _showError('Không thể gửi chỉ số sức khỏe. Vui lòng thử lại.');
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _openShareBabyGrowth() async {
+    if (_sending || !_canWrite) return;
+    final result = await ShareBabyGrowthDialog.show(context);
+    if (result == null || !mounted) return;
+    final clientMessageId = _uuid.v4();
+    final currentUserId = AuthState.instance.userId ?? '';
+    final serialized = result.serialize();
+    final optimistic = TimelineItem.optimisticMessage(
+      clientMessageId: clientMessageId,
+      senderUserId: currentUserId,
+      messageBody: serialized,
+    );
+    setState(() {
+      _items = mergeTimelineItems(_items, [optimistic]);
+      _sending = true;
+    });
+    _scrollToBottom(animated: true);
+    try {
+      final confirmed = await DirectChatService.instance.sendMessage(
+        widget.conversationId,
+        clientMessageId: clientMessageId,
+        messageBody: serialized,
+        messageType: 'TEXT',
+      );
+      if (mounted) {
+        setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+        _scrollToBottom(animated: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _items = _items
+              .where((item) => item.clientMessageId != clientMessageId)
+              .toList(growable: false);
+        });
+        _showError('Không thể gửi phát triển của bé. Vui lòng thử lại.');
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -503,6 +596,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       _items = mergeTimelineItems(_items, [optimistic]);
       _sending = true;
     });
+    _scrollToBottom(animated: true);
     try {
       final confirmed = await DirectChatService.instance.sendMessage(
         widget.conversationId,
@@ -512,6 +606,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       );
       if (mounted) {
         setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+        _scrollToBottom(animated: true);
       }
     } catch (e) {
       if (mounted) {
@@ -536,6 +631,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       );
       if (!mounted) return;
       setState(() => _items = mergeTimelineItems(_items, [confirmed]));
+      _scrollToBottom(animated: true);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -753,7 +849,8 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                 Expanded(
                   child: NotificationListener<ScrollNotification>(
                     onNotification: (notification) {
-                      if (notification.metrics.pixels <= 40 &&
+                      if (_hasScrolledToBottomInitially &&
+                          notification.metrics.pixels <= 40 &&
                           _hasMoreOlder &&
                           !_loadingOlder) {
                         _loadOlder();
@@ -929,6 +1026,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                       controller: _textController,
                       minLines: 1,
                       maxLines: 4,
+                      onTap: () => _scrollToBottom(animated: true),
                       style: const TextStyle(
                         fontFamily: 'Lexend',
                         color: _onSurface,
@@ -1095,6 +1193,14 @@ class _DirectChatScreenState extends State<DirectChatScreen>
               ),
               _buildAttachmentOption(
                 sheetContext: sheetContext,
+                icon: Icons.child_care_rounded,
+                iconColor: const Color(0xFFD48B47),
+                title: 'Chia sẻ phát triển của bé',
+                subtitle: 'Gửi biểu đồ cân nặng, chiều cao, vòng đầu của bé',
+                onTap: _openShareBabyGrowth,
+              ),
+              _buildAttachmentOption(
+                sheetContext: sheetContext,
                 icon: Icons.checklist_rtl_rounded,
                 iconColor: const Color(0xFF16A34A),
                 title: 'Chia sẻ việc cần làm',
@@ -1214,8 +1320,11 @@ class _TimelineTile extends StatelessWidget {
     final sending = item.sendStatus == ChatSendStatus.sending;
     final healthData = HealthMetricsShareData.parse(item.messageBody);
     final checklistData = ChecklistShareData.parse(item.messageBody);
+    final babyGrowthData = BabyGrowthShareData.parse(item.messageBody);
     final isRichCard =
-        (healthData != null || checklistData != null) &&
+        (healthData != null ||
+            checklistData != null ||
+            babyGrowthData != null) &&
         item.recalledAt == null;
 
     return Align(
@@ -1421,6 +1530,13 @@ class _TimelineTile extends StatelessWidget {
   }
 
   Widget _buildTextOrRichContent(TimelineItem item, bool isOwnMessage) {
+    final babyGrowthData = BabyGrowthShareData.parse(item.messageBody);
+    if (babyGrowthData != null) {
+      return BabyGrowthMessageCard(
+        data: babyGrowthData,
+        isOwnMessage: isOwnMessage,
+      );
+    }
     final healthData = HealthMetricsShareData.parse(item.messageBody);
     if (healthData != null) {
       return HealthMetricsMessageCard(
