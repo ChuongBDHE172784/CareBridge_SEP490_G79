@@ -7,11 +7,15 @@ import '../services/baby_log_service.dart';
 class BabyDailyLogDetailScreen extends StatefulWidget {
   final String babyId;
   final String logId;
+  final BabyDailyLog? initialLog;
+  final BabyLogService? logService;
 
   const BabyDailyLogDetailScreen({
     super.key,
     required this.babyId,
     required this.logId,
+    this.initialLog,
+    this.logService,
   });
 
   @override
@@ -26,7 +30,7 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
   static const _muted = Color(0xFF9C857C);
   static const _error = Color(0xFFBA1A1A);
 
-  final _service = BabyLogService();
+  late final BabyLogService _service;
   BabyDailyLog? _log;
   bool _isLoading = true;
   bool _isDeleting = false;
@@ -36,7 +40,13 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchLogDetail();
+    _service = widget.logService ?? BabyLogService();
+    if (widget.initialLog != null) {
+      _log = widget.initialLog;
+      _isLoading = false;
+    } else {
+      _fetchLogDetail();
+    }
   }
 
   Future<void> _fetchLogDetail() async {
@@ -80,6 +90,23 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }
+  }
+
+  Future<void> _confirmDelete() async {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (_) => _DeleteConfirmSheet(
+        onConfirm: () async {
+          Navigator.of(context).pop();
+          await _deleteLog();
+        },
+      ),
+    );
   }
 
   Future<void> _openEdit() async {
@@ -206,13 +233,13 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
           _buildInfoCard(
             icon: Icons.schedule,
             title: 'Thời gian',
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _durationSide('Bắt đầu', _formatDateTime(log.startedAt)),
-                _durationSide('Kết thúc', _formatDateTime(log.endedAt)),
-                _durationSide('Tổng', _formatDuration(log)),
-              ],
+            trailing: Text(
+              _formatDateTime(log.startedAt),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _text,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -240,7 +267,7 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: _isDeleting ? null : _deleteLog,
+            onPressed: _isDeleting ? null : _confirmDelete,
             icon: _isDeleting
                 ? const SizedBox(
                     width: 20,
@@ -273,7 +300,8 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
   Widget _buildInfoCard({
     required IconData icon,
     required String title,
-    required Widget child,
+    Widget? trailing,
+    Widget? child,
   }) {
     return Container(
       width: double.infinity,
@@ -293,49 +321,29 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: _primary, size: 22),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: _muted,
-                ),
+              Row(
+                children: [
+                  Icon(icon, color: _primary, size: 22),
+                  const SizedBox(width: 12),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _muted,
+                    ),
+                  ),
+                ],
               ),
+              ?trailing,
             ],
           ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _durationSide(String label, String value) {
-    return Flexible(
-      child: Column(
-        children: [
-          Text(
-            label.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: _muted,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: _text,
-            ),
-          ),
+          if (child != null) ...[
+            const SizedBox(height: 16),
+            child,
+          ],
         ],
       ),
     );
@@ -390,14 +398,102 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
     final unit = log.unit?.trim();
     return unit == null || unit.isEmpty ? value : '$value $unit';
   }
+}
 
-  String _formatDuration(BabyDailyLog log) {
-    if (log.startedAt == null || log.endedAt == null) return '-';
-    final minutes = log.endedAt!.difference(log.startedAt!).inMinutes;
-    if (minutes <= 0) return '-';
-    final hours = minutes ~/ 60;
-    final mins = minutes % 60;
-    if (hours == 0) return '${mins}m';
-    return '${hours}h ${mins}m';
+class _DeleteConfirmSheet extends StatelessWidget {
+  const _DeleteConfirmSheet({required this.onConfirm});
+
+  final VoidCallback onConfirm;
+
+  static const _primary = Color(0xFF845143);
+  static const _onSurface = Color(0xFF271812);
+  static const _onSurfaceVariant = Color(0xFF524440);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0D8D5),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEDEA),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: Colors.red,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Xóa nhật ký này?',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Hành động này không thể hoàn tác. Nhật ký sẽ bị xóa vĩnh viễn.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: _onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: onConfirm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(52),
+                shape: const StadiumBorder(),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Xác nhận xóa',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Hủy bỏ',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  color: _primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

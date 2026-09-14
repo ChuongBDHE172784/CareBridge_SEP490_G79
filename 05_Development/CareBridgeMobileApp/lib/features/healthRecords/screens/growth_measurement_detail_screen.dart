@@ -85,8 +85,13 @@ class _GrowthMeasurementDetailScreenState
     final m = widget.measurement;
     final dateStr =
         '${m.measuredAt.day.toString().padLeft(2, '0')}/${m.measuredAt.month.toString().padLeft(2, '0')}/${m.measuredAt.year}';
-    final timeStr =
-        '${m.measuredAt.hour.toString().padLeft(2, '0')}:${m.measuredAt.minute.toString().padLeft(2, '0')}';
+    final DateTime? recordedTime =
+        (m.measuredAt.hour != 0 || m.measuredAt.minute != 0)
+            ? m.measuredAt
+            : m.createdAt;
+    final timeStr = recordedTime != null
+        ? '${recordedTime.hour.toString().padLeft(2, '0')}:${recordedTime.minute.toString().padLeft(2, '0')}'
+        : '--:--';
 
     return Scaffold(
       backgroundColor: const Color(0xFFFEF8F4),
@@ -98,24 +103,14 @@ class _GrowthMeasurementDetailScreenState
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'CareBridge',
+          'Chi tiết đo lường',
           style: TextStyle(
+            fontFamily: 'Lexend',
             color: Color(0xFF845143),
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.grey[200],
-              backgroundImage: const NetworkImage(
-                'https://lh3.googleusercontent.com/aida-public/AB6AXuDGQdLBIs4oR_eCXW1MHGnxLbXddwLH2WUI202Xjz-VVma0C5MdHxCZnZodGO8zPSTCVdY_7XEx6Kj_4zpPCqp-3m8BRAfZoaWjcWNeh3NpinhssZzcPNYvZyFduKCp9LdoRCePMIgTcy4XSNDETokRouHumxcDDjcca206FU0pWq2hXynPgl3v7dbekE8syLHetH56fLv1Zwjosu3ciJ9-Gfc5O6H0GEAgjWG1Vj2j4ruUyoCc1h90G50Y9zoEEtHFX7u5tEkqa6Y',
-              ),
-            ),
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -124,20 +119,6 @@ class _GrowthMeasurementDetailScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Chi tiết đo lường',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D2A28),
-                  ),
-                ),
-                const Text(
-                  'Xem và quản lý thông tin chiều cao',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF605E5A)),
-                ),
-                const SizedBox(height: 24),
-
                 Container(
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
@@ -164,9 +145,15 @@ class _GrowthMeasurementDetailScreenState
                           color: Color(0xFFF2EAE4),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.straighten,
-                          color: Color(0xFF845143),
+                        child: Icon(
+                          m.heightCm != null
+                              ? Icons.straighten
+                              : (m.weightKg != null
+                                  ? Icons.scale
+                                  : (m.headCircumferenceCm != null
+                                      ? Icons.face
+                                      : Icons.straighten)),
+                          color: const Color(0xFF845143),
                           size: 40,
                         ),
                       ),
@@ -177,7 +164,14 @@ class _GrowthMeasurementDetailScreenState
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            m.heightCm?.toStringAsFixed(1) ?? '--',
+                            m.heightCm != null
+                                ? m.heightCm!.toStringAsFixed(1)
+                                : (m.weightKg != null
+                                    ? m.weightKg!.toStringAsFixed(1)
+                                    : (m.headCircumferenceCm != null
+                                        ? m.headCircumferenceCm!
+                                            .toStringAsFixed(1)
+                                        : '--')),
                             style: const TextStyle(
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
@@ -185,9 +179,15 @@ class _GrowthMeasurementDetailScreenState
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Text(
-                            'cm',
-                            style: TextStyle(
+                          Text(
+                            m.heightCm != null
+                                ? 'cm'
+                                : (m.weightKg != null
+                                    ? 'kg'
+                                    : (m.headCircumferenceCm != null
+                                        ? 'cm'
+                                        : '')),
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF524440),
@@ -196,9 +196,15 @@ class _GrowthMeasurementDetailScreenState
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Chiều cao hiện tại',
-                        style: TextStyle(
+                      Text(
+                        m.heightCm != null
+                            ? 'Chiều cao ghi nhận'
+                            : (m.weightKg != null
+                                ? 'Cân nặng ghi nhận'
+                                : (m.headCircumferenceCm != null
+                                    ? 'Vòng đầu ghi nhận'
+                                    : 'Chỉ số đo')),
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF625D59),
                         ),
@@ -218,6 +224,32 @@ class _GrowthMeasurementDetailScreenState
                       _buildDetailRow(Icons.schedule, 'THỜI GIAN', timeStr),
                       const SizedBox(height: 16),
 
+                      if (m.heightCm != null &&
+                          (m.weightKg != null ||
+                              m.headCircumferenceCm != null)) ...[
+                        _buildDetailRow(
+                          Icons.straighten,
+                          'CHIỀU CAO',
+                          '${m.heightCm!.toStringAsFixed(1)} cm',
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (m.weightKg != null) ...[
+                        _buildDetailRow(
+                          Icons.scale,
+                          'CÂN NẶNG',
+                          '${m.weightKg!.toStringAsFixed(1)} kg',
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (m.headCircumferenceCm != null) ...[
+                        _buildDetailRow(
+                          Icons.face,
+                          'VÒNG ĐẦU',
+                          '${m.headCircumferenceCm!.toStringAsFixed(1)} cm',
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       if (m.note != null && m.note!.isNotEmpty) ...[
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,60 +295,7 @@ class _GrowthMeasurementDetailScreenState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
                       ],
-
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.person, color: Color(0xFF84736F)),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'NGƯỜI GHI NHẬN',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF84736F),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 24,
-                                    height: 24,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFC98C7B),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        'M',
-                                        style: TextStyle(
-                                          color: Color(0xFF51271B),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    m.recorderName ?? 'Mẹ bé',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF1D1B19),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),

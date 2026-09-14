@@ -166,20 +166,24 @@ void main() {
     },
   );
 
-  testWidgets('whitespace-only source is rejected for a new record', (
-    tester,
-  ) async {
-    final service = _FakeGrowthMeasurementService();
-    await _pumpForm(tester, service: service);
+  testWidgets(
+    'new record does not show source field and supplies default sourceType',
+    (tester) async {
+      final service = _FakeGrowthMeasurementService();
+      await _pumpForm(tester, service: service);
 
-    await tester.enterText(find.byKey(const Key('growth-form-weight')), '6.2');
-    await tester.enterText(find.byKey(const Key('growth-form-source')), '   ');
-    await tester.tap(find.byKey(const Key('growth-form-save')));
-    await tester.pump();
+      expect(find.byKey(const Key('growth-form-source')), findsNothing);
+      await tester.enterText(
+        find.byKey(const Key('growth-form-weight')),
+        '6.2',
+      );
+      await tester.tap(find.byKey(const Key('growth-form-save')));
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('growth-form-error')), findsOneWidget);
-    expect(service.addedPayload, isNull);
-  });
+      expect(service.addedPayload, isNotNull);
+      expect(service.addedPayload?['sourceType'], isNotEmpty);
+    },
+  );
 
   testWidgets('editing cannot silently clear an existing metric', (
     tester,
@@ -259,17 +263,23 @@ void main() {
     expect(find.text('6.2'), findsOneWidget);
   });
 
-  testWidgets('cancel closes the form without submitting', (tester) async {
-    final service = _FakeGrowthMeasurementService();
-    await _pumpForm(tester, service: service);
+  testWidgets(
+    'back button closes the form without submitting and no cancel button is shown',
+    (tester) async {
+      final service = _FakeGrowthMeasurementService();
+      await _pumpForm(tester, service: service);
 
-    await tester.tap(find.byKey(const Key('growth-form-cancel')));
-    await tester.pumpAndSettle();
+      expect(find.byKey(const Key('growth-form-cancel')), findsNothing);
+      expect(find.text('Hủy bỏ'), findsNothing);
 
-    expect(
-      find.byKey(const Key('growth-measurement-form-screen')),
-      findsNothing,
-    );
-    expect(service.addedPayload, isNull);
-  });
+      await tester.tap(find.byKey(const Key('growth-form-back')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('growth-measurement-form-screen')),
+        findsNothing,
+      );
+      expect(service.addedPayload, isNull);
+    },
+  );
 }

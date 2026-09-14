@@ -10,6 +10,7 @@ class GrowthMeasurement {
   final String? recorderName;
   final int? ageInMonths;
   final int? ageInDays;
+  final DateTime? createdAt;
 
   const GrowthMeasurement({
     required this.id,
@@ -23,6 +24,7 @@ class GrowthMeasurement {
     this.recorderName,
     this.ageInMonths,
     this.ageInDays,
+    this.createdAt,
   });
 
   factory GrowthMeasurement.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,9 @@ class GrowthMeasurement {
       recorderName: json['recorderName'] as String?,
       ageInMonths: json['ageInMonths'] as int?,
       ageInDays: json['ageInDays'] as int?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())?.toLocal()
+          : null,
     );
   }
 }

@@ -1477,28 +1477,79 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   }
 
   Widget _buildSectionTabs() {
+    final isPregnancy = _selectedSection == _JourneySection.pregnancy;
     return Container(
+      height: 54,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: _surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _surfaceContainerHigh),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFAF4EE), Color(0xFFF3EBE5)],
+        ),
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(
+          color: const Color(0xFFE8DDD6).withValues(alpha: .8),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withValues(alpha: .06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Expanded(
-            child: _buildSectionTab(
-              label: 'Mẹ',
-              icon: Icons.pregnant_woman_rounded,
-              section: _JourneySection.pregnancy,
+          // Sliding active pill indicator over 50% width
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeInOutCubic,
+            alignment: isPregnancy ? Alignment.centerLeft : Alignment.centerRight,
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              heightFactor: 1.0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(23),
+                  border: Border.all(color: const Color(0xFFF0E4DD), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC98C7B).withValues(alpha: .15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                    BoxShadow(
+                      color: const Color(0xFF5A463F).withValues(alpha: .04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          Expanded(
-            child: _buildSectionTab(
-              label: 'Bé',
-              icon: Icons.child_care_rounded,
-              section: _JourneySection.babyCare,
-            ),
+
+          // Interactive 50% width tab buttons
+          Row(
+            children: [
+              Expanded(
+                child: _buildSectionTab(
+                  label: 'Mẹ',
+                  icon: Icons.pregnant_woman_rounded,
+                  section: _JourneySection.pregnancy,
+                ),
+              ),
+              Expanded(
+                child: _buildSectionTab(
+                  label: 'Bé',
+                  icon: Icons.child_care_rounded,
+                  section: _JourneySection.babyCare,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1513,36 +1564,28 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     final selected = _selectedSection == section;
     return Tooltip(
       message: label,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => setState(() => _selectedSection = section),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? _surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: selected
-                ? const [
-                    BoxShadow(
-                      color: Color(0x08000000),
-                      blurRadius: 12,
-                      offset: Offset(0, 3),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected ? _primary : _onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(23),
+          onTap: () => setState(() => _selectedSection = section),
+          child: SizedBox.expand(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    icon,
+                    key: ValueKey('$label-$selected'),
+                    size: 19,
+                    color: selected
+                        ? const Color(0xFF845143)
+                        : const Color(0xFF7A655C),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1551,11 +1594,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                     fontFamily: 'Lexend',
                     fontSize: 14,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? _primary : _onSurfaceVariant,
+                    color: selected
+                        ? const Color(0xFF3D2E28)
+                        : const Color(0xFF7A655C),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
