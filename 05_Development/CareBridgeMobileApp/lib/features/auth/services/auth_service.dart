@@ -494,6 +494,16 @@ class AuthService {
     );
   }
 
+  Future<void> checkRegistrationAvailability({
+    String? email,
+    String? phone,
+  }) async {
+    final body = <String, dynamic>{};
+    if (email != null && email.trim().isNotEmpty) body['email'] = email.trim();
+    if (phone != null && phone.trim().isNotEmpty) body['phone'] = phone.trim();
+    await _postRequest('/api/v1/auth/check-registration', body);
+  }
+
   // UC-01: Register — sends OTP; tokens not issued until OTP is verified
   Future<OtpSendResponse> register({
     required String name,
