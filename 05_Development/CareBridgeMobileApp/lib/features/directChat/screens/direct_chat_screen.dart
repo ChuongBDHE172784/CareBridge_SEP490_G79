@@ -1549,6 +1549,9 @@ class _TimelineTile extends StatelessWidget {
       return ChecklistMessageCard(
         data: checklistData,
         isOwnMessage: isOwnMessage,
+        conversationId: conversationId,
+        isExpertViewer:
+            AuthState.instance.role?.trim().toUpperCase() == 'EXPERT',
       );
     }
     return Text(

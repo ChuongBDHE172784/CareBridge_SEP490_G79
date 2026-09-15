@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/directChat/widgets/checklist_message_card.dart';
 
@@ -83,35 +84,23 @@ void main() {
           },
         ],
       };
-
-      final serialized = ChecklistShareData(
-        completedCount: 3,
-        totalCount: 4,
-        progressPercent: 75,
-      ).serialize(); // test base format tag
-
-      final fullMessage = '${ChecklistShareData.tag}\n${payload.toString().replaceAll("'", '"')}';
-      // Use clean json string
-      final jsonBody = '${ChecklistShareData.tag}\n'
-          '{"title":"Checklist","historyItems":[{"text":"Khám thai","completed":true,"origin":"SYSTEM"},{"text":"Việc riêng mẹ","completed":true,"origin":"USER"}],'
-          '"currentItems":[{"text":"Xét nghiệm máu","completed":false,"origin":"SYSTEM"},{"text":"Mua quà sinh nhật","completed":false,"origin":"USER"}],'
-          '"futureItems":[{"text":"Tiêm uốn ván","completed":false,"origin":"SYSTEM"},{"text":"Đi du lịch nghỉ dưỡng","completed":false,"origin":"USER"}]}';
+      final jsonBody = '${ChecklistShareData.tag}\n${jsonEncode(payload)}';
 
       final parsed = ChecklistShareData.parse(jsonBody);
       expect(parsed, isNotNull);
 
       // Only SYSTEM items remain, all USER items are excluded
       expect(parsed!.historyItems.length, equals(1));
-      expect(parsed.historyItems.first.text, equals('Khám thai'));
+      expect(parsed.historyItems.first.text, equals('Khám thai lần đầu'));
 
       expect(parsed.currentItems.length, equals(1));
-      expect(parsed.currentItems.first.text, equals('Xét nghiệm máu'));
+      expect(parsed.currentItems.first.text, equals('Xét nghiệm đường huyết thai kỳ (OGTT)'));
 
       expect(parsed.futureItems.length, equals(1));
-      expect(parsed.futureItems.first.text, equals('Tiêm uốn ván'));
+      expect(parsed.futureItems.first.text, equals('Tiêm phòng uốn ván mũi 2'));
 
-      expect(parsed.totalCount, equals(3));
-      expect(parsed.completedCount, equals(1));
+      expect(parsed.totalCount, equals(4));
+      expect(parsed.completedCount, equals(3));
     });
   });
 }
