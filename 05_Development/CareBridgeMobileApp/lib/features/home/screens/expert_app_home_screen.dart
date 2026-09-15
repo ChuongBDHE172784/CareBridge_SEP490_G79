@@ -94,6 +94,8 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                   _buildNextConsultation(snapshot!.nextConsultation!),
                   const SizedBox(height: 18),
                 ],
+                _buildExpertWorkflowsSection(),
+                const SizedBox(height: 18),
                 _buildCommunityCard(),
                 const SizedBox(height: 22),
                 _buildUnansweredQuestionsSection(),
@@ -375,6 +377,118 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                   ),
                 ),
                 const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant, size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpertWorkflowsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Công cụ chuyên môn',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: _onSurface,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildWorkflowCard(
+                icon: Icons.rate_review_rounded,
+                title: 'Thẩm định nội dung',
+                subtitle: 'Duyệt bài viết & checklist',
+                badgeColor: Colors.blue.shade50,
+                iconColor: Colors.blue.shade700,
+                onTap: () => context.push('/expert/content-approval'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWorkflowCard(
+                icon: Icons.checklist_rtl_rounded,
+                title: 'Checklist chia sẻ',
+                subtitle: 'Hồ sơ & công việc của mẹ',
+                badgeColor: const Color(0xFFFBF2EF),
+                iconColor: _primary,
+                onTap: () => context.push('/expert/shared-records'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkflowCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color badgeColor,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineVariant, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 20),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),

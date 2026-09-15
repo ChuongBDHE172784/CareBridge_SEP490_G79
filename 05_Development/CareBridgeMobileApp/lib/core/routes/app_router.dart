@@ -91,6 +91,10 @@ import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
 import '../../features/expert/screens/expert_contract_screen.dart';
 import '../../features/expert/screens/expert_identity_capture_screen.dart';
 import '../../features/expert/screens/expert_type_choice_screen.dart';
+import '../../features/expert/screens/expert_shared_records_screen.dart';
+import '../../features/expert/screens/expert_content_approval_queue_screen.dart';
+import '../../features/expert/screens/expert_content_review_screen.dart';
+import '../../features/expert/screens/expert_checklist_review_screen.dart';
 import '../../features/expert/services/expert_onboarding_store.dart';
 import '../../features/directChat/screens/expert_directory_screen.dart';
 import '../../features/directChat/screens/conversation_list_screen.dart';
@@ -1002,6 +1006,32 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['expertProfileId'] ?? '';
         return ExpertPublicProfileScreen(expertProfileId: id);
+      },
+    ),
+    // Expert shared records & personalized checklist
+    GoRoute(
+      path: '/expert/shared-records',
+      builder: (context, state) => const ExpertSharedRecordsScreen(),
+    ),
+    // Expert content approval queue
+    GoRoute(
+      path: '/expert/content-approval',
+      builder: (context, state) => const ExpertContentApprovalQueueScreen(),
+    ),
+    // Expert content detail review
+    GoRoute(
+      path: '/expert/content-review/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ExpertContentReviewScreen(contentId: id);
+      },
+    ),
+    // Expert checklist template detail review
+    GoRoute(
+      path: '/expert/checklist-review/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ExpertChecklistReviewScreen(checklistId: id);
       },
     ),
   ],
