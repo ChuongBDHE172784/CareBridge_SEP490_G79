@@ -42,7 +42,6 @@ class _GrowthMeasurementFormScreenState
   late final TextEditingController _weightController;
   late final TextEditingController _heightController;
   late final TextEditingController _headController;
-  late final TextEditingController _sourceController;
   late final TextEditingController _noteController;
 
   bool _isSaving = false;
@@ -66,13 +65,6 @@ class _GrowthMeasurementFormScreenState
     _headController = TextEditingController(
       text: existing?.headCircumferenceCm?.toString() ?? '',
     );
-    _sourceController = TextEditingController(
-      text: existing?.sourceType?.trim().isNotEmpty == true
-          ? existing!.sourceType!.trim()
-          : existing == null
-          ? 'HOME_SCALE'
-          : '',
-    );
     _noteController = TextEditingController(text: existing?.note ?? '');
   }
 
@@ -81,7 +73,6 @@ class _GrowthMeasurementFormScreenState
     _weightController.dispose();
     _heightController.dispose();
     _headController.dispose();
-    _sourceController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -165,22 +156,19 @@ class _GrowthMeasurementFormScreenState
       return;
     }
 
-    final source = _sourceController.text.trim();
-    if (widget.measurement == null && source.isEmpty) {
-      setState(() => _validationError = 'Hãy nhập nguồn đo.');
-      return;
-    }
+    final source = existing?.sourceType?.trim().isNotEmpty == true
+        ? existing!.sourceType!.trim()
+        : 'HOME_SCALE';
 
-    final payload = <String, dynamic>{'measuredDate': _isoDate(_measuredDate)};
+    final payload = <String, dynamic>{
+      'measuredDate': _isoDate(_measuredDate),
+      'sourceType': source,
+    };
     final note = _noteController.text.trim();
-    // The field is initialised with `existing?.note ?? ''`, so an absent note reads back as an
-    // empty string. Comparing that against a raw `null` made every untouched edit send
-    // `note: ""` and overwrite the stored null; normalise both sides before deciding.
     final existingNote = existing?.note?.trim() ?? '';
     if (existing == null || note != existingNote) {
       payload['note'] = note;
     }
-    if (source.isNotEmpty) payload['sourceType'] = source;
     if (weight != null) payload['weightKg'] = weight;
     if (height != null) payload['heightCm'] = height;
     if (head != null) payload['headCircumferenceCm'] = head;
@@ -245,6 +233,7 @@ class _GrowthMeasurementFormScreenState
           title: Text(
             title,
             style: const TextStyle(
+              fontFamily: 'Lexend',
               color: Color(0xFF845143),
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -253,106 +242,207 @@ class _GrowthMeasurementFormScreenState
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _sectionCard(
+                _buildCard(
+                  title: 'Chỉ số đo lường',
+                  subtitle: 'Ghi nhận ít nhất một chỉ số để theo dõi biểu đồ',
+                  icon: Icons.straighten_rounded,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Ngày đo selector
                       const Text(
-                        'Ngày đo',
+                        'NGÀY ĐO',
                         style: TextStyle(
-                          color: Color(0xFF605E5A),
-                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF84736F),
+                          letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      OutlinedButton.icon(
+                      InkWell(
                         key: const Key('growth-form-date'),
-                        onPressed: _isSaving ? null : _pickDate,
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(_displayDate(_measuredDate)),
-                        style: _outlineButtonStyle(),
+                        onTap: _isSaving ? null : _pickDate,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFAF7F5),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE7E1DD)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                size: 20,
+                                color: Color(0xFF845143),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _displayDate(_measuredDate),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1D1B19),
+                                  ),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 14,
+                                color: Color(0xFFB0A5A0),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      _numberField(
+                      const SizedBox(height: 20),
+
+                      // Cân nặng
+                      _buildMetricField(
                         key: const Key('growth-form-weight'),
                         controller: _weightController,
-                        label: 'Cân nặng (kg)',
-                        icon: Icons.scale,
+                        label: 'Cân nặng',
+                        unit: 'kg',
+                        hint: 'Ví dụ: 6.5',
+                        icon: Icons.scale_outlined,
                       ),
-                      const SizedBox(height: 12),
-                      _numberField(
+                      const SizedBox(height: 16),
+
+                      // Chiều cao
+                      _buildMetricField(
                         key: const Key('growth-form-height'),
                         controller: _heightController,
-                        label: 'Chiều cao (cm)',
-                        icon: Icons.height,
+                        label: 'Chiều cao',
+                        unit: 'cm',
+                        hint: 'Ví dụ: 62.0',
+                        icon: Icons.straighten_outlined,
                       ),
-                      const SizedBox(height: 12),
-                      _numberField(
+                      const SizedBox(height: 16),
+
+                      // Vòng đầu
+                      _buildMetricField(
                         key: const Key('growth-form-head'),
                         controller: _headController,
-                        label: 'Vòng đầu (cm)',
-                        icon: Icons.face,
+                        label: 'Vòng đầu',
+                        unit: 'cm',
+                        hint: 'Ví dụ: 41.5',
+                        icon: Icons.face_outlined,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                _sectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _textField(
-                        key: const Key('growth-form-source'),
-                        controller: _sourceController,
-                        label: 'Nguồn đo',
-                        hint: 'Ví dụ: HOME_SCALE hoặc CLINIC',
+                const SizedBox(height: 20),
+
+                _buildCard(
+                  title: 'Ghi chú',
+                  subtitle: 'Tình trạng hoặc lưu ý sức khỏe (tùy chọn)',
+                  icon: Icons.edit_note_rounded,
+                  child: TextFormField(
+                    key: const Key('growth-form-note'),
+                    controller: _noteController,
+                    maxLines: 3,
+                    maxLength: 1000,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF1D1B19),
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Nhập ghi chú hoặc theo dõi tình trạng phát triển của bé...',
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFFB0A5A0),
                       ),
-                      const SizedBox(height: 12),
-                      _textField(
-                        key: const Key('growth-form-note'),
-                        controller: _noteController,
-                        label: 'Ghi chú',
-                        maxLines: 4,
+                      filled: true,
+                      fillColor: const Color(0xFFFAF7F5),
+                      contentPadding: const EdgeInsets.all(16),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE7E1DD)),
                       ),
-                    ],
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFC98C7B),
+                          width: 1.5,
+                        ),
+                      ),
+                      counterStyle: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF84736F),
+                      ),
+                    ),
                   ),
                 ),
+
                 if (_validationError != null || _saveError != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Semantics(
                     liveRegion: true,
                     child: Container(
                       key: const Key('growth-form-error'),
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFEDEA),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFFFD5CE)),
                       ),
-                      child: Text(
-                        _validationError ?? _saveError!,
-                        style: const TextStyle(color: Color(0xFF9A2E25)),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: Color(0xFF9A2E25),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _validationError ?? _saveError!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF9A2E25),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ],
-                const SizedBox(height: 24),
+
+                const SizedBox(height: 28),
                 ElevatedButton(
                   key: const Key('growth-form-save'),
                   onPressed: _isSaving ? null : _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF845143),
                     foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(52),
-                    shape: const StadiumBorder(),
+                    disabledBackgroundColor:
+                        const Color(0xFF845143).withValues(alpha: 0.6),
+                    elevation: 2,
+                    shadowColor: const Color(0x33845143),
+                    minimumSize: const Size.fromHeight(54),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: _isSaving
                       ? Semantics(
                           label: 'Đang lưu số đo',
-                          child: SizedBox(
+                          child: const SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
@@ -361,18 +451,15 @@ class _GrowthMeasurementFormScreenState
                             ),
                           ),
                         )
-                      : Text(widget.isEdit ? 'Lưu thay đổi' : 'Lưu số đo'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  key: const Key('growth-form-cancel'),
-                  onPressed: _isSaving
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  child: const Text(
-                    'Hủy bỏ',
-                    style: TextStyle(color: Color(0xFF605E5A)),
-                  ),
+                      : Text(
+                          widget.isEdit ? 'LƯU THAY ĐỔI' : 'LƯU SỐ ĐO',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -382,9 +469,14 @@ class _GrowthMeasurementFormScreenState
     );
   }
 
-  Widget _sectionCard({required Widget child}) {
+  Widget _buildCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -396,55 +488,120 @@ class _GrowthMeasurementFormScreenState
           ),
         ],
       ),
-      child: child,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF2EAE4),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: const Color(0xFF845143), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2D2A28),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF84736F),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
     );
   }
 
-  Widget _numberField({
+  Widget _buildMetricField({
     required Key key,
     required TextEditingController controller,
     required String label,
+    required String unit,
+    required String hint,
     required IconData icon,
   }) {
-    return TextFormField(
-      key: key,
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF845143)),
-        border: const OutlineInputBorder(),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF84736F),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          key: key,
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1D1B19),
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.normal,
+              color: Color(0xFFB0A5A0),
+            ),
+            prefixIcon: Icon(icon, color: const Color(0xFF845143), size: 22),
+            suffixText: unit,
+            suffixStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF845143),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFFAF7F5),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFFE7E1DD)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(
+                color: Color(0xFFC98C7B),
+                width: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
-
-  Widget _textField({
-    required Key key,
-    required TextEditingController controller,
-    required String label,
-    String? hint,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      key: key,
-      controller: controller,
-      maxLines: maxLines,
-      maxLength: maxLines > 1 ? 1000 : 30,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
-      ),
-    );
-  }
-
-  ButtonStyle _outlineButtonStyle() => OutlinedButton.styleFrom(
-    foregroundColor: const Color(0xFF845143),
-    alignment: Alignment.centerLeft,
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    side: const BorderSide(color: Color(0xFFE7E1DD)),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  );
 
   static String _displayDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');

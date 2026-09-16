@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/baby_daily_log_model.dart';
@@ -23,8 +24,7 @@ class BabyLogSummaryScreen extends StatefulWidget {
 
 const _primary = Color(0xFF845143);
 const _primaryContainer = Color(0xFFC98C7B);
-const _canvas = Color(0xFFFFF8F6);
-const _surface = Color(0xFFF2EAE4);
+const _canvas = Color(0xFFFEF8F4);
 const _onSurface = Color(0xFF271812);
 const _onSurfaceVariant = Color(0xFF524440);
 
@@ -39,8 +39,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   BabyProfile? _selectedBaby;
   String _period = '24h';
   bool _isLoading = true;
+  bool _isPeriodSwitching = false;
   String? _error;
   int _loadGeneration = 0;
+  final Map<String, BabyLogSummaryResponse> _summaryCache = {};
+  final Map<String, List<BabyDailyLog>> _logsCache = {};
 
   @override
   void initState() {
@@ -68,18 +71,21 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       if (summary.babyId != requestedBabyId) {
         throw const FormatException('Baby journal summary scope mismatch');
       }
+      final scopedLogs = _scopeLogs(
+        logs,
+        requestedBabyId,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[_period] = summary;
+      _logsCache[_period] = scopedLogs;
       setState(() {
         _babies = babies;
         _selectedBaby = babies
             .where((b) => b.id == requestedBabyId)
             .firstOrNull;
         _summary = summary;
-        _logs = _scopeLogs(
-          logs,
-          requestedBabyId,
-          fromDate: summary.fromDate,
-          toDate: summary.toDate,
-        );
+        _logs = scopedLogs;
       });
     } catch (_) {
       if (!mounted || generation != _loadGeneration) return;
@@ -93,6 +99,8 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Future<void> _switchBaby(BabyProfile baby) async {
     final generation = ++_loadGeneration;
+    _summaryCache.clear();
+    _logsCache.clear();
     setState(() {
       _selectedBaby = baby;
       _isLoading = true;
@@ -108,14 +116,17 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       if (summary.babyId != baby.id) {
         throw const FormatException('Baby journal summary scope mismatch');
       }
+      final scopedLogs = _scopeLogs(
+        results[1] as List<BabyDailyLog>,
+        baby.id,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[_period] = summary;
+      _logsCache[_period] = scopedLogs;
       setState(() {
         _summary = summary;
-        _logs = _scopeLogs(
-          results[1] as List<BabyDailyLog>,
-          baby.id,
-          fromDate: summary.fromDate,
-          toDate: summary.toDate,
-        );
+        _logs = scopedLogs;
       });
     } catch (_) {
       if (mounted && generation == _loadGeneration) {
@@ -131,9 +142,32 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   Future<void> _switchPeriod(String p) async {
     if (_period == p) return;
     final generation = ++_loadGeneration;
+
+    // Fast path: if cached, switch data instantly for 60fps responsiveness
+    final cachedSummary = _summaryCache[p];
+    final cachedLogs = _logsCache[p];
+
+    if (cachedSummary != null) {
+      setState(() {
+        _period = p;
+        _summary = cachedSummary;
+        if (cachedLogs != null) {
+          _logs = cachedLogs;
+        }
+        _isPeriodSwitching = false;
+        _error = null;
+      });
+      _silentRefreshPeriod(p, generation);
+      return;
+    }
+
+    // First-time load for period without destroying existing UI
     setState(() {
       _period = p;
-      _isLoading = true;
+      _isPeriodSwitching = true;
+      if (_summary == null) {
+        _isLoading = true;
+      }
       _error = null;
     });
     try {
@@ -147,23 +181,58 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       if (summary.babyId != id) {
         throw const FormatException('Baby journal summary scope mismatch');
       }
+      final scopedLogs = _scopeLogs(
+        results[1] as List<BabyDailyLog>,
+        id,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[p] = summary;
+      _logsCache[p] = scopedLogs;
       setState(() {
         _summary = summary;
-        _logs = _scopeLogs(
-          results[1] as List<BabyDailyLog>,
-          id,
-          fromDate: summary.fromDate,
-          toDate: summary.toDate,
-        );
+        _logs = scopedLogs;
       });
     } catch (_) {
       if (mounted && generation == _loadGeneration) {
-        setState(() => _error = 'Không thể tải dữ liệu.');
+        if (_summary == null) {
+          setState(() => _error = 'Không thể tải dữ liệu.');
+        }
       }
     } finally {
       if (mounted && generation == _loadGeneration) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _isPeriodSwitching = false;
+        });
       }
+    }
+  }
+
+  Future<void> _silentRefreshPeriod(String p, int generation) async {
+    try {
+      final id = _selectedBaby?.id ?? widget.babyId;
+      final results = await Future.wait([
+        _logService.getLogSummary(id, period: p),
+        _logService.getDailyLogs(id),
+      ]);
+      if (!mounted || generation != _loadGeneration || _period != p) return;
+      final summary = results[0] as BabyLogSummaryResponse;
+      if (summary.babyId != id) return;
+      final scopedLogs = _scopeLogs(
+        results[1] as List<BabyDailyLog>,
+        id,
+        fromDate: summary.fromDate,
+        toDate: summary.toDate,
+      );
+      _summaryCache[p] = summary;
+      _logsCache[p] = scopedLogs;
+      setState(() {
+        _summary = summary;
+        _logs = scopedLogs;
+      });
+    } catch (_) {
+      // Background refresh failure is safely ignored
     }
   }
 
@@ -171,7 +240,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
     final babyId = _selectedBaby?.id ?? widget.babyId;
     if (log.babyId != babyId) return;
     await context.push('/babies/$babyId/daily-logs/${log.id}');
-    if (mounted) await _loadData(babyId: babyId);
+    if (mounted) {
+      _summaryCache.clear();
+      _logsCache.clear();
+      await _loadData(babyId: babyId);
+    }
   }
 
   List<BabyDailyLog> _scopeLogs(
@@ -206,6 +279,8 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       ),
     );
     if (saved == true && mounted) {
+      _summaryCache.clear();
+      _logsCache.clear();
       await _loadData(babyId: _selectedBaby?.id ?? widget.babyId);
     }
   }
@@ -214,9 +289,28 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _canvas,
+      appBar: AppBar(
+        backgroundColor: _canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Nhật ký của bé',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: _onSurface,
+          ),
+        ),
+      ),
       body: CustomScrollView(
         slivers: [
-          _buildHeader(),
+          SliverToBoxAdapter(child: _buildHeader()),
           SliverToBoxAdapter(child: _buildContent()),
         ],
       ),
@@ -226,142 +320,201 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
         backgroundColor: _primary,
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
+        elevation: 3,
         child: const Icon(Icons.add_rounded),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return SliverAppBar(
-      pinned: true,
-      backgroundColor: _canvas,
-      elevation: 0,
-      expandedHeight: 160,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          color: _canvas,
-          padding: const EdgeInsets.fromLTRB(16, 56, 16, 0),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: _surface,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: _primaryContainer.withAlpha(80),
-                        width: 2,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.child_care_rounded,
-                      color: _primaryContainer,
-                      size: 26,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFF0EAE6)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0A000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F1EE),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFE8DDD6),
+                      width: 1.5,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _selectedBaby?.nickname ?? 'Bé yêu',
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: _onSurface,
-                          ),
-                        ),
-                        Text(
-                          _selectedBaby?.ageLabel ?? '',
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                            color: _onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: const Icon(
+                    Icons.child_care_rounded,
+                    color: _primary,
+                    size: 26,
                   ),
-                  if (_babies.length > 1)
-                    PopupMenuButton<BabyProfile>(
-                      icon: const Icon(
-                        Icons.expand_more_rounded,
-                        color: _primary,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedBaby?.nickname ?? 'Bé yêu',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: _onSurface,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                      const SizedBox(height: 2),
+                      Text(
+                        _selectedBaby?.ageLabel ?? '',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: _onSurfaceVariant,
+                        ),
                       ),
-                      color: Colors.white,
-                      onSelected: _switchBaby,
-                      itemBuilder: (_) => _babies
-                          .map(
-                            (b) => PopupMenuItem(
-                              value: b,
-                              child: Text(
-                                b.nickname,
-                                style: const TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 14,
-                                  color: _onSurface,
-                                ),
+                    ],
+                  ),
+                ),
+                if (_babies.length > 1)
+                  PopupMenuButton<BabyProfile>(
+                    icon: const Icon(
+                      Icons.expand_more_rounded,
+                      color: _primary,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    color: Colors.white,
+                    onSelected: _switchBaby,
+                    itemBuilder: (_) => _babies
+                        .map(
+                          (b) => PopupMenuItem(
+                            value: b,
+                            child: Text(
+                              b.nickname,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 14,
+                                color: _onSurface,
                               ),
                             ),
-                          )
-                          .toList(),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildPeriodToggle(),
-            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          _buildPeriodToggle(),
+        ],
       ),
     );
   }
 
   Widget _buildPeriodToggle() {
+    final is7d = _period == '7d';
     return Container(
-      height: 40,
+      width: 216,
+      height: 44,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(50),
+        color: const Color(0xFFFAF4EE),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: const Color(0xFFE8DDD6)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: ['24h', '7 ngày'].map((p) {
-          final isSelected = _period == p || (_period == '7d' && p == '7 ngày');
-          final apiVal = p == '7 ngày' ? '7d' : p;
-          return GestureDetector(
-            onTap: () => _switchPeriod(apiVal),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected ? _primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(50),
-              ),
-              child: Text(
-                p,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : _onSurfaceVariant,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final pillWidth = constraints.maxWidth / 2;
+          return Stack(
+            children: [
+              AnimatedAlign(
+                alignment: is7d ? Alignment.centerRight : Alignment.centerLeft,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.fastOutSlowIn,
+                child: Container(
+                  width: pillWidth,
+                  height: constraints.maxHeight,
+                  decoration: BoxDecoration(
+                    color: _primary,
+                    borderRadius: BorderRadius.circular(99),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x40845143),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      key: const Key('baby-log-period-24h'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _switchPeriod('24h'),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight: !is7d ? FontWeight.bold : FontWeight.w500,
+                            color: !is7d ? Colors.white : _onSurfaceVariant,
+                          ),
+                          child: const Text('24h'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      key: const Key('baby-log-period-7d'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _switchPeriod('7d'),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight: is7d ? FontWeight.bold : FontWeight.w500,
+                            color: is7d ? Colors.white : _onSurfaceVariant,
+                          ),
+                          child: const Text('7 ngày'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           );
-        }).toList(),
+        },
       ),
     );
   }
@@ -406,19 +559,37 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
         ),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildBentoGrid(),
-          const SizedBox(height: 20),
-          _buildSimpleBarChart(),
-          const SizedBox(height: 20),
-          _buildRecentEvents(),
-          const SizedBox(height: 16),
-          _buildDisclaimer(),
-        ],
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: _isPeriodSwitching ? 0.6 : 1.0,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey('period-content-$_period-${_selectedBaby?.id ?? widget.babyId}'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildBentoGrid(),
+                const SizedBox(height: 20),
+                _buildSimpleBarChart(),
+                const SizedBox(height: 20),
+                _buildRecentEvents(),
+                const SizedBox(height: 16),
+                _buildDisclaimer(),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -477,11 +648,12 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
           BoxShadow(
-            color: _primary.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -502,18 +674,21 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             children: [
               Text(
                 item.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
                   color: _onSurface,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 item.label,
                 style: const TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 11,
+                  fontSize: 12,
                   color: _onSurfaceVariant,
                 ),
               ),
@@ -531,29 +706,48 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             .toList() ??
         const <MapEntry<String, LogTypeSummary>>[];
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
           BoxShadow(
-            color: _primary.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tần suất theo loại nhật ký',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: _onSurface,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F1EE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.bar_chart_rounded,
+                  size: 20,
+                  color: _primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Tần suất theo loại nhật ký',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: _onSurface,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           if (entries.isEmpty)
@@ -565,7 +759,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
                   key: Key('baby-log-chart-empty'),
                   style: TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 12,
+                    fontSize: 13,
                     color: _onSurfaceVariant,
                   ),
                 ),
@@ -598,7 +792,7 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 10,
+                          fontSize: 11,
                           color: _onSurfaceVariant,
                         ),
                       ),
@@ -614,35 +808,73 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Widget _buildRecentEvents() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0EAE6)),
+        boxShadow: const [
           BoxShadow(
-            color: _primary.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nhật ký gần đây',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: _onSurface,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F1EE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.history_rounded,
+                  size: 20,
+                  color: _primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Nhật ký gần đây',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+              if (_logs.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF4EE),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '${_logs.length} bản ghi',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (_logs.isEmpty)
             const Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: 20),
                 child: Text(
                   'Chưa có nhật ký nào.',
                   style: TextStyle(
@@ -661,42 +893,56 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
   }
 
   Widget _buildLogTile(BabyDailyLog log) {
-    final quantity = log.quantity == null
-        ? null
-        : '${log.quantity!.toStringAsFixed(log.quantity! % 1 == 0 ? 0 : 1)} ${log.unit ?? ''}'
+    final String? quantity;
+    if (log.quantity == null) {
+      quantity = null;
+    } else if (log.logType == LogType.sleep ||
+        log.rawLogType?.toUpperCase() == 'SLEEP') {
+      final unit = log.unit?.trim().toLowerCase();
+      final totalMin = (unit == 'giờ' ||
+              unit == 'h' ||
+              unit == 'hours' ||
+              unit == 'hour')
+          ? (log.quantity! * 60).round()
+          : log.quantity!.round();
+      quantity = formatSleepMinutes(totalMin);
+    } else {
+      quantity =
+          '${log.quantity!.toStringAsFixed(log.quantity! % 1 == 0 ? 0 : 1)} ${log.unit ?? ''}'
               .trim();
+    }
     final details = [
       _formatLogDate(log.startedAt ?? log.createdAt),
       if (quantity != null && quantity.isNotEmpty) quantity,
       if (log.note?.trim().isNotEmpty == true) log.note!.trim(),
     ].join(' · ');
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Material(
         color: Colors.transparent,
         child: ListTile(
           key: ValueKey('baby-log-${log.id}'),
-          contentPadding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           onTap: () => _openLog(log),
           leading: Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: _surface,
-              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFFF7F1EE),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               _logTypeIcon(log.logType),
-              color: _primaryContainer,
-              size: 18,
+              color: _primary,
+              size: 20,
             ),
           ),
           title: Text(
             log.displayTypeLabel,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: _onSurface,
             ),
@@ -707,11 +953,11 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 11,
+              fontSize: 12,
               color: _onSurfaceVariant,
             ),
           ),
-          trailing: const Icon(Icons.chevron_right_rounded, color: _primary),
+          trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFB0A5A0)),
         ),
       ),
     );
@@ -744,23 +990,25 @@ class _BabyLogSummaryScreenState extends State<BabyLogSummaryScreen> {
 
   Widget _buildDisclaimer() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _surface,
+        color: const Color(0xFFFAF7F5),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE7E1DD)),
       ),
       child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 16, color: _onSurfaceVariant),
-          SizedBox(width: 8),
+          Icon(Icons.info_outline_rounded, size: 18, color: _primary),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Dữ liệu được tổng hợp từ nhật ký của người chăm sóc. Thông tin mang tính quan sát, không thay thế tư vấn chuyên môn.',
+              'Dữ liệu được tổng hợp từ nhật ký của người chăm sóc. Thông tin mang tính quan sát, không thay thế tư vấn chuyên môn y tế.',
               style: TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 11,
+                fontSize: 12,
                 color: _onSurfaceVariant,
-                height: 1.5,
+                height: 1.4,
               ),
             ),
           ),
@@ -848,21 +1096,20 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
   ];
 
   late final TextEditingController _quantityController;
-  late final TextEditingController _unitController;
   late final TextEditingController _noteController;
   late final TextEditingController _symptomDescriptionController;
   final _formKey = GlobalKey<FormState>();
   LogType _selectedType = LogType.feeding;
   String _selectedSymptom = 'Sốt';
   bool _saving = false;
+  int _sleepHours = 1;
+  int _sleepMinutes = 0;
+  int _diaperCount = 1;
 
   @override
   void initState() {
     super.initState();
     _quantityController = TextEditingController();
-    _unitController = TextEditingController(
-      text: fixedDisplayUnitFor(_selectedType) ?? 'ml',
-    );
     _noteController = TextEditingController();
     _symptomDescriptionController = TextEditingController();
   }
@@ -870,7 +1117,6 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
   @override
   void dispose() {
     _quantityController.dispose();
-    _unitController.dispose();
     _noteController.dispose();
     _symptomDescriptionController.dispose();
     super.dispose();
@@ -880,12 +1126,6 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
     if (next == null || _saving) return;
     setState(() {
       _selectedType = next;
-      final displayUnit = fixedDisplayUnitFor(next);
-      if (displayUnit != null) {
-        _unitController.text = displayUnit;
-      } else {
-        _unitController.clear();
-      }
       if (next == LogType.symptom) {
         _quantityController.clear();
       }
@@ -895,15 +1135,11 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
   String _quantityLabelFor(LogType type) {
     switch (type) {
       case LogType.feeding:
-        return 'Lượng sữa / thức ăn (tuỳ chọn)';
-      case LogType.sleep:
-        return 'Thời gian ngủ (tuỳ chọn)';
-      case LogType.diaper:
-        return 'Số lần (tuỳ chọn)';
+        return 'Lượng sữa (ml)';
       case LogType.medicine:
-        return 'Liều lượng (tuỳ chọn)';
+        return 'Liều lượng';
       default:
-        return 'Số lượng (tuỳ chọn)';
+        return 'Số lượng';
     }
   }
 
@@ -924,10 +1160,46 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
         } else {
           note = desc.isNotEmpty ? '$_selectedSymptom: $desc' : _selectedSymptom;
         }
+      } else if (_selectedType == LogType.sleep) {
+        final totalMinutes = _sleepHours * 60 + _sleepMinutes;
+        if (totalMinutes <= 0) {
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vui lòng chọn thời gian ngủ lớn hơn 0 phút.'),
+            ),
+          );
+          return;
+        }
+        qty = totalMinutes.toDouble();
+        unit = 'phút';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
+      } else if (_selectedType == LogType.diaper) {
+        qty = _diaperCount.toDouble();
+        unit = 'lần';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
+      } else if (_selectedType == LogType.feeding) {
+        final raw = _quantityController.text.trim();
+        qty = raw.isEmpty ? null : double.tryParse(raw);
+        unit = 'ml';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
+      } else if (_selectedType == LogType.medicine) {
+        final raw = _quantityController.text.trim();
+        qty = raw.isEmpty ? null : double.tryParse(raw);
+        unit = 'liều';
+        note = _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim();
       } else {
-        qty = double.tryParse(_quantityController.text);
-        final rawUnit = _unitController.text.trim();
-        unit = rawUnit.isEmpty ? null : rawUnit;
+        final raw = _quantityController.text.trim();
+        qty = raw.isEmpty ? null : double.tryParse(raw);
+        unit = null;
         note = _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim();
@@ -958,6 +1230,182 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
         );
       }
     }
+  }
+
+  Widget _buildSleepTimePicker() {
+    final displayTime = _sleepHours > 0
+        ? (_sleepMinutes > 0 ? '$_sleepHours giờ $_sleepMinutes phút' : '$_sleepHours giờ')
+        : '$_sleepMinutes phút';
+
+    return Container(
+      key: const Key('baby-log-sleep-picker'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withAlpha(50)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Thời gian ngủ:',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+              Text(
+                displayTime,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 120,
+            child: Row(
+              children: [
+                Expanded(
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: _sleepHours.clamp(0, 24),
+                    ),
+                    itemExtent: 36,
+                    selectionOverlay: Container(
+                      decoration: BoxDecoration(
+                        color: _primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onSelectedItemChanged: (index) {
+                      setState(() => _sleepHours = index);
+                    },
+                    children: List.generate(
+                      25,
+                      (i) => Center(
+                        child: Text(
+                          '$i giờ',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: _sleepMinutes.clamp(0, 59),
+                    ),
+                    itemExtent: 36,
+                    selectionOverlay: Container(
+                      decoration: BoxDecoration(
+                        color: _primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onSelectedItemChanged: (index) {
+                      setState(() => _sleepMinutes = index);
+                    },
+                    children: List.generate(
+                      60,
+                      (i) => Center(
+                        child: Text(
+                          '$i phút',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiaperCounter() {
+    return Container(
+      key: const Key('baby-log-diaper-counter'),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withAlpha(50)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Số lần thay tã',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton.filledTonal(
+                key: const Key('baby-log-diaper-minus'),
+                onPressed: _diaperCount > 1
+                    ? () => setState(() => _diaperCount--)
+                    : null,
+                icon: const Icon(Icons.remove, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: _primary.withAlpha(25),
+                  foregroundColor: _primary,
+                ),
+              ),
+              Container(
+                constraints: const BoxConstraints(minWidth: 44),
+                alignment: Alignment.center,
+                child: Text(
+                  '$_diaperCount',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+              IconButton.filled(
+                key: const Key('baby-log-diaper-plus'),
+                onPressed: () => setState(() => _diaperCount++),
+                icon: const Icon(Icons.add, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1017,7 +1465,7 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
                     .toList(),
                 onChanged: _onTypeChanged,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               if (isSymptom) ...[
                 DropdownButtonFormField<String>(
                   key: const Key('baby-log-symptom-select'),
@@ -1066,6 +1514,10 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
                     return null;
                   },
                 ),
+              ] else if (_selectedType == LogType.sleep) ...[
+                _buildSleepTimePicker(),
+              ] else if (_selectedType == LogType.diaper) ...[
+                _buildDiaperCounter(),
               ] else ...[
                 TextFormField(
                   key: const Key('baby-log-quantity'),
@@ -1087,24 +1539,15 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  key: const Key('baby-log-unit'),
-                  controller: _unitController,
-                  enabled: !_saving,
-                  decoration: const InputDecoration(
-                    labelText: 'Đơn vị',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  key: const Key('baby-log-note'),
-                  controller: _noteController,
-                  enabled: !_saving,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Ghi chú'),
-                ),
               ],
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('baby-log-note'),
+                controller: _noteController,
+                enabled: !_saving,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Ghi chú'),
+              ),
               const SizedBox(height: 16),
               FilledButton(
                 key: const Key('baby-log-save'),

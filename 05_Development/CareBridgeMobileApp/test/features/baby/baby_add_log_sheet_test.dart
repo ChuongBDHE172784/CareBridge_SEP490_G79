@@ -116,7 +116,7 @@ void main() {
     );
 
     testWidgets(
-      'suggests default unit and allows editing unit for feeding, sleep, diaper, medicine',
+      'renders specialized inputs for feeding, sleep, diaper, medicine without unit text field',
       (tester) async {
         await tester.pumpWidget(buildTestWidget());
         await tester.pumpAndSettle();
@@ -124,38 +124,38 @@ void main() {
         await tester.tap(find.byKey(const Key('baby-log-add')));
         await tester.pumpAndSettle();
 
-        // 1. Feeding (default): suggested unit is ml and field is editable
-        final unitFieldFinder = find.byKey(const Key('baby-log-unit'));
-        expect(unitFieldFinder, findsOneWidget);
-        expect(find.text('ml'), findsOneWidget);
+        // 1. Feeding (default): label is 'Lượng sữa (ml)' and NO unit field
+        expect(find.text('Lượng sữa (ml)'), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-unit')), findsNothing);
 
-        // Verify editable by entering custom unit
-        await tester.enterText(unitFieldFinder, 'oz');
-        expect(find.text('oz'), findsOneWidget);
-
-        // 2. Switch to Sleep -> suggested unit is 'giờ'
+        // 2. Switch to Sleep -> displays sleep time picker and NO unit field
         await tester.tap(find.byKey(const Key('baby-log-type-select')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Ngủ nghỉ').last);
         await tester.pumpAndSettle();
 
-        expect(find.text('giờ'), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-sleep-picker')), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-unit')), findsNothing);
 
-        // 3. Switch to Diaper -> suggested unit is 'lần'
+        // 3. Switch to Diaper -> displays diaper counter with +/- buttons and NO unit field
         await tester.tap(find.byKey(const Key('baby-log-type-select')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Thay tã').last);
         await tester.pumpAndSettle();
 
-        expect(find.text('lần'), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-diaper-counter')), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-diaper-minus')), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-diaper-plus')), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-unit')), findsNothing);
 
-        // 4. Switch to Medicine -> suggested unit is 'liều'
+        // 4. Switch to Medicine -> label is 'Liều lượng' and NO unit field
         await tester.tap(find.byKey(const Key('baby-log-type-select')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Thuốc').last);
         await tester.pumpAndSettle();
 
-        expect(find.text('liều'), findsOneWidget);
+        expect(find.text('Liều lượng'), findsOneWidget);
+        expect(find.byKey(const Key('baby-log-unit')), findsNothing);
       },
     );
 
@@ -288,7 +288,7 @@ void main() {
       },
     );
 
-    testWidgets('submitting feeding sends quantity and user-edited unit', (
+    testWidgets('submitting feeding sends quantity and default ml unit', (
       tester,
     ) async {
       await tester.pumpWidget(buildTestWidget());
@@ -299,8 +299,6 @@ void main() {
 
       // Feeding is default
       await tester.enterText(find.byKey(const Key('baby-log-quantity')), '150');
-      // Change unit to oz
-      await tester.enterText(find.byKey(const Key('baby-log-unit')), 'oz');
       await tester.enterText(
         find.byKey(const Key('baby-log-note')),
         'Bú bình xong ngủ ngon',
@@ -312,8 +310,66 @@ void main() {
       expect(mockLogService.lastAddRequest, isNotNull);
       expect(mockLogService.lastAddRequest!.logType, LogType.feeding);
       expect(mockLogService.lastAddRequest!.quantity, 150.0);
-      expect(mockLogService.lastAddRequest!.unit, 'oz');
+      expect(mockLogService.lastAddRequest!.unit, 'ml');
       expect(mockLogService.lastAddRequest!.note, 'Bú bình xong ngủ ngon');
+    });
+
+    testWidgets('submitting diaper sends count and default lần unit', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('baby-log-add')));
+      await tester.pumpAndSettle();
+
+      // Switch to Diaper
+      await tester.tap(find.byKey(const Key('baby-log-type-select')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Thay tã').last);
+      await tester.pumpAndSettle();
+
+      // Tap + button twice (starts at 1 -> 2 -> 3)
+      await tester.tap(find.byKey(const Key('baby-log-diaper-plus')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('baby-log-diaper-plus')));
+      await tester.pumpAndSettle();
+
+      // Tap - button once (3 -> 2)
+      await tester.tap(find.byKey(const Key('baby-log-diaper-minus')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('baby-log-save')));
+      await tester.pumpAndSettle();
+
+      expect(mockLogService.lastAddRequest, isNotNull);
+      expect(mockLogService.lastAddRequest!.logType, LogType.diaper);
+      expect(mockLogService.lastAddRequest!.quantity, 2.0);
+      expect(mockLogService.lastAddRequest!.unit, 'lần');
+    });
+
+    testWidgets('submitting sleep sends minutes and default phút unit', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('baby-log-add')));
+      await tester.pumpAndSettle();
+
+      // Switch to Sleep (initial: 1 hour 0 mins = 60 mins)
+      await tester.tap(find.byKey(const Key('baby-log-type-select')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ngủ nghỉ').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('baby-log-save')));
+      await tester.pumpAndSettle();
+
+      expect(mockLogService.lastAddRequest, isNotNull);
+      expect(mockLogService.lastAddRequest!.logType, LogType.sleep);
+      expect(mockLogService.lastAddRequest!.quantity, 60.0);
+      expect(mockLogService.lastAddRequest!.unit, 'phút');
     });
   });
 }

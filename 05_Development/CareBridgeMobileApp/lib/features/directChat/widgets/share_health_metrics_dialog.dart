@@ -535,13 +535,17 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                     children: [
                       Row(
                         children: [
-                          const Text(
-                            'Chia sẻ chỉ số sức khỏe',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2C2523),
+                          Flexible(
+                            child: const Text(
+                              'Chia sẻ chỉ số sức khỏe',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2C2523),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -689,15 +693,20 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Đã chọn ${_metrics.where((m) => m.isSelected).length}/${_metrics.length} loại ($totalRecords bản ghi · ${_getTimeRangeLabel()})',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF5A4E4B),
+                  Expanded(
+                    child: Text(
+                      'Đã chọn ${_metrics.where((m) => m.isSelected).length}/${_metrics.length} loại ($totalRecords bản ghi · ${_getTimeRangeLabel()})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF5A4E4B),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   TextButton(
                     onPressed: () => _toggleSelectAll(!allSelected),
                     style: TextButton.styleFrom(
@@ -767,58 +776,41 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            item.name,
-                                            style: const TextStyle(
-                                              fontFamily: 'Lexend',
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF2C2523),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 1,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: primary.withValues(
-                                                alpha: 0.12,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              '$count lần đo',
-                                              style: const TextStyle(
-                                                fontFamily: 'Lexend',
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: primary,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (item.measuredTime != null)
-                                        Text(
-                                          'Gần nhất: ${item.measuredTime}',
-                                          style: const TextStyle(
-                                            fontFamily: 'Lexend',
-                                            fontSize: 11,
-                                            color: Color(0xFF8C7D79),
-                                          ),
+                                      Text(
+                                        item.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF2C2523),
                                         ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        item.measuredTime != null
+                                            ? (count > 1
+                                                ? '$count lần đo · Gần nhất: ${item.measuredTime}'
+                                                : 'Gần nhất: ${item.measuredTime}')
+                                            : (count > 1
+                                                ? '$count lần đo'
+                                                : ''),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 11,
+                                          color: Color(0xFF8C7D79),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
+                                    horizontal: 6,
+                                    vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
                                     color: item.status == 'CRITICAL'
@@ -832,7 +824,7 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                                     '${item.value} ${item.unit}'.trim(),
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       color: item.status == 'CRITICAL'
                                           ? const Color(0xFFC62828)
@@ -842,23 +834,27 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                                     ),
                                   ),
                                 ),
-                                if (item.history.length > 1)
-                                  IconButton(
-                                    icon: Icon(
-                                      item.isExpanded
-                                          ? Icons.expand_less_rounded
-                                          : Icons.expand_more_rounded,
-                                      size: 20,
-                                      color: const Color(0xFF8C7D79),
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () {
+                                if (item.history.length > 1) ...[
+                                  const SizedBox(width: 2),
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(12),
+                                    onTap: () {
                                       setState(() {
                                         item.isExpanded = !item.isExpanded;
                                       });
                                     },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(2),
+                                      child: Icon(
+                                        item.isExpanded
+                                            ? Icons.expand_less_rounded
+                                            : Icons.expand_more_rounded,
+                                        size: 18,
+                                        color: const Color(0xFF8C7D79),
+                                      ),
+                                    ),
                                   ),
+                                ],
                               ],
                             ),
                             onChanged: (val) {
@@ -893,15 +889,19 @@ class _ShareHealthMetricsDialogState extends State<ShareHealthMetricsDialog> {
                                     ),
                                     child: Row(
                                       children: [
-                                        Text(
-                                          record.measuredAt,
-                                          style: const TextStyle(
-                                            fontFamily: 'Lexend',
-                                            fontSize: 11,
-                                            color: Color(0xFF7A6F6C),
+                                        Expanded(
+                                          child: Text(
+                                            record.measuredAt,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontFamily: 'Lexend',
+                                              fontSize: 11,
+                                              color: Color(0xFF7A6F6C),
+                                            ),
                                           ),
                                         ),
-                                        const Spacer(),
+                                        const SizedBox(width: 8),
                                         Text(
                                           '${record.value} ${record.unit}'
                                               .trim(),

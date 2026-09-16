@@ -3,10 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import '../models/baby_model.dart';
 import '../services/baby_service.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
+import '../../journey/models/journey_model.dart';
+import '../../journey/services/journey_service.dart';
 
 /// Add Baby Profile screen — UC-31
 /// Collects nickname, birthDate, gender, birthWeightKg, birthLengthCm.
@@ -21,14 +24,31 @@ enum AddBabyEntryPoint {
 }
 
 class AddBabyRouteArgs {
-  const AddBabyRouteArgs({required this.entryPoint});
+  const AddBabyRouteArgs({
+    required this.entryPoint,
+    this.journeyId,
+    this.journeyVersion,
+  });
 
   final AddBabyEntryPoint entryPoint;
+  final String? journeyId;
+  final int? journeyVersion;
 }
+
+typedef PregnancyOutcomeRecordCallback =
+    Future<void> Function({
+      required String journeyId,
+      required int journeyVersion,
+      required DateTime birthDate,
+    });
 
 class AddBabyScreen extends StatefulWidget {
   final AddBabyEntryPoint entryPoint;
   final BabyService? service;
+  final JourneyService? journeyService;
+  final String? journeyId;
+  final int? journeyVersion;
+  final PregnancyOutcomeRecordCallback? recordOutcome;
   final String? Function()? accountIdProvider;
   final String? Function()? accessTokenProvider;
 
@@ -36,6 +56,10 @@ class AddBabyScreen extends StatefulWidget {
     super.key,
     this.entryPoint = AddBabyEntryPoint.profileList,
     this.service,
+    this.journeyService,
+    this.journeyId,
+    this.journeyVersion,
+    this.recordOutcome,
     this.accountIdProvider,
     this.accessTokenProvider,
   });
@@ -48,11 +72,11 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceVariant = Color(0xFFFADCD3);
+  static const _onSurface = Color(0xFF3D2E28);
+  static const _onSurfaceVariant = Color(0xFF7A655C);
+  static const _outlineVariant = Color(0xFFF0E4DD);
+  static const _surfaceContainerLow = Color(0xFFFAF4EE);
+  static const _surfaceVariant = Color(0xFFF2EAE4);
   static const _error = Color(0xFFBA1A1A);
   static const _errorContainer = Color(0xFFFFDAD6);
 
@@ -69,12 +93,14 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   String? _errorMsg;
 
   late final BabyService _service;
+  late final JourneyService _journeyService;
   late final String? _requestAccountId;
 
   @override
   void initState() {
     super.initState();
     _service = widget.service ?? BabyService();
+    _journeyService = widget.journeyService ?? JourneyService();
     _requestAccountId = _currentAccountId;
   }
 
@@ -189,6 +215,9 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       if (!mounted || !_isCurrentAccount) return;
 
       if (widget.entryPoint.returnsJourney) {
+        await _recordLiveBirthOutcome(_birthDate!);
+        if (!mounted || !_isCurrentAccount) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã tạo hồ sơ bé thành công.')),
         );
@@ -224,6 +253,46 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _recordLiveBirthOutcome(DateTime birthDate) async {
+    try {
+      if (widget.recordOutcome != null) {
+        await widget.recordOutcome!(
+          journeyId: widget.journeyId ?? '',
+          journeyVersion: widget.journeyVersion ?? 0,
+          birthDate: birthDate,
+        );
+        return;
+      }
+
+      String? journeyId = widget.journeyId;
+      int? journeyVersion = widget.journeyVersion;
+
+      if (journeyId == null || journeyVersion == null) {
+        final dashboard = await _journeyService.getDashboard();
+        journeyId = dashboard.journeyId;
+        journeyVersion = dashboard.version;
+      }
+
+      if (journeyId != null && journeyVersion != null) {
+        await _journeyService.recordPregnancyOutcome(
+          journeyId,
+          RecordPregnancyOutcomeRequest(
+            submissionId: const Uuid().v4(),
+            expectedJourneyVersion: journeyVersion,
+            outcomeType: PregnancyOutcome.liveBirth,
+            outcomeDate: birthDate,
+            source: 'SELF_REPORTED',
+            reason: 'MOTHER_OUTCOME_CONFIRMATION',
+            effectiveAt: DateTime.now().toUtc(),
+            correction: false,
+          ),
+        );
+      }
+    } catch (_) {
+      // Best-effort outcome recording; profile creation already succeeded.
     }
   }
 
@@ -297,7 +366,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
               _buildAppBar(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -307,19 +376,29 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
                           _buildErrorBanner(),
                           const SizedBox(height: 16),
                         ],
-                        _buildSection('Thông tin cơ bản', [
-                          _buildNicknameField(),
-                          const SizedBox(height: 16),
-                          _buildDateField(),
-                          const SizedBox(height: 16),
-                          _buildGenderField(),
-                        ]),
-                        const SizedBox(height: 24),
-                        _buildSection('Chỉ số lúc sinh (tuỳ chọn)', [
-                          _buildWeightField(),
-                          const SizedBox(height: 16),
-                          _buildLengthField(),
-                        ]),
+                        _buildHeaderCard(),
+                        const SizedBox(height: 20),
+                        _buildSection(
+                          'Thông tin cơ bản',
+                          Icons.badge_outlined,
+                          [
+                            _buildNicknameField(),
+                            const SizedBox(height: 16),
+                            _buildDateField(),
+                            const SizedBox(height: 16),
+                            _buildGenderField(),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSection(
+                          'Chỉ số lúc sinh',
+                          Icons.monitor_weight_outlined,
+                          [
+                            _buildWeightField(),
+                            const SizedBox(height: 16),
+                            _buildLengthField(),
+                          ],
+                        ),
                         const SizedBox(height: 32),
                         _buildSubmitButton(),
                         if (widget.entryPoint.returnsJourney) ...[
@@ -347,7 +426,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
             onPressed: _loading || _deferring
                 ? null
                 : () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back, color: _primary),
+            icon: const Icon(Icons.arrow_back, color: _onSurface),
           ),
           const Expanded(
             child: Text(
@@ -355,13 +434,114 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _primary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
               ),
             ),
           ),
           const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFFAF4EE)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _outlineVariant),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _surfaceVariant,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.child_care_rounded, size: 14, color: _primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Hồ sơ của bé',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Chào đón thiên thần nhỏ',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Điền thông tin để CareBridge đồng hành cùng hành trình phát triển của bé.',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: _onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _surfaceContainerLow,
+              border: Border.all(color: _outlineVariant, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF5A463F).withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.child_care_rounded,
+                size: 36,
+                color: _primary,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -372,7 +552,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _errorContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -393,30 +573,37 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
     );
   }
 
-  Widget _buildSection(String title, List<Widget> children) {
+  Widget _buildSection(String title, IconData icon, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-          ),
+        Row(
+          children: [
+            Icon(icon, size: 18, color: _primary),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _outlineVariant),
+            boxShadow: const [
               BoxShadow(
-                color: const Color(0xFF5A463F).withAlpha(13),
+                color: Color(0x08000000),
                 blurRadius: 16,
-                offset: const Offset(0, 4),
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -478,66 +665,77 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        const Row(
           children: [
-            const Icon(Icons.wc_outlined, size: 20, color: _onSurfaceVariant),
-            const SizedBox(width: 8),
-            const Text(
+            Icon(Icons.wc_outlined, size: 20, color: _primary),
+            SizedBox(width: 8),
+            Text(
               'Giới tính',
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 14,
-                color: _onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
           children: [BabyGender.male, BabyGender.female].map((g) {
             final selected = _gender == g;
             final label = g.displayLabel;
-            final icon = g == BabyGender.male ? Icons.male : Icons.female;
+            final icon =
+                g == BabyGender.male ? Icons.male_rounded : Icons.female_rounded;
             return Expanded(
               child: Padding(
-                padding: EdgeInsets.only(
-                  right: g == BabyGender.male ? 8 : 0,
-                ),
-                child: GestureDetector(
-                  onTap: () => setState(() => _gender = g),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? _primaryContainer
-                          : _surfaceVariant.withAlpha(80),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: selected
-                            ? _primaryContainer
-                            : _outlineVariant.withAlpha(100),
-                        width: selected ? 2 : 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          icon,
-                          size: 22,
-                          color: selected ? Colors.white : _onSurfaceVariant,
+                padding: EdgeInsets.only(right: g == BabyGender.male ? 10 : 0),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => setState(() => _gender = g),
+                    borderRadius: BorderRadius.circular(16),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: selected ? _primary : _surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: selected ? _primary : _outlineVariant,
+                          width: selected ? 1.5 : 1,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          label,
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        boxShadow: selected
+                            ? [
+                                BoxShadow(
+                                  color: _primary.withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            icon,
+                            size: 22,
                             color: selected ? Colors.white : _onSurfaceVariant,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 14,
+                              fontWeight:
+                                  selected ? FontWeight.w700 : FontWeight.w600,
+                              color: selected ? Colors.white : _onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -610,16 +808,27 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   }
 
   Widget _buildSubmitButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      height: 56,
+      height: 54,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(27),
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: FilledButton(
         key: const Key('add-baby-submit'),
         onPressed: _loading || _deferring ? null : _submit,
         style: FilledButton.styleFrom(
-          backgroundColor: _primaryContainer,
-          disabledBackgroundColor: _primaryContainer.withAlpha(100),
+          backgroundColor: _primary,
+          disabledBackgroundColor: _primary.withValues(alpha: 0.4),
           shape: const StadiumBorder(),
+          elevation: 0,
         ),
         child: _loading
             ? const SizedBox(
@@ -635,7 +844,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
@@ -646,13 +855,13 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   Widget _buildDeferButton() {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 50,
       child: OutlinedButton(
         key: const Key('add-baby-defer'),
         onPressed: _loading || _deferring ? null : _defer,
         style: OutlinedButton.styleFrom(
           foregroundColor: _primary,
-          side: const BorderSide(color: _outlineVariant),
+          side: const BorderSide(color: _outlineVariant, width: 1.2),
           shape: const StadiumBorder(),
         ),
         child: _deferring
@@ -665,7 +874,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
                 'Để sau',
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -684,38 +893,44 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       hintText: hint,
       labelStyle: const TextStyle(
         fontFamily: 'Lexend',
+        fontSize: 14,
         color: _onSurfaceVariant,
       ),
-      hintStyle: const TextStyle(fontFamily: 'Lexend', color: _outlineVariant),
-      prefixIcon: Icon(icon, color: _onSurfaceVariant, size: 20),
+      hintStyle: TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 14,
+        color: _onSurfaceVariant.withValues(alpha: 0.5),
+      ),
+      prefixIcon: Icon(icon, color: _primary, size: 20),
       suffixText: suffix,
       suffixStyle: const TextStyle(
         fontFamily: 'Lexend',
+        fontWeight: FontWeight.w600,
         color: _onSurfaceVariant,
       ),
       filled: true,
       fillColor: _surfaceContainerLow,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: _outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: _outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _primaryContainer, width: 2),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: _error),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _error, width: 2),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _error, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
     );
   }
 }

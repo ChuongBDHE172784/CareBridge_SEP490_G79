@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers(EndpointRequest.toAnyEndpoint()).denyAll()
                         // Auth endpoints
                         .requestMatchers(HttpMethod.POST,
+                                "/api/v1/auth/check-registration",
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/federated",

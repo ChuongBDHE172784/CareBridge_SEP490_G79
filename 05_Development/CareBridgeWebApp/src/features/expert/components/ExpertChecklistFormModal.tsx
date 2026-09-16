@@ -88,7 +88,9 @@ export const ExpertChecklistFormModal: React.FC<ExpertChecklistFormModalProps> =
 
   // Lifecycle & timing
   const [targetGroup, setTargetGroup] = useState<'CURRENT' | 'FUTURE' | 'HISTORY'>(initialTargetGroup);
-  const [stage, setStage] = useState<ContentStage>('PREGNANCY');
+  const [stage, setStage] = useState<ContentStage>(
+    (checklistData.stage as ContentStage) || (checklistData.gestationalWeek ? 'PREGNANCY' : 'PRE_PREGNANCY')
+  );
   const [windowMode, setWindowMode] = useState<'SINGLE' | 'RANGE'>('SINGLE');
   const [windowStart, setWindowStart] = useState<number>(checklistData.gestationalWeek || 12);
   const [windowEnd, setWindowEnd] = useState<number>(checklistData.gestationalWeek || 16);
@@ -158,17 +160,39 @@ export const ExpertChecklistFormModal: React.FC<ExpertChecklistFormModalProps> =
       const futureList = [...(checklistData.futureItems || [])];
 
       const timeLabel =
-        targetGroup === 'CURRENT'
+        stage === 'PRE_PREGNANCY'
+          ? targetGroup === 'CURRENT'
+            ? 'Chuẩn bị mang thai'
+            : targetGroup === 'FUTURE'
+            ? 'Kế hoạch tiếp theo'
+            : 'Đã chuẩn bị'
+          : stage === 'POSTPARTUM'
+          ? targetGroup === 'CURRENT'
+            ? 'Sau sinh'
+            : targetGroup === 'FUTURE'
+            ? 'Kế hoạch tiếp theo'
+            : 'Đã thực hiện'
+          : targetGroup === 'CURRENT'
           ? `Tuần ${windowStart}`
           : targetGroup === 'FUTURE'
           ? `Tuần ${windowStart}${windowMode === 'RANGE' ? `-${windowEnd}` : ''}`
           : 'Đã qua';
+
+      const removedItems = [...(checklistData.removedItems || [])];
 
       if (mode === 'EDIT') {
         const updatedRow = validItems[0];
         const originalText = initialItem?.replacesText || initialItem?.text;
         const isRenamed =
           originalText && originalText.trim().toLowerCase() !== updatedRow.itemText.trim().toLowerCase();
+        if (isRenamed) {
+          if (originalText && !removedItems.includes(originalText.trim())) {
+            removedItems.push(originalText.trim());
+          }
+          if (initialItem?.text && !removedItems.includes(initialItem.text.trim())) {
+            removedItems.push(initialItem.text.trim());
+          }
+        }
         const replacesText =
           isRenamed ? originalText.trim() : (initialItem?.replacesText || undefined);
 
@@ -250,6 +274,14 @@ export const ExpertChecklistFormModal: React.FC<ExpertChecklistFormModalProps> =
 
       const updatedPayload: ChecklistShareData = {
         ...checklistData,
+        stage,
+        stageLabel:
+          stage === 'PRE_PREGNANCY'
+            ? 'Chuẩn bị mang thai'
+            : stage === 'POSTPARTUM'
+            ? 'Sau sinh'
+            : `Tuần thai thứ ${windowStart}`,
+        removedItems,
         title: title.trim() || checklistData.title,
         currentItems: currentList,
         historyItems: historyList,
@@ -280,10 +312,10 @@ export const ExpertChecklistFormModal: React.FC<ExpertChecklistFormModalProps> =
         } else {
           setErrorMsg(serverMsg || 'Xung đột phiên làm việc khi lưu checklist. Vui lòng thử lại.');
         }
-      } else if (serverMsg && typeof serverMsg === 'string') {
+      } else if (serverMsg && typeof serverMsg === 'string' && serverMsg !== 'An unexpected error occurred') {
         setErrorMsg(serverMsg);
       } else {
-        setErrorMsg('Không thể lưu checklist. Vui lòng thử lại.');
+        setErrorMsg('Không thể lưu chỉ định y tế vào lộ trình của mẹ bầu. Vui lòng thử lại.');
       }
     } finally {
       setSubmitting(false);

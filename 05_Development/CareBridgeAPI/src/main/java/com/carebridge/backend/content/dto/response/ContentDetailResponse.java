@@ -28,6 +28,9 @@ public class ContentDetailResponse {
     private String summary;
     private ContentStage stage;
     private UUID topicId;
+    private String topicName;
+    @Builder.Default
+    private List<ContentTagResponse> tags = List.of();
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<UUID> tagIds;
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -48,4 +51,5 @@ public class ContentDetailResponse {
     private Instant assignedAt;
     private UUID approvedBy;
     private Instant approvedAt;
+    private ExpertReviewerResponse reviewer;
 }

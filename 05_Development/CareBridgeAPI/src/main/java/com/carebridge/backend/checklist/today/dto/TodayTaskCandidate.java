@@ -9,6 +9,7 @@ import com.carebridge.backend.checklist.today.model.TaskCadence;
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.reminder.entity.ReminderType;
+import com.carebridge.backend.content.dto.response.ExpertReviewerResponse;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -33,10 +34,38 @@ public record TodayTaskCandidate(
         ChecklistSupportFunction supportFunction,
         TaskCadence cadence,
         ContentStage stage,
-        String sourceUrl) {
+        String sourceUrl,
+        ExpertReviewerResponse reviewer) {
 
     public TodayTaskCandidate {
         cadence = cadence == null ? TaskCadence.ONCE : cadence;
+    }
+
+    /** Compatibility constructor for callers before reviewer was exposed. */
+    public TodayTaskCandidate(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            Instant terminalAt,
+            ReminderType reminderType,
+            String description,
+            ChecklistSupportFunction supportFunction,
+            TaskCadence cadence,
+            ContentStage stage,
+            String sourceUrl) {
+        this(taskKind, taskId, instanceId, templateVersionId, careGroupId, careContextType,
+                careContextId, title, targetSubject, origin, status, allowedActions, dueAt,
+                terminalAt, reminderType, description, supportFunction, cadence, stage, sourceUrl, null);
     }
 
     /** Compatibility constructor for callers before sourceUrl was exposed. */

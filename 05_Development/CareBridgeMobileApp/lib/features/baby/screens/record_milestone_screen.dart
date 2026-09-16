@@ -105,14 +105,6 @@ class _RecordMilestoneScreenState extends State<RecordMilestoneScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Mẹ ghi nhận',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                color: _onSurfaceVariant,
-              ),
-            ),
-            Text(
               'Mốc phát triển mới',
               style: TextStyle(
                 fontFamily: 'Lexend',

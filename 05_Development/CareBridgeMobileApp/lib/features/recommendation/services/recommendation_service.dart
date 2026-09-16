@@ -125,7 +125,7 @@ class RecommendationService {
   /// Endpoint: `GET /api/v1/recommendations/content`
   /// Params: `limit` (số lượng bài viết cần lấy), `careGroupId` (nếu xem theo nhóm gia đình)
   Future<RecommendationContentResponse> getContent({
-    int limit = 3,
+    int limit = 10,
     String? careGroupId,
   }) async {
     final expectedUser = _userId;

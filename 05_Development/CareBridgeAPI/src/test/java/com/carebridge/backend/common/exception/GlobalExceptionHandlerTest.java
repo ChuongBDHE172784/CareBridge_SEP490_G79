@@ -89,4 +89,22 @@ class GlobalExceptionHandlerTest {
                 .doesNotContain("GET", "PUT", "PATCH", "DELETE");
         assertThat(response.getBody().getDetails()).isNull();
     }
+
+    @Test
+    void handleMap_preservesHttpStatusAndErrorCode() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/v1/map/nearby-facilities");
+
+        com.carebridge.backend.map.exception.MapException exception =
+                new com.carebridge.backend.map.exception.MapException(
+                        HttpStatus.BAD_GATEWAY, "MAP-008", "TrackAsia is temporarily unavailable");
+
+        ResponseEntity<ErrorResponse> response = handler.handleMap(exception, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(502);
+        assertThat(response.getBody().getError()).isEqualTo("MAP-008");
+        assertThat(response.getBody().getMessage()).isEqualTo("TrackAsia is temporarily unavailable");
+    }
 }

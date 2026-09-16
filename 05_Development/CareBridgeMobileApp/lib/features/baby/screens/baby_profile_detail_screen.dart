@@ -6,6 +6,7 @@ import '../models/milestone_model.dart';
 import '../services/baby_profile_selection_storage.dart';
 import '../services/baby_log_service.dart';
 import '../services/baby_service.dart';
+import '../widgets/growth_trend_chart.dart';
 import '../../../core/network/api_client.dart';
 import '../../aiTriage/models/triage_continuation.dart';
 import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
@@ -67,11 +68,9 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _secondary = Color(0xFF6E5A52);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _onSurface = Color(0xFF3D2E28);
+  static const _onSurfaceVariant = Color(0xFF7A655C);
+  static const _outlineVariant = Color(0xFFF0E4DD);
 
   final _service = BabyService();
   final _babyLogService = BabyLogService();
@@ -98,6 +97,17 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   bool _continuationAcknowledged = false;
   bool _continuationAcknowledgementFailed = false;
   _Tab _activeTab = _Tab.growth;
+  String _selectedGrowthMetric = 'Cân nặng';
+  int _selectedGrowthPeriodMonths = 6;
+
+  static const _growthPeriodOptions = [
+    (1, '1 tháng'),
+    (3, '3 tháng'),
+    (6, '6 tháng'),
+    (12, '12 tháng'),
+    (24, '24 tháng'),
+    (0, 'Tất cả'),
+  ];
 
   double get _horizontalPadding => widget.embedded ? 0 : 24;
 
@@ -661,49 +671,106 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   }
 
   Widget _buildEmbeddedToolbar(BabyProfile p) {
-    return Row(
-      children: [
-        Expanded(
-          child: Semantics(
-            key: ValueKey('active-baby-id-${p.id}'),
-            container: true,
-            child: Text(
-              p.nickname,
-              key: const Key('active-baby-name'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: _primary,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              key: ValueKey('active-baby-id-${p.id}'),
+              container: true,
+              child: Text(
+                p.nickname,
+                key: const Key('active-baby-name'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
           ),
-        ),
-        if (widget.onAddBaby != null)
-          Tooltip(
-            message: 'Thêm hồ sơ bé',
-            child: IconButton(
-              onPressed: widget.onAddBaby,
-              icon: const Icon(Icons.add_rounded),
-              color: _onSurfaceVariant,
-            ),
-          ),
-        if (widget.onSwitchBaby != null)
-          Tooltip(
-            message: 'Đổi hồ sơ bé',
-            child: IconButton.filled(
-              key: const Key('baby-switcher'),
-              onPressed: widget.onSwitchBaby,
-              icon: const Icon(Icons.swap_horiz_rounded),
-              style: IconButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
+          if (widget.onAddBaby != null) ...[
+            Tooltip(
+              message: 'Thêm hồ sơ bé',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: widget.onAddBaby,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE8DDD6)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5A463F).withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add_rounded, size: 20, color: _primary),
+                  ),
+                ),
               ),
             ),
-          ),
-      ],
+            const SizedBox(width: 8),
+          ],
+          if (widget.onSwitchBaby != null)
+            Tooltip(
+              message: 'Đổi hồ sơ bé',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  key: const Key('baby-switcher'),
+                  onTap: widget.onSwitchBaby,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _primary,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _primary.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.swap_horiz_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Đổi bé',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -744,51 +811,133 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   Widget _buildIdentityHeader(BabyProfile p) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
-      child: Column(
-        children: [
-          Container(
-            width: 128,
-            height: 128,
-            decoration: BoxDecoration(
-              color: _surfaceContainer,
-              shape: BoxShape.circle,
-              border: Border.all(color: _canvas, width: 4),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF5A463F).withAlpha(15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFFAF4EE)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF0E4DD)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 16,
+              offset: Offset(0, 4),
             ),
-            child: const Icon(Icons.child_care, size: 56, color: _primary),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            p.ageLabel,
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: _secondary,
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2EAE4),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.child_care_rounded,
+                          size: 14,
+                          color: _primary,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          p.ageLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            color: _primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    p.nickname,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: _onSurface,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    p.gender != BabyGender.unknown && p.gender.displayLabel.isNotEmpty
+                        ? '${p.gender.displayLabel} · Sinh ngày ${p.birthDate.day.toString().padLeft(2, '0')}/${p.birthDate.month.toString().padLeft(2, '0')}/${p.birthDate.year}'
+                        : 'Sinh ngày ${p.birthDate.day.toString().padLeft(2, '0')}/${p.birthDate.month.toString().padLeft(2, '0')}/${p.birthDate.year}',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                  if (p.birthWeightKg != null || p.birthLengthCm != null) ...[
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        if (p.birthWeightKg != null)
+                          _StatChip(
+                            icon: Icons.monitor_weight_outlined,
+                            label: '${p.birthWeightKg} kg',
+                          ),
+                        if (p.birthLengthCm != null)
+                          _StatChip(
+                            icon: Icons.height_rounded,
+                            label: '${p.birthLengthCm} cm',
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (p.birthWeightKg != null) ...[
-                _StatChip(
-                  icon: Icons.monitor_weight,
-                  label: '${p.birthWeightKg} kg',
+            const SizedBox(width: 16),
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFAF4EE),
+                border: Border.all(
+                  color: const Color(0xFFF0E4DD),
+                  width: 2.5,
                 ),
-                const SizedBox(width: 8),
-              ],
-              if (p.birthLengthCm != null)
-                _StatChip(icon: Icons.height, label: '${p.birthLengthCm} cm'),
-            ],
-          ),
-          const SizedBox(height: 24),
-        ],
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF5A463F).withValues(alpha: 0.08),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.child_care_rounded,
+                  size: 42,
+                  color: _primary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -799,22 +948,23 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 20),
           const Row(
             children: [
-              Icon(Icons.schedule, size: 20, color: _primary),
+              Icon(Icons.schedule_rounded, size: 20, color: _primary),
               SizedBox(width: 8),
               Text(
                 'Tổng kết 24h qua',
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                   color: _onSurface,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (_summaryLoading)
             const _SummaryLoadingRow()
           else if (_summaryError != null)
@@ -857,7 +1007,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
                 ),
               ],
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -871,89 +1021,136 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
         _horizontalPadding,
         20,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const Key('baby-care-journal'),
-                  onPressed: _openLogSummary,
-                  icon: const Icon(Icons.list_alt_outlined, size: 18),
-                  label: const Text('Nhật ký'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _primary,
-                    side: const BorderSide(color: _outlineVariant),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _buildQuickActionCard(
+                key: const Key('baby-care-journal'),
+                icon: Icons.auto_stories_rounded,
+                label: 'Nhật ký',
+                onTap: _openLogSummary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickActionCard(
+                key: const Key('baby-care-milestone-add'),
+                icon: Icons.flag_rounded,
+                label: 'Cột mốc',
+                onTap: _openAddMilestone,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickActionCard(
+                icon: Icons.badge_outlined,
+                label: 'Hồ sơ',
+                onTap: _openEditProfile,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    Key? key,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: key,
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFF0E4DD)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x08000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF2EAE4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: _primary, size: 22),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const Key('baby-care-milestone-add'),
-                  onPressed: () {
-                    _openAddMilestone();
-                  },
-                  icon: const Icon(Icons.flag_outlined, size: 18),
-                  label: const Text('Cột mốc'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _primary,
-                    side: const BorderSide(color: _outlineVariant),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    _openEditProfile();
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Hồ sơ'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _primary,
-                    side: const BorderSide(color: _outlineVariant),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildTabBar() {
-    return Container(
-      color: _canvas.withAlpha(230),
+    return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: _horizontalPadding,
         vertical: 4,
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _TabChip(
-              label: 'Phát triển',
-              selected: _activeTab == _Tab.growth,
-              onTap: () => setState(() => _activeTab = _Tab.growth),
-            ),
-            const SizedBox(width: 8),
-            _TabChip(
-              key: const Key('baby-care-tab-milestones'),
-              label: 'Cột mốc',
-              selected: _activeTab == _Tab.milestones,
-              onTap: () => setState(() => _activeTab = _Tab.milestones),
-            ),
-            const SizedBox(width: 8),
-            _TabChip(
-              label: 'Tiêm chủng',
-              selected: _activeTab == _Tab.vaccination,
-              onTap: () => setState(() => _activeTab = _Tab.vaccination),
-            ),
-          ],
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _TabChip(
+                label: 'Phát triển',
+                selected: _activeTab == _Tab.growth,
+                onTap: () => setState(() => _activeTab = _Tab.growth),
+              ),
+              const SizedBox(width: 8),
+              _TabChip(
+                key: const Key('baby-care-tab-milestones'),
+                label: 'Cột mốc',
+                selected: _activeTab == _Tab.milestones,
+                onTap: () => setState(() => _activeTab = _Tab.milestones),
+              ),
+              const SizedBox(width: 8),
+              _TabChip(
+                label: 'Tiêm chủng',
+                selected: _activeTab == _Tab.vaccination,
+                onTap: () => setState(() => _activeTab = _Tab.vaccination),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -983,11 +1180,12 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        border: Border.all(color: _outlineVariant),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1131,11 +1329,12 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        border: Border.all(color: _outlineVariant),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1249,17 +1448,24 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   }
 
   Widget _buildGrowthTab() {
+    final title = switch (_selectedGrowthMetric) {
+      'Chiều cao' => 'Xu hướng chiều cao',
+      'Vòng đầu' => 'Xu hướng vòng đầu',
+      _ => 'Xu hướng cân nặng',
+    };
+
     return Container(
       key: const Key('baby-care-growth'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        border: Border.all(color: _outlineVariant),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1269,34 +1475,26 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Xu hướng cân nặng',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: _onSurface,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _secondaryContainer.withAlpha(77),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '1 tháng qua',
-                  style: TextStyle(
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: _secondary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              _buildPeriodDropdown(),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          _buildGrowthMetricSelector(),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -1306,21 +1504,334 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
               label: const Text('Mở lịch sử đo lường'),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _buildTrendChart(),
-          const SizedBox(height: 12),
-          const Text(
-            'Dữ liệu đo lường được hiển thị theo nguồn đã ghi nhận.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: _secondary,
-            ),
-          ),
+          const SizedBox(height: 14),
+          _buildGrowthSummaryStats(),
         ],
       ),
     );
+  }
+
+  Widget _buildGrowthMetricSelector() {
+    const tabs = [
+      ('Cân nặng', Icons.monitor_weight_outlined),
+      ('Chiều cao', Icons.straighten_rounded),
+      ('Vòng đầu', Icons.face_rounded),
+    ];
+
+    return Row(
+      children: tabs.map((t) {
+        final isSelected = _selectedGrowthMetric == t.$1;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => _selectedGrowthMetric = t.$1),
+                borderRadius: BorderRadius.circular(99),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF845143) : const Color(0xFFFAF4EE),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF845143)
+                          : const Color(0xFFE8DDD6),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        t.$2,
+                        size: 15,
+                        color: isSelected ? Colors.white : const Color(0xFF7A655C),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          t.$1,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? Colors.white : const Color(0xFF524440),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildPeriodDropdown() {
+    return Builder(
+      builder: (btnContext) {
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: const Key('baby-growth-period-menu'),
+            borderRadius: BorderRadius.circular(99),
+            onTap: () async {
+              final box = btnContext.findRenderObject() as RenderBox?;
+              final overlay =
+                  Overlay.of(btnContext).context.findRenderObject() as RenderBox?;
+              if (box == null || overlay == null) return;
+              final position = RelativeRect.fromRect(
+                Rect.fromPoints(
+                  box.localToGlobal(Offset.zero, ancestor: overlay),
+                  box.localToGlobal(
+                    box.size.bottomRight(Offset.zero),
+                    ancestor: overlay,
+                  ),
+                ),
+                Offset.zero & overlay.size,
+              );
+              final result = await showMenu<int>(
+                context: btnContext,
+                position: position,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: Colors.white,
+                elevation: 6,
+                items: _growthPeriodOptions.map((opt) {
+                  final isSelected = _selectedGrowthPeriodMonths == opt.$1;
+                  return PopupMenuItem<int>(
+                    value: opt.$1,
+                    child: Row(
+                      children: [
+                        Icon(
+                          isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
+                          size: 16,
+                          color: isSelected
+                              ? const Color(0xFF845143)
+                              : const Color(0xFFA89890),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          opt.$1 == 0 ? opt.$2 : '${opt.$2} qua',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? const Color(0xFF845143)
+                                : const Color(0xFF3D2E28),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+              if (result != null && mounted) {
+                setState(() => _selectedGrowthPeriodMonths = result);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF4EE),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: const Color(0xFFE8DDD6)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 12,
+                    color: Color(0xFF845143),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    _selectedGrowthPeriodMonths == 0
+                        ? 'Tất cả'
+                        : '$_selectedGrowthPeriodMonths tháng qua',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF845143),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: Color(0xFF845143),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<GrowthMeasurement> _getGrowthMeasurementsForPeriod() {
+    if (_selectedGrowthPeriodMonths <= 0) {
+      return _growthMeasurements;
+    }
+    final now = DateTime.now();
+    final cutoff = now.subtract(Duration(days: _selectedGrowthPeriodMonths * 30));
+    return _growthMeasurements.where((m) {
+      return m.measuredAt.isAfter(cutoff) || m.measuredAt.isAtSameMomentAs(cutoff);
+    }).toList();
+  }
+
+  Widget _buildGrowthSummaryStats() {
+    final weightList = _growthMeasurements.where((m) => m.weightKg != null).toList();
+    final latestWeight = weightList.isNotEmpty ? weightList.last.weightKg : null;
+
+    final heightList = _growthMeasurements.where((m) => m.heightCm != null).toList();
+    final latestHeight = heightList.isNotEmpty ? heightList.last.heightCm : null;
+
+    final headList = _growthMeasurements.where((m) => m.headCircumferenceCm != null).toList();
+    final latestHead = headList.isNotEmpty ? headList.last.headCircumferenceCm : null;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _buildMetricStatCard(
+            label: 'Cân nặng',
+            value: latestWeight != null ? '${latestWeight.toStringAsFixed(1)} kg' : '--',
+            icon: Icons.monitor_weight_outlined,
+            isSelected: _selectedGrowthMetric == 'Cân nặng',
+            accentColor: const Color(0xFFC98C7B),
+            onTap: () => setState(() => _selectedGrowthMetric = 'Cân nặng'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMetricStatCard(
+            label: 'Chiều cao',
+            value: latestHeight != null ? '${latestHeight.toStringAsFixed(1)} cm' : '--',
+            icon: Icons.straighten_rounded,
+            isSelected: _selectedGrowthMetric == 'Chiều cao',
+            accentColor: const Color(0xFF5B8E7D),
+            onTap: () => setState(() => _selectedGrowthMetric = 'Chiều cao'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMetricStatCard(
+            label: 'Vòng đầu',
+            value: latestHead != null ? '${latestHead.toStringAsFixed(1)} cm' : '--',
+            icon: Icons.face_rounded,
+            isSelected: _selectedGrowthMetric == 'Vòng đầu',
+            accentColor: const Color(0xFFD48B47),
+            onTap: () => setState(() => _selectedGrowthMetric = 'Vòng đầu'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricStatCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required bool isSelected,
+    required Color accentColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? accentColor.withValues(alpha: 0.1) : const Color(0xFFFAF7F5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? accentColor : const Color(0xFFF0E4DD),
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: isSelected ? accentColor : const Color(0xFF845143)),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? accentColor : const Color(0xFF3D2E28),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? accentColor : const Color(0xFF7A655C),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  double? Function(GrowthMeasurement) _valueExtractorForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => (m) => m.heightCm,
+      'Vòng đầu' => (m) => m.headCircumferenceCm,
+      _ => (m) => m.weightKg,
+    };
+  }
+
+  String _unitForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => 'cm',
+      'Vòng đầu' => 'cm',
+      _ => 'kg',
+    };
+  }
+
+  Color _colorForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => const Color(0xFF5B8E7D),
+      'Vòng đầu' => const Color(0xFFD48B47),
+      _ => const Color(0xFFC98C7B),
+    };
+  }
+
+  Color _dotColorForMetric(String metric) {
+    return switch (metric) {
+      'Chiều cao' => const Color(0xFF2C5E4E),
+      'Vòng đầu' => const Color(0xFF9E5C25),
+      _ => const Color(0xFF845143),
+    };
   }
 
   Widget _buildTrendChart() {
@@ -1335,30 +1846,50 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       );
     }
 
-    final measurements = _growthMeasurements
-        .where((measurement) => measurement.weightKg != null)
+    final extractor = _valueExtractorForMetric(_selectedGrowthMetric);
+    final unit = _unitForMetric(_selectedGrowthMetric);
+    final periodMeasurements = _getGrowthMeasurementsForPeriod();
+    final measurements = periodMeasurements
+        .where((measurement) => extractor(measurement) != null)
         .toList(growable: false);
     if (measurements.isEmpty) {
-      return const _EmptyGrowthChart();
+      final periodText = _selectedGrowthPeriodMonths == 0
+          ? ''
+          : ' trong $_selectedGrowthPeriodMonths tháng qua';
+      return _EmptyGrowthChart(
+        label: switch (_selectedGrowthMetric) {
+          'Chiều cao' => 'Chưa có dữ liệu chiều cao$periodText.',
+          'Vòng đầu' => 'Chưa có dữ liệu vòng đầu$periodText.',
+          _ => 'Chưa có dữ liệu cân nặng$periodText.',
+        },
+      );
     }
-    final weights = measurements
-        .map((measurement) => measurement.weightKg!)
+    final values = measurements
+        .map((measurement) => extractor(measurement)!)
         .toList(growable: false);
     return SizedBox(
-      key: ValueKey('growth-chart-points-${weights.length}'),
+      key: ValueKey('growth-chart-points-${values.length}'),
       height: 160,
       child: Column(
         children: [
           Expanded(
             child: CustomPaint(
-              painter: _TrendChartPainter(measurements),
+              painter: GrowthTrendChartPainter(
+                measurements: measurements,
+                valueExtractor: extractor,
+                unit: unit,
+                accentColor: _colorForMetric(_selectedGrowthMetric),
+                dotColor: _dotColorForMetric(_selectedGrowthMetric),
+              ),
               size: Size.infinite,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            '${weights.first.toStringAsFixed(1)} kg – '
-            '${weights.last.toStringAsFixed(1)} kg',
+            measurements.length == 1
+                ? '${values.first.toStringAsFixed(1)} $unit'
+                : '${values.first.toStringAsFixed(1)} $unit – '
+                    '${values.last.toStringAsFixed(1)} $unit',
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 12,
@@ -1382,22 +1913,23 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFE9E3),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: const Color(0xFFF0E4DD)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: const Color(0xFF524440)),
+          Icon(icon, size: 14, color: const Color(0xFF845143)),
           const SizedBox(width: 4),
           Text(
             label,
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 12,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF524440),
             ),
           ),
@@ -1422,15 +1954,16 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF0E4DD)),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1439,20 +1972,20 @@ class _SummaryCard extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFC98C7B).withAlpha(30),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF2EAE4),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 20, color: const Color(0xFF845143)),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             value,
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF845143),
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF3D2E28),
             ),
           ),
           const SizedBox(height: 4),
@@ -1462,7 +1995,7 @@ class _SummaryCard extends StatelessWidget {
               fontFamily: 'Lexend',
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF6E5A52),
+              color: Color(0xFF7A655C),
             ),
           ),
         ],
@@ -1566,17 +2099,21 @@ class _GrowthChartLoading extends StatelessWidget {
 }
 
 class _EmptyGrowthChart extends StatelessWidget {
-  const _EmptyGrowthChart();
+  final String label;
+
+  const _EmptyGrowthChart({
+    this.label = 'Chưa có dữ liệu cân nặng.',
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      key: Key('baby-growth-empty'),
+    return SizedBox(
+      key: const Key('baby-growth-empty'),
       height: 120,
       child: Center(
         child: Text(
-          'Chưa có dữ liệu cân nặng.',
-          style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF6E5A52)),
+          label,
+          style: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF6E5A52)),
         ),
       ),
     );
@@ -1597,23 +2134,48 @@ class _TabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF845143) : Colors.white,
-          borderRadius: BorderRadius.circular(99),
-          border: selected ? null : Border.all(color: const Color(0xFFD6C2BD)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : const Color(0xFF524440),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(99),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF845143) : Colors.white,
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF845143)
+                  : const Color(0xFFE8DDD6),
+              width: 1,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF845143).withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF5A463F).withValues(alpha: 0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected ? Colors.white : const Color(0xFF7A655C),
+            ),
           ),
         ),
       ),
@@ -1621,148 +2183,3 @@ class _TabChip extends StatelessWidget {
   }
 }
 
-// Simple line chart painter for weight trend
-class _TrendChartPainter extends CustomPainter {
-  final List<GrowthMeasurement> measurements;
-
-  const _TrendChartPainter(this.measurements);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = const Color(0xFFC98C7B)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final fillPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          const Color(0xFFC98C7B).withAlpha(51),
-          const Color(0xFFC98C7B).withAlpha(0),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.fill;
-
-    final weights = measurements
-        .map((measurement) => measurement.weightKg!)
-        .toList(growable: false);
-    final minWeight = weights.reduce((a, b) => a < b ? a : b);
-    final maxWeight = weights.reduce((a, b) => a > b ? a : b);
-    final centerWeight = (minWeight + maxWeight) / 2;
-    final displayRange = (maxWeight - minWeight)
-        .clamp(1.0, double.infinity)
-        .toDouble();
-    final displayMin = centerWeight - displayRange / 2;
-    final firstTime = measurements.first.measuredAt.millisecondsSinceEpoch;
-    final lastTime = measurements.last.measuredAt.millisecondsSinceEpoch;
-    final timeRange = lastTime - firstTime;
-    final points = List.generate(measurements.length, (index) {
-      final x = measurements.length == 1 || timeRange == 0
-          ? size.width / 2
-          : size.width *
-                (measurements[index].measuredAt.millisecondsSinceEpoch -
-                    firstTime) /
-                timeRange;
-      final normalized = (weights[index] - displayMin) / displayRange;
-      return Offset(x, size.height * (0.9 - normalized * 0.7));
-    });
-
-    // Draw smooth curve
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (int i = 0; i < points.length - 1; i++) {
-      final cp1 = Offset((points[i].dx + points[i + 1].dx) / 2, points[i].dy);
-      final cp2 = Offset(
-        (points[i].dx + points[i + 1].dx) / 2,
-        points[i + 1].dy,
-      );
-      path.cubicTo(
-        cp1.dx,
-        cp1.dy,
-        cp2.dx,
-        cp2.dy,
-        points[i + 1].dx,
-        points[i + 1].dy,
-      );
-    }
-
-    // Fill under curve
-    final fillPath = Path.from(path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(fillPath, fillPaint);
-
-    // Draw line
-    canvas.drawPath(path, linePaint);
-
-    // Draw dots and value labels
-    final dotPaint = Paint()
-      ..color = const Color(0xFF845143)
-      ..style = PaintingStyle.fill;
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-
-    for (var i = 0; i < points.length; i++) {
-      final p = points[i];
-      final weight = weights[i];
-      canvas.drawCircle(p, p == points.last ? 5 : 3, dotPaint);
-
-      final valStr =
-          '${weight % 1 == 0 ? weight.toInt() : weight.toStringAsFixed(1)} kg';
-      textPainter.text = TextSpan(
-        text: valStr,
-        style: const TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF845143),
-        ),
-      );
-      textPainter.layout();
-
-      final labelWidth = textPainter.width + 8;
-      final labelHeight = textPainter.height + 2;
-      final labelX = (p.dx - labelWidth / 2).clamp(
-        4.0,
-        size.width - labelWidth - 4.0,
-      );
-      final isTopHalf = p.dy < size.height / 2;
-      final labelY = isTopHalf
-          ? (p.dy + 6).clamp(2.0, size.height - labelHeight - 2.0)
-          : (p.dy - labelHeight - 6).clamp(
-              2.0,
-              size.height - labelHeight - 2.0,
-            );
-
-      final bgRRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(labelX, labelY, labelWidth, labelHeight),
-        const Radius.circular(5),
-      );
-      canvas.drawRRect(bgRRect, Paint()..color = const Color(0xFFFFFDFB));
-      canvas.drawRRect(
-        bgRRect,
-        Paint()
-          ..color = const Color(0xFFC98C7B).withValues(alpha: 0.4)
-          ..strokeWidth = 1
-          ..style = PaintingStyle.stroke,
-      );
-
-      textPainter.paint(canvas, Offset(labelX + 4, labelY + 1));
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrendChartPainter oldDelegate) {
-    if (measurements.length != oldDelegate.measurements.length) return true;
-    for (var i = 0; i < measurements.length; i++) {
-      if (measurements[i].weightKg != oldDelegate.measurements[i].weightKg ||
-          measurements[i].measuredAt !=
-              oldDelegate.measurements[i].measuredAt) {
-        return true;
-      }
-    }
-    return false;
-  }
-}

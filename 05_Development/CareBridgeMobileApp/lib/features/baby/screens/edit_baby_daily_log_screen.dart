@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/baby_daily_log_model.dart';
@@ -21,8 +22,7 @@ class EditBabyDailyLogScreen extends StatefulWidget {
   State<EditBabyDailyLogScreen> createState() => _EditBabyDailyLogScreenState();
 }
 
-class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
-    with SingleTickerProviderStateMixin {
+class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -30,49 +30,47 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
 
-  late TabController _tabController;
+  static const List<String> _commonSymptoms = [
+    'Sốt',
+    'Nôn trớ',
+    'Ho',
+    'Sổ mũi / Nghẹt mũi',
+    'Tiêu chảy',
+    'Táo bón',
+    'Phát ban / Nổi mẩn',
+    'Quấy khóc / Khó chịu',
+    'Bỏ bú / Biếng ăn',
+    'Khác',
+  ];
+
   final _service = BabyLogService();
 
   LogType _selectedType = LogType.feeding;
   DateTime _startedAt = DateTime.now();
-  DateTime? _endedAt;
 
-  // Feeding fields
+  // Feeding & Medicine fields
   final _quantityCtrl = TextEditingController();
-  String _feedingUnit = 'ml';
 
   // Sleep fields
-  final _sleepDurationCtrl = TextEditingController();
-  String _sleepQuality = 'Tốt';
+  int _sleepHours = 1;
+  int _sleepMinutes = 0;
 
   // Diaper fields
-  String _diaperStatus = 'Khô';
+  int _diaperCount = 1;
 
   // Symptom fields
-  final _temperatureCtrl = TextEditingController();
-  final _symptomsCtrl = TextEditingController();
+  String _selectedSymptom = 'Sốt';
+  final _symptomDescriptionCtrl = TextEditingController();
 
-  // Common
+  // Common Notes
   final _noteCtrl = TextEditingController();
 
   bool _isSaving = false;
   bool _showSuccess = false;
-  LogType? _lockedLogType;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: LogType.values.length, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        final selected = LogType.values[_tabController.index];
-        if (_lockedLogType != null && selected != _lockedLogType) {
-          _tabController.index = _lockedLogType!.index;
-          return;
-        }
-        if (mounted) setState(() => _selectedType = selected);
-      }
-    });
     _prefillFromLog();
     if (widget.initialLog == null) unawaited(_loadInitialLog());
   }
@@ -100,38 +98,86 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
   }
 
   void _applyLog(BabyDailyLog log) {
-    _lockedLogType = log.logType;
     _selectedType = log.logType;
-    _tabController.index = log.logType.index;
     _startedAt = log.startedAt ?? DateTime.now();
-    _endedAt = log.endedAt;
+
     if (log.quantity != null) {
-      _quantityCtrl.text = log.quantity!.toStringAsFixed(0);
+      _quantityCtrl.text =
+          log.quantity!.toStringAsFixed(log.quantity! % 1 == 0 ? 0 : 1);
     }
-    if (log.unit != null) _feedingUnit = log.unit!;
-    if (log.note != null) _noteCtrl.text = log.note!;
+
+    if (log.logType == LogType.sleep) {
+      final unit = log.unit?.trim().toLowerCase();
+      final totalMin = (unit == 'giờ' ||
+              unit == 'h' ||
+              unit == 'hours' ||
+              unit == 'hour')
+          ? (log.quantity != null ? (log.quantity! * 60).round() : 60)
+          : (log.quantity?.round() ?? 60);
+      _sleepHours = (totalMin ~/ 60).clamp(0, 24);
+      _sleepMinutes = (totalMin % 60).clamp(0, 59);
+    } else if (log.logType == LogType.diaper) {
+      _diaperCount = log.quantity?.toInt() ?? 1;
+      if (_diaperCount < 1) _diaperCount = 1;
+    } else if (log.logType == LogType.symptom ||
+        log.logType == LogType.fever ||
+        log.logType == LogType.vomiting) {
+      final existingNote = log.note?.trim() ?? '';
+      if (existingNote.isNotEmpty) {
+        bool matched = false;
+        for (final symptom in _commonSymptoms) {
+          if (symptom == 'Khác') continue;
+          if (existingNote == symptom) {
+            _selectedSymptom = symptom;
+            _symptomDescriptionCtrl.text = '';
+            matched = true;
+            break;
+          } else if (existingNote.startsWith('$symptom: ')) {
+            _selectedSymptom = symptom;
+            _symptomDescriptionCtrl.text =
+                existingNote.substring('$symptom: '.length).trim();
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          if (existingNote.startsWith('Khác: ')) {
+            _selectedSymptom = 'Khác';
+            _symptomDescriptionCtrl.text =
+                existingNote.substring('Khác: '.length).trim();
+          } else {
+            _selectedSymptom = 'Khác';
+            _symptomDescriptionCtrl.text = existingNote;
+          }
+        }
+      }
+    }
+
+    if (log.note != null &&
+        log.logType != LogType.symptom &&
+        log.logType != LogType.fever &&
+        log.logType != LogType.vomiting) {
+      _noteCtrl.text = log.note!;
+    }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _quantityCtrl.dispose();
-    _sleepDurationCtrl.dispose();
-    _temperatureCtrl.dispose();
-    _symptomsCtrl.dispose();
+    _symptomDescriptionCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _pickDateTime({required bool isStart}) async {
+  Future<void> _pickDateTime() async {
     final now = DateTime.now();
-    final initial = isStart ? _startedAt : (_endedAt ?? now);
+    final initial = _startedAt;
     final firstDate = now.subtract(const Duration(days: 30));
     final initialDate = initial.isBefore(firstDate)
         ? firstDate
         : initial.isAfter(now)
-        ? now
-        : initial;
+            ? now
+            : initial;
 
     final date = await showDatePicker(
       context: context,
@@ -175,37 +221,82 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
       time.minute,
     );
     setState(() {
-      if (isStart) {
-        _startedAt = dt;
-      } else {
-        _endedAt = dt;
-      }
+      _startedAt = dt;
     });
   }
 
   Future<void> _save() async {
-    if (_endedAt != null && !_endedAt!.isAfter(_startedAt)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Thời gian kết thúc phải sau thời gian bắt đầu.'),
-        ),
-      );
-      return;
-    }
     setState(() => _isSaving = true);
     try {
-      final note = _buildNoteFromFields();
+      final double? qty;
+      final String? unit;
+      final String? note;
+
+      switch (_selectedType) {
+        case LogType.feeding:
+          final raw = _quantityCtrl.text.trim();
+          qty = raw.isNotEmpty ? double.tryParse(raw) : null;
+          unit = 'ml';
+          note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+          break;
+        case LogType.sleep:
+          final totalMinutes = _sleepHours * 60 + _sleepMinutes;
+          if (totalMinutes <= 0) {
+            setState(() => _isSaving = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Vui lòng chọn thời gian ngủ lớn hơn 0 phút.'),
+              ),
+            );
+            return;
+          }
+          qty = totalMinutes.toDouble();
+          unit = 'phút';
+          note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+          break;
+        case LogType.diaper:
+          qty = _diaperCount.toDouble();
+          unit = 'lần';
+          note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+          break;
+        case LogType.medicine:
+          final raw = _quantityCtrl.text.trim();
+          qty = raw.isNotEmpty ? double.tryParse(raw) : null;
+          unit = 'liều';
+          note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+          break;
+        case LogType.symptom:
+        case LogType.fever:
+        case LogType.vomiting:
+          qty = null;
+          unit = null;
+          final desc = _symptomDescriptionCtrl.text.trim();
+          if (_selectedSymptom == 'Khác') {
+            if (desc.isEmpty) {
+              setState(() => _isSaving = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Vui lòng nhập mô tả cho triệu chứng này'),
+                ),
+              );
+              return;
+            }
+            note = 'Khác: $desc';
+          } else {
+            note = desc.isNotEmpty ? '$_selectedSymptom: $desc' : _selectedSymptom;
+          }
+          break;
+      }
+
       await _service.updateDailyLog(
         widget.babyId,
         widget.logId,
         UpdateBabyDailyLogRequest(
           startedAt: _startedAt,
-          endedAt: _endedAt,
-          quantity: _selectedType == LogType.feeding
-              ? double.tryParse(_quantityCtrl.text.trim())
-              : null,
-          unit: _selectedType == LogType.feeding ? _feedingUnit : null,
-          note: note.isNotEmpty ? note : _noteCtrl.text.trim(),
+          endedAt: null,
+          quantity: qty,
+          unit: unit,
+          note: note,
         ),
       );
       setState(() => _showSuccess = true);
@@ -225,38 +316,10 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
     }
   }
 
-  String _buildNoteFromFields() {
-    switch (_selectedType) {
-      case LogType.sleep:
-        final parts = <String>[];
-        if (_sleepDurationCtrl.text.isNotEmpty) {
-          parts.add('Thời gian: ${_sleepDurationCtrl.text} phút');
-        }
-        parts.add('Chất lượng: $_sleepQuality');
-        if (_noteCtrl.text.isNotEmpty) parts.add(_noteCtrl.text);
-        return parts.join(' | ');
-      case LogType.diaper:
-        final parts = ['Trạng thái: $_diaperStatus'];
-        if (_noteCtrl.text.isNotEmpty) parts.add(_noteCtrl.text);
-        return parts.join(' | ');
-      case LogType.symptom:
-        final parts = <String>[];
-        if (_temperatureCtrl.text.isNotEmpty) {
-          parts.add('Nhiệt độ: ${_temperatureCtrl.text}°C');
-        }
-        if (_symptomsCtrl.text.isNotEmpty) {
-          parts.add('Triệu chứng: ${_symptomsCtrl.text}');
-        }
-        if (_noteCtrl.text.isNotEmpty) parts.add(_noteCtrl.text);
-        return parts.join(' | ');
-      default:
-        return _noteCtrl.text.trim();
-    }
-  }
-
   Future<void> _confirmDelete() async {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -280,6 +343,25 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
         },
       ),
     );
+  }
+
+  IconData _iconForType(LogType type) {
+    switch (type) {
+      case LogType.feeding:
+        return Icons.restaurant;
+      case LogType.sleep:
+        return Icons.bedtime;
+      case LogType.diaper:
+        return Icons.cleaning_services;
+      case LogType.fever:
+        return Icons.thermostat;
+      case LogType.vomiting:
+        return Icons.sick;
+      case LogType.medicine:
+        return Icons.medication;
+      case LogType.symptom:
+        return Icons.health_and_safety;
+    }
   }
 
   @override
@@ -307,7 +389,7 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
         children: [
           Column(
             children: [
-              _buildTabBar(),
+              _buildTypeHeader(),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
@@ -317,8 +399,12 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
                       _buildDateTimeSection(),
                       const SizedBox(height: 16),
                       _buildDynamicFields(),
-                      const SizedBox(height: 16),
-                      _buildNotesField(),
+                      if (_selectedType != LogType.symptom &&
+                          _selectedType != LogType.fever &&
+                          _selectedType != LogType.vomiting) ...[
+                        const SizedBox(height: 16),
+                        _buildNotesField(),
+                      ],
                       const SizedBox(height: 24),
                       _buildActionButtons(),
                     ],
@@ -333,26 +419,58 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTypeHeader() {
     return Container(
-      color: _canvas,
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        labelStyle: const TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 11,
-        ),
-        labelColor: _primary,
-        unselectedLabelColor: _onSurfaceVariant,
-        indicatorColor: _primary,
-        indicatorWeight: 2.5,
-        tabs: LogType.values.map((t) => Tab(text: t.displayLabel)).toList(),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withAlpha(12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _primary.withAlpha(25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(_iconForType(_selectedType), color: _primary, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Loại nhật ký',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _selectedType.displayLabel,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -384,24 +502,10 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _DateTimeChip(
-                  label: 'Bắt đầu',
-                  dateTime: _startedAt,
-                  onTap: () => _pickDateTime(isStart: true),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _DateTimeChip(
-                  label: 'Kết thúc',
-                  dateTime: _endedAt,
-                  onTap: () => _pickDateTime(isStart: false),
-                ),
-              ),
-            ],
+          _DateTimeChip(
+            label: 'Thời gian bắt đầu',
+            dateTime: _startedAt,
+            onTap: _pickDateTime,
           ),
         ],
       ),
@@ -439,51 +543,7 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Lượng bú / ăn',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _quantityCtrl,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 15,
-                      color: _onSurface,
-                    ),
-                    decoration: _inputDeco('Lượng', hint: '150'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ChipSelector(
-                    options: const ['ml', 'oz', 'lần'],
-                    selected: _feedingUnit,
-                    onSelected: (v) => setState(() => _feedingUnit = v),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      case LogType.sleep:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Giấc ngủ',
+              'Lượng sữa (ml)',
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 13,
@@ -493,111 +553,9 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _sleepDurationCtrl,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 15,
-                color: _onSurface,
-              ),
-              decoration: _inputDeco('Thời gian ngủ (phút)', hint: '60'),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Chất lượng',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                color: _onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _ChipSelector(
-              options: const ['Tốt', 'Trung bình', 'Kém'],
-              selected: _sleepQuality,
-              onSelected: (v) => setState(() => _sleepQuality = v),
-            ),
-          ],
-        );
-      case LogType.diaper:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Trạng thái tã',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: ['Khô', 'Tiểu', 'Đại tiện', 'Hỗn hợp'].map((s) {
-                final selected = _diaperStatus == s;
-                return GestureDetector(
-                  onTap: () => setState(() => _diaperStatus = s),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selected ? _primary : _surface,
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Text(
-                      s,
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? Colors.white : _onSurface,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        );
-      case LogType.fever:
-      case LogType.vomiting:
-      case LogType.medicine:
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            'Chỉnh sửa nội dung trong phần ghi chú bên dưới.',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 13,
-              color: _onSurfaceVariant,
-            ),
-          ),
-        );
-      case LogType.symptom:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Chỉ số sức khỏe',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _temperatureCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              controller: _quantityCtrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
@@ -606,25 +564,279 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
                 fontSize: 15,
                 color: _onSurface,
               ),
-              decoration: _inputDeco('Nhiệt độ (°C)', hint: '37.0'),
+              decoration: _inputDeco('Lượng sữa (ml)', hint: '150'),
+            ),
+          ],
+        );
+      case LogType.sleep:
+        return _buildSleepTimePicker();
+      case LogType.diaper:
+        return _buildDiaperCounter();
+      case LogType.medicine:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Liều lượng',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _symptomsCtrl,
-              maxLines: 2,
+              controller: _quantityCtrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 15,
+                color: _onSurface,
+              ),
+              decoration: _inputDeco('Liều lượng', hint: 'Ví dụ: 1'),
+            ),
+          ],
+        );
+      case LogType.symptom:
+      case LogType.fever:
+      case LogType.vomiting:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Triệu chứng',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedSymptom,
+              decoration: _inputDeco('Chọn triệu chứng'),
+              items: _commonSymptoms
+                  .map(
+                    (s) => DropdownMenuItem(
+                      value: s,
+                      child: Text(
+                        s,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 14,
+                          color: _onSurface,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _selectedSymptom = val);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _symptomDescriptionCtrl,
+              maxLines: 3,
               style: const TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 14,
                 color: _onSurface,
               ),
               decoration: _inputDeco(
-                'Triệu chứng',
-                hint: 'Sốt nhẹ, ho, sổ mũi...',
+                _selectedSymptom == 'Khác'
+                    ? 'Mô tả triệu chứng *'
+                    : 'Mô tả chi tiết (tùy chọn)',
+                hint: _selectedSymptom == 'Khác'
+                    ? 'Nhập triệu chứng cụ thể của bé...'
+                    : 'Ví dụ: nhiệt độ, mức độ, biểu hiện của bé...',
               ),
             ),
           ],
         );
     }
+  }
+
+  Widget _buildSleepTimePicker() {
+    final displayTime = _sleepHours > 0
+        ? (_sleepMinutes > 0
+            ? '$_sleepHours giờ $_sleepMinutes phút'
+            : '$_sleepHours giờ')
+        : '$_sleepMinutes phút';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withAlpha(50)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Thời gian ngủ:',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+              Text(
+                displayTime,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 120,
+            child: Row(
+              children: [
+                Expanded(
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: _sleepHours.clamp(0, 24),
+                    ),
+                    itemExtent: 36,
+                    selectionOverlay: Container(
+                      decoration: BoxDecoration(
+                        color: _primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onSelectedItemChanged: (index) {
+                      setState(() => _sleepHours = index);
+                    },
+                    children: List.generate(
+                      25,
+                      (i) => Center(
+                        child: Text(
+                          '$i giờ',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: _sleepMinutes.clamp(0, 59),
+                    ),
+                    itemExtent: 36,
+                    selectionOverlay: Container(
+                      decoration: BoxDecoration(
+                        color: _primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onSelectedItemChanged: (index) {
+                      setState(() => _sleepMinutes = index);
+                    },
+                    children: List.generate(
+                      60,
+                      (i) => Center(
+                        child: Text(
+                          '$i phút',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiaperCounter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primary.withAlpha(50)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Số lần thay tã',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton.filledTonal(
+                onPressed: _diaperCount > 1
+                    ? () => setState(() => _diaperCount--)
+                    : null,
+                icon: const Icon(Icons.remove, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: _primary.withAlpha(25),
+                  foregroundColor: _primary,
+                ),
+              ),
+              Container(
+                constraints: const BoxConstraints(minWidth: 44),
+                alignment: Alignment.center,
+                child: Text(
+                  '$_diaperCount',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+              IconButton.filled(
+                onPressed: () => setState(() => _diaperCount++),
+                icon: const Icon(Icons.add, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNotesField() {
@@ -746,35 +958,36 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
   }
 
   InputDecoration _inputDeco(String label, {String? hint}) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    labelStyle: const TextStyle(
-      fontFamily: 'Lexend',
-      fontSize: 12,
-      color: _onSurfaceVariant,
-    ),
-    hintStyle: const TextStyle(
-      fontFamily: 'Lexend',
-      fontSize: 13,
-      color: Color(0xFFBBA9A4),
-    ),
-    filled: true,
-    fillColor: Colors.white,
-    counterText: '',
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: _surface, width: 2),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: _surface, width: 2),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: _primaryContainer, width: 2),
-    ),
-  );
+        labelText: label,
+        hintText: hint,
+        labelStyle: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 12,
+          color: _onSurfaceVariant,
+        ),
+        hintStyle: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 13,
+          color: Color(0xFFBBA9A4),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        counterText: '',
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _surface, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _surface, width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _primaryContainer, width: 2),
+        ),
+      );
 }
 
 class _DateTimeChip extends StatelessWidget {
@@ -843,52 +1056,6 @@ class _DateTimeChip extends StatelessWidget {
   }
 }
 
-class _ChipSelector extends StatelessWidget {
-  const _ChipSelector({
-    required this.options,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<String> options;
-  final String selected;
-  final ValueChanged<String> onSelected;
-
-  static const _primary = Color(0xFF845143);
-  static const _surface = Color(0xFFF2EAE4);
-  static const _onSurface = Color(0xFF271812);
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      children: options.map((o) {
-        final isSelected = o == selected;
-        return GestureDetector(
-          onTap: () => onSelected(o),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? _primary : _surface,
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: Text(
-              o,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : _onSurface,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
 class _DeleteConfirmSheet extends StatelessWidget {
   const _DeleteConfirmSheet({required this.onConfirm});
 
@@ -901,8 +1068,8 @@ class _DeleteConfirmSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

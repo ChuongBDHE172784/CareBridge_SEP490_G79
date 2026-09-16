@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../baby/screens/add_baby_screen.dart';
 import '../models/journey_model.dart';
 import '../services/pregnancy_outcome_draft_store.dart';
 import '../services/journey_service.dart';
@@ -22,6 +24,7 @@ class PregnancyOutcomeScreen extends StatefulWidget {
     this.draftStore,
     this.accountId,
     this.sameAccountCheck,
+    this.onNavigateToAddBaby,
   });
 
   final String journeyId;
@@ -31,6 +34,7 @@ class PregnancyOutcomeScreen extends StatefulWidget {
   final PregnancyOutcomeDraftStore? draftStore;
   final String? accountId;
   final bool Function()? sameAccountCheck;
+  final void Function(AddBabyRouteArgs args)? onNavigateToAddBaby;
 
   @override
   State<PregnancyOutcomeScreen> createState() => _PregnancyOutcomeScreenState();
@@ -109,26 +113,6 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
     return JourneyService().recordPregnancyOutcome(widget.journeyId, request);
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: _outcomeDate ?? now,
-      firstDate: DateTime(now.year - 2),
-      lastDate: now,
-      helpText: 'Chọn ngày',
-      cancelText: 'Hủy',
-      confirmText: 'Chọn',
-    );
-    if (selected != null && mounted) {
-      setState(() {
-        _outcomeDate = selected;
-        _error = null;
-      });
-      await _saveDraft();
-    }
-  }
-
   Future<void> _continue() async {
     if (!_sameAccount()) {
       setState(
@@ -139,10 +123,6 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
     final selected = _selected;
     if (selected == null) {
       setState(() => _error = 'Vui lòng chọn một tình trạng');
-      return;
-    }
-    if (selected.requiresDate && _outcomeDate == null) {
-      setState(() => _error = 'Vui lòng chọn ngày');
       return;
     }
 
@@ -181,6 +161,36 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
+
+    if (selected == PregnancyOutcome.liveBirth) {
+      final accountId = _accountId;
+      if (accountId != null) {
+        await _draftStore.clear(accountId, widget.journeyId);
+      }
+      if (!mounted) return;
+
+      final args = AddBabyRouteArgs(
+        entryPoint: AddBabyEntryPoint.liveBirthTransition,
+        journeyId: widget.journeyId,
+        journeyVersion: widget.journeyVersion,
+      );
+
+      if (widget.onNavigateToAddBaby != null) {
+        widget.onNavigateToAddBaby!(args);
+        return;
+      }
+
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop(args);
+        return;
+      }
+
+      try {
+        context.push('/babies/add', extra: args);
+      } catch (_) {}
+      return;
+    }
 
     final selectedCorrection = _requiresCorrection();
     final effectiveAt = _effectiveAt ?? DateTime.now().toUtc();
@@ -241,7 +251,7 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
 
   String _confirmationMessage(PregnancyOutcome outcome) {
     if (outcome == PregnancyOutcome.liveBirth) {
-      return 'Hành trình sẽ chuyển sang giai đoạn hậu sản. Bạn có thể thêm hồ sơ em bé ngay sau bước này.';
+      return 'Hành trình sẽ chuyển sang giai đoạn hậu sản sau khi hoàn tất tạo hồ sơ em bé. Bạn sẽ được chuyển đến màn hình tạo hồ sơ bé.';
     }
     if (outcome == PregnancyOutcome.pregnancyLoss) {
       return 'Hành trình sẽ chuyển sang hỗ trợ hồi phục và không yêu cầu tạo hồ sơ em bé.';
@@ -307,28 +317,6 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
             ...PregnancyOutcome.values
                 .where((o) => o != PregnancyOutcome.ongoing)
                 .map(_buildOutcomeChoice),
-            if (_selected?.requiresDate == true) ...[
-              const SizedBox(height: 8),
-              Semantics(
-                button: true,
-                label: 'Chọn ngày em bé chào đời',
-                child: OutlinedButton.icon(
-                  onPressed: _submitting ? null : _pickDate,
-                  icon: const Icon(Icons.calendar_month_rounded),
-                  label: Text(
-                    _outcomeDate == null
-                        ? 'Chọn ngày'
-                        : _formatDate(_outcomeDate!),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _text,
-                    minimumSize: const Size.fromHeight(52),
-                    side: const BorderSide(color: _border, width: 2),
-                    shape: const StadiumBorder(),
-                  ),
-                ),
-              ),
-            ],
             if (_error != null) ...[
               const SizedBox(height: 16),
               Semantics(
@@ -517,11 +505,5 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day/$month/${date.year}';
   }
 }

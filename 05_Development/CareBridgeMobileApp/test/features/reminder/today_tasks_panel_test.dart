@@ -1334,6 +1334,87 @@ void main() {
       expect(find.text('Sàng lọc HIV'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'mother audience in sourceGroups layout allows ticking system task to complete without opening detail',
+    (tester) async {
+      final requestedPaths = <String>[];
+      final requestedBodies = <Map<String, dynamic>>[];
+      var detailOpened = false;
+
+      final service = TodayTaskService(
+        getRequest: (path, {queryParams}) async => {
+          'data': {
+            'asOf': '2026-08-03T01:00:00Z',
+            'zoneId': 'Asia/Ho_Chi_Minh',
+            'horizonDays': 7,
+            'sections': {
+              'overdue': <Map<String, dynamic>>[],
+              'today': <Map<String, dynamic>>[
+                {
+                  'taskKind': 'CHECKLIST',
+                  'taskId': 'sys-mother-task',
+                  'title': 'Rà soát yếu tố nghề nghiệp',
+                  'origin': 'SYSTEM_TEMPLATE',
+                  'targetSubject': 'MOTHER',
+                  'status': 'PENDING',
+                  'timeBucket': 'TODAY',
+                  'allowedActions': <String>['COMPLETE'],
+                },
+              ],
+              'upcoming': <Map<String, dynamic>>[],
+              'unscheduled': <Map<String, dynamic>>[],
+            },
+            'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
+            'correlationId': 'c-test-source',
+          },
+        },
+        postRequest: (path, body) async {
+          requestedPaths.add(path);
+          requestedBodies.add(Map<String, dynamic>.from(body));
+          return {'data': {'taskId': 'sys-mother-task', 'status': 'COMPLETED'}};
+        },
+      );
+
+      final router = GoRouter(
+        initialLocation: '/today',
+        routes: [
+          GoRoute(
+            path: '/today',
+            builder: (_, __) => Scaffold(
+              body: TodayTasksPanel(
+                service: service,
+                audience: TodayTasksAudience.mother,
+                layout: TodayTasksLayout.sourceGroups,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/checklists/task-detail',
+            builder: (_, __) {
+              detailOpened = true;
+              return const Scaffold(body: Text('TASK_DETAIL_SCREEN'));
+            },
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rà soát yếu tố nghề nghiệp'), findsOneWidget);
+
+      final statusButton = find.byKey(const Key('task-status-sys-mother-task'));
+      expect(statusButton, findsOneWidget);
+
+      await tester.tap(statusButton);
+      await tester.pumpAndSettle();
+
+      expect(detailOpened, isFalse);
+      expect(requestedPaths, ['/api/v1/checklists/tasks/sys-mother-task/actions']);
+      expect(requestedBodies.single['action'], 'COMPLETE');
+    },
+  );
 }
 
 class _ScriptedExpertDirectChatService extends DirectChatService {

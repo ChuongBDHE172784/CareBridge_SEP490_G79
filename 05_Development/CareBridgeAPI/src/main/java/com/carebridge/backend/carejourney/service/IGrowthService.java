@@ -18,7 +18,8 @@ public interface IGrowthService {
      * ageInDays is calculated from baby.birthDate in the service layer.
      *
      * @throws com.carebridge.backend.common.exception.BusinessException (BABY-070/404) when baby not found
-     * @throws com.carebridge.backend.common.exception.BusinessException (BABY-071/403) when baby not owned by user
+     * @throws com.carebridge.backend.common.exception.BusinessException (BABY-071/403) when the caller is not the owner,
+     *         not a permitted care-group viewer, and holds no expert profile
      */
     GrowthChartResponse getGrowthChart(UUID userId, UUID babyId);
 

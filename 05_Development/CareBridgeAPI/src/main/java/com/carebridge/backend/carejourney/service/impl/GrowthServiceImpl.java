@@ -16,6 +16,7 @@ import com.carebridge.backend.carejourney.entity.GrowthMeasurement;
 import com.carebridge.backend.carejourney.repository.GrowthMeasurementStore;
 import com.carebridge.backend.carejourney.service.IGrowthService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,11 +42,12 @@ public class GrowthServiceImpl implements IGrowthService {
     private final GrowthMeasurementStore growthMeasurementStore;
     private final AuditService auditService;
     private final BabyAccessPolicy babyAccessPolicy;
+    private final ExpertProfileRepository expertProfileRepository;
 
     @Override
     public GrowthChartResponse getGrowthChart(UUID userId, UUID babyId) {
         BabyProfile baby = getBabyOrThrow(babyId);
-        assertViewAccess(baby, userId);
+        assertChartViewAccess(baby, userId);
 
         List<GrowthMeasurement> measurements =
                 growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(babyId);
@@ -209,6 +211,19 @@ public class GrowthServiceImpl implements IGrowthService {
                 && !babyAccessPolicy.canView(baby, userId)) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-071", "Baby not accessible to user");
         }
+    }
+
+    /**
+     * Chart-only read rule: owner, delegated viewer, or any expert profile holder
+     * (ShareBabyGrowthInDirectChat ADR-SBG-002). History and writes keep the stricter rules.
+     */
+    private void assertChartViewAccess(BabyProfile baby, UUID userId) {
+        if (baby.getOwnerUserId().equals(userId)
+                || babyAccessPolicy.canView(baby, userId)
+                || expertProfileRepository.findByUserId(userId).isPresent()) {
+            return;
+        }
+        throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-071", "Baby not accessible to user");
     }
 
     private void assertWriteAccess(BabyProfile baby, UUID userId) {

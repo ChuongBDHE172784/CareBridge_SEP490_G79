@@ -421,6 +421,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
     _scrollToBottom();
 
     String answerText = '';
+    bool requestRejected = false;
     List<String> sourcesList = [];
     List<String> followupsList = [];
     bool isWarning = false;
@@ -516,16 +517,27 @@ class _RagChatScreenState extends State<RagChatScreen> {
       } else if (resData is String) {
         answerText = resData;
       }
-    } catch (_) {}
+    } catch (error) {
+      // Phan biet "cau hoi khong hop le" voi "khong goi duoc". Truoc day moi loi deu
+      // hien ra la mat ket noi, nen go "hi" — backend chan vi duoi 3 ky tu — lai bao
+      // la may chu cam nang y te chet, sai su that va khong giup nguoi dung sua.
+      final message = error.toString();
+      if (message.contains('RAG-001') || message.contains('400')) {
+        requestRejected = true;
+      }
+    }
 
-    // Khong ket noi duoc thi noi thang, khong tu bia cau tra loi khong co nguon.
     if (!mounted) return;
 
     final String finalAnswer = answerText.isNotEmpty
         ? answerText
-        : '⚠️ Không thể kết nối đến Máy chủ Cẩm nang Y tế CareBridge (RAG Service). '
-          'Để đảm bảo an toàn, AI không tự ý đưa ra tư vấn khi chưa kết nối được cơ sở dữ liệu cẩm nang y tế. '
-          'Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ trực tiếp Bác sĩ / Gọi cấp cứu 115 nếu cần hỗ trợ khẩn cấp!';
+        : requestRejected
+            ? 'Câu hỏi hơi ngắn nên mình chưa hiểu ý bạn. Bạn viết rõ hơn một chút '
+              'giúp mình nhé — ví dụ "Bà bầu nên ăn gì để đủ sắt?".'
+            // Khong ket noi duoc thi noi thang, khong tu bia cau tra loi khong co nguon.
+            : '⚠️ Không thể kết nối đến Máy chủ Cẩm nang Y tế CareBridge (RAG Service). '
+              'Để đảm bảo an toàn, AI không tự ý đưa ra tư vấn khi chưa kết nối được cơ sở dữ liệu cẩm nang y tế. '
+              'Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ trực tiếp Bác sĩ / Gọi cấp cứu 115 nếu cần hỗ trợ khẩn cấp!';
 
     setState(() {
       _messages.add(

@@ -60,6 +60,8 @@ class PhoneVerificationFailure implements Exception {
       'session-expired' => 'Mã xác thực đã hết hạn. Vui lòng gửi lại mã mới.',
       'network-request-failed' =>
         'Không thể kết nối dịch vụ xác thực. Vui lòng kiểm tra mạng.',
+      'app-not-authorized' =>
+        'Ứng dụng chưa được cấp quyền SMS Firebase. Vui lòng thêm SHA-256 hoặc số test vào Firebase Console.',
       _ => 'Không thể xác thực số điện thoại. Vui lòng thử lại.',
     };
   }
@@ -490,6 +492,16 @@ class AuthService {
       verificationId: verificationId,
       smsCode: smsCode,
     );
+  }
+
+  Future<void> checkRegistrationAvailability({
+    String? email,
+    String? phone,
+  }) async {
+    final body = <String, dynamic>{};
+    if (email != null && email.trim().isNotEmpty) body['email'] = email.trim();
+    if (phone != null && phone.trim().isNotEmpty) body['phone'] = phone.trim();
+    await _postRequest('/api/v1/auth/check-registration', body);
   }
 
   // UC-01: Register — sends OTP; tokens not issued until OTP is verified

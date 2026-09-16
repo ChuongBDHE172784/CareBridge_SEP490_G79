@@ -49,8 +49,16 @@ void main() {
   testWidgets(
     'expert registration is email-only and cannot escape through federated role selection',
     (tester) async {
+      final service = AuthService.forTesting(
+        postRequest: (_, _) async => {
+          'data': {'message': 'Available'},
+        },
+        tokenPersister: (_) async {},
+        postLoginAction: () async {},
+      );
+
       await tester.pumpWidget(
-        const MaterialApp(home: RegisterScreen(isExpert: true)),
+        MaterialApp(home: RegisterScreen(isExpert: true, authService: service)),
       );
 
       expect(find.byKey(const Key('federated-google-register')), findsNothing);

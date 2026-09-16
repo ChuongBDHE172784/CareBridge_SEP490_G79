@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +24,33 @@ import '../models/care_facility_model.dart';
 import '../models/emergency_session_model.dart';
 import '../services/care_facility_service.dart';
 import '../services/emergency_service.dart';
+
+const _deviceChannel = MethodChannel('com.carebridge.app/device');
+
+// Các lớp mũi tên đường một chiều (minzoom 16) của style TrackAsia làm driver
+// GL của Android Emulator crash (SIGSEGV trong GL2Encoder::s_glDrawElements)
+// ngay khi dẫn đường zoom tới 17.5. Máy thật không bị, nên chỉ ẩn trên emulator.
+const _emulatorUnsafeLayerIds = <String>[
+  'road-oneway-arrow-blue',
+  'road-oneway-arrow-white',
+  'tunnel-oneway-arrow-blue',
+  'tunnel-oneway-arrow-white',
+  'bridge-oneway-arrow-blue',
+  'bridge-oneway-arrow-white',
+];
+
+Future<bool>? _isAndroidEmulator;
+
+Future<bool> _runningOnAndroidEmulator() {
+  // Trên web không có handler cho channel nên lời gọi rơi vào catchError.
+  if (defaultTargetPlatform != TargetPlatform.android) {
+    return Future.value(false);
+  }
+  return _isAndroidEmulator ??= _deviceChannel
+      .invokeMethod<bool>('isEmulator')
+      .then((value) => value ?? false)
+      .catchError((_) => false);
+}
 
 typedef EmergencyUriLauncher = Future<bool> Function(Uri uri);
 typedef LocationConsentProbe = Future<bool> Function();
@@ -182,6 +211,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   bool _mapStyleFailed = false;
   int _mapGeneration = 0;
   Timer? _mapStyleTimer;
+  Circle? _userLocationCircle;
   bool _navigationActive = false;
   bool _voiceEnabled = true;
   bool _followUser = true;
@@ -802,14 +832,14 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         _currentStepIndex = (_route?.steps.length ?? 1) - 1;
         _followUser = true;
         setState(() => _navigationActive = true);
-        await _speak('Bạn đang ở vị trí của ${facility.name}.');
+        unawaited(_speak('Bạn đang ở vị trí của ${facility.name}.'));
         return;
       }
     }
     _currentStepIndex = 0;
     _followUser = true;
     setState(() => _navigationActive = true);
-    await _speakCurrentStep(prefix: 'Bắt đầu dẫn đường đến ${facility.name}. ');
+    unawaited(_speakCurrentStep(prefix: 'Bắt đầu dẫn đường đến ${facility.name}. '));
     await _navigationSubscription?.cancel();
     _navigationSubscription =
         Geolocator.getPositionStream(
@@ -839,16 +869,18 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   }
 
   Future<void> _stopNavigation() async {
-    await _navigationSubscription?.cancel();
+    final sub = _navigationSubscription;
     _navigationSubscription = null;
+    unawaited(sub?.cancel());
     try {
-      await _tts.stop();
+      unawaited(_tts.stop());
     } catch (_) {}
     if (mounted) {
       setState(() {
         _navigationActive = false;
         _followUser = false;
       });
+      await _syncMapAnnotations(fitCamera: true);
     }
   }
 
@@ -875,6 +907,12 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       setState(() => _position = position);
       final mapController = _mapController;
       final route = _route;
+
+      // Chỉ cập nhật chấm định vị người dùng trong lúc dẫn đường.
+      // Tuyệt đối không gọi _syncMapAnnotations() vì hàm đó sẽ xoá/tái tạo polylines & symbols,
+      // gây race-condition với animateCamera trên Android Emulator dẫn đến SIGSEGV (GL2Encoder::s_glDrawElements).
+      await _syncUserLocationMarkerOnly(position);
+
       if (mapController != null && _followUser) {
         try {
           final bearing = position.heading > 0 && position.heading <= 360
@@ -915,7 +953,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         );
         if (distanceToDest <= 35) {
           final facilityName = facility.name;
-          await _speak('Bạn đã đến nơi. $facilityName.');
+          unawaited(_speak('Bạn đã đến nơi. $facilityName.'));
           await _stopNavigation();
           return;
         }
@@ -945,7 +983,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
 
         if (reachedNextStep) {
           setState(() => _currentStepIndex = currentIndex + 1);
-          await _speakCurrentStep();
+          unawaited(_speakCurrentStep());
         }
       }
       if (route.coordinates.isEmpty) {
@@ -959,7 +997,6 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         // mới nhận ra. Hàm _reroute vẫn tự chặn tần suất gọi API bên trong.
         if (distanceToRoute > 50) await _reroute(position);
       }
-      await _syncMapAnnotations(fitCamera: false);
     } finally {
       _handlingNavigationPosition = false;
     }
@@ -1010,7 +1047,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         _route = route;
         _currentStepIndex = 0;
       });
-      await _speakCurrentStep(prefix: 'Đang tính lại tuyến đường. ');
+      await _syncRouteLinesOnly();
+      unawaited(_speakCurrentStep(prefix: 'Đang tính lại tuyến đường. '));
     } catch (_) {
       // Keep the last usable TrackAsia route and retry only after debounce.
     }
@@ -1433,7 +1471,10 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     _mapIconsRegistered = false;
     unawaited(() async {
       final controller = _mapController;
-      if (controller != null) await _registerMapIcons(controller);
+      if (controller != null) {
+        await _hideEmulatorUnsafeLayers(controller);
+        await _registerMapIcons(controller);
+      }
       if (!mounted || generation != _mapGeneration) return;
       // Lần đầu mở bản đồ thì đặt mẹ vào giữa; khung bao trọn tuyến đường chỉ
       // dùng khi người dùng chủ động bấm nút toàn cảnh hoặc đã chọn cơ sở.
@@ -1446,6 +1487,20 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     }());
   }
 
+  Future<void> _hideEmulatorUnsafeLayers(
+    TrackAsiaMapController controller,
+  ) async {
+    if (widget.mapRenderer != null) return;
+    if (!await _runningOnAndroidEmulator()) return;
+    for (final layerId in _emulatorUnsafeLayerIds) {
+      try {
+        await controller.setLayerVisibility(layerId, false);
+      } catch (_) {
+        // Style có thể đổi tên/bỏ lớp; thiếu lớp thì không cần ẩn.
+      }
+    }
+  }
+
   void _retryMapRenderer() {
     setState(_resetMapRendererState);
     _armMapStyleWatchdog(_mapGeneration);
@@ -1455,6 +1510,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     _mapStyleTimer?.cancel();
     _mapStyleTimer = null;
     _mapController = null;
+    _userLocationCircle = null;
     ++_mapGeneration;
     _mapStyleReady = false;
     _mapStyleFailed = false;
@@ -1466,6 +1522,97 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       if (!mounted || generation != _mapGeneration || _mapStyleReady) return;
       setState(() => _mapStyleFailed = true);
     });
+  }
+
+  Future<void> _syncUserLocationMarkerOnly(Position position) async {
+    final customSynchronizer = widget.annotationSynchronizer;
+    if (customSynchronizer != null) {
+      await customSynchronizer(
+        position: position,
+        facilities: _results,
+        route: _route,
+      );
+      return;
+    }
+    final controller = _mapController;
+    if (!_mapStyleReady || controller == null) return;
+    try {
+      if (_userLocationCircle != null) {
+        await controller.updateCircle(
+          _userLocationCircle!,
+          CircleOptions(
+            geometry: LatLng(position.latitude, position.longitude),
+          ),
+        );
+        return;
+      }
+    } catch (_) {
+      _userLocationCircle = null;
+    }
+    try {
+      await controller.clearCircles();
+      _userLocationCircle = await controller.addCircle(
+        CircleOptions(
+          geometry: LatLng(position.latitude, position.longitude),
+          circleRadius: 8,
+          circleColor: '#2563EB',
+          circleStrokeColor: '#FFFFFF',
+          circleStrokeWidth: 3,
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _syncRouteLinesOnly() async {
+    final position = _position;
+    final customSynchronizer = widget.annotationSynchronizer;
+    if (customSynchronizer != null && position != null) {
+      await customSynchronizer(
+        position: position,
+        facilities: _results,
+        route: _route,
+      );
+      return;
+    }
+    final controller = _mapController;
+    if (!_mapStyleReady || controller == null) return;
+    try {
+      await controller.clearLines();
+      final coordinates = _route?.coordinates ?? const [];
+      final points = coordinates.length >= 2
+          ? coordinates
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList(growable: false)
+          : (_selected != null && _selected!.hasCoordinates && position != null
+              ? <LatLng>[
+                  LatLng(position.latitude, position.longitude),
+                  LatLng(_selected!.latitude!, _selected!.longitude!),
+                ]
+              : const <LatLng>[]);
+
+      if (points.length >= 2) {
+        // High contrast casing border line
+        await controller.addLine(
+          LineOptions(
+            geometry: points,
+            lineColor: '#1E40AF',
+            lineWidth: 8,
+            lineOpacity: 0.8,
+            lineJoin: 'round',
+          ),
+        );
+        // Main high-visibility active route line
+        await controller.addLine(
+          LineOptions(
+            geometry: points,
+            lineColor: '#3B82F6',
+            lineWidth: 5,
+            lineOpacity: 1.0,
+            lineJoin: 'round',
+          ),
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> _syncMapAnnotations({bool fitCamera = true}) async {
@@ -1487,7 +1634,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       await controller.clearCircles();
       await controller.clearSymbols();
       await controller.clearLines();
-      await controller.addCircle(
+      _userLocationCircle = await controller.addCircle(
         CircleOptions(
           geometry: LatLng(position.latitude, position.longitude),
           circleRadius: 8,
@@ -1723,6 +1870,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= 720;
           return Stack(
+            fit: StackFit.expand,
             children: [
               Positioned.fill(child: _buildMapCanvas()),
               if (_loading)

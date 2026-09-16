@@ -1,6 +1,7 @@
 package com.carebridge.backend.security.service;
 
 import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
+import com.carebridge.backend.security.dto.request.CheckRegistrationRequest;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.request.RefreshTokenRequest;
 import com.carebridge.backend.security.dto.request.RegisterRequest;
@@ -14,6 +15,8 @@ import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 
 public interface AuthService {
+
+    void checkRegistrationAvailability(CheckRegistrationRequest request);
 
     OtpSendResponse register(RegisterRequest request);
 

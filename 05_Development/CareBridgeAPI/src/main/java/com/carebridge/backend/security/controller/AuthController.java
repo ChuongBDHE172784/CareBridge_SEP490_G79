@@ -4,6 +4,7 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.identity.service.SessionService;
 import com.carebridge.backend.security.dto.request.ChangePasswordRequest;
+import com.carebridge.backend.security.dto.request.CheckRegistrationRequest;
 import com.carebridge.backend.security.dto.request.DeactivateRequest;
 import com.carebridge.backend.security.dto.request.ForgotPasswordRequest;
 import com.carebridge.backend.security.dto.request.FederatedAuthRequest;
@@ -114,6 +115,16 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(
                 federatedAuthService.linkGoogleIdentity(userId, request),
                 "Google account linked"));
+    }
+
+    @PostMapping("/check-registration")
+    @Operation(
+        summary = "Check if email or phone is already registered",
+        description = "Validates that the provided email or phone is not already registered before proceeding with registration."
+    )
+    public ResponseEntity<ApiResponse<Void>> checkRegistration(@Valid @RequestBody CheckRegistrationRequest request) {
+        authService.checkRegistrationAvailability(request);
+        return ResponseEntity.ok(ApiResponse.success(null, "Registration data available"));
     }
 
     @PostMapping("/register")

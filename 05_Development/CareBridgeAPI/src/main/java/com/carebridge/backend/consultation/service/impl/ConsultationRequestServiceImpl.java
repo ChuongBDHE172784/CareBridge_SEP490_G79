@@ -141,7 +141,6 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                 .findByIdForUpdate(lockedExpert.getUserId())
                 .orElseThrow(ConsultationRequestException::expertNotEligible);
         policy.assertExpertEligibleForConsultation(lockedExpert, lockedExpertAccount, now);
-        assertNoOtherOpenRequest(requesterUserId, now);
         validatePreferredAvailability(request, now);
         ConsultationRequest candidate = ConsultationRequest.builder()
                 .id(UUID.randomUUID())
@@ -204,28 +203,6 @@ public class ConsultationRequestServiceImpl implements IConsultationRequestServi
                         request.getExpertProfileId(), start, OPEN_STATUSES);
         if (alreadyClaimed) {
             throw ConsultationRequestException.availabilityNoLongerAvailable();
-        }
-    }
-
-    /**
-     * One live request per mother. She can still choose a busy expert, but not queue
-     * behind two of them at once — the app offers to cancel the open one first.
-     */
-    private void assertNoOtherOpenRequest(UUID requesterUserId, Instant now) {
-        ConsultationRequest open = repository
-                .findFirstByRequesterUserIdAndStatusIn(requesterUserId, OPEN_STATUSES)
-                .orElse(null);
-        if (open == null) {
-            return;
-        }
-        // Yêu cầu quá hạn không còn giữ chỗ nữa. Nó vẫn mang trạng thái PENDING cho tới
-        // khi job quét, mà job chạy mỗi phút — không tính ở đây thì mẹ bị chặn thêm tối
-        // đa một phút sau khi hạn đã trôi qua, đúng lúc bà cần đặt người khác nhất.
-        boolean alreadyOverdue = open.getStatus() == ConsultationRequestStatus.PENDING
-                && open.getExpiresAt() != null
-                && !open.getExpiresAt().isAfter(now);
-        if (!alreadyOverdue) {
-            throw ConsultationRequestException.activeRequestAlreadyOpen();
         }
     }
 

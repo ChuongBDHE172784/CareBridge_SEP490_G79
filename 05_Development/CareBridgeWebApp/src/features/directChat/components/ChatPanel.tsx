@@ -10,7 +10,12 @@ import { useDirectCall } from '../calls/directCallContext';
 import LocationMessageBubble from './LocationMessageBubble';
 import { SharedHealthMetricsBubble } from './SharedHealthMetricsBubble';
 import { SharedChecklistBubble } from './SharedChecklistBubble';
-import { parseHealthMetricsShare, parseChecklistShare } from '../../expert/services/expertSharedRecordsService';
+import { SharedBabyGrowthBubble } from './SharedBabyGrowthBubble';
+import {
+  parseHealthMetricsShare,
+  parseChecklistShare,
+  parseBabyGrowthShare,
+} from '../../expert/services/expertSharedRecordsService';
 
 interface ChatPanelProps {
   conversationId: string;
@@ -640,6 +645,11 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
                           />
                         </div>
                       );
+                    }
+
+                    const babyGrowthData = parseBabyGrowthShare(item.messageBody);
+                    if (babyGrowthData) {
+                      return <SharedBabyGrowthBubble data={babyGrowthData} isOwn={isOwn} />;
                     }
 
                     const healthData = parseHealthMetricsShare(item.messageBody);

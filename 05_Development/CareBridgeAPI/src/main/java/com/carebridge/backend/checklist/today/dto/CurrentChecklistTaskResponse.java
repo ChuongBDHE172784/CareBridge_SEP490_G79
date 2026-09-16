@@ -6,6 +6,7 @@ import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.model.ChecklistSupportFunction;
 import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.checklist.today.model.TaskTimeBucket;
+import com.carebridge.backend.content.dto.response.ExpertReviewerResponse;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -29,7 +30,33 @@ public record CurrentChecklistTaskResponse(
         Instant dueAt,
         String description,
         ChecklistSupportFunction supportFunction,
-        String sourceUrl) {
+        String sourceUrl,
+        ExpertReviewerResponse reviewer) {
+
+    /** Compatibility constructor for callers before reviewer was exposed. */
+    public CurrentChecklistTaskResponse(
+            UUID taskId,
+            UUID instanceId,
+            UUID templateVersionId,
+            UUID careGroupId,
+            ChecklistCareContextType careContextType,
+            UUID careContextId,
+            String careGroupLabel,
+            String careContextLabel,
+            String title,
+            ChecklistTargetSubject targetSubject,
+            ChecklistOrigin origin,
+            String status,
+            TaskTimeBucket timeBucket,
+            Set<TaskAction> allowedActions,
+            Instant dueAt,
+            String description,
+            ChecklistSupportFunction supportFunction,
+            String sourceUrl) {
+        this(taskId, instanceId, templateVersionId, careGroupId, careContextType, careContextId,
+                careGroupLabel, careContextLabel, title, targetSubject, origin, status,
+                timeBucket, allowedActions, dueAt, description, supportFunction, sourceUrl, null);
+    }
 
     /** Compatibility constructor for callers before sourceUrl was exposed. */
     public CurrentChecklistTaskResponse(

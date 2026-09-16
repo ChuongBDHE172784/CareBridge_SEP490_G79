@@ -15,6 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BabyCareControllerAuthorizationContractTest {
 
     private static final String CAREGIVER_ROLES = "hasAnyRole('MOTHER', 'FAMILY')";
+    // ShareBabyGrowthInDirectChat ADR-SBG-002: experts may read the growth chart only.
+    private static final String GROWTH_CHART_READER_ROLES = "hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')";
 
     @Test
     void journalMutationsPermitMotherAndFamilyMemberAtControllerBoundary() {
@@ -34,7 +36,11 @@ class BabyCareControllerAuthorizationContractTest {
         Arrays.stream(GrowthMeasurementController.class.getDeclaredMethods())
                 .filter(method -> !method.isSynthetic())
                 .forEach(method -> assertThat(preAuthorize(method).value()).isEqualTo(CAREGIVER_ROLES));
-        assertAuthorization(GrowthChartController.class, "getGrowthChart", CAREGIVER_ROLES);
+    }
+
+    @Test
+    void growthChartReadAdditionallyPermitsExpertAtControllerBoundary() {
+        assertAuthorization(GrowthChartController.class, "getGrowthChart", GROWTH_CHART_READER_ROLES);
     }
 
     private void assertAuthorization(Class<?> controller, String methodName, String expression) {

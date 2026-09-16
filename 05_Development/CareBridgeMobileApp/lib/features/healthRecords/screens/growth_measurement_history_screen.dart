@@ -34,6 +34,8 @@ class _GrowthMeasurementHistoryScreenState
   final _babyService = BabyService();
   bool _isLoading = true;
   List<GrowthMeasurement> _records = [];
+  bool _hasCustomSort = false;
+  bool _isNewestFirst = true;
   BabyProfile? _babyProfile;
   bool _profileLoadFailed = false;
   String _selectedTab = 'Cân nặng';
@@ -55,6 +57,30 @@ class _GrowthMeasurementHistoryScreenState
     super.dispose();
   }
 
+  void _applySort() {
+    _records.sort((a, b) {
+      final cmp = _isNewestFirst
+          ? b.measuredAt.compareTo(a.measuredAt)
+          : a.measuredAt.compareTo(b.measuredAt);
+      if (cmp != 0) return cmp;
+      final timeA = a.createdAt ?? a.measuredAt;
+      final timeB = b.createdAt ?? b.measuredAt;
+      return _isNewestFirst ? timeB.compareTo(timeA) : timeA.compareTo(timeB);
+    });
+  }
+
+  void _toggleSort() {
+    setState(() {
+      if (!_hasCustomSort) {
+        _hasCustomSort = true;
+        _isNewestFirst = false;
+      } else {
+        _isNewestFirst = !_isNewestFirst;
+      }
+      _applySort();
+    });
+  }
+
   Future<void> _loadData() async {
     final generation = ++_loadGeneration;
     setState(() => _isLoading = true);
@@ -67,7 +93,10 @@ class _GrowthMeasurementHistoryScreenState
               _service.getGrowthHistory(widget.babyId));
       if (mounted && generation == _loadGeneration) {
         setState(() {
-          _records = records;
+          _records = List<GrowthMeasurement>.from(records);
+          if (_hasCustomSort) {
+            _applySort();
+          }
           _isLoading = false;
         });
       }
@@ -130,27 +159,12 @@ class _GrowthMeasurementHistoryScreenState
         title: const Text(
           'Lịch sử đo lường',
           style: TextStyle(
+            fontFamily: 'Lexend',
             color: Color(0xFF845143),
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.grey[200],
-              backgroundImage: widget.loadAvatarImage
-                  ? const NetworkImage(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuAfIClE2XrhchB2YXUkxFhAgxyNB_KbnEEMYJ4bx0o5HUbpNys1-ji6CyZ5aWHqhu3JGN8u8GaSCe4rVuqhYMcKH51eLp5ldXo3u0DNdTmslCM9E-ZiehGW0INPsFz2BdM8cC49wt0bMy2Hd2l4efLVevsxb0e1Ap5dLZGaDMteb5V9Yk4GZQJeHW4XmmFXFCVckYCNM2wvz4UG2ZZRm4O2rSlUNHGNBCptOBaXxWOlpnTZc5DV2faJg_uuFgv71Y2vkyhfxvgahQ0',
-                    )
-                  : null,
-              child: widget.loadAvatarImage
-                  ? null
-                  : const Icon(Icons.child_care, color: Color(0xFF845143)),
-            ),
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(
@@ -172,19 +186,61 @@ class _GrowthMeasurementHistoryScreenState
                           'Lịch sử ghi nhận',
                           maxLines: 2,
                           style: TextStyle(
+                            fontFamily: 'Lexend',
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF2D2A28),
                           ),
                         ),
                       ),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text(
-                          'Sắp xếp',
-                          style: TextStyle(
-                            color: Color(0xFF845143),
-                            fontWeight: FontWeight.bold,
+                      Tooltip(
+                        message: !_hasCustomSort
+                            ? 'Sắp xếp theo thời gian'
+                            : (_isNewestFirst
+                                ? 'Đang hiển thị mới nhất trước (nhấn để đổi)'
+                                : 'Đang hiển thị cũ nhất trước (nhấn để đổi)'),
+                        child: InkWell(
+                          key: const Key('growth-history-sort-button'),
+                          onTap: _records.isEmpty ? null : _toggleSort,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2EAE4),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE7E1DD),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  !_hasCustomSort
+                                      ? Icons.swap_vert_rounded
+                                      : (_isNewestFirst
+                                          ? Icons.arrow_downward_rounded
+                                          : Icons.arrow_upward_rounded),
+                                  size: 14,
+                                  color: const Color(0xFF845143),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  !_hasCustomSort
+                                      ? 'Sắp xếp'
+                                      : (_isNewestFirst ? 'Mới nhất' : 'Cũ nhất'),
+                                  style: const TextStyle(
+                                    fontFamily: 'Lexend',
+                                    color: Color(0xFF845143),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

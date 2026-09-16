@@ -9,6 +9,7 @@ import com.carebridge.backend.content.dto.response.ChecklistProvenanceResponse;
 import com.carebridge.backend.content.dto.response.ChecklistSubstageResponse;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.dto.response.ContentTagResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
@@ -37,6 +38,8 @@ import java.util.stream.Collectors;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import com.carebridge.backend.content.dto.response.ExpertReviewerResponse;
+import com.carebridge.backend.content.service.ExpertReviewerResolver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -44,18 +47,26 @@ import org.springframework.stereotype.Component;
 public class ContentMapper {
 
     private final CommunityTopicRepository communityTopicRepository;
+    private final ExpertReviewerResolver expertReviewerResolver;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private volatile Set<UUID> discoveredRecommendationTagIds;
     private volatile boolean recommendationLookupFailed;
 
     /** Compatibility constructor used by mapper/unit tests without Spring. */
     public ContentMapper() {
-        this(null);
+        this(null, null);
+    }
+
+    public ContentMapper(CommunityTopicRepository communityTopicRepository) {
+        this(communityTopicRepository, null);
     }
 
     @Autowired
-    public ContentMapper(CommunityTopicRepository communityTopicRepository) {
+    public ContentMapper(
+            @Autowired(required = false) CommunityTopicRepository communityTopicRepository,
+            @Autowired(required = false) ExpertReviewerResolver expertReviewerResolver) {
         this.communityTopicRepository = communityTopicRepository;
+        this.expertReviewerResolver = expertReviewerResolver;
     }
 
     private static final Set<java.util.UUID> RECOMMENDATION_TAG_IDS =
@@ -156,6 +167,21 @@ public class ContentMapper {
         Instant updatedAt = item.getUpdatedAt();
         boolean contentStale = updatedAt != null
                 && updatedAt.isBefore(Instant.now().minus(365, ChronoUnit.DAYS));
+        String topicName = null;
+        List<ContentTagResponse> tags = List.of();
+        if (communityTopicRepository != null) {
+            if (item.getTopicId() != null) {
+                topicName = communityTopicRepository.findById(item.getTopicId())
+                        .map(CommunityTopic::getName)
+                        .orElse(null);
+            }
+            if (item.getTagIds() != null && !item.getTagIds().isEmpty()) {
+                tags = communityTopicRepository.findAllById(item.getTagIds()).stream()
+                        .filter(t -> !t.isHidden())
+                        .map(t -> new ContentTagResponse(t.getId(), t.getName(), t.getSlug()))
+                        .toList();
+            }
+        }
         return ContentDetailResponse.builder()
                 .id(item.getId())
                 .type(item.getType())
@@ -164,6 +190,8 @@ public class ContentMapper {
                 .summary(item.getSummary())
                 .stage(item.getStage())
                 .topicId(item.getTopicId())
+                .topicName(topicName)
+                .tags(tags)
                 .eligibleFromWeek(includeRecommendationMetadata ? item.getEligibleFromWeek() : null)
                 .eligibleToWeek(includeRecommendationMetadata ? item.getEligibleToWeek() : null)
                 .recommendationPriority(includeRecommendationMetadata ? item.getRecommendationPriority() : null)
@@ -185,6 +213,9 @@ public class ContentMapper {
                 .assignedAt(item.getAssignedAt())
                 .approvedBy(item.getApprovedBy())
                 .approvedAt(item.getApprovedAt())
+                .reviewer(expertReviewerResolver != null ? expertReviewerResolver.resolve(
+                        item.getApprovedBy(), item.getAssignedExpertId(),
+                        item.getApprovedAt() != null ? item.getApprovedAt() : item.getAssignedAt()) : null)
                 .build();
     }
 

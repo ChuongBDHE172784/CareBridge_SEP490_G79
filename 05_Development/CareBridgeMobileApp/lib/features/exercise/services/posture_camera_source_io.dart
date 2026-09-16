@@ -320,15 +320,33 @@ class PostureCameraSource {
     final rotation = InputImageRotationValue.fromRawValue(sensorOrientation) ??
         InputImageRotation.rotation0deg;
 
-    final format = InputImageFormatValue.fromRawValue(image.format.raw) ??
-        (Platform.isAndroid ? InputImageFormat.nv21 : InputImageFormat.bgra8888);
+    // Android: khai NV21, không đọc image.format.raw.
+    //
+    // Ta đã yêu cầu ImageFormatGroup.nv21 lúc dựng CameraController và nhận đúng
+    // byte NV21, nhưng máy vẫn báo raw = 35 (YUV_420_888). Trước đây chỗ này tin
+    // con số đó, và plugin đưa thẳng nó cho InputImage.fromByteArray — hàm chỉ
+    // nhận NV21 và YV12, nên ML Kit ném NullPointerException ở mọi khung hình:
+    //
+    //   PlatformException(InputImageConverterError,
+    //     NullPointerException ... at mlkit_vision_common.zzmj.<init>)
+    //
+    // Lỗi đó bị nuốt vào debugPrint nên màn hình chỉ đứng ở "Đang nhận diện tư
+    // thế...", không khung xương, không phản hồi, không giọng đọc.
+    final format = Platform.isAndroid
+        ? InputImageFormat.nv21
+        : (InputImageFormatValue.fromRawValue(image.format.raw) ??
+            InputImageFormat.bgra8888);
 
     final plane = image.planes.first;
 
-    // Concatenate bytes for multi-plane image formats on Android if necessary
     Uint8List bytes;
     if (image.planes.length == 1) {
+      // Đúng trường hợp nv21: một mặt phẳng, byte đã ở dạng ML Kit cần.
       bytes = plane.bytes;
+    } else if (Platform.isAndroid) {
+      // Máy không tôn trọng yêu cầu nv21 và trả về YUV_420_888 ba mặt phẳng. Nối
+      // thẳng ba mặt phẳng KHÔNG ra NV21 — NV21 cần Y rồi tới V và U xen kẽ nhau.
+      bytes = _yuv420ToNv21(image);
     } else {
       final allBytes = WriteBuffer();
       for (final p in image.planes) {
@@ -346,6 +364,41 @@ class PostureCameraSource {
         bytesPerRow: plane.bytesPerRow,
       ),
     );
+  }
+
+  /// Dựng NV21 từ ảnh YUV_420_888 ba mặt phẳng.
+  ///
+  /// NV21 là toàn bộ mặt Y, rồi tới mặt màu xen kẽ theo thứ tự V,U. Các mặt màu
+  /// của YUV_420_888 có thể có khoảng đệm giữa các điểm ảnh (pixelStride 2) và
+  /// giữa các hàng (rowStride), nên phải đọc theo bước nhảy chứ không copy khối.
+  static Uint8List _yuv420ToNv21(CameraImage image) {
+    final width = image.width;
+    final height = image.height;
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+
+    final nv21 = Uint8List(width * height + 2 * ((width + 1) ~/ 2) * ((height + 1) ~/ 2));
+
+    var offset = 0;
+    for (var row = 0; row < height; row++) {
+      final start = row * yPlane.bytesPerRow;
+      nv21.setRange(offset, offset + width, yPlane.bytes, start);
+      offset += width;
+    }
+
+    final chromaHeight = (height + 1) ~/ 2;
+    final chromaWidth = (width + 1) ~/ 2;
+    final uvPixelStride = uPlane.bytesPerPixel ?? 1;
+    for (var row = 0; row < chromaHeight; row++) {
+      final uRow = row * uPlane.bytesPerRow;
+      final vRow = row * vPlane.bytesPerRow;
+      for (var col = 0; col < chromaWidth; col++) {
+        nv21[offset++] = vPlane.bytes[vRow + col * uvPixelStride];
+        nv21[offset++] = uPlane.bytes[uRow + col * uvPixelStride];
+      }
+    }
+    return nv21;
   }
 
   Future<void> stop() async {
