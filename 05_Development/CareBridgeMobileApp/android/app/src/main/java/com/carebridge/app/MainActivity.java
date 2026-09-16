@@ -1,5 +1,7 @@
 package com.carebridge.app;
 
+import android.os.Build;
+
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.EventChannel;
@@ -25,6 +27,17 @@ public class MainActivity extends FlutterActivity {
             result.notImplemented();
         });
 
+        new MethodChannel(
+                flutterEngine.getDartExecutor().getBinaryMessenger(),
+                "com.carebridge.app/device"
+        ).setMethodCallHandler((call, result) -> {
+            if ("isEmulator".equals(call.method)) {
+                result.success(isEmulator());
+                return;
+            }
+            result.notImplemented();
+        });
+
         new EventChannel(
                 flutterEngine.getDartExecutor().getBinaryMessenger(),
                 WatchMetricBridge.EVENT_CHANNEL
@@ -39,5 +52,13 @@ public class MainActivity extends FlutterActivity {
                 WatchMetricBridge.setEventSink(null);
             }
         });
+    }
+
+    private static boolean isEmulator() {
+        return "ranchu".equals(Build.HARDWARE)
+                || "goldfish".equals(Build.HARDWARE)
+                || Build.PRODUCT.startsWith("sdk_gphone")
+                || Build.FINGERPRINT.startsWith("generic")
+                || Build.FINGERPRINT.contains("emulator");
     }
 }

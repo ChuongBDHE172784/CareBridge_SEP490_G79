@@ -35,6 +35,36 @@ class _RecordingFacilityService extends CareFacilityService {
     searchCalls++;
     return results;
   }
+
+  @override
+  Future<CareRoute> getRoute({
+    required double fromLatitude,
+    required double fromLongitude,
+    required double toLatitude,
+    required double toLongitude,
+    String transportMode = 'DRIVING',
+  }) async {
+    return const CareRoute(
+      distanceMeters: 500,
+      etaMinutes: 5,
+      durationSeconds: 300,
+      transportMode: 'DRIVING',
+      coordinates: [
+        CareRouteCoordinate(10.76, 106.66),
+        CareRouteCoordinate(10.762, 106.662),
+      ],
+      steps: [
+        CareRouteStep(
+          maneuver: 'straight',
+          roadName: 'Đường Nguyễn Huệ',
+          distanceMeters: 500,
+          durationSeconds: 300,
+          latitude: 10.762,
+          longitude: 106.662,
+        ),
+      ],
+    );
+  }
 }
 
 Position _position({double latitude = 10.76, double longitude = 106.66}) =>
@@ -1134,6 +1164,73 @@ void main() {
     renderer.styleLoadedCallbacks.single();
     await tester.pump();
 
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('navigation starts and stops without throwing exceptions', (
+    tester,
+  ) async {
+    const facility = CareFacility(
+      facilityId: 'facility-1',
+      name: 'Bệnh viện Đa khoa Sài Gòn',
+      facilityType: 'HOSPITAL',
+      latitude: 10.762,
+      longitude: 106.662,
+    );
+    final renderer = _FakeMapRenderer();
+    var syncCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          facilityService: _RecordingFacilityService([facility]),
+          locationConsentProbe: () async => true,
+          permissionService: SafetyPermissionService(
+            locationReader: () async => _position(),
+          ),
+          trackAsiaMapKey: 'test-map-key',
+          mapRenderer: renderer.build,
+          annotationSynchronizer: ({required facilities, required position, route}) async {
+            syncCalls++;
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    renderer.mapCreatedCallbacks.single(null);
+    renderer.styleLoadedCallbacks.single();
+    await tester.pumpAndSettle();
+
+    expect(syncCalls, greaterThan(0));
+
+    // Select the facility
+    await tester.tap(find.text('Bệnh viện Đa khoa Sài Gòn'));
+    await tester.pumpAndSettle();
+
+    // Verify "Bắt đầu dẫn đường" button is present
+    expect(find.byKey(const Key('facility-navigate')), findsOneWidget);
+    expect(find.text('Bắt đầu dẫn đường'), findsOneWidget);
+
+    // Tap "Bắt đầu dẫn đường"
+    await tester.tap(find.byKey(const Key('facility-navigate')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Verify navigation is active
+    expect(find.text('Dừng dẫn đường'), findsOneWidget);
+    expect(find.text('Đang dẫn đường'), findsOneWidget);
+
+    // Tap "Dừng dẫn đường"
+    await tester.ensureVisible(find.byKey(const Key('facility-navigate')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('facility-navigate')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bắt đầu dẫn đường'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

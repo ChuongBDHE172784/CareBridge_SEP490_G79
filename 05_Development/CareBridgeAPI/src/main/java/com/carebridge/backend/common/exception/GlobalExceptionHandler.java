@@ -27,6 +27,7 @@ import com.carebridge.backend.integration.gemini.exception.RagException;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.safety.exception.SafetyException;
 import com.carebridge.backend.triage.exception.TriageException;
+import com.carebridge.backend.map.exception.MapException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -294,6 +295,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(com.carebridge.backend.directchat.exception.DirectChatException.class)
     public ResponseEntity<ErrorResponse> handleDirectChat(
             com.carebridge.backend.directchat.exception.DirectChatException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(MapException.class)
+    public ResponseEntity<ErrorResponse> handleMap(MapException ex, HttpServletRequest request) {
+        logger.warn("Map exception [{}]: {}", ex.getCode(), ex.getMessage());
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
