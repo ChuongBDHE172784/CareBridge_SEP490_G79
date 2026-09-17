@@ -119,6 +119,21 @@ class _FakeRecommendationService extends RecommendationService {
 
   @override
   Future<void> clearDraftFor(String userId) async => events.add('clear-draft');
+
+  @override
+  Future<RecommendationProfileResponse> decline() async {
+    events.add('decline');
+    return const RecommendationProfileResponse(
+      status: RecommendationProfileStatus.declined,
+      requiresAction: false,
+      profileComplete: false,
+      schemaVersion: 1,
+      profileRevision: 1,
+      completedAt: null,
+      profile: null,
+      derived: null,
+    );
+  }
 }
 
 class _ReproductiveHistoryConflictService extends _FakeRecommendationService {
@@ -499,6 +514,110 @@ void main() {
       );
       expect(heightField.controller?.text, '160.0');
       expect(weightField.controller?.text, '55.0');
+    },
+  );
+
+  testWidgets(
+    'saving profile pops back to profile when opened from navigation stack',
+    (tester) async {
+      final service = _FakeRecommendationService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open-recommendation-from-profile'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RecommendationProfileScreen(
+                        service: service,
+                        journeyService: _FakeJourneyService(),
+                        now: () => DateTime(2026, 8, 3),
+                      ),
+                    ),
+                  ),
+                  child: const Text('ProfileScreenOrigin'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open screen from origin
+      await tester.tap(find.byKey(const Key('open-recommendation-from-profile')));
+      await tester.pumpAndSettle();
+      expect(find.text('Hồ sơ nền cá nhân hóa'), findsOneWidget);
+
+      // Agree and continue
+      await tester.tap(find.text('Đồng ý và tiếp tục'));
+      await tester.pumpAndSettle();
+
+      // Skip all 9 questions to reach the review step
+      for (var i = 0; i < 9; i++) {
+        await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+        await tester.pumpAndSettle();
+      }
+
+      expect(find.text('HOÀN TẤT HỒ SƠ'), findsOneWidget);
+      expect(find.text('Lưu hồ sơ'), findsOneWidget);
+
+      // Tap "Lưu hồ sơ"
+      await tester.tap(find.text('Lưu hồ sơ'));
+      await tester.pumpAndSettle();
+
+      // Verify popped back to ProfileScreenOrigin and shows SnackBar
+      expect(find.text('ProfileScreenOrigin'), findsOneWidget);
+      expect(
+        find.text('Đã lưu hồ sơ nền cá nhân hóa thành công'),
+        findsOneWidget,
+      );
+      expect(service.events, contains('put-profile'));
+    },
+  );
+
+  testWidgets(
+    'declining profile pops back to origin when opened from navigation stack',
+    (tester) async {
+      final service = _FakeRecommendationService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open-recommendation-from-profile'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RecommendationProfileScreen(
+                        service: service,
+                        journeyService: _FakeJourneyService(),
+                        now: () => DateTime(2026, 8, 3),
+                      ),
+                    ),
+                  ),
+                  child: const Text('ProfileScreenOrigin'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('open-recommendation-from-profile')));
+      await tester.pumpAndSettle();
+      expect(find.text('Hồ sơ nền cá nhân hóa'), findsOneWidget);
+
+      // Decline
+      await tester.tap(find.text('Tiếp tục không cá nhân hóa'));
+      await tester.pumpAndSettle();
+
+      // Verify popped back to ProfileScreenOrigin
+      expect(find.text('ProfileScreenOrigin'), findsOneWidget);
+      expect(service.events, contains('decline'));
     },
   );
 }

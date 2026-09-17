@@ -19,6 +19,8 @@ import '../../notification/services/notification_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../community/screens/view_content_screen.dart';
+import '../../baby/models/baby_model.dart';
+import '../../baby/services/baby_service.dart';
 import '../../community/models/content_model.dart';
 import '../../community/screens/verified_content_detail_screen.dart';
 import '../../community/services/content_service.dart';
@@ -44,6 +46,10 @@ class MotherHomeScreen extends StatefulWidget {
     this.reminderLoader,
     this.recommendationService,
     this.recommendationLoader,
+    this.babyService,
+    this.babyLoader,
+    this.contentService,
+    this.babyContentLoader,
     this.safetyService,
     this.safetyConfigLoader,
     this.safetyCoordinator,
@@ -55,6 +61,10 @@ class MotherHomeScreen extends StatefulWidget {
   final Future<List<Reminder>> Function()? reminderLoader;
   final RecommendationService? recommendationService;
   final Future<RecommendationContentResponse> Function()? recommendationLoader;
+  final BabyService? babyService;
+  final Future<List<BabyProfile>> Function()? babyLoader;
+  final ContentService? contentService;
+  final Future<List<ContentListItem>> Function()? babyContentLoader;
   final SafetyService? safetyService;
   final Future<SafetyConfig> Function()? safetyConfigLoader;
   final SafetyForegroundServiceCoordinator? safetyCoordinator;
@@ -86,6 +96,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   final _journeyService = JourneyService();
   late final TodayTaskService _todayTaskService;
   late final RecommendationService _recommendationService;
+  late final BabyService _babyService;
+  late final ContentService _contentService;
   late final SafetyService _safetyService;
   late final SafetyForegroundServiceCoordinator _foregroundCoordinator;
   final TodayTasksPanelController _todayTasksController =
@@ -100,6 +112,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   int _recommendationLoadGeneration = 0;
   bool _recommendationLoading = false;
   RecommendationContentResponse? _recommendations;
+  List<BabyProfile> _babies = [];
+  List<RecommendationContentItem> _babyRecommendations = [];
   String? _recommendationError;
   String? _observedAccountId;
   String? _userAvatarUrl;
@@ -113,6 +127,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     _todayTaskService = widget.todayTaskService ?? TodayTaskService.instance;
     _recommendationService =
         widget.recommendationService ?? RecommendationService();
+    _babyService = widget.babyService ?? BabyService();
+    _contentService = widget.contentService ?? ContentService.instance;
     _safetyService = widget.safetyService ?? SafetyService();
     _foregroundCoordinator =
         widget.safetyCoordinator ?? SafetyForegroundServiceCoordinator.instance;
@@ -171,6 +187,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
         _reminders = [];
         _hasUnread = false;
         _recommendations = null;
+        _babies = [];
+        _babyRecommendations = [];
         _recommendationLoading = false;
         _recommendationError = null;
         _loading = true;
@@ -256,9 +274,10 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   }
 
   /// [BƯỚC 1: KIỂM TRA ĐIỀU KIỆN & GỌI API GỢI Ý BÀI VIẾT TỪ FRONTEND]
-  /// 1. Kiểm tra hành trình thai kỳ có đang hoạt động (ACTIVE_PREGNANCY, ACTIVE_POSTPARTUM, PRE_PREGNANCY).
-  /// 2. Gửi request đến Backend qua RecommendationService.getContent(limit: 3) -> Gọi `GET /api/v1/recommendations/content`.
-  /// 3. Cập nhật State `_recommendations` để render danh sách bài viết gợi ý lên Widget trang chủ.
+  /// 1. Tải hồ sơ bé (BabyProfile) và bài viết chăm sóc bé tương ứng (nếu có).
+  /// 2. Kiểm tra hành trình thai kỳ có đang hoạt động (ACTIVE_PREGNANCY, ACTIVE_POSTPARTUM, PRE_PREGNANCY)
+  ///    và gọi RecommendationService.getContent(limit: 10) -> GET /api/v1/recommendations/content.
+  /// 3. Cập nhật State `_recommendations` và `_babyRecommendations` để render danh sách gợi ý.
   Future<void> _loadRecommendations() async {
     final generation = ++_recommendationLoadGeneration;
     final accountId = AuthState.instance.userId;
@@ -269,60 +288,185 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           _recommendationLoading = false;
           _recommendationError = null;
           _recommendations = null;
+          _babies = [];
+          _babyRecommendations = [];
         });
       }
       return;
     }
     if (mounted && generation == _recommendationLoadGeneration) {
       setState(() {
-        // Giữ trạng thái loading gợi ý độc lập với Dashboard chính
         _recommendationLoading = true;
         _recommendationError = null;
       });
     }
+
+    // (1) Lấy thông tin Dashboard hành trình hiện tại
+    JourneyDashboard? dashboard;
     try {
-      // (1) Lấy thông tin Dashboard hành trình hiện tại để xác định tính hợp lệ
-      final dashboard =
+      dashboard =
           _dashboard ??
           await (widget.dashboardLoader?.call() ??
               _journeyService.getDashboard());
-      if (!mounted || generation != _recommendationLoadGeneration) return;
-      if (accountId != AuthState.instance.userId) return;
-
-      // (2) Chỉ gọi API gợi ý khi mẹ đang ở giai đoạn thai kỳ hợp lệ (PRE_PREGNANCY, PREGNANCY, POSTPARTUM)
-      if (!_isRecommendationEligibleDashboard(dashboard)) {
-        _clearRecommendationState(generation);
-        return;
-      }
     } catch (_) {
-      // Fail closed: Nếu không lấy được dashboard hành trình, không gọi API gợi ý
+      dashboard = null;
+    }
+
+    // (2) Lấy danh sách hồ sơ bé của tài khoản
+    List<BabyProfile> babies = [];
+    try {
+      babies = await (widget.babyLoader?.call() ??
+          _babyService.listBabyProfiles());
+    } catch (_) {
+      babies = [];
+    }
+
+    // (3) Tải bài viết chăm sóc bé nếu tài khoản có hồ sơ bé
+    List<RecommendationContentItem> babyRecs = [];
+    if (babies.isNotEmpty) {
+      try {
+        final activeBaby = babies.first;
+        final rawContent = await (widget.babyContentLoader?.call() ??
+            _loadBabyContentFromApi());
+        babyRecs = _rankBabyRecommendations(rawContent, activeBaby);
+      } catch (_) {
+        babyRecs = [];
+      }
+    }
+
+    // (4) Chỉ gọi API gợi ý cho mẹ khi mẹ đang ở giai đoạn thai kỳ/sau sinh hợp lệ
+    RecommendationContentResponse? maternalResponse;
+    String? maternalError;
+    final isMaternalEligible =
+        dashboard != null && _isRecommendationEligibleDashboard(dashboard);
+
+    if (isMaternalEligible) {
+      try {
+        maternalResponse =
+            await (widget.recommendationLoader?.call() ??
+                _recommendationService.getContent(limit: 10));
+      } catch (_) {
+        if (babies.isEmpty) {
+          maternalError = 'Chưa tải được nội dung phù hợp. Vui lòng thử lại.';
+        }
+      }
+    }
+
+    if (!mounted || generation != _recommendationLoadGeneration) return;
+    if (accountId != null && accountId != AuthState.instance.userId) return;
+
+    if (!isMaternalEligible && babies.isEmpty) {
       _clearRecommendationState(generation);
       return;
     }
-    try {
-      // (3) Gọi Service gửi HTTP GET /api/v1/recommendations/content
-      final response =
-          await (widget.recommendationLoader?.call() ??
-              _recommendationService.getContent(limit: 10));
-      if (!mounted || generation != _recommendationLoadGeneration) return;
-      if (accountId != null && accountId != AuthState.instance.userId) return;
 
-      // (4) Cập nhật State khi nhận phản hồi thành công từ Backend
-      setState(() {
-        _recommendations = response;
-        _recommendationLoading = false;
-        _recommendationError = null;
-      });
-    } catch (_) {
-      if (!mounted || generation != _recommendationLoadGeneration) return;
-      if (accountId != null && accountId != AuthState.instance.userId) return;
-      // (5) Xử lý State khi gặp lỗi kết nối hoặc API thất bại
-      setState(() {
-        _recommendationLoading = false;
-        _recommendationError =
-            'Chưa tải được nội dung phù hợp. Vui lòng thử lại.';
-      });
+    setState(() {
+      _recommendations = maternalResponse;
+      _babies = babies;
+      _babyRecommendations = babyRecs;
+      _recommendationLoading = false;
+      _recommendationError = maternalError;
+    });
+  }
+
+  Future<List<ContentListItem>> _loadBabyContentFromApi() async {
+    final results = <ContentListItem>[];
+    final seenIds = <String>{};
+    try {
+      final babyCareItems = await _contentService.getContent(
+        stage: 'BABY_CARE',
+        type: 'ARTICLE',
+        size: 20,
+      );
+      for (final item in babyCareItems) {
+        if (seenIds.add(item.id)) results.add(item);
+      }
+    } catch (_) {}
+
+    try {
+      final postpartumItems = await _contentService.getContent(
+        stage: 'POSTPARTUM',
+        type: 'ARTICLE',
+        size: 30,
+      );
+      for (final item in postpartumItems) {
+        if (seenIds.add(item.id)) results.add(item);
+      }
+    } catch (_) {}
+
+    return results;
+  }
+
+  List<RecommendationContentItem> _rankBabyRecommendations(
+    List<ContentListItem> items,
+    BabyProfile baby,
+  ) {
+    final babyItems = items.where((item) => _isBabyCareContent(item)).toList();
+    final days = DateTime.now().difference(baby.birthDate).inDays;
+    final isNewborn = days <= 30;
+
+    babyItems.sort((a, b) {
+      if (isNewborn) {
+        final aNewborn =
+            a.title.toLowerCase().contains('sơ sinh') ||
+            (a.summary?.toLowerCase().contains('sơ sinh') ?? false);
+        final bNewborn =
+            b.title.toLowerCase().contains('sơ sinh') ||
+            (b.summary?.toLowerCase().contains('sơ sinh') ?? false);
+        if (aNewborn && !bNewborn) return -1;
+        if (!aNewborn && bNewborn) return 1;
+      }
+      return 0;
+    });
+
+    return babyItems.take(10).toList().asMap().entries.map((entry) {
+      final index = entry.key;
+      final item = entry.value;
+      final isDirectNewborn =
+          isNewborn &&
+          (item.title.toLowerCase().contains('sơ sinh') ||
+              (item.summary?.toLowerCase().contains('sơ sinh') ?? false));
+
+      final reasonLabel = isDirectNewborn
+          ? 'Phù hợp cho ${baby.nickname} (${baby.ageLabel})'
+          : 'Hữu ích cho sự phát triển của ${baby.nickname}';
+
+      return RecommendationContentItem(
+        rank: index + 1,
+        selectionType: RecommendationSelectionType.targeted,
+        reasonCode: 'BABY_CARE_CONTEXT',
+        reasonLabel: reasonLabel,
+        id: item.id,
+        title: item.title,
+        summary: item.summary,
+        stage: item.stage.isNotEmpty ? item.stage : 'BABY_CARE',
+      );
+    }).toList();
+  }
+
+  bool _isBabyCareContent(ContentListItem item) {
+    if (item.stage == 'BABY_CARE') return true;
+    final title = item.title.toLowerCase();
+    final summary = (item.summary ?? '').toLowerCase();
+
+    if (title.contains('3 tình trạng') ||
+        title.contains('sau sinh thường') ||
+        title.contains('hỗ trợ trong giai đoạn')) {
+      return false;
     }
+
+    const babyKeywords = [
+      'trẻ',
+      'sơ sinh',
+      'bé',
+      'bú',
+      'tắm',
+      'ngủ',
+      'sữa mẹ',
+      'phát triển của trẻ',
+      'nuôi con',
+    ];
+    return babyKeywords.any((k) => title.contains(k) || summary.contains(k));
   }
 
   /// Kiểm tra Dashboard người mẹ có đủ điều kiện nhận gợi ý cá nhân hóa không
@@ -343,6 +487,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       _recommendationLoading = false;
       _recommendationError = null;
       _recommendations = null;
+      _babies = [];
+      _babyRecommendations = [];
     });
   }
 
@@ -443,31 +589,34 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             SliverToBoxAdapter(child: _buildTopBar()),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  if (widget.recoveryNotice != null) ...[
-                    _buildContinuationRecoveryNotice(),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.recoveryNotice != null) ...[
+                      _buildContinuationRecoveryNotice(),
+                      const SizedBox(height: 20),
+                    ],
+                    _buildGreeting(),
                     const SizedBox(height: 20),
+                    if (_loading)
+                      _buildDashboardLoadingState()
+                    else ...[
+                      _buildJourneyCard(),
+                      const SizedBox(height: 26),
+                      _buildDiscoverSection(),
+                      const SizedBox(height: 26),
+                      _buildAlertCard(),
+                      const SizedBox(height: 26),
+                      _buildQuickActions(),
+                      const SizedBox(height: 26),
+                    ],
+                    _buildTasksSection(),
+                    const SizedBox(height: 26),
+                    _buildRecommendationSection(),
+                    const SizedBox(height: 12),
                   ],
-                  _buildGreeting(),
-                  const SizedBox(height: 20),
-                  if (_loading)
-                    _buildDashboardLoadingState()
-                  else ...[
-                    _buildJourneyCard(),
-                    const SizedBox(height: 26),
-                    _buildDiscoverSection(),
-                    const SizedBox(height: 26),
-                    _buildAlertCard(),
-                    const SizedBox(height: 26),
-                    _buildQuickActions(),
-                    const SizedBox(height: 26),
-                  ],
-                  _buildTasksSection(),
-                  const SizedBox(height: 26),
-                  _buildRecommendationSection(),
-                  const SizedBox(height: 12),
-                ]),
+                ),
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 108)),
@@ -1688,47 +1837,70 @@ class _SkeletonLine extends StatelessWidget {
 
 extension _MotherHomeRecommendationView on _MotherHomeScreenState {
   /// [BƯỚC 5: RENDER GIAO DIỆN RECOMMENDATION WIDGET TRÊN HOME SCREEN]
-  /// Hiển thị tiêu đề theo tuần thai/giai đoạn, thông báo trạng thái độ phủ (Coverage Notice)
-  /// và danh sách các Card bài viết gợi ý.
+  /// Hiển thị danh sách các bài viết gợi ý tổng hợp cho mẹ và bé,
+  /// được sắp xếp theo mức độ ưu tiên lâm sàng và chăm sóc thiết yếu.
   Widget _buildRecommendationSection() {
     final response = _recommendations;
+    final hasBaby = _babies.isNotEmpty && _babyRecommendations.isNotEmpty;
+
     // (1) Trạng thái đang tải lần đầu: hiển thị Skeleton Loading
-    if (response == null && _recommendationLoading) {
+    if (response == null && !hasBaby && _recommendationLoading) {
       return const _RecommendationLoadingState();
     }
     // (2) Trạng thái lỗi tải dữ liệu: hiển thị nút thử lại
-    if (response == null && _recommendationError != null) {
+    if (response == null && !hasBaby && _recommendationError != null) {
       return _RecommendationErrorState(
         message: _recommendationError!,
         onRetry: _loadRecommendations,
       );
     }
-    if (response == null) return const SizedBox.shrink();
-    final items = response.items;
-    final shouldOfferPersonalization = switch (response.profileStatus) {
-      RecommendationProfileStatus.notStarted ||
-      RecommendationProfileStatus.declined ||
-      RecommendationProfileStatus.revoked => true,
-      _ => false,
-    };
-    // (3) Xác định tiêu đề động theo tuần thai hoặc giai đoạn hiện tại của mẹ
-    final title = switch (response.stage) {
-      'PRE_PREGNANCY' => 'Gợi ý cho chuẩn bị mang thai',
-      'PREGNANCY' when response.pregnancyWeek != null =>
-        'Gợi ý dành riêng cho tuần ${response.pregnancyWeek}',
-      'PREGNANCY' => 'Gợi ý cho thai kỳ',
-      'POSTPARTUM' => 'Gợi ý cho sau sinh',
-      'BABY_CARE' => 'Gợi ý chăm sóc bé',
-      _ => 'Gợi ý dành cho bạn',
-    };
+    if (response == null && !hasBaby) return const SizedBox.shrink();
+
+    final activeBaby = _babies.firstOrNull;
+    final items = _getUnifiedPrioritizedRecommendations();
+    final hasBoth = response != null && hasBaby;
+
+    final String sectionTitle;
+    final String sectionSubtitle;
+
+    if (hasBoth) {
+      sectionTitle = 'Bài viết gợi ý cho mẹ và bé';
+      sectionSubtitle =
+          'Nội dung chăm sóc phù hợp được sắp xếp theo mức độ ưu tiên';
+    } else if (response != null) {
+      sectionTitle = switch (response.stage) {
+        'PRE_PREGNANCY' => 'Gợi ý cho chuẩn bị mang thai',
+        'PREGNANCY' when response.pregnancyWeek != null =>
+          'Gợi ý dành riêng cho tuần ${response.pregnancyWeek}',
+        'PREGNANCY' => 'Gợi ý cho thai kỳ',
+        'POSTPARTUM' => 'Gợi ý cho sau sinh',
+        'BABY_CARE' => 'Gợi ý chăm sóc bé',
+        _ => 'Gợi ý dành cho bạn',
+      };
+      sectionSubtitle = 'Nội dung được chọn theo giai đoạn hiện tại của mẹ';
+    } else {
+      sectionTitle = 'Gợi ý chăm sóc bé';
+      sectionSubtitle = activeBaby != null
+          ? 'Nội dung chăm sóc phù hợp cho bé ${activeBaby.ageLabel}'
+          : 'Nội dung gợi ý chăm sóc bé';
+    }
+
+    final shouldOfferPersonalization = response != null &&
+        switch (response.profileStatus) {
+          RecommendationProfileStatus.notStarted ||
+          RecommendationProfileStatus.declined ||
+          RecommendationProfileStatus.revoked => true,
+          _ => false,
+        };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: _MotherHomeScreenState._sectionTitleStyle),
+        Text(sectionTitle, style: _MotherHomeScreenState._sectionTitleStyle),
         const SizedBox(height: 5),
-        const Text(
-          'Nội dung được chọn theo giai đoạn hiện tại của mẹ',
-          style: TextStyle(
+        Text(
+          sectionSubtitle,
+          style: const TextStyle(
             fontFamily: 'Lexend',
             fontSize: 13,
             color: _MotherHomeScreenState._onSurfaceVariant,
@@ -1748,11 +1920,11 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
             ),
           ),
         ],
-        // (4) Nhắc nhở cập nhật hồ sơ cá nhân hóa nếu trạng thái là REVIEW_REQUIRED hoặc RECONSENT_REQUIRED
-        if (response.profileStatus ==
-                RecommendationProfileStatus.reviewRequired ||
-            response.profileStatus ==
-                RecommendationProfileStatus.reconsentRequired) ...[
+        if (response != null &&
+            (response.profileStatus ==
+                    RecommendationProfileStatus.reviewRequired ||
+                response.profileStatus ==
+                    RecommendationProfileStatus.reconsentRequired)) ...[
           const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerLeft,
@@ -1766,6 +1938,27 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
             ),
           ),
         ],
+        if (response != null && response.selectionMode == 'FALLBACK_ONLY')
+          const _RecommendationCoverageNotice(
+            key: Key('mother-home-recommendation-fallback-only'),
+            message: 'Đây là nội dung nền an toàn cho giai đoạn hiện tại.',
+          ),
+        if (response != null && response.coverageStatus == 'PARTIAL')
+          _RecommendationCoverageNotice(
+            key: const Key('mother-home-recommendation-partial'),
+            message:
+                'Hiện có một số nội dung phù hợp. Bạn có thể xem thêm trong thư viện.',
+            onBrowse: () => context.push('/content'),
+          ),
+        if (response != null &&
+            response.coverageStatus == 'EMPTY' &&
+            _babyRecommendations.isEmpty)
+          _RecommendationCoverageNotice(
+            key: const Key('mother-home-recommendation-empty-coverage'),
+            message:
+                'Chưa có bài viết phù hợp; hãy xem toàn bộ thư viện nội dung.',
+            onBrowse: () => context.push('/content'),
+          ),
         if (_recommendationLoading) ...[
           const SizedBox(height: 8),
           const LinearProgressIndicator(
@@ -1782,35 +1975,81 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
             onRetry: _loadRecommendations,
           ),
         ],
-        // (5) Thông báo trạng thái độ phủ bài viết (Coverage Notices)
-        if (response.selectionMode == 'FALLBACK_ONLY')
-          const _RecommendationCoverageNotice(
-            key: Key('mother-home-recommendation-fallback-only'),
-            message: 'Đây là nội dung nền an toàn cho giai đoạn hiện tại.',
-          ),
-        if (response.coverageStatus == 'PARTIAL')
+        const SizedBox(height: 10),
+        if (items.isNotEmpty)
+          ...items.map(_buildRecommendationCard)
+        else
           _RecommendationCoverageNotice(
-            key: const Key('mother-home-recommendation-partial'),
-            message:
-                'Hiện có một số nội dung phù hợp. Bạn có thể xem thêm trong thư viện.',
-            onBrowse: () => context.push('/content'),
-          ),
-        if (response.coverageStatus == 'EMPTY')
-          _RecommendationCoverageNotice(
-            key: const Key('mother-home-recommendation-empty-coverage'),
+            key: const Key('mother-home-recommendation-empty-all'),
             message:
                 'Chưa có bài viết phù hợp; hãy xem toàn bộ thư viện nội dung.',
             onBrowse: () => context.push('/content'),
           ),
-        const SizedBox(height: 14),
-        // (6) Render danh sách từng Card bài viết gợi ý
-        if (items.isNotEmpty) ...items.map(_buildRecommendationCard),
       ],
     );
   }
 
+  List<RecommendationContentItem> _getUnifiedPrioritizedRecommendations() {
+    final maternalItems =
+        _recommendations?.items ?? const <RecommendationContentItem>[];
+    final babyItems = _babyRecommendations;
+    final activeBaby = _babies.firstOrNull;
+
+    if (babyItems.isEmpty) return maternalItems;
+    if (maternalItems.isEmpty) return babyItems;
+
+    final days = activeBaby != null
+        ? DateTime.now().difference(activeBaby.birthDate).inDays
+        : 999;
+    final isNewborn = days <= 30;
+
+    int calculatePriority(RecommendationContentItem item) {
+      if (item.reasonCode == 'BABY_CARE_CONTEXT') {
+        final title = item.title.toLowerCase();
+        final summary = (item.summary ?? '').toLowerCase();
+        // Priority 10: Chăm sóc trẻ sơ sinh & dinh dưỡng bú sữa cấp thiết
+        if (isNewborn &&
+            (title.contains('bú') ||
+                title.contains('sơ sinh') ||
+                summary.contains('bú'))) {
+          return 10;
+        }
+        // Priority 20: Tắm bé, vệ sinh, giấc ngủ an toàn
+        if (isNewborn &&
+            (title.contains('tắm') ||
+                title.contains('ngủ') ||
+                summary.contains('tắm'))) {
+          return 20;
+        }
+        // Priority 30: Mốc phát triển & vận động của bé
+        return 30;
+      } else {
+        // Maternal items:
+        // Priority 15: Hướng dẫn theo tuần thai mục tiêu
+        if (item.selectionType == RecommendationSelectionType.targeted ||
+            item.rank <= 2) {
+          return 15;
+        }
+        // Priority 25: Hướng dẫn giai đoạn thai kỳ (tam cá nguyệt, dinh dưỡng)
+        return 25;
+      }
+    }
+
+    final combined = <RecommendationContentItem>[...babyItems, ...maternalItems];
+    combined.sort((a, b) {
+      final pA = calculatePriority(a);
+      final pB = calculatePriority(b);
+      if (pA != pB) return pA.compareTo(pB);
+      return a.rank.compareTo(b.rank);
+    });
+
+    return combined;
+  }
+
   /// Render Card bài viết gợi ý đơn lẻ kèm tiêu đề, tóm tắt và thông điệp giải thích lý do gợi ý
   Widget _buildRecommendationCard(RecommendationContentItem item) {
+    final isBabyItem = item.reasonCode == 'BABY_CARE_CONTEXT';
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Semantics(
@@ -1835,9 +2074,13 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.menu_book_outlined,
-                    color: _MotherHomeScreenState._primary,
+                  Icon(
+                    isBabyItem
+                        ? Icons.child_care_rounded
+                        : Icons.menu_book_outlined,
+                    color: isBabyItem
+                        ? const Color(0xFFD97757)
+                        : _MotherHomeScreenState._primary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1870,10 +2113,12 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
                         const SizedBox(height: 8),
                         Text(
                           item.reasonLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
-                            color: _MotherHomeScreenState._primary,
+                            color: isBabyItem
+                                ? const Color(0xFFD97757)
+                                : _MotherHomeScreenState._primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

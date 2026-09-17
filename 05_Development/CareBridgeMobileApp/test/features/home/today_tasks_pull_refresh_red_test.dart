@@ -108,4 +108,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(backend.getCount, beforeRefresh + 1);
   });
+
+  testWidgets(
+    'Mother Home scrolling down to the bottom does not re-fetch Today tasks',
+    (tester) async {
+      final backend = StatefulTodayBackend();
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MotherHomeScreen(
+            todayTaskService: backend.service,
+            dashboardLoader: () async => _dashboard(),
+            reminderLoader: () async => const [],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final initialCount = backend.getCount;
+      expect(initialCount, greaterThanOrEqualTo(1));
+
+      // Scroll down to the bottom of the page
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -2000));
+      await tester.pumpAndSettle();
+
+      // Scroll back up
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 2000));
+      await tester.pumpAndSettle();
+
+      // Confirm that the task count did not increase (no re-fetch occurred)
+      expect(backend.getCount, equals(initialCount));
+    },
+  );
 }
+

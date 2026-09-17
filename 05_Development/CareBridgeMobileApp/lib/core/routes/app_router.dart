@@ -389,9 +389,22 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/recommendation-profile',
-      builder: (context, state) => RecommendationProfileScreen(
-        journeyStage: state.extra is String ? state.extra as String : null,
-      ),
+      builder: (context, state) {
+        String? journeyStage;
+        String? returnPath;
+        if (state.extra is String) {
+          journeyStage = state.extra as String;
+        } else if (state.extra is Map) {
+          final extraMap = state.extra as Map;
+          journeyStage = extraMap['journeyStage'] as String?;
+          returnPath = extraMap['returnPath'] as String?;
+        }
+        returnPath ??= state.uri.queryParameters['returnPath'];
+        return RecommendationProfileScreen(
+          journeyStage: journeyStage,
+          returnPath: returnPath,
+        );
+      },
     ),
     GoRoute(
       path: '/',

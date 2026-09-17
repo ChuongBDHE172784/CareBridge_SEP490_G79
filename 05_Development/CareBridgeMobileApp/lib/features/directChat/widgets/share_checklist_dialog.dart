@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../baby/services/baby_service.dart';
+import '../../checklist/models/checklist_roadmap_model.dart';
+import '../../checklist/models/user_checklist_item_model.dart';
 import '../../checklist/services/user_checklist_service.dart';
 import '../../checklist/services/checklist_roadmap_service.dart';
 import '../../reminder/models/today_task_model.dart';
@@ -7,9 +10,23 @@ import '../../journey/services/journey_service.dart';
 import 'checklist_message_card.dart';
 
 class ShareChecklistDialog extends StatefulWidget {
-  const ShareChecklistDialog({super.key});
+  const ShareChecklistDialog({
+    super.key,
+    this.initialStage,
+    this.initialGestationalWeek,
+    this.initialBabyName,
+  });
 
-  static Future<ChecklistShareData?> show(BuildContext context) {
+  final String? initialStage;
+  final int? initialGestationalWeek;
+  final String? initialBabyName;
+
+  static Future<ChecklistShareData?> show(
+    BuildContext context, {
+    String? initialStage,
+    int? initialGestationalWeek,
+    String? initialBabyName,
+  }) {
     return showModalBottomSheet<ChecklistShareData>(
       context: context,
       isScrollControlled: true,
@@ -17,7 +34,11 @@ class ShareChecklistDialog extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => const ShareChecklistDialog(),
+      builder: (ctx) => ShareChecklistDialog(
+        initialStage: initialStage,
+        initialGestationalWeek: initialGestationalWeek,
+        initialBabyName: initialBabyName,
+      ),
     );
   }
 
@@ -34,6 +55,8 @@ class _ChecklistShareItem {
   final String section; // 'HISTORY', 'CURRENT', 'FUTURE'
   final String origin; // 'SYSTEM' | 'USER' | 'EXPERT'
   final String createdBy;
+  final bool isBaby;
+  final String? babyLabel;
 
   _ChecklistShareItem({
     required this.id,
@@ -44,6 +67,8 @@ class _ChecklistShareItem {
     required this.section,
     this.origin = 'SYSTEM',
     this.createdBy = 'SYSTEM',
+    this.isBaby = false,
+    this.babyLabel,
   });
 
   bool get isExpertCustom => origin == 'EXPERT' || createdBy == 'EXPERT';
@@ -72,6 +97,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
   int? _gestationalWeek;
   String? _journeyId;
   String _statusFilter = 'ALL'; // ALL, COMPLETED, PENDING
+  String _targetFilter = 'ALL'; // ALL, MOTHER, BABY
 
   List<_ChecklistShareItem> _historyItems = [];
   List<_ChecklistShareItem> _currentItems = [];
@@ -92,35 +118,126 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
     super.dispose();
   }
 
+  bool _isBabyRoadmapTask(ChecklistRoadmapTask t) {
+    final lowerId = t.id.toLowerCase();
+    final lowerCat = t.category.toLowerCase();
+    return lowerId.startsWith('baby_') ||
+        lowerCat.contains('bé') ||
+        lowerCat.contains('baby') ||
+        lowerCat == 'chăm sóc em bé';
+  }
+
+  String _formatBabyMilestoneTime(ChecklistRoadmapTask t, String defaultLabel) {
+    final id = t.id.toUpperCase();
+    if (id.contains('0_28D')) return 'Bé · Sơ sinh (0–28 ngày)';
+    if (id.contains('1_2M')) return 'Bé · 1–2 tháng';
+    if (id.contains('2_3M')) return 'Bé · 2–3 tháng';
+    if (id.contains('4_6M')) return 'Bé · 4–6 tháng';
+    if (id.contains('7_9M')) return 'Bé · 7–9 tháng';
+    if (id.contains('10_12M')) return 'Bé · 10–12 tháng';
+    if (id.contains('12M')) return 'Bé · 1 tuổi';
+    if (id.contains('13_18M')) return 'Bé · 13–18 tháng';
+    if (id.contains('19_24M')) return 'Bé · 19–24 tháng';
+    return defaultLabel;
+  }
+
+  bool _isBabyTodayTask(TodayTask t) {
+    if (t.careContextType?.toUpperCase() == 'JOURNEY' ||
+        t.target == TodayTaskTarget.mother ||
+        t.stage == TodayChecklistStage.pregnancy ||
+        t.stage == TodayChecklistStage.prePregnancy) {
+      return false;
+    }
+    if (t.stage == TodayChecklistStage.babyCare ||
+        t.target == TodayTaskTarget.baby ||
+        t.careContextType?.toUpperCase() == 'BABY') {
+      return true;
+    }
+    final label = (t.careContextLabel ?? '').trim().toLowerCase();
+    if (label.contains('mang thai') ||
+        label.contains('thai kỳ') ||
+        label.contains('chuẩn bị') ||
+        label.contains('mẹ')) {
+      return false;
+    }
+    final title = t.title.toLowerCase();
+    return title.contains('sơ sinh') ||
+        title.contains('chăm bé') ||
+        title.contains('em bé') ||
+        title.contains('trẻ sơ sinh');
+  }
+
   Future<void> _loadAllChecklistData() async {
     int currentWk = 1;
-    try {
-      final dashboard = await JourneyService().getDashboard();
-      _journeyId = dashboard.journeyId;
-      final rawStage = (dashboard.journeyType ?? '').toUpperCase();
-      if (dashboard.isPrePregnancy || rawStage == 'PRE_PREGNANCY') {
-        _stage = 'PRE_PREGNANCY';
+    if (widget.initialStage != null) {
+      _stage = widget.initialStage!.toUpperCase();
+      if (_stage == 'PRE_PREGNANCY') {
         _stageLabel = 'Chuẩn bị mang thai';
         _gestationalWeek = null;
         currentWk = 1;
-      } else if (dashboard.isPostpartum || rawStage == 'POSTPARTUM') {
-        _stage = 'POSTPARTUM';
-        _stageLabel = 'Sau sinh';
+      } else if (_stage == 'BABY_CARE') {
+        _stageLabel = 'Chăm sóc bé';
+        _gestationalWeek = null;
+        currentWk = 1;
+      } else if (_stage == 'POSTPARTUM') {
+        _stageLabel = 'Sau sinh & Chăm bé';
         _gestationalWeek = null;
         currentWk = 1;
       } else {
         _stage = 'PREGNANCY';
-        _gestationalWeek = dashboard.effectivePregnancyWeek ??
-            dashboard.completedGestationalWeek ??
-            12;
+        _gestationalWeek = widget.initialGestationalWeek ?? 12;
         _stageLabel = 'Tuần thai thứ $_gestationalWeek';
         currentWk = _gestationalWeek ?? 12;
       }
-    } catch (_) {
-      _stage = 'PRE_PREGNANCY';
-      _stageLabel = 'Chuẩn bị mang thai';
-      _gestationalWeek = null;
-      currentWk = 1;
+    } else {
+      try {
+        final dashboard = await JourneyService().getDashboard();
+        _journeyId = dashboard.journeyId;
+        final rawStage = (dashboard.journeyType ?? '').toUpperCase();
+        final rawStatus = (dashboard.status ?? '').toUpperCase();
+        if (dashboard.isPrePregnancy || rawStage == 'PRE_PREGNANCY') {
+          _stage = 'PRE_PREGNANCY';
+          _stageLabel = 'Chuẩn bị mang thai';
+          _gestationalWeek = null;
+          currentWk = 1;
+        } else if (rawStage == 'BABY_CARE' || rawStatus == 'BABY_CARE') {
+          _stage = 'BABY_CARE';
+          _stageLabel = 'Chăm sóc bé';
+          _gestationalWeek = null;
+          currentWk = 1;
+        } else if (dashboard.isPostpartum || rawStage == 'POSTPARTUM' || rawStatus == 'ACTIVE_POSTPARTUM') {
+          _stage = 'POSTPARTUM';
+          _stageLabel = 'Sau sinh & Chăm bé';
+          _gestationalWeek = null;
+          currentWk = 1;
+        } else {
+          _stage = 'PREGNANCY';
+          _gestationalWeek = dashboard.effectivePregnancyWeek ??
+              dashboard.completedGestationalWeek ??
+              12;
+          _stageLabel = 'Tuần thai thứ $_gestationalWeek';
+          currentWk = _gestationalWeek ?? 12;
+        }
+      } catch (_) {
+        _stage = 'PRE_PREGNANCY';
+        _stageLabel = 'Chuẩn bị mang thai';
+        _gestationalWeek = null;
+        currentWk = 1;
+      }
+    }
+
+    bool hasBaby = _stage == 'BABY_CARE' ||
+        _stage == 'POSTPARTUM' ||
+        widget.initialBabyName != null;
+    String? primaryBabyName = widget.initialBabyName;
+    if (primaryBabyName == null) {
+      try {
+        final babies = await BabyService().listBabyProfiles();
+        if (babies.isNotEmpty) {
+          hasBaby = true;
+          primaryBabyName = babies.first.nickname;
+        }
+      } catch (_) {}
     }
 
     // 1. Load categorized roadmap tasks for history and future (Gợi ý CareBridge / System templates)
@@ -142,10 +259,14 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                     ? 'Đã chuẩn bị'
                     : (_stage == 'POSTPARTUM'
                         ? 'Đã thực hiện'
-                        : 'Tuần ${t.dueWeek ?? (currentWk - 4)}'),
+                        : (_stage == 'BABY_CARE'
+                            ? _formatBabyMilestoneTime(t, 'Đã hoàn thành')
+                            : 'Tuần ${t.dueWeek ?? (currentWk - 4)}')),
                 section: 'HISTORY',
                 origin: 'SYSTEM',
                 createdBy: 'SYSTEM',
+                isBaby: _stage == 'BABY_CARE' || _isBabyRoadmapTask(t),
+                babyLabel: (_stage == 'BABY_CARE' || _isBabyRoadmapTask(t)) ? primaryBabyName : null,
               ))
           .toList();
 
@@ -159,10 +280,14 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                     ? 'Chuẩn bị mang thai'
                     : (_stage == 'POSTPARTUM'
                         ? 'Sau sinh'
-                        : 'Tuần $currentWk (Hiện tại)'),
+                        : (_stage == 'BABY_CARE'
+                            ? _formatBabyMilestoneTime(t, 'Chăm bé (Hiện tại)')
+                            : 'Tuần $currentWk (Hiện tại)')),
                 section: 'CURRENT',
                 origin: 'SYSTEM',
                 createdBy: 'SYSTEM',
+                isBaby: _stage == 'BABY_CARE' || _isBabyRoadmapTask(t),
+                babyLabel: (_stage == 'BABY_CARE' || _isBabyRoadmapTask(t)) ? primaryBabyName : null,
               ))
           .toList();
 
@@ -176,12 +301,73 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                     ? 'Kế hoạch tiếp theo'
                     : (_stage == 'POSTPARTUM'
                         ? 'Kế hoạch tiếp theo'
-                        : 'Tuần ${t.dueWeek ?? (currentWk + 4)} (Tương lai)'),
+                        : (_stage == 'BABY_CARE'
+                            ? _formatBabyMilestoneTime(t, 'Kế hoạch tiếp theo')
+                            : 'Tuần ${t.dueWeek ?? (currentWk + 4)} (Tương lai)')),
                 section: 'FUTURE',
                 origin: 'SYSTEM',
                 createdBy: 'SYSTEM',
+                isBaby: _stage == 'BABY_CARE' || _isBabyRoadmapTask(t),
+                babyLabel: (_stage == 'BABY_CARE' || _isBabyRoadmapTask(t)) ? primaryBabyName : null,
               ))
           .toList();
+
+      // Nếu mẹ ở giai đoạn sau sinh hoặc có hồ sơ em bé, tải thêm mốc chăm sóc bé BABY_CARE
+      if (hasBaby && _stage != 'BABY_CARE') {
+        try {
+          final babyCategorized = await ChecklistRoadmapService.instance
+              .loadCategorizedTasks(currentWeek: 1, stage: 'BABY_CARE');
+
+          final babyHist = babyCategorized['history'] ?? [];
+          final babyCurr = babyCategorized['current'] ?? [];
+          final babyFut = babyCategorized['future'] ?? [];
+
+          for (final t in babyHist) {
+            _historyItems.add(_ChecklistShareItem(
+              id: t.id,
+              text: t.title,
+              completed: true,
+              category: t.category.isNotEmpty ? t.category : 'Chăm sóc bé',
+              timeLabel: _formatBabyMilestoneTime(t, 'Đã hoàn thành'),
+              section: 'HISTORY',
+              origin: 'SYSTEM',
+              createdBy: 'SYSTEM',
+              isBaby: true,
+              babyLabel: primaryBabyName,
+            ));
+          }
+
+          for (final t in babyCurr) {
+            _currentItems.add(_ChecklistShareItem(
+              id: t.id,
+              text: t.title,
+              completed: t.completed,
+              category: t.category.isNotEmpty ? t.category : 'Chăm sóc bé',
+              timeLabel: _formatBabyMilestoneTime(t, 'Bé · Sơ sinh (0–28 ngày)'),
+              section: 'CURRENT',
+              origin: 'SYSTEM',
+              createdBy: 'SYSTEM',
+              isBaby: true,
+              babyLabel: primaryBabyName,
+            ));
+          }
+
+          for (final t in babyFut) {
+            _futureItems.add(_ChecklistShareItem(
+              id: t.id,
+              text: t.title,
+              completed: false,
+              category: t.category.isNotEmpty ? t.category : 'Chăm sóc bé',
+              timeLabel: _formatBabyMilestoneTime(t, 'Kế hoạch phát triển bé'),
+              section: 'FUTURE',
+              origin: 'SYSTEM',
+              createdBy: 'SYSTEM',
+              isBaby: true,
+              babyLabel: primaryBabyName,
+            ));
+          }
+        } catch (_) {}
+      }
     } catch (_) {}
 
     // Tập hợp tất cả tiêu đề thuộc lộ trình chuẩn CareBridge
@@ -191,7 +377,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       for (final f in _futureItems) f.text.trim().toLowerCase(),
     };
 
-    // 2. Load live today tasks from TodayTaskService (chỉ đồng bộ trạng thái cho lộ trình, loại bỏ việc cá nhân)
+    // 2. Load live today tasks from TodayTaskService (chỉ đồng bộ trạng thái cho lộ trình, không bỏ sót việc của bé)
     try {
       final snapshot = await TodayTaskService.instance.loadToday();
       final liveTasks = snapshot.sections.all.toList();
@@ -205,22 +391,48 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
           final key = t.title.trim().toLowerCase();
           final existing = existingMap[key];
           final isRoadmapItem = roadmapTitleSet.contains(key);
-          final isPersonalTask = !isRoadmapItem ||
-              t.origin == TodayTaskOrigin.userCreated ||
-              t.isCareTask;
+          final isBaby = _isBabyTodayTask(t) || (existing != null && existing.isBaby);
 
-          // Loại bỏ tuyệt đối việc cá nhân khi chia sẻ cho chuyên gia
+          // Loại bỏ tuyệt đối việc cá nhân tự tạo khi chia sẻ cho chuyên gia, nhưng giữ lại việc hệ thống gợi ý cho mẹ & bé
+          final isPersonalTask = (!isRoadmapItem && !isBaby && t.origin != TodayTaskOrigin.systemTemplate) ||
+              t.origin == TodayTaskOrigin.userCreated;
+
           if (isPersonalTask) continue;
+
+          final babyName = isBaby
+              ? ((t.careContextType?.toUpperCase() == 'BABY' &&
+                      t.careContextLabel != null &&
+                      t.careContextLabel!.trim().isNotEmpty)
+                  ? t.careContextLabel!.trim()
+                  : (existing?.babyLabel ?? primaryBabyName))
+              : null;
+          final babyCategory = babyName != null && babyName.isNotEmpty
+              ? 'Chăm bé · $babyName'
+              : 'Chăm sóc bé';
+          final babyTimeLabel = babyName != null && babyName.isNotEmpty
+              ? 'Bé $babyName (Hôm nay)'
+              : 'Chăm bé (Hôm nay)';
 
           updatedCurrent.add(_ChecklistShareItem(
             id: t.id,
             text: t.title,
             completed: t.isCompleted,
-            category: existing?.category ?? 'Khám thai & Y tế',
-            timeLabel: existing?.timeLabel ?? 'Tuần $currentWk (Hiện tại)',
+            category: existing?.category ?? (isBaby ? babyCategory : 'Khám thai & Y tế'),
+            timeLabel: existing?.timeLabel ??
+                (isBaby
+                    ? babyTimeLabel
+                    : (_stage == 'PRE_PREGNANCY'
+                        ? 'Chuẩn bị mang thai'
+                        : (_stage == 'POSTPARTUM'
+                            ? 'Sau sinh'
+                            : (_stage == 'BABY_CARE'
+                                ? 'Chăm sóc bé'
+                                : 'Tuần $currentWk (Hiện tại)')))),
             section: 'CURRENT',
             origin: 'SYSTEM',
             createdBy: 'SYSTEM',
+            isBaby: isBaby,
+            babyLabel: babyName,
           ));
         }
 
@@ -235,15 +447,18 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       }
     } catch (_) {}
 
-    // 3. Synchronize with UserChecklistService: chỉ cập nhật trạng thái completed cho việc thuộc lộ trình
+    // 3. Synchronize with UserChecklistService: cập nhật trạng thái completed và nạp thêm việc checklist của bé
     try {
       final serverItems = await UserChecklistService.instance.listItems();
       if (serverItems.isNotEmpty) {
         for (final si in serverItems) {
           final key = si.itemText.trim().toLowerCase();
+          final isBabySi = si.category == ChecklistCategory.babyCare ||
+              si.targetSubject?.toUpperCase() == 'BABY';
           final idx = _currentItems.indexWhere((c) => c.text.trim().toLowerCase() == key);
-          if (idx >= 0 && roadmapTitleSet.contains(key)) {
+          if (idx >= 0 && (roadmapTitleSet.contains(key) || isBabySi)) {
             final cur = _currentItems[idx];
+            final isBabyResult = cur.isBaby || isBabySi;
             _currentItems[idx] = _ChecklistShareItem(
               id: si.itemId,
               text: cur.text,
@@ -253,7 +468,25 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               section: cur.section,
               origin: cur.origin,
               createdBy: cur.createdBy,
+              isBaby: isBabyResult,
+              babyLabel: isBabyResult ? (cur.babyLabel ?? primaryBabyName) : null,
             );
+          } else if (isBabySi &&
+              si.origin != 'USER' &&
+              si.origin != 'USER_CREATED' &&
+              !_currentItems.any((c) => c.text.trim().toLowerCase() == key)) {
+            _currentItems.add(_ChecklistShareItem(
+              id: si.itemId,
+              text: si.itemText,
+              completed: si.completed,
+              category: 'Chăm sóc bé',
+              timeLabel: 'Checklist bé',
+              section: 'CURRENT',
+              origin: si.origin ?? 'SYSTEM',
+              createdBy: si.origin ?? 'SYSTEM',
+              isBaby: true,
+              babyLabel: primaryBabyName,
+            ));
           }
         }
       }
@@ -282,8 +515,26 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
   }
 
   void _onConfirm() {
+    final targetHistory = _historyItems.where((i) {
+      if (_targetFilter == 'MOTHER') return !i.isBaby;
+      if (_targetFilter == 'BABY') return i.isBaby;
+      return true;
+    }).toList();
+
+    final targetCurrent = _currentItems.where((i) {
+      if (_targetFilter == 'MOTHER') return !i.isBaby;
+      if (_targetFilter == 'BABY') return i.isBaby;
+      return true;
+    }).toList();
+
+    final targetFuture = _futureItems.where((i) {
+      if (_targetFilter == 'MOTHER') return !i.isBaby;
+      if (_targetFilter == 'BABY') return i.isBaby;
+      return true;
+    }).toList();
+
     final totalCount =
-        _historyItems.length + _currentItems.length + _futureItems.length;
+        targetHistory.length + targetCurrent.length + targetFuture.length;
 
     if (totalCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -292,21 +543,53 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       return;
     }
 
-    final completedCount = _historyItems.where((i) => i.completed).length +
-        _currentItems.where((i) => i.completed).length +
-        _futureItems.where((i) => i.completed).length;
+    final completedCount = targetHistory.where((i) => i.completed).length +
+        targetCurrent.where((i) => i.completed).length +
+        targetFuture.where((i) => i.completed).length;
     final percent =
         totalCount > 0 ? ((completedCount / totalCount) * 100).round() : 0;
 
-    final shareData = ChecklistShareData(
-      title: _stage == 'PRE_PREGNANCY'
+    String title;
+    String stage = _stage;
+    String stageLabel = _stageLabel;
+
+    if (_targetFilter == 'BABY') {
+      stage = 'BABY_CARE';
+      stageLabel = 'Chăm sóc bé';
+      title = 'Danh sách việc chăm sóc bé';
+    } else if (_targetFilter == 'MOTHER') {
+      if (_stage == 'BABY_CARE') {
+        stage = 'POSTPARTUM';
+        stageLabel = 'Sau sinh';
+      }
+      title = _stage == 'PRE_PREGNANCY'
+          ? 'Lộ trình chuẩn bị mang thai'
+          : (_stage == 'POSTPARTUM' || _stage == 'BABY_CARE'
+              ? 'Lộ trình chăm sóc sau sinh'
+              : 'Danh sách việc cần làm của mẹ');
+    } else {
+      final hasBaby = [..._historyItems, ..._currentItems, ..._futureItems].any((i) => i.isBaby);
+      final hasMother = [..._historyItems, ..._currentItems, ..._futureItems].any((i) => !i.isBaby);
+      title = _stage == 'PRE_PREGNANCY'
           ? 'Lộ trình chuẩn bị mang thai'
           : (_stage == 'POSTPARTUM'
-              ? 'Lộ trình chăm sóc sau sinh'
-              : 'Danh sách việc cần làm (Checklist)'),
-      gestationalWeek: _gestationalWeek,
-      stage: _stage,
-      stageLabel: _stageLabel,
+              ? (hasBaby && hasMother
+                  ? 'Danh sách việc cần làm (Mẹ & Bé)'
+                  : 'Lộ trình chăm sóc sau sinh & bé')
+              : (_stage == 'BABY_CARE'
+                  ? 'Danh sách việc chăm sóc bé'
+                  : (hasBaby && hasMother
+                      ? 'Danh sách việc cần làm (Mẹ & Bé)'
+                      : (hasBaby
+                          ? 'Danh sách việc chăm sóc bé'
+                          : 'Danh sách việc cần làm (Checklist)'))));
+    }
+
+    final shareData = ChecklistShareData(
+      title: title,
+      gestationalWeek: _targetFilter == 'BABY' ? null : _gestationalWeek,
+      stage: stage,
+      stageLabel: stageLabel,
       journeyId: _journeyId,
       isLiveSync: true,
       completedCount: completedCount,
@@ -315,7 +598,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       note: _noteController.text.trim().isEmpty
           ? null
           : _noteController.text.trim(),
-      historyItems: _historyItems
+      historyItems: targetHistory
           .map((i) => ChecklistItemShareData(
                 text: i.text,
                 completed: i.completed,
@@ -327,7 +610,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                 doctorNote: i.doctorNote,
               ))
           .toList(),
-      currentItems: _currentItems
+      currentItems: targetCurrent
           .map((i) => ChecklistItemShareData(
                 text: i.text,
                 completed: i.completed,
@@ -339,7 +622,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                 doctorNote: i.doctorNote,
               ))
           .toList(),
-      futureItems: _futureItems
+      futureItems: targetFuture
           .map((i) => ChecklistItemShareData(
                 text: i.text,
                 completed: i.completed,
@@ -362,20 +645,50 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       if (_statusFilter == 'COMPLETED' && !i.completed) return false;
       if (_statusFilter == 'PENDING' && i.completed) return false;
 
+      // Filter by target (Mother vs Baby)
+      if (_targetFilter == 'MOTHER' && i.isBaby) return false;
+      if (_targetFilter == 'BABY' && !i.isBaby) return false;
+
       return true;
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalHistory = _historyItems.length;
-    final totalCurrent = _currentItems.length;
-    final totalFuture = _futureItems.length;
+    final targetHistoryItems = _historyItems.where((i) {
+      if (_targetFilter == 'MOTHER') return !i.isBaby;
+      if (_targetFilter == 'BABY') return i.isBaby;
+      return true;
+    }).toList();
+
+    final targetCurrentItems = _currentItems.where((i) {
+      if (_targetFilter == 'MOTHER') return !i.isBaby;
+      if (_targetFilter == 'BABY') return i.isBaby;
+      return true;
+    }).toList();
+
+    final targetFutureItems = _futureItems.where((i) {
+      if (_targetFilter == 'MOTHER') return !i.isBaby;
+      if (_targetFilter == 'BABY') return i.isBaby;
+      return true;
+    }).toList();
+
+    final totalHistory = targetHistoryItems.length;
+    final totalCurrent = targetCurrentItems.length;
+    final totalFuture = targetFutureItems.length;
 
     final allItemsList = [..._historyItems, ..._currentItems, ..._futureItems];
     final totalAllItems = allItemsList.length;
-    final totalCompleted = allItemsList.where((i) => i.completed).length;
-    final totalPending = totalAllItems - totalCompleted;
+
+    final selectedTargetTotal = totalHistory + totalCurrent + totalFuture;
+    final selectedTargetCompleted = targetHistoryItems.where((i) => i.completed).length +
+        targetCurrentItems.where((i) => i.completed).length +
+        targetFutureItems.where((i) => i.completed).length;
+    final selectedTargetPending = selectedTargetTotal - selectedTargetCompleted;
+
+    final totalMother = allItemsList.where((i) => !i.isBaby).length;
+    final totalBaby = allItemsList.where((i) => i.isBaby).length;
+    final hasBothTargets = totalMother > 0 && totalBaby > 0;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -386,7 +699,7 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       ),
       child: SafeArea(
         child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.85,
+          height: MediaQuery.of(context).size.height * 0.90,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -507,26 +820,73 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               ),
               const SizedBox(height: 8),
 
-              // Scope Info Bar (Mặc định toàn bộ)
+              // Target Scope Selector: Cho phép mẹ chọn gửi checklist của mẹ hoặc của bé
+              if (hasBothTargets) ...[
+                const Row(
+                  children: [
+                    Icon(Icons.tune_rounded, size: 14, color: _textMuted),
+                    SizedBox(width: 4),
+                    Text(
+                      'Chọn nội dung gửi:',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildTargetChip('ALL', 'Tất cả ($totalAllItems)', Icons.people_outline_rounded),
+                      const SizedBox(width: 6),
+                      _buildTargetChip('MOTHER', 'Của mẹ ($totalMother)', Icons.person_outline_rounded),
+                      const SizedBox(width: 6),
+                      _buildTargetChip('BABY', 'Dành cho bé ($totalBaby)', Icons.child_care_rounded),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // Scope Info Bar (thông tin nội dung sẽ được gửi)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F2F0),
+                  color: _targetFilter == 'BABY' ? const Color(0xFFFEF3C7) : const Color(0xFFF7F2F0),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE8D5CE)),
+                  border: Border.all(
+                    color: _targetFilter == 'BABY' ? const Color(0xFFFDE68A) : const Color(0xFFE8D5CE),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.all_inclusive_rounded, size: 16, color: _primary),
+                    Icon(
+                      _targetFilter == 'BABY'
+                          ? Icons.child_care_rounded
+                          : (_targetFilter == 'MOTHER'
+                              ? Icons.person_outline_rounded
+                              : Icons.all_inclusive_rounded),
+                      size: 16,
+                      color: _targetFilter == 'BABY' ? const Color(0xFFD97706) : _primary,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Mặc định gửi toàn bộ $totalAllItems việc (Đã xong: $totalCompleted, Chờ làm: $totalPending)',
-                        style: const TextStyle(
+                        _targetFilter == 'BABY'
+                            ? 'Sẽ gửi $selectedTargetTotal việc chăm sóc bé (Đã xong: $selectedTargetCompleted, Chờ làm: $selectedTargetPending)'
+                            : (_targetFilter == 'MOTHER'
+                                ? 'Sẽ gửi $selectedTargetTotal việc của mẹ (Đã xong: $selectedTargetCompleted, Chờ làm: $selectedTargetPending)'
+                                : 'Mặc định gửi toàn bộ $selectedTargetTotal việc Mẹ & Bé (Đã xong: $selectedTargetCompleted, Chờ làm: $selectedTargetPending)'),
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: _primary,
+                          color: _targetFilter == 'BABY' ? const Color(0xFFB45309) : _primary,
                         ),
                       ),
                     ),
@@ -536,14 +896,17 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               const SizedBox(height: 8),
 
               // Filter: Trạng thái xem trước
-              Row(
-                children: [
-                  _buildStatusChip('ALL', 'Tất cả ($totalAllItems)'),
-                  const SizedBox(width: 6),
-                  _buildStatusChip('COMPLETED', 'Đã xong ($totalCompleted)'),
-                  const SizedBox(width: 6),
-                  _buildStatusChip('PENDING', 'Chờ làm ($totalPending)'),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildStatusChip('ALL', 'Tất cả ($selectedTargetTotal)'),
+                    const SizedBox(width: 6),
+                    _buildStatusChip('COMPLETED', 'Đã xong ($selectedTargetCompleted)'),
+                    const SizedBox(width: 6),
+                    _buildStatusChip('PENDING', 'Chờ làm ($selectedTargetPending)'),
+                  ],
+                ),
               ),
               const SizedBox(height: 6),
 
@@ -613,13 +976,17 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
               ),
               const SizedBox(height: 12),
 
-              // Send button: Gửi toàn bộ
+              // Send button: Gửi toàn bộ hoặc theo đối tượng đã chọn
               FilledButton.icon(
                 key: const Key('share-all-checklist-btn'),
                 onPressed: _loading ? null : _onConfirm,
                 icon: const Icon(Icons.send_rounded, size: 18),
                 label: Text(
-                  'Chia sẻ toàn bộ việc cần làm ($totalAllItems việc)',
+                  _targetFilter == 'BABY'
+                      ? 'Chia sẻ việc chăm sóc bé ($selectedTargetTotal việc)'
+                      : (_targetFilter == 'MOTHER'
+                          ? 'Chia sẻ việc của mẹ ($selectedTargetTotal việc)'
+                          : 'Chia sẻ toàn bộ việc cần làm ($totalAllItems việc)'),
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.bold,
@@ -627,7 +994,9 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                   ),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: _primary,
+                  backgroundColor: _targetFilter == 'BABY'
+                      ? const Color(0xFFD97706)
+                      : _primary,
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -664,6 +1033,42 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
       onSelected: (val) {
         if (val) {
           setState(() => _statusFilter = key);
+        }
+      },
+    );
+  }
+
+  Widget _buildTargetChip(String key, String label, IconData icon) {
+    final selected = _targetFilter == key;
+    return ChoiceChip(
+      avatar: Icon(
+        icon,
+        size: 14,
+        color: selected
+            ? Colors.white
+            : (key == 'BABY' ? const Color(0xFFD97706) : _primary),
+      ),
+      label: Text(label),
+      selected: selected,
+      selectedColor: key == 'BABY' ? const Color(0xFFD97706) : _primary,
+      backgroundColor: const Color(0xFFFAF7F6),
+      labelStyle: TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 11,
+        fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+        color: selected ? Colors.white : _textDark,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: selected
+              ? (key == 'BABY' ? const Color(0xFFD97706) : _primary)
+              : const Color(0xFFE8D5CE),
+        ),
+      ),
+      onSelected: (val) {
+        if (val) {
+          setState(() => _targetFilter = key);
         }
       },
     );
@@ -756,6 +1161,35 @@ class _ShareChecklistDialogState extends State<ShareChecklistDialog>
                       const SizedBox(height: 4),
                       Row(
                         children: [
+                          // Badge phân loại Dành cho bé
+                          if (item.isBaby)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFFFDE68A)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.child_care_rounded, size: 10, color: Color(0xFFD97706)),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    item.babyLabel != null && item.babyLabel!.isNotEmpty
+                                        ? 'Dành cho bé · ${item.babyLabel}'
+                                        : 'Dành cho bé',
+                                    style: const TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFB45309),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           // Badge phân loại Gợi ý CareBridge vs Bác sĩ chỉ định
                           if (item.isExpertCustom || item.origin == 'EXPERT')
                             Container(

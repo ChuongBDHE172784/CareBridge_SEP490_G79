@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/checklist_share_data.dart';
-export '../models/checklist_share_data.dart';
+import 'package:untitled/features/directChat/models/checklist_share_data.dart';
+export 'package:untitled/features/directChat/models/checklist_share_data.dart';
 import '../../checklist/services/user_checklist_service.dart';
 import '../../reminder/services/today_task_service.dart';
 import '../../expert/services/expert_shared_records_service.dart';
@@ -358,6 +358,7 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
       builder: (ctx) => StatefulBuilder(
         builder: (modalContext, setModalState) => DefaultTabController(
           length: 3,
+          initialIndex: _currentItems.isNotEmpty ? 1 : 0,
           child: Container(
             height: MediaQuery.of(context).size.height * 0.8,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -395,7 +396,7 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    'Giai đoạn theo dõi: ${widget.data.stageLabel ?? (widget.data.stage == 'PRE_PREGNANCY' ? 'Chuẩn bị mang thai' : widget.data.stage == 'POSTPARTUM' ? 'Sau sinh' : widget.data.gestationalWeek != null ? 'Tuần thai thứ ${widget.data.gestationalWeek}' : 'Chuẩn bị mang thai')}',
+                    'Giai đoạn theo dõi: ${widget.data.stageLabel ?? (widget.data.stage == 'PRE_PREGNANCY' ? 'Chuẩn bị mang thai' : widget.data.stage == 'POSTPARTUM' ? 'Sau sinh' : widget.data.stage == 'BABY_CARE' ? 'Chăm sóc bé' : widget.data.gestationalWeek != null ? 'Tuần thai thứ ${widget.data.gestationalWeek}' : 'Chuẩn bị mang thai')}',
                     style: const TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12,
@@ -532,6 +533,33 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                                         color: item.completed ? const Color(0xFF6E605D) : const Color(0xFF2C2523),
                                       ),
                                     ),
+                                    if (item.category?.toLowerCase().contains('bé') == true ||
+                                        item.category?.toUpperCase() == 'BABY_CARE' ||
+                                        item.timeLabel?.toLowerCase().contains('bé') == true)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFEF3C7),
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(color: const Color(0xFFFDE68A)),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.child_care_rounded, size: 10, color: Color(0xFFD97706)),
+                                            SizedBox(width: 3),
+                                            Text(
+                                              'Dành cho bé',
+                                              style: TextStyle(
+                                                fontFamily: 'Lexend',
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFFB45309),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     if (item.isExpertCustom || item.origin == 'EXPERT' || item.createdBy == 'EXPERT')
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
@@ -540,9 +568,9 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                                           borderRadius: BorderRadius.circular(4),
                                           border: Border.all(color: const Color(0xFF80CBC4)),
                                         ),
-                                        child: Row(
+                                        child: const Row(
                                           mainAxisSize: MainAxisSize.min,
-                                          children: const [
+                                          children: [
                                             Icon(Icons.medical_services_outlined, size: 10, color: Color(0xFF00695C)),
                                             SizedBox(width: 3),
                                             Text(
@@ -565,9 +593,9 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                                           borderRadius: BorderRadius.circular(4),
                                           border: Border.all(color: const Color(0xFFBAE6FD)),
                                         ),
-                                        child: Row(
+                                        child: const Row(
                                           mainAxisSize: MainAxisSize.min,
-                                          children: const [
+                                          children: [
                                             Icon(Icons.auto_awesome_rounded, size: 10, color: Color(0xFF0284C7)),
                                             SizedBox(width: 3),
                                             Text(
@@ -745,7 +773,7 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                             ],
                           ),
                           Text(
-                            'Giai đoạn: ${widget.data.stageLabel ?? (widget.data.stage == 'PRE_PREGNANCY' ? 'Chuẩn bị mang thai' : widget.data.stage == 'POSTPARTUM' ? 'Sau sinh' : widget.data.gestationalWeek != null ? 'Tuần thai ${widget.data.gestationalWeek}' : 'Chuẩn bị mang thai')}',
+                            'Giai đoạn: ${widget.data.stageLabel ?? (widget.data.stage == 'PRE_PREGNANCY' ? 'Chuẩn bị mang thai' : widget.data.stage == 'POSTPARTUM' ? 'Sau sinh' : widget.data.stage == 'BABY_CARE' ? 'Chăm sóc bé' : widget.data.gestationalWeek != null ? 'Tuần thai ${widget.data.gestationalWeek}' : 'Chuẩn bị mang thai')}',
                             style: const TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 11,
@@ -834,6 +862,27 @@ class _ChecklistMessageCardState extends State<ChecklistMessageCard> {
                                   ),
                                 ),
                               ),
+                              if (item.category?.toLowerCase().contains('bé') == true ||
+                                  item.category?.toUpperCase() == 'BABY_CARE' ||
+                                  item.timeLabel?.toLowerCase().contains('bé') == true)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(color: const Color(0xFFFDE68A)),
+                                  ),
+                                  child: const Text(
+                                    '👶 Cho bé',
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFB45309),
+                                    ),
+                                  ),
+                                ),
                               if (item.isExpertCustom || item.origin == 'EXPERT' || item.createdBy == 'EXPERT')
                                 Container(
                                   margin: const EdgeInsets.only(left: 4),
