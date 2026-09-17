@@ -310,7 +310,7 @@ void main() {
     await tester.tap(supportButton);
     await tester.pumpAndSettle();
 
-    expect(openedUri, '/journeys/journey-1/metrics/trend?metricType=BMI');
+    expect(openedUri, '/journeys/journey-1/metrics/trend?metricType=TOTAL_OVERVIEW');
     expect(find.text('Chỉ số sức khỏe'), findsOneWidget);
   });
 

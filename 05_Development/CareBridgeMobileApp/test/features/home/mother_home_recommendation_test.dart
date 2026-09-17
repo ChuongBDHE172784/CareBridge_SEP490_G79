@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/baby/models/baby_model.dart';
+import 'package:untitled/features/community/models/content_model.dart';
 import 'package:untitled/features/community/screens/verified_content_detail_screen.dart';
 import 'package:untitled/features/home/screens/mother_home_screen.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
@@ -38,6 +40,32 @@ JourneyDashboard _dashboard({
   pregnancyWeek: journeyType == 'PREGNANCY' ? 12 : null,
 );
 
+BabyProfile _baby({
+  String id = 'baby-1',
+  String nickname = 'Bé Miu',
+  DateTime? birthDate,
+}) => BabyProfile(
+  id: id,
+  nickname: nickname,
+  gender: BabyGender.female,
+  birthDate: birthDate ?? DateTime.now().subtract(const Duration(days: 3)),
+  isActive: true,
+);
+
+ContentListItem _babyArticle({
+  String id = 'baby-article-1',
+  String title = 'Chăm sóc trẻ sơ sinh: Những điều cần biết',
+  String summary = 'Hướng dẫn chăm sóc trẻ sơ sinh những ngày đầu.',
+  String stage = 'POSTPARTUM',
+}) => ContentListItem(
+  id: id,
+  type: 'ARTICLE',
+  title: title,
+  summary: summary,
+  stage: stage,
+  topicId: 'baby-care-topic',
+);
+
 RecommendationContentResponse _response(
   String id,
   String title, {
@@ -67,6 +95,8 @@ RecommendationContentResponse _response(
 Widget _host({
   required Future<RecommendationContentResponse> Function() loader,
   JourneyDashboard? dashboard,
+  Future<List<BabyProfile>> Function()? babyLoader,
+  Future<List<ContentListItem>> Function()? babyContentLoader,
 }) {
   return MaterialApp(
     home: MotherHomeScreen(
@@ -74,6 +104,8 @@ Widget _host({
       dashboardLoader: () async => dashboard ?? _dashboard(),
       reminderLoader: () async => const [],
       recommendationLoader: loader,
+      babyLoader: babyLoader ?? () async => const [],
+      babyContentLoader: babyContentLoader,
     ),
   );
 }
@@ -288,6 +320,91 @@ void main() {
 
       expect(calls, 0);
       expect(find.text('Should not render'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'renders unified prioritized recommendations for mother and baby together without tab switcher',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final baby = _baby(nickname: 'Bé Miu');
+      final babyArticle = _babyArticle(
+        id: 'baby-art-1',
+        title: 'Chăm sóc trẻ sơ sinh những ngày đầu',
+      );
+
+      await tester.pumpWidget(
+        _host(
+          loader: () async => _response('maternal-art-1', 'Dinh dưỡng tuần 12'),
+          babyLoader: () async => [baby],
+          babyContentLoader: () async => [babyArticle],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.dragUntilVisible(
+        find.text('Bài viết gợi ý cho mẹ và bé'),
+        find.byType(CustomScrollView),
+        const Offset(0, -300),
+      );
+
+      expect(find.text('Bài viết gợi ý cho mẹ và bé'), findsOneWidget);
+      expect(
+        find.text('Nội dung chăm sóc phù hợp được sắp xếp theo mức độ ưu tiên'),
+        findsOneWidget,
+      );
+
+      // Verify no tab buttons exist
+      expect(find.text('Mẹ (Tuần 12)'), findsNothing);
+
+      // Verify both articles are rendered together in the unified feed
+      expect(find.text('Chăm sóc trẻ sơ sinh những ngày đầu'), findsOneWidget);
+      expect(find.text('Phù hợp cho Bé Miu (3 ngày tuổi)'), findsOneWidget);
+      expect(find.text('Dinh dưỡng tuần 12'), findsOneWidget);
+
+      // Verify tapping baby card navigates to VerifiedContentDetailScreen
+      await tester.tap(
+        find.byKey(const Key('mother-home-recommendation-card-baby-art-1')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(VerifiedContentDetailScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'displays baby recommendations directly when mother has baby profile even without active maternal journey',
+    (tester) async {
+      final baby = _baby(nickname: 'Bé Miu');
+      final article = _babyArticle(
+        id: 'baby-art-standalone',
+        title: 'Hướng dẫn tắm cho trẻ sơ sinh an toàn',
+      );
+
+      await tester.pumpWidget(
+        _host(
+          dashboard: _dashboard(
+            journeyId: null,
+            journeyType: null,
+            status: 'NO_JOURNEY',
+          ),
+          loader: () async => _response('should-not-load', 'Should not load'),
+          babyLoader: () async => [baby],
+          babyContentLoader: () async => [article],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.dragUntilVisible(
+        find.text('Hướng dẫn tắm cho trẻ sơ sinh an toàn'),
+        find.byType(CustomScrollView),
+        const Offset(0, -300),
+      );
+      expect(find.text('Hướng dẫn tắm cho trẻ sơ sinh an toàn'), findsOneWidget);
+      expect(find.text('Phù hợp cho Bé Miu (3 ngày tuổi)'), findsOneWidget);
     },
   );
 }

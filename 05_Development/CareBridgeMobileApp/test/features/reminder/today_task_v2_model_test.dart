@@ -216,7 +216,7 @@ void main() {
         careContextType: task.careContextType,
         careContextId: task.careContextId,
       ),
-      '/journeys/journey-1/metrics/trend?metricType=BMI',
+      '/journeys/journey-1/metrics/trend?metricType=TOTAL_OVERVIEW',
     );
     expect(
       task.supportFunction?.routeFor(

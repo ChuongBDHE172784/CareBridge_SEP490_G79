@@ -169,7 +169,7 @@ class TodayTaskSupportFunction {
     if (journeyId == null || journeyId.isEmpty) return null;
     return Uri(
       path: '/journeys/${Uri.encodeComponent(journeyId)}/metrics/trend',
-      queryParameters: const {'metricType': 'BMI'},
+      queryParameters: const {'metricType': 'TOTAL_OVERVIEW'},
     ).toString();
   }
 }
