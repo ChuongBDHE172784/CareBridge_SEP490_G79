@@ -337,6 +337,16 @@ public class CareGroupServiceImpl implements ICareGroupService {
                                            String customFamilyRelationshipRole, UUID callerId) {
         validateFamilyRelationshipRole(familyRelationshipRole, customFamilyRelationshipRole);
         CareGroupMember member = pendingInviteOrThrow(groupId, callerId);
+        // Chi loi moi that moi chap nhan duoc o day. Mot dong PENDING khong co
+        // invite_token la yeu cau xin vao nhom do chinh nguoi nay gui bang ma nhom,
+        // va no dang cho chu nhom duyet — listMyInvitations() ngay tren cung dung
+        // dung ranh gioi nay. Truoc day pendingInviteOrThrow() khong phan biet hai
+        // loai, nen goi endpoint nay tren yeu cau cua chinh minh la tu duyet cho
+        // minh vao nhom, bo qua buoc me dong y.
+        if (member.getInviteToken() == null) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "FAM-044",
+                    "Yêu cầu tham gia của bạn đang chờ chủ nhóm duyệt.");
+        }
         member.setFamilyRelationshipRole(familyRelationshipRole.trim().toUpperCase());
         member.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
         member.setInviteStatus(InviteStatus.ACCEPTED);

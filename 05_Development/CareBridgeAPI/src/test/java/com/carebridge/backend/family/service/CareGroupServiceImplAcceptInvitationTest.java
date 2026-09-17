@@ -282,4 +282,23 @@ class CareGroupServiceImplAcceptInvitationTest {
         assertThatCode(() -> service.acceptInvitationByToken("tok-link-001", CALLER_ID))
                 .doesNotThrowAnyException();
     }
+
+    // ─── Yeu cau xin vao nhom khong the tu chap nhan ──────────────────────────
+
+    @Test
+    void acceptInvite_selfJoinRequestWithoutToken_throwsFam044() {
+        // Dong PENDING khong co invite_token la yeu cau chinh nguoi nay gui bang ma
+        // nhom, dang cho chu nhom duyet. Truoc day acceptInvite() nhan ca dong nay,
+        // nen nguoi xin tu duyet cho minh vao nhom ma me khong can dong y.
+        CareGroupMember joinRequest = makePendingMember(null, null);
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, CALLER_ID, InviteStatus.PENDING))
+                .thenReturn(Optional.of(joinRequest));
+
+        assertThatThrownBy(() -> service.acceptInvite(GROUP_ID, "ME", null, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("chờ chủ nhóm duyệt");
+
+        verify(memberRepository, never()).save(any(CareGroupMember.class));
+    }
 }
