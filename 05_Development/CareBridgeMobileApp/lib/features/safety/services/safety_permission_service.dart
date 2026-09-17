@@ -39,7 +39,21 @@ class SafetyPermissionService {
     ]);
   }
 
-  /// Kiểm tra dịch vụ GPS, quyền truy cập vị trí và lấy tọa độ chính xác cao (LocationAccuracy.high).
+  /// Toạ độ đọc lại trong vòng ngần này được coi là còn dùng được ngay.
+  static const _freshEnough = Duration(minutes: 2);
+
+  /// Kiểm tra dịch vụ GPS, quyền truy cập vị trí và lấy toạ độ.
+  ///
+  /// Trước đây hàm này đòi `LocationAccuracy.high` trong đúng 5 giây. GPS khởi
+  /// động lạnh, nhất là trong nhà, gần như không bao giờ kịp — máy thật ném
+  /// `TimeoutException after 0:00:05`, và màn bản đồ khẩn cấp đứng ở "Đang chờ vị
+  /// trí", tìm cơ sở y tế ra 0 kết quả, đúng lúc người dùng cần nó nhất.
+  ///
+  /// Giờ đi theo hai bước. Toạ độ đã lưu trong máy còn mới thì dùng luôn, không
+  /// chờ gì cả. Không có thì mới đợi bản đo mới, với hạn rộng hơn và độ chính xác
+  /// vừa phải — sai số hàng chục mét không đổi câu trả lời cho "bệnh viện trong
+  /// bán kính 5 km", mà lại cho phép định vị bằng sóng di động và Wi-Fi thay vì
+  /// chờ bắt đủ vệ tinh. Hết giờ thì vẫn trả toạ độ cũ còn hơn trả về rỗng.
   static Future<Position?> _defaultLocationReader() async {
     if (!await Geolocator.isLocationServiceEnabled()) return null;
     var permission = await Geolocator.checkPermission();
@@ -50,9 +64,29 @@ class SafetyPermissionService {
         permission == LocationPermission.deniedForever) {
       return null;
     }
-    return Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-      timeLimit: const Duration(seconds: 5),
-    );
+
+    Position? lastKnown;
+    try {
+      lastKnown = await Geolocator.getLastKnownPosition();
+    } catch (_) {
+      lastKnown = null;
+    }
+
+    final timestamp = lastKnown?.timestamp;
+    if (lastKnown != null &&
+        DateTime.now().difference(timestamp ?? DateTime.now()) < _freshEnough) {
+      return lastKnown;
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 20),
+      );
+    } on TimeoutException {
+      return lastKnown;
+    } catch (_) {
+      return lastKnown;
+    }
   }
 }
