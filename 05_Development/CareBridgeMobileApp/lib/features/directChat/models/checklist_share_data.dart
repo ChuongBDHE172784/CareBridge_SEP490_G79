@@ -161,9 +161,11 @@ class ChecklistShareData {
               ? 'Chuẩn bị mang thai'
               : inferredStage == 'POSTPARTUM'
                   ? 'Sau sinh'
-                  : rawWeek != null
-                      ? 'Tuần thai thứ $rawWeek'
-                      : 'Chuẩn bị mang thai');
+                  : inferredStage == 'BABY_CARE'
+                      ? 'Chăm sóc bé'
+                      : rawWeek != null
+                          ? 'Tuần thai thứ $rawWeek'
+                          : 'Chuẩn bị mang thai');
 
       return ChecklistShareData(
         title: decoded['title'] as String? ?? 'Hồ sơ Checklist Toàn diện',
