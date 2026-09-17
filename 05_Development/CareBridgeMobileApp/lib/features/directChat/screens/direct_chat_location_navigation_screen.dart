@@ -55,6 +55,10 @@ class _DirectChatLocationNavigationScreenState
   late final CareFacilityService _routes;
   final FlutterTts _tts = FlutterTts();
   TrackAsiaMapController? _mapController;
+  // Giữ lại vòng tròn vị trí để dời toạ độ thay vì xoá rồi vẽ lại. Xoá và
+  // tạo lại annotation mỗi lần GPS nhảy khiến TrackAsia crash ở tầng native,
+  // app văng thẳng ra ngoài chứ không ném exception Dart nào để bắt.
+  Circle? _userCircle;
   StreamSubscription<Position>? _positionSubscription;
   Timer? _styleWatchdog;
   Position? _position;
@@ -298,9 +302,24 @@ class _DirectChatLocationNavigationScreenState
     final controller = _mapController;
     final position = _position;
     if (!_styleReady || controller == null || position == null) return;
+    // Điểm đến đứng yên, chỉ vòng tròn của người dùng cần dời theo mỗi 5 mét.
+    if (_userCircle != null) {
+      try {
+        await controller.updateCircle(
+          _userCircle!,
+          CircleOptions(
+            geometry: LatLng(position.latitude, position.longitude),
+          ),
+        );
+        return;
+      } catch (_) {
+        // Handle không còn hợp lệ, thường do style vừa nạp lại: vẽ lại bên dưới.
+        _userCircle = null;
+      }
+    }
     try {
       await controller.clearCircles();
-      await controller.addCircle(
+      _userCircle = await controller.addCircle(
         CircleOptions(
           geometry: LatLng(position.latitude, position.longitude),
           circleRadius: 9,
@@ -328,9 +347,10 @@ class _DirectChatLocationNavigationScreenState
     try {
       await controller.clearCircles();
       await controller.clearLines();
+      _userCircle = null;
 
       // User location marker
-      await controller.addCircle(
+      _userCircle = await controller.addCircle(
         CircleOptions(
           geometry: LatLng(position.latitude, position.longitude),
           circleRadius: 8,
