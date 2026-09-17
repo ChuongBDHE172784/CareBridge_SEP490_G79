@@ -25,6 +25,7 @@ class RecommendationProfileScreen extends StatefulWidget {
     this.healthMetricService,
     this.journeyStage,
     this.now,
+    this.returnPath,
   });
 
   final RecommendationService? service;
@@ -32,6 +33,7 @@ class RecommendationProfileScreen extends StatefulWidget {
   final HealthMetricService? healthMetricService;
   final String? journeyStage;
   final DateTime Function()? now;
+  final String? returnPath;
 
   @override
   State<RecommendationProfileScreen> createState() =>
@@ -150,7 +152,15 @@ class _RecommendationProfileScreenState
       final dashboard = await _journeyService.getDashboard();
       if (!current()) return;
       if (dashboard.journeyType == 'BABY_CARE') {
-        if (mounted) context.go('/mother-home');
+        if (mounted) {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else if (widget.returnPath != null && widget.returnPath!.isNotEmpty) {
+            context.go(widget.returnPath!);
+          } else {
+            context.go('/mother-home');
+          }
+        }
         return;
       }
 
@@ -1741,7 +1751,13 @@ class _RecommendationProfileScreenState
       await _service.decline();
       if (_isCurrentOperation(generation, expectedUserId)) {
         if (!mounted) return;
-        context.go('/mother-home');
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else if (widget.returnPath != null && widget.returnPath!.isNotEmpty) {
+          context.go(widget.returnPath!);
+        } else {
+          context.go('/mother-home');
+        }
       }
     } on ApiException catch (error) {
       if (_isCurrentOperation(generation, expectedUserId)) {
@@ -1801,7 +1817,19 @@ class _RecommendationProfileScreenState
       }
       if (!_isCurrentOperation(generation, expectedUserId)) return;
       if (!mounted) return;
-      context.go('/mother-home');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã lưu hồ sơ nền cá nhân hóa thành công'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else if (widget.returnPath != null && widget.returnPath!.isNotEmpty) {
+        context.go(widget.returnPath!);
+      } else {
+        context.go('/mother-home');
+      }
     } on ApiException catch (error) {
       if (_isCurrentOperation(generation, expectedUserId)) {
         setState(() => _error = _messageForApi(error));
