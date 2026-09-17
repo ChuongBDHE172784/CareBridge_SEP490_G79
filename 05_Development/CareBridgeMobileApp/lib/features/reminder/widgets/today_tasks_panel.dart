@@ -70,8 +70,12 @@ class TodayTasksPanel extends StatefulWidget {
   State<TodayTasksPanel> createState() => _TodayTasksPanelState();
 }
 
-class _TodayTasksPanelState extends State<TodayTasksPanel> {
+class _TodayTasksPanelState extends State<TodayTasksPanel>
+    with AutomaticKeepAliveClientMixin {
   static const _text = Color(0xFF5A463F);
+
+  @override
+  bool get wantKeepAlive => true;
 
   late TodayTaskService _service;
   late UserChecklistService _checklistService;
@@ -531,6 +535,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final isFamily = widget.audience == TodayTasksAudience.family;
     final activeTabIndex = _activeSourceTabIndex;
     final sourceGroupedTasks = widget.layout == TodayTasksLayout.sourceGroups
