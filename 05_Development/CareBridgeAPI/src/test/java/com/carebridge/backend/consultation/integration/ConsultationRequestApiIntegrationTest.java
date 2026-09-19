@@ -116,14 +116,11 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     @Test
-    void aSecondKeyWhileOneRequestIsOpenIsRejectedRatherThanTreatedAsAReplay()
+    void aSecondKeyWhileOneRequestIsOpenIsAllowedRatherThanTreatedAsAReplay()
             throws Exception {
-        // 33a3f3c9e ("one live request per mother") made a second open request a
-        // conflict, so these two keys can no longer both end up PENDING. What still
-        // matters, and is what this test was written for, is that a different
-        // idempotency key is not conflated with the first: the second attempt is
-        // refused as a new booking (CONREQ-011) rather than silently replaying the
-        // first request's response, and it leaves no row of its own behind.
+        // Booking a second expert while one request is open is allowed outright
+        // (926da9612). Both distinct clientRequestIds create independent pending
+        // requests rather than conflating or rejecting.
         Fixture fixture = seedFixture();
         UUID firstKey = UUID.randomUUID();
         UUID secondKey = UUID.randomUUID();
@@ -136,12 +133,10 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
                 requestBody(fixture.expertProfileId(), secondKey, "Second request"));
 
         assertThat(first.getResponse().getStatus()).isEqualTo(201);
-        assertThat(second.getResponse().getStatus()).isEqualTo(409);
-        assertThat(objectMapper.readTree(second.getResponse().getContentAsString())
-                .path("error").asText())
-                .isEqualTo("CONREQ-011");
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+        assertThat(responseId(first)).isNotEqualTo(responseId(second));
         assertThat(countRequests(fixture.motherId(), firstKey)).isEqualTo(1);
-        assertThat(countRequests(fixture.motherId(), secondKey)).isZero();
+        assertThat(countRequests(fixture.motherId(), secondKey)).isEqualTo(1);
     }
 
     @Test
