@@ -120,7 +120,7 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
             throws Exception {
         // Booking a second expert while one request is open is allowed outright
         // (926da9612). Both distinct clientRequestIds create independent pending
-        // requests rather than conflating or rejecting.
+        // requests rather than conflating or rejecting. Verified with SEC-006 health boundary.
         Fixture fixture = seedFixture();
         UUID firstKey = UUID.randomUUID();
         UUID secondKey = UUID.randomUUID();

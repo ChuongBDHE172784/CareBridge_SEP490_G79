@@ -425,7 +425,7 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
                       : _onSurface,
                   fontStyle: (log.note == null || log.note!.trim().isEmpty)
                       ? FontStyle.italic
-                      : FontStyle.normal,
+                      : null,
                 ),
               ),
             ),
