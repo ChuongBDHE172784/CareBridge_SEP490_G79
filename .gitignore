@@ -218,3 +218,7 @@ tailieuRAG.zip
 # Local developer launch scripts
 run_backend.ps1
 05_Development/CareBridgeAPI/run_backend.ps1
+
+# Vung lam viec tam cua may local, khong thuoc ve repo
+scratchpad/
+.tmp-doc-edit/
