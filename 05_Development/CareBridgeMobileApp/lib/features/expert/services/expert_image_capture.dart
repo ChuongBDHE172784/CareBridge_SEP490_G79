@@ -27,8 +27,12 @@ class ImagePickerExpertCapture implements ExpertImageCapture {
       preferredCameraDevice: kind == ExpertEvidenceKind.selfie
           ? CameraDevice.front
           : CameraDevice.rear,
-      maxWidth: 2400,
-      imageQuality: 90,
+      // CompreFace downscales to IMG_LENGTH_LIMIT=640 before detection, so the
+      // extra pixels never reach the model — they only cost upload time on
+      // mobile data. 1600/85 still leaves the cropped face well above what
+      // verification needs.
+      maxWidth: 1600,
+      imageQuality: 85,
     );
     if (picked == null) return null;
     final bytes = await picked.readAsBytes();
