@@ -14,6 +14,7 @@ import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
+import com.carebridge.backend.expertverification.async.IdentityPipelineExecutor;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import com.carebridge.backend.expertverification.entity.ExpertIdentityVerification;
 import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
@@ -33,6 +34,7 @@ import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
 import com.carebridge.backend.map.repository.CareFacilityRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -71,7 +73,10 @@ class ExpertIdentityVerificationServiceTest {
                 credentialService, profileMapper, userRepository,
                 careFacilityRepository,
                 pipelineAdapter, duplicateIdentityFaceService, fileService, auditService,
-                TransactionOperations.withoutTransaction(), availabilityRepository);
+                TransactionOperations.withoutTransaction(), availabilityRepository,
+                // Same-thread executor: production hands the pipeline to a pool, but these
+                // tests assert on what the pipeline wrote by the time submit() returns.
+                IdentityPipelineExecutor.sameThread());
     }
 
     @Test
@@ -186,6 +191,72 @@ class ExpertIdentityVerificationServiceTest {
                 .isEqualTo("Possible duplicate identity detected; admin review is required");
         verify(duplicateIdentityFaceService).findPossibleDuplicate(
                 profileId, selfieCrop, "image/jpeg");
+    }
+
+    @Test
+    void inFlightPipelineIsNotResubmitted() {
+        var inFlight = ExpertIdentityVerification.builder()
+                .id(UUID.randomUUID())
+                .expertProfileId(profileId)
+                .reviewStatus(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED)
+                .pipelineStatus("PROCESSING")
+                .processedAt(Instant.now().minusSeconds(3))
+                .build();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile()));
+        when(identityRepository.findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId))
+                .thenReturn(Optional.of(inFlight));
+
+        var response = service.submit(userId, image("selfie"), image("front"), image("back"));
+
+        // The attempt is still being processed off the request thread, so a second tap must
+        // return the attempt already in progress rather than store three more copies.
+        assertThat(response.getIdentityVerificationId()).isEqualTo(inFlight.getId());
+        verifyNoInteractions(fileService, pipelineAdapter);
+        verify(identityRepository, never()).save(any());
+    }
+
+    @Test
+    void abandonedPipelineStillAllowsResubmission() {
+        var abandoned = ExpertIdentityVerification.builder()
+                .id(UUID.randomUUID())
+                .expertProfileId(profileId)
+                .reviewStatus(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED)
+                .pipelineStatus("PROCESSING")
+                // Older than the staleness window: whatever was processing this is gone.
+                .processedAt(Instant.now().minusSeconds(3600))
+                .build();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile()));
+        when(identityRepository.findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId))
+                .thenReturn(Optional.of(abandoned));
+        when(pipelineAdapter.verifyWithPipeline(any(), any(), any(), any()))
+                .thenReturn(new CompreFacePipelineAdapter.PipelineResult(
+                        new FaceVerificationResult(
+                                FaceVerificationStatus.DISABLED, null, BigDecimal.valueOf(.75), null),
+                        null, null,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        "DISABLED"));
+        when(fileService.uploadWithPurpose(
+                any(), eq(userId), eq(FileKind.IMAGE), any(), eq(FileAccessMode.PRIVATE)))
+                .thenAnswer(invocation -> upload());
+        when(identityRepository.save(any())).thenAnswer(invocation -> {
+            ExpertIdentityVerification value = invocation.getArgument(0);
+            if (value.getId() == null) {
+                value.setId(UUID.randomUUID());
+            }
+            return value;
+        });
+        when(identityRepository.findByIdForUpdate(any()))
+                .thenReturn(Optional.of(ExpertIdentityVerification.builder()
+                        .id(UUID.randomUUID())
+                        .expertProfileId(profileId)
+                        .build()));
+
+        var response = service.submit(userId, image("selfie"), image("front"), image("back"));
+
+        assertThat(response.getIdentityVerificationId()).isNotEqualTo(abandoned.getId());
+        verify(fileService, times(3)).uploadWithPurpose(
+                any(), eq(userId), eq(FileKind.IMAGE), any(), eq(FileAccessMode.PRIVATE));
     }
 
     @Test

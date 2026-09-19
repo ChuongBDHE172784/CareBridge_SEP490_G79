@@ -30,6 +30,7 @@ class _ExpertIdentityCaptureScreenState
   bool _submitting = false;
   String? _error;
   bool _verifying = false;
+  int _verifyRequestId = 0;
   double? _similarity;
   String? _aiStatus;
   Color? _aiColor;
@@ -59,7 +60,13 @@ class _ExpertIdentityCaptureScreenState
         }
         _error = null;
       });
-      await _runAiVerify();
+      // Only the selfie and the CCCD front feed the face comparison. Re-running
+      // it after the back image would upload the same two photos again and
+      // repeat the whole CompreFace pipeline for an unchanged input.
+      if (kind == ExpertEvidenceKind.selfie ||
+          kind == ExpertEvidenceKind.identityFront) {
+        await _runAiVerify();
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = 'Không thể mở camera hoặc thư viện ảnh.');
@@ -69,6 +76,7 @@ class _ExpertIdentityCaptureScreenState
 
   Future<void> _runAiVerify() async {
     if (_selfie == null || _front == null) return;
+    final requestId = ++_verifyRequestId;
     setState(() {
       _verifying = true;
       _aiStatus = null;
@@ -78,7 +86,7 @@ class _ExpertIdentityCaptureScreenState
     try {
       final result = await (widget.service ?? ExpertOnboardingService.instance)
           .previewFace(selfie: _selfie!, identityFront: _front!);
-      if (!mounted) return;
+      if (!mounted || requestId != _verifyRequestId) return;
       setState(() {
         _verifying = false;
         _similarity = result.similarity;
@@ -86,7 +94,7 @@ class _ExpertIdentityCaptureScreenState
         _aiColor = result.matched ? Colors.green : Colors.orange;
       });
     } catch (_) {
-      if (mounted) {
+      if (mounted && requestId == _verifyRequestId) {
         setState(() {
           _verifying = false;
           _aiStatus = 'ERROR';

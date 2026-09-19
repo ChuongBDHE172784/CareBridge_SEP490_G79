@@ -10,6 +10,7 @@ import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
+import com.carebridge.backend.expertverification.async.IdentityPipelineExecutor;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import com.carebridge.backend.expertverification.enums.FaceDetectionStatus;
 import com.carebridge.backend.expertverification.dto.request.ReviewIdentityRequest;
@@ -36,6 +37,7 @@ import com.carebridge.backend.file.service.IFileService;
 import com.carebridge.backend.map.facilitystatus.FacilityStatus;
 import com.carebridge.backend.map.repository.CareFacilityRepository;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +60,9 @@ import com.carebridge.backend.security.repository.UserRepository;
 public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVerificationService {
 
     private static final long MAX_IDENTITY_IMAGE_BYTES = 5L * 1024 * 1024;
+    private static final String PIPELINE_PROCESSING = "PROCESSING";
+    /** How long a PROCESSING attempt blocks resubmission before it is treated as abandoned. */
+    private static final Duration PIPELINE_STALE_AFTER = Duration.ofMinutes(5);
 
     private final ExpertProfileRepository profileRepository;
     private final ExpertIdentityVerificationRepository identityRepository;
@@ -72,6 +77,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private final AuditService auditService;
     private final TransactionOperations transactionOperations;
     private final ExpertAvailabilityRepository availabilityRepository;
+    private final IdentityPipelineExecutor identityPipelineExecutor;
 
     private record InitialSubmission(
             IdentityVerificationResponse response,
@@ -91,8 +97,10 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         var existingAttempt = identityRepository
                 .findFirstByExpertProfileIdOrderByCreatedAtDesc(profile.getExpertProfileId());
         if (existingAttempt.isPresent()
-                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED
-                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.MANUAL_REVIEW_REQUIRED) {
+                && (pipelineInFlight(existingAttempt.get())
+                        || (existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED
+                                && existingAttempt.get().getReviewStatus()
+                                        != IdentityReviewStatus.MANUAL_REVIEW_REQUIRED))) {
                 return new InitialSubmission(
                         toResponse(existingAttempt.get()), false,
                         profile.getExpertProfileId(), null, null);
@@ -114,12 +122,20 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
             return submission.response();
         }
 
-        // CompreFace and crop uploads run after the short persistence transaction commits.
+        // CompreFace and crop uploads run after the short persistence transaction commits,
+        // and off the request thread: the client only needs to know the originals are stored.
+        // The attempt row carries pipelineStatus=PROCESSING until the pool finishes with it,
+        // and /expert/onboarding routes the same way either way, because MANUAL_REVIEW_REQUIRED
+        // is neither MISSING nor REJECTED in determineNextStep.
         UUID attemptId = submission.response().getIdentityVerificationId();
-        processIdentityVerificationAsync(
-                attemptId, userId, submission.expertProfileId(),
-                submission.selfieBytes(), submission.frontBytes(),
-                normalizedMime(selfie), normalizedMime(identityFront));
+        UUID expertProfileId = submission.expertProfileId();
+        byte[] selfieBytes = submission.selfieBytes();
+        byte[] frontBytes = submission.frontBytes();
+        String selfieMime = normalizedMime(selfie);
+        String frontMime = normalizedMime(identityFront);
+        identityPipelineExecutor.run(() -> processIdentityVerificationAsync(
+                attemptId, userId, expertProfileId,
+                selfieBytes, frontBytes, selfieMime, frontMime));
 
         return submission.response();
     }
@@ -152,7 +168,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                             .reviewReason("Pending CompreFace pipeline processing")
                             .detectionSelfieStatus("PENDING")
                             .detectionIdCardStatus("PENDING")
-                            .pipelineStatus("PROCESSING")
+                            .pipelineStatus(PIPELINE_PROCESSING)
                             .processedAt(Instant.now())
                             .build());
             auditService.log(AuditAction.EXPERT_VERIFICATION, userId,
@@ -166,8 +182,24 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     }
 
     /**
+     * True while a just-submitted attempt is still being processed off the request thread.
+     *
+     * <p>The freshly created row sits in MANUAL_REVIEW_REQUIRED for the seconds the pipeline
+     * runs, which on its own would let a double tap start a second pipeline and store three
+     * more copies of the same photos. The staleness window keeps the normal resubmit path
+     * open if the process died mid-pipeline and nothing will ever finish that row.</p>
+     */
+    private boolean pipelineInFlight(ExpertIdentityVerification attempt) {
+        if (!PIPELINE_PROCESSING.equals(attempt.getPipelineStatus())) {
+            return false;
+        }
+        Instant startedAt = attempt.getProcessedAt();
+        return startedAt != null && startedAt.isAfter(Instant.now().minus(PIPELINE_STALE_AFTER));
+    }
+
+    /**
      * Processes the CompreFace pipeline separately from the initial transaction.
-     * Called after the initial attempt is saved.
+     * Runs on {@link IdentityPipelineExecutor}, after the initial attempt is saved.
      */
     protected void processIdentityVerificationAsync(
             UUID attemptId, UUID userId, UUID expertProfileId,
