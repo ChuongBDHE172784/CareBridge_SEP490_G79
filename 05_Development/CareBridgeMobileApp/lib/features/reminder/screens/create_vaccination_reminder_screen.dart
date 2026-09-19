@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../baby/models/baby_model.dart';
 import '../../baby/services/baby_service.dart';
@@ -52,6 +53,26 @@ class _CreateVaccinationReminderScreenState
     super.initState();
     _loadBabies();
     _applyInitialSuggestion(widget.initialSuggestion);
+  }
+
+  static const String _vaccinationScheduleSourceUrl =
+      'https://thuvienphapluat.vn/van-ban/The-thao-Y-te/Thong-tu-52-2025-TT-BYT-pham-vi-phai-su-dung-vac-xin-sinh-pham-y-te-bat-buoc-687438.aspx';
+
+  Future<void> _openVaccinationScheduleSource() async {
+    final uri = Uri.parse(_vaccinationScheduleSourceUrl);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        _showError('Không thể mở liên kết nguồn tham khảo.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showError('Không thể mở liên kết nguồn tham khảo.');
+      }
+    }
   }
 
   @override
@@ -320,6 +341,44 @@ class _CreateVaccinationReminderScreenState
                     fontSize: 12,
                     color: _onSurfaceVariant,
                     height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  key: const Key('vaccination-reminder-source-link'),
+                  onTap: _openVaccinationScheduleSource,
+                  borderRadius: BorderRadius.circular(8),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.menu_book_rounded,
+                          size: 14,
+                          color: _primary,
+                        ),
+                        SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Nguồn tham khảo: Thông tư 52/2025/TT-BYT',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _primary,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          Icons.open_in_new_rounded,
+                          size: 12,
+                          color: _primary,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

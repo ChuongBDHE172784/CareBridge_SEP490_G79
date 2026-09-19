@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/baby_model.dart';
 import '../models/baby_daily_log_model.dart';
 import '../models/milestone_model.dart';
@@ -28,6 +29,7 @@ class BabyProfileDetailScreen extends StatefulWidget {
   final BabyProfile? initialProfile;
   final List<Milestone> initialMilestones;
   final List<VaccinationRecord> initialVaccinations;
+  final VaccinationSchedule? initialVaccinationSchedule;
   final BabyLogSummaryResponse? initialSummary;
   final List<GrowthMeasurement> initialGrowthMeasurements;
   final Future<BabyProfile> Function(String babyId)? profileLoader;
@@ -47,6 +49,7 @@ class BabyProfileDetailScreen extends StatefulWidget {
     this.initialProfile,
     this.initialMilestones = const [],
     this.initialVaccinations = const [],
+    this.initialVaccinationSchedule,
     this.initialSummary,
     this.initialGrowthMeasurements = const [],
     this.profileLoader,
@@ -117,6 +120,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     _profile = widget.initialProfile;
     _milestones = widget.initialMilestones;
     _vaccinations = widget.initialVaccinations;
+    _vaccinationSchedule = widget.initialVaccinationSchedule;
     _summary = widget.initialSummary;
     _growthMeasurements = _sortGrowthMeasurements(
       widget.initialGrowthMeasurements,
@@ -143,7 +147,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       _profile = widget.initialProfile;
       _milestones = widget.initialMilestones;
       _vaccinations = widget.initialVaccinations;
-      _vaccinationSchedule = null;
+      _vaccinationSchedule = widget.initialVaccinationSchedule;
       _summary = widget.initialSummary;
       _growthMeasurements = _sortGrowthMeasurements(
         widget.initialGrowthMeasurements,
@@ -1266,15 +1270,106 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     );
   }
 
+  static const String _vaccinationScheduleSourceUrl =
+      'https://thuvienphapluat.vn/van-ban/The-thao-Y-te/Thong-tu-52-2025-TT-BYT-pham-vi-phai-su-dung-vac-xin-sinh-pham-y-te-bat-buoc-687438.aspx';
+
+  Future<void> _openVaccinationScheduleSource() async {
+    final uri = Uri.parse(_vaccinationScheduleSourceUrl);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể mở liên kết nguồn tham khảo.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể mở liên kết nguồn tham khảo.')),
+        );
+      }
+    }
+  }
+
+  Widget _buildVaccinationSourceLink() {
+    return InkWell(
+      key: const Key('vaccination-schedule-source-link'),
+      onTap: _openVaccinationScheduleSource,
+      borderRadius: BorderRadius.circular(8),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.menu_book_rounded,
+              size: 15,
+              color: _primary,
+            ),
+            SizedBox(width: 6),
+            Flexible(
+              child: Text.rich(
+                TextSpan(
+                  text: 'Nguồn tham khảo: ',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: 'Thông tư 52/2025/TT-BYT (Bộ Y tế)',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(width: 4),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 13,
+              color: _primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSchedulePreview(VaccinationSchedule schedule) {
     final visible = schedule.doses
         .where((dose) => dose.status != VaccinationStatus.completed)
         .take(4)
         .toList(growable: false);
     if (visible.isEmpty) {
-      return const Text(
-        'Lịch tham khảo đã hoàn thành.',
-        style: TextStyle(color: _onSurfaceVariant),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _surfaceContainer.withAlpha(90),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Lịch tham khảo đã hoàn thành.',
+              style: TextStyle(color: _onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            _buildVaccinationSourceLink(),
+          ],
+        ),
       );
     }
     return Container(
@@ -1316,6 +1411,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
                 ],
               ),
             ),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: _outlineVariant),
+          const SizedBox(height: 8),
+          _buildVaccinationSourceLink(),
         ],
       ),
     );
