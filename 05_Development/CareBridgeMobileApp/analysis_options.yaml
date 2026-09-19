@@ -14,6 +14,13 @@ analyzer:
     # Vendored official Web plugin is validated by `flutter build web`; the
     # host analyzer otherwise evaluates legacy JS-only libraries as VM code.
     - third_party/trackasia_gl_web/**
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   # The lint rules applied to this project can be customized in the

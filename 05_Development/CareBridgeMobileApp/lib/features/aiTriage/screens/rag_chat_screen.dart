@@ -1517,23 +1517,50 @@ class _WelcomeView extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 76,
+            height: 76,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFC98C7B).withValues(alpha: 0.2),
-                  const Color(0xFFC98C7B).withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white,
+                width: 2.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFC98C7B).withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Icon(
-              Icons.health_and_safety,
-              size: 38,
-              color: Color(0xFFC98C7B),
+            child: ClipOval(
+              child: Transform.scale(
+                scale: 1.25,
+                child: Image.asset(
+                  'assets/images/imgAI.jpg',
+                  width: 76,
+                  height: 76,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFC98C7B).withValues(alpha: 0.2),
+                          const Color(0xFFC98C7B).withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.health_and_safety,
+                      size: 38,
+                      color: Color(0xFFC98C7B),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 16),

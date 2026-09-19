@@ -224,7 +224,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     } finally {
       await Future.wait([
         todayRefresh,
-        if (recommendationRefresh != null) recommendationRefresh,
+        ?recommendationRefresh,
       ]);
     }
   }

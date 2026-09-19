@@ -1381,7 +1381,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/today',
-            builder: (_, __) => Scaffold(
+            builder: (_, _) => Scaffold(
               body: TodayTasksPanel(
                 service: service,
                 audience: TodayTasksAudience.mother,
@@ -1391,7 +1391,7 @@ void main() {
           ),
           GoRoute(
             path: '/checklists/task-detail',
-            builder: (_, __) {
+            builder: (_, _) {
               detailOpened = true;
               return const Scaffold(body: Text('TASK_DETAIL_SCREEN'));
             },

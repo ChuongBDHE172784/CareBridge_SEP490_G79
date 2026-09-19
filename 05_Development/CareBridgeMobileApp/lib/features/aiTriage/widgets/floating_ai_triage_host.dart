@@ -339,14 +339,14 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                         color: _accent,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          width: 3,
+                          color: Colors.white,
+                          width: 2.5,
                         ),
                         boxShadow: const [
                           BoxShadow(
                             color: Color(0x4DC98C7B),
-                            blurRadius: 24,
-                            offset: Offset(0, 8),
+                            blurRadius: 20,
+                            offset: Offset(0, 6),
                           ),
                           BoxShadow(
                             color: Color(0x1A5A463F),
@@ -355,14 +355,26 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                           ),
                         ],
                       ),
-                      child: const Stack(
+                      child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          Center(
-                            child: Icon(
-                              Icons.smart_toy_rounded,
-                              color: Colors.white,
-                              size: 31,
+                          Positioned.fill(
+                            child: ClipOval(
+                              child: Transform.scale(
+                                scale: 1.25,
+                                child: Image.asset(
+                                  'assets/images/imgAI.jpg',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Center(
+                                    child: Icon(
+                                      Icons.smart_toy_rounded,
+                                      color: Colors.white,
+                                      size: 31,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           Positioned(
@@ -372,9 +384,16 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                               ),
-                              child: Padding(
-                                padding: EdgeInsets.all(5),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
                                 child: Text(
                                   'AI',
                                   style: TextStyle(

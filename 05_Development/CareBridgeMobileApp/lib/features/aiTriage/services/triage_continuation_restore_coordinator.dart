@@ -161,7 +161,7 @@ class TriageContinuationRestoreCoordinator {
         token: token,
         generation: generation,
       );
-      return _cleanupAcknowledgedContinuation(userId);
+      return await _cleanupAcknowledgedContinuation(userId);
     } catch (_) {
       return false;
     }
